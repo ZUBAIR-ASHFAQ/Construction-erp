@@ -120,6 +120,70 @@ export class EquipmentRepository {
     return this.db.equipmentAssignment.create({ data: input });
   }
 
+  /** Lock one Equipment assignment before end or usage decisions. */
+  async lockAssignmentForWrite(equipmentId: string, assignmentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{
+      id: string;
+      equipmentId: string;
+      projectId: string;
+      stageId: string | null;
+      fromDate: Date;
+      toDate: Date | null;
+      status: string;
+    }>>`
+      SELECT
+        assignment.id,
+        assignment.equipment_id AS "equipmentId",
+        assignment.project_id AS "projectId",
+        assignment.stage_id AS "stageId",
+        assignment.from_date AS "fromDate",
+        assignment.to_date AS "toDate",
+        assignment.status
+      FROM equipment_assignments assignment
+      JOIN equipment item ON item.id = assignment.equipment_id
+      JOIN projects project ON project.id = assignment.project_id
+      WHERE assignment.id = ${assignmentId}::uuid
+        AND assignment.equipment_id = ${equipmentId}::uuid
+        AND item.company_id = ${scope.companyId}::uuid
+        AND project.company_id = ${scope.companyId}::uuid
+      FOR UPDATE OF assignment
+    `;
+    return rows[0] ?? null;
+  }
+
+  /** Find the latest posted usage date before shortening an Equipment assignment. */
+  async findLatestUsageDate(equipmentId: string, assignmentId: string): Promise<Date | null> {
+    const scope = requireCompanyRepositoryScope();
+    const usage = await this.db.equipmentUsage.findFirst({
+      where: {
+        assignmentId,
+        status: 'POSTED',
+        assignment: { equipmentId, equipment: { companyId: scope.companyId }, project: { companyId: scope.companyId } }
+      },
+      select: { usageDate: true },
+      orderBy: [{ usageDate: 'desc' }, { id: 'desc' }]
+    });
+    return usage?.usageDate ?? null;
+  }
+
+  /** End one active Equipment assignment without deleting its history. */
+  async endAssignment(equipmentId: string, assignmentId: string, endDate: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.equipmentAssignment.updateMany({
+      where: {
+        id: assignmentId,
+        equipmentId,
+        status: 'ACTIVE',
+        equipment: { companyId: scope.companyId },
+        project: { companyId: scope.companyId }
+      },
+      data: { toDate: endDate, status: 'ENDED' }
+    });
+    if (result.count !== 1) return null;
+    return this.findAssignment(equipmentId, assignmentId);
+  }
+
   /** Find one Equipment assignment and its cost destination. */
   async findAssignment(equipmentId: string, assignmentId: string) {
     const scope = requireCompanyRepositoryScope();

@@ -15,6 +15,7 @@ export function ProjectStagesPage() {
   const canRecordProgress = usePermission('stages.progress.update');
   const canApproveProgress = usePermission('stages.progress.approve');
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, canRead);
+  const selectedProject = (projectsQuery.data?.items ?? []).find((project) => project.id === projectId) ?? null;
 
   return (
     <section className="admin-stack" aria-labelledby="project-stages-title">
@@ -39,7 +40,10 @@ export function ProjectStagesPage() {
 
       {projectId !== '' && (
         <ProjectStagesWorkspace
+          key={projectId}
           projectId={projectId}
+          projectModel={selectedProject?.projectModel ?? 'FIXED_PRICE'}
+          projectCostPlusPercent={selectedProject?.costPlusPercent ?? null}
           canManage={canManage}
           canFreeze={canFreeze}
           canRecordProgress={canRecordProgress}

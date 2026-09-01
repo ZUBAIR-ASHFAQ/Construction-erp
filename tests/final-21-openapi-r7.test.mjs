@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const targets = Object.freeze([
-  { file: 'apps/api/src/modules/equipment/equipment.routes.ts', routes: 6, bodies: 4, queries: 2, params: 4 },
+  { file: 'apps/api/src/modules/equipment/equipment.routes.ts', routes: 7, bodies: 5, queries: 2, params: 5 },
   { file: 'apps/api/src/modules/inventory/inventory.routes.ts', routes: 7, bodies: 4, queries: 3, params: 0 },
   { file: 'apps/api/src/modules/labour-payroll/labour-payroll.routes.ts', routes: 8, bodies: 5, queries: 2, params: 4 },
   { file: 'apps/api/src/modules/procurement/procurement.routes.ts', routes: 10, bodies: 6, queries: 2, params: 5 },

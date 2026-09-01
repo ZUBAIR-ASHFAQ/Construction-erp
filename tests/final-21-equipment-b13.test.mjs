@@ -26,20 +26,21 @@ test('B13 keeps Equipment as one simple five-file backend after Inventory', () =
   assert.ok(app.indexOf('registerInventoryRoutes') < app.indexOf('registerEquipmentRoutes'));
 });
 
-/** Confirm the public Equipment API is exactly the six routes in the Final-21 contract. */
-test('B13 exposes exactly the six Final-21 Equipment routes', () => {
+/** Confirm the Equipment API keeps the Final-21 routes plus the required assignment-end command. */
+test('B13 exposes the Final-21 Equipment routes plus controlled assignment end', () => {
   const schema = read(`${backend}/equipment.schema.ts`);
   const routes = read(`${backend}/equipment.routes.ts`);
   const expected = [
     "GET', route: '/api/v1/equipment'",
     "POST', route: '/api/v1/equipment'",
     "POST', route: '/api/v1/equipment/:id/assignments'",
+    "POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end'",
     "POST', route: '/api/v1/equipment/:id/usage'",
     "POST', route: '/api/v1/equipment/:id/maintenance'",
     "GET', route: '/api/v1/equipment/:id/history'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 6);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 7);
   assert.doesNotMatch(routes, /\/api\/v1\/equipment[^'\"]*(?:transfer|archive|dispose|utilization|submit|post-cost|return)/i);
 });
 
@@ -113,12 +114,12 @@ test('B13 uses the final Equipment permission error and event vocabulary', () =>
   for (const error of ['EQUIPMENT_NOT_FOUND', 'EQUIPMENT_NOT_AVAILABLE', 'ASSIGNMENT_OVERLAP', 'INVALID_EQUIPMENT_STAGE']) {
     assert.ok(schema.includes(`'${error}'`), `missing ${error}`);
   }
-  for (const event of ['equipment.assigned', 'equipment.usage_posted', 'equipment.maintenance_recorded']) {
+  for (const event of ['equipment.assigned', 'equipment.assignment_ended', 'equipment.usage_posted', 'equipment.maintenance_recorded']) {
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
     assert.ok(service.includes(event), `service does not emit ${event}`);
   }
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 4);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 4);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 5);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 5);
   assert.match(service, /executeIdempotentCommand/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);
@@ -151,7 +152,10 @@ test('B13 simplifies the Equipment React feature to the Final-21 workflow', () =
   assert.match(workspace, /useProjectStages/);
   assert.match(workspace, /Record Usage & Cost/);
   assert.match(workspace, /Project \/ Stage Equipment cost summary/);
+  assert.match(workspace, /endMutation/);
+  assert.match(api, /endEquipmentAssignment/);
   assert.match(api, /Idempotency-Key/);
+  assert.match(hooks, /useEndEquipmentAssignment/);
   assert.match(hooks, /useEquipmentHistory/);
   for (const source of [page, workspace, api, hooks]) {
     assert.doesNotMatch(source, /equipment\.usage'|equipment\.maintenance'|useEquipmentUtilization|useTransferEquipment|useArchiveEquipment|useReturnEquipment|postEquipmentUsageCost/i);

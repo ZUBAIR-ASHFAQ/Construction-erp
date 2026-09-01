@@ -48,6 +48,7 @@ const STAGE_BODY_PROPERTIES = {
   name: { type: 'string', minLength: 1, maxLength: 300 },
   sequenceNo: { type: 'integer', minimum: 1 },
   weightPercent: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,2}|100)(?:\\.\\d{1,4})?$' },
+  costPlusPercent: { anyOf: [{ type: 'string', pattern: '^(?:0|[1-9]\\d{0,2}|100)(?:\\.\\d{1,4})?$' }, { type: 'null' }] },
   plannedStartDate: { anyOf: [{ type: 'string', format: 'date' }, { type: 'null' }] },
   plannedEndDate: { anyOf: [{ type: 'string', format: 'date' }, { type: 'null' }] }
 } as const;

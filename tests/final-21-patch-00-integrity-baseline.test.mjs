@@ -117,7 +117,15 @@ test('Project SUSPENDED status has a controlled path back to ACTIVE and close re
   assert.match(projectService, /repository\.isProjectReadyToClose\(projectId\)/);
   assert.doesNotMatch(projectService, /closeReadinessCheck/);
 });
-test.todo('Open-ended Equipment assignments can be ended before the asset is reassigned');
+test('Open-ended Equipment assignments can be ended before the asset is reassigned', () => {
+  assert.match(equipmentSchema, /POST', route: '\/api\/v1\/equipment\/:id\/assignments\/:assignmentId\/end'/);
+  assert.match(equipmentRoutes, /app\.post\('\/api\/v1\/equipment\/:id\/assignments\/:assignmentId\/end'/);
+  assert.match(equipmentService, /async endAssignment\(equipmentId: string, assignmentId: string/);
+  assert.match(equipmentService, /repository\.findLatestUsageDate\(equipmentId, assignmentId\)/);
+  assert.match(equipmentService, /equipment\.assignment_ended/);
+  assert.match(equipmentWebApi, /export function endEquipmentAssignment\(equipmentId: string, assignmentId: string, endDate: string\)/);
+  assert.match(equipmentHooks, /export function useEndEquipmentAssignment\(equipmentId: string\)/);
+});
 test.todo('Unallocated Supplier Payments do not reduce AP until allocation');
 test.todo('Client Receipt allocations persist deterministic stage attribution for multi-stage invoices');
 test.todo('Finalized Payroll has a controlled compensating correction path');

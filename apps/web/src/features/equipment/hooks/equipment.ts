@@ -3,6 +3,7 @@ import {
   assignEquipment,
   createEquipment,
   createEquipmentMaintenance,
+  endEquipmentAssignment,
   getEquipmentHistory,
   listEquipment,
   recordEquipmentUsage,
@@ -43,6 +44,15 @@ export function useAssignEquipment(equipmentId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: AssignEquipmentInput) => assignEquipment(equipmentId, input),
+    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
+  });
+}
+
+/** End one Equipment assignment and refresh its history. */
+export function useEndEquipmentAssignment(equipmentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ assignmentId: string; endDate: string }>) => endEquipmentAssignment(equipmentId, input.assignmentId, input.endDate),
     onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
   });
 }

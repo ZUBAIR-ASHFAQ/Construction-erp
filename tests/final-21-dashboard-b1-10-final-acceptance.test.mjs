@@ -86,10 +86,10 @@ test('B1.10 registers the final Reports and Dashboard permission vocabulary on t
 
   const gates = JSON.parse(read('packages/database/prisma/migration-gates.json'));
   const checksums = JSON.parse(read('packages/database/prisma/migration-checksums.json'));
-  const latest = gates.gates.at(-1);
-  assert.equal(latest.stage, 58);
-  assert.equal(latest.gate, 'final-21-pass-b1-10-final-permission-acceptance');
-  assert.deepEqual(latest.migrations, [PERMISSION_MIGRATION]);
+  const permissionGate = gates.gates.find((gate) => gate.migrations.includes(PERMISSION_MIGRATION));
+  assert.equal(permissionGate?.stage, 58);
+  assert.equal(permissionGate?.gate, 'final-21-pass-b1-10-final-permission-acceptance');
+  assert.deepEqual(permissionGate?.migrations, [PERMISSION_MIGRATION]);
   assert.match(checksums.migrations[PERMISSION_MIGRATION], /^[a-f0-9]{64}$/);
 });
 

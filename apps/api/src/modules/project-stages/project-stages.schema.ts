@@ -51,6 +51,10 @@ const progressSchema = z.string().trim().regex(
   /^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/,
   'progressPercent must be between 0 and 100 with at most 4 decimal places'
 ).refine((value) => Number(value) >= 0 && Number(value) <= 100, 'progressPercent must be between 0 and 100');
+const costPlusPercentSchema = z.string().trim().regex(
+  /^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/,
+  'costPlusPercent must be an exact percentage with at most 4 decimal places'
+).refine((value) => Number(value) > 0 && Number(value) <= 100, 'costPlusPercent must be greater than 0 and at most 100');
 
 /** Check that one date-only value is a real calendar date. */
 function isValidDateOnly(value: string): boolean {
@@ -98,6 +102,7 @@ export const createProjectStageBodySchema = z.object({
   name: nameSchema,
   sequenceNo: z.number().int().min(1),
   weightPercent: weightSchema,
+  costPlusPercent: costPlusPercentSchema.nullable().optional(),
   plannedStartDate: dateSchema.nullable().optional(),
   plannedEndDate: dateSchema.nullable().optional()
 }).strict().superRefine(validatePlannedDates);
@@ -108,6 +113,7 @@ export const updateProjectStageBodySchema = z.object({
   name: nameSchema.optional(),
   sequenceNo: z.number().int().min(1).optional(),
   weightPercent: weightSchema.optional(),
+  costPlusPercent: costPlusPercentSchema.nullable().optional(),
   plannedStartDate: dateSchema.nullable().optional(),
   plannedEndDate: dateSchema.nullable().optional()
 }).strict().refine((value) => Object.keys(value).length > 0, {

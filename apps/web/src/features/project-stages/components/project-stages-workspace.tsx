@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { usePermission } from '../../administration/hooks/auth.js';
@@ -18,7 +18,13 @@ const stageFormSchema = z.object({
   code: z.string().trim().min(1, 'Stage code is required.').max(100),
   name: z.string().trim().min(1, 'Stage name is required.').max(300),
   sequenceNo: z.coerce.number().int().min(1),
-  weightPercent: z.string().regex(/^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/, 'Use 0-100 with up to 4 decimals.'),
+  weightPercent: z.string()
+    .regex(/^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/, 'Use a percentage with up to 4 decimals.')
+    .refine((value) => Number(value) > 0 && Number(value) <= 100, 'Weight must be greater than 0 and at most 100.'),
+  costPlusPercent: z.string().refine(
+    (value) => value === '' || (/^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/.test(value) && Number(value) > 0 && Number(value) <= 100),
+    'Profit / Markup must be greater than 0 and at most 100.'
+  ),
   plannedStartDate: z.string(),
   plannedEndDate: z.string()
 }).refine((value) => value.plannedStartDate === '' || value.plannedEndDate === '' || value.plannedEndDate >= value.plannedStartDate, {
@@ -28,7 +34,9 @@ const stageFormSchema = z.object({
 
 const progressFormSchema = z.object({
   stageId: z.string().uuid('Select a Stage.'),
-  progressPercent: z.string().regex(/^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/, 'Use 0-100 with up to 4 decimals.'),
+  progressPercent: z.string()
+    .regex(/^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/, 'Use a percentage with up to 4 decimals.')
+    .refine((value) => Number(value) >= 0 && Number(value) <= 100, 'Progress must be between 0 and 100.'),
   progressDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.'),
   note: z.string().trim().max(5000),
   evidenceDocumentId: z.union([z.literal(''), z.string().uuid('Use a valid Document UUID.')])
@@ -39,6 +47,8 @@ type ProgressFormValues = z.infer<typeof progressFormSchema>;
 
 export type ProjectStagesWorkspaceProps = Readonly<{
   projectId: string;
+  projectModel: 'FIXED_PRICE' | 'COST_PLUS_PERCENTAGE';
+  projectCostPlusPercent: string | null;
   canManage: boolean;
   canFreeze: boolean;
   canRecordProgress: boolean;
@@ -59,8 +69,9 @@ function formErrorMessages(errors: Record<string, unknown>): string[] {
 }
 
 /** Render one Stage row without confusing physical progress with weight or money. */
-function StageRow({ stage, canEdit, onEdit }: Readonly<{
+function StageRow({ stage, fallbackPercent, canEdit, onEdit }: Readonly<{
   stage: ProjectStage;
+  fallbackPercent: string | null;
   canEdit: boolean;
   onEdit: (stage: ProjectStage) => void;
 }>) {
@@ -69,6 +80,7 @@ function StageRow({ stage, canEdit, onEdit }: Readonly<{
       <td>{stage.sequenceNo}</td>
       <td><strong>{stage.code}</strong><br />{stage.name}<br /><small>{stage.id} · Project {stage.projectId}</small></td>
       <td>{stage.weightPercent}%</td>
+      <td>{stage.costPlusPercent ? `${stage.costPlusPercent}%` : fallbackPercent ? `Project ${fallbackPercent}%` : '—'}</td>
       <td>{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
       <td>{stage.plannedAmount ?? '—'}</td>
       <td>{stage.financials?.actualCost ?? 'Restricted'}</td>
@@ -97,7 +109,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
 
   const stageForm = useForm<StageFormValues>({
     resolver: zodResolver(stageFormSchema),
-    defaultValues: { code: '', name: '', sequenceNo: 1, weightPercent: '', plannedStartDate: '', plannedEndDate: '' }
+    defaultValues: { code: '', name: '', sequenceNo: 1, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' }
   });
   const progressForm = useForm<ProgressFormValues>({
     resolver: zodResolver(progressFormSchema),
@@ -107,6 +119,13 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   const progressStageId = progressForm.watch('stageId');
   const progressMutation = useRecordStageProgress(props.projectId, progressStageId);
   const approvalMutation = useApproveStageProgress(props.projectId, progressStageId);
+  const stages = stagesQuery.data?.items ?? [];
+  const nextSequenceNo = stages.reduce((highest, stage) => Math.max(highest, stage.sequenceNo), 0) + 1;
+
+  useEffect(() => {
+    if (!stagesQuery.data || editingStageId || stageForm.formState.dirtyFields.sequenceNo) return;
+    stageForm.setValue('sequenceNo', nextSequenceNo);
+  }, [editingStageId, nextSequenceNo, stageForm, stagesQuery.data]);
 
   /** Create or update one draft Stage using only editable planning fields. */
   async function handleSaveStage(values: StageFormValues): Promise<void> {
@@ -115,6 +134,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
       name: values.name,
       sequenceNo: values.sequenceNo,
       weightPercent: values.weightPercent,
+      ...(props.projectModel === 'COST_PLUS_PERCENTAGE' ? { costPlusPercent: values.costPlusPercent === '' ? null : values.costPlusPercent } : {}),
       plannedStartDate: values.plannedStartDate === '' ? null : values.plannedStartDate,
       plannedEndDate: values.plannedEndDate === '' ? null : values.plannedEndDate
     };
@@ -126,7 +146,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
     }
 
     setEditingStageId(null);
-    stageForm.reset({ code: '', name: '', sequenceNo: values.sequenceNo + 1, weightPercent: '', plannedStartDate: '', plannedEndDate: '' });
+    stageForm.reset({ code: '', name: '', sequenceNo: Math.max(nextSequenceNo, values.sequenceNo + 1), weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
   /** Load one draft Stage into the shared planning form for a simple edit flow. */
@@ -137,6 +157,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
       name: stage.name,
       sequenceNo: stage.sequenceNo,
       weightPercent: stage.weightPercent,
+      costPlusPercent: stage.costPlusPercent ?? '',
       plannedStartDate: stage.plannedStartDate ?? '',
       plannedEndDate: stage.plannedEndDate ?? ''
     });
@@ -145,7 +166,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   /** Cancel a draft Stage edit without changing persisted Stage data. */
   function handleCancelStageEdit(): void {
     setEditingStageId(null);
-    stageForm.reset({ code: '', name: '', sequenceNo: stages.length + 1, weightPercent: '', plannedStartDate: '', plannedEndDate: '' });
+    stageForm.reset({ code: '', name: '', sequenceNo: nextSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
   /** Submit one physical-progress update and preserve its id for immediate approval when allowed. */
@@ -166,7 +187,6 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
     setSubmittedUpdate(approved);
   }
 
-  const stages = stagesQuery.data?.items ?? [];
   const documents = documentsQuery.data?.items ?? [];
   const documentLabels = new Map(documents.map((document) => [document.id, document.documentNo ? `${document.documentNo} · ${document.title}` : document.title]));
   const weightTotal = stages.reduce((sum, stage) => sum + Number(stage.weightPercent), 0);
@@ -176,7 +196,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
       <section className="admin-card">
         <div className="section-heading">
           <h2>Stage baseline</h2>
-          <p className="muted">Weight, physical progress, cost, billing and receipts stay separate. Freeze is allowed only when the Stage weights total exactly 100.0000%.</p>
+          <p className="muted">Weight, Profit / Markup %, physical progress, cost, billing and receipts stay separate. Cost + Percentage Stages may override the Project rate; blank uses the Project fallback. Freeze is allowed only when Stage weights total exactly 100.0000%.</p>
         </div>
         {stagesQuery.isPending && <p>Loading Project Stages…</p>}
         {errorMessage(stagesQuery.error) && <div className="form-error" role="alert">{errorMessage(stagesQuery.error)}</div>}
@@ -188,11 +208,11 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
             <div className="table-scroll">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Stage</th><th>Weight</th><th>Physical</th><th>Planned value</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated receipts</th><th>Advance</th><th>Outstanding</th><th>Dates</th><th>Status</th><th>Action</th></tr>
+                  <tr><th>#</th><th>Stage</th><th>Weight</th><th>Profit / Markup</th><th>Physical</th><th>Planned value</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated receipts</th><th>Advance</th><th>Outstanding</th><th>Dates</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
-                  {stages.map((stage) => <StageRow key={stage.id} stage={stage} canEdit={props.canManage && !stagesQuery.data?.baseline && stage.status === 'DRAFT'} onEdit={handleEditStage} />)}
-                  {stages.length === 0 && <tr><td colSpan={14} className="muted">No Stage has been created yet.</td></tr>}
+                  {stages.map((stage) => <StageRow key={stage.id} stage={stage} fallbackPercent={props.projectModel === 'COST_PLUS_PERCENTAGE' ? props.projectCostPlusPercent : null} canEdit={props.canManage && !stagesQuery.data?.baseline && stage.status === 'DRAFT'} onEdit={handleEditStage} />)}
+                  {stages.length === 0 && <tr><td colSpan={15} className="muted">No Stage has been created yet.</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -237,6 +257,9 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
               <label>Name<input {...stageForm.register('name')} /></label>
               <label>Sequence<input type="number" min="1" {...stageForm.register('sequenceNo')} /></label>
               <label>Weight %<input inputMode="decimal" {...stageForm.register('weightPercent')} /></label>
+              {props.projectModel === 'COST_PLUS_PERCENTAGE' ? (
+                <label>Profit / Markup % (optional)<input inputMode="decimal" {...stageForm.register('costPlusPercent')} /><small className="muted">Blank uses Project {props.projectCostPlusPercent ?? 'configured'}%.</small></label>
+              ) : null}
               <label>Planned start<input type="date" {...stageForm.register('plannedStartDate')} /></label>
               <label>Planned end<input type="date" {...stageForm.register('plannedEndDate')} /></label>
             </div>

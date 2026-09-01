@@ -11,6 +11,7 @@ import {
   type CreateEquipmentAssignmentBody,
   type CreateEquipmentBody,
   type CreateEquipmentMaintenanceBody,
+  type EndEquipmentAssignmentBody,
   type EquipmentHistoryQuery,
   type ListEquipmentQuery,
   type Module12PermissionCode,
@@ -18,6 +19,7 @@ import {
 } from './equipment.schema.js';
 
 const ACTIVE = 'ACTIVE';
+const ENDED = 'ENDED';
 const POSTED = 'POSTED';
 const RECORDED = 'RECORDED';
 const DECIMAL_SCALE_4 = 10_000n;
@@ -299,6 +301,46 @@ export class EquipmentService {
     return { statusCode: 201, body: response };
   }
 
+  /** End one active Equipment assignment exactly once without deleting its history. */
+  async endAssignment(equipmentId: string, assignmentId: string, input: EndEquipmentAssignmentBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'equipment.assignment.end', idempotencyKey, fingerprintInput: { equipmentId, assignmentId, input }
+    }, async (tx) => this.endAssignmentOnce(tx, equipmentId, assignmentId, input));
+    return result.response.body;
+  }
+
+  /** Validate the effective end date and persist one Equipment assignment end state. */
+  private async endAssignmentOnce(tx: TransactionClient, equipmentId: string, assignmentId: string, input: EndEquipmentAssignmentBody) {
+    const repository = new EquipmentRepository(tx);
+    const current = await repository.findAssignment(equipmentId, assignmentId);
+    if (!current) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+    await this.requireProjectPermission(new AdministrationRepository(tx), current.projectId, 'equipment.assign', new Date());
+
+    const equipment = await repository.lockEquipmentForWrite(equipmentId);
+    if (!equipment) throw createModule12Error('EQUIPMENT_NOT_FOUND');
+    const locked = await repository.lockAssignmentForWrite(equipmentId, assignmentId);
+    if (!locked || token(locked.status) !== ACTIVE) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+
+    const endDate = inputDate(input.endDate);
+    if (endDate < locked.fromDate) {
+      throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede the assignment start date.' }] });
+    }
+    if (locked.toDate && endDate > locked.toDate) {
+      throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot extend the assignment beyond its existing end date.' }] });
+    }
+    const latestUsageDate = await repository.findLatestUsageDate(equipmentId, assignmentId);
+    if (latestUsageDate && endDate < latestUsageDate) {
+      throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede posted Equipment usage.' }] });
+    }
+
+    const updated = await repository.endAssignment(equipmentId, assignmentId, endDate);
+    if (!updated || token(updated.status) !== ENDED) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+    const response = assignmentResponse(updated);
+    await recordAudit(tx, { action: 'equipment.assignment_ended', entityType: 'equipment_assignment', entityId: assignmentId, projectId: updated.projectId, stageId: updated.stageId, before: assignmentResponse(locked), after: response });
+    await recordOutboxEvent(tx, { eventType: 'equipment.assignment_ended', resourceType: 'equipment_assignment', resourceId: assignmentId, payload: response });
+    return { statusCode: 200, body: response };
+  }
+
   /** Record authorized Equipment usage and its Project/Stage actual cost exactly once. */
   async recordUsage(equipmentId: string, input: RecordEquipmentUsageBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
@@ -310,12 +352,14 @@ export class EquipmentService {
   /** Validate assignment/date/rate and atomically post one Equipment actual cost. */
   private async recordUsageOnce(tx: TransactionClient, equipmentId: string, input: RecordEquipmentUsageBody) {
     const repository = new EquipmentRepository(tx);
-    const assignment = await repository.findAssignment(equipmentId, input.assignmentId);
-    if (!assignment) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
-    await this.requireProjectPermission(new AdministrationRepository(tx), assignment.projectId, 'equipment.usage.create', new Date());
+    const current = await repository.findAssignment(equipmentId, input.assignmentId);
+    if (!current) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+    await this.requireProjectPermission(new AdministrationRepository(tx), current.projectId, 'equipment.usage.create', new Date());
     const equipment = await repository.lockEquipmentForWrite(equipmentId);
     if (!equipment) throw createModule12Error('EQUIPMENT_NOT_FOUND');
     if (token(equipment.status) !== ACTIVE) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+    const assignment = await repository.lockAssignmentForWrite(equipmentId, input.assignmentId);
+    if (!assignment) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
     const usageDate = inputDate(input.usageDate);
     if (token(assignment.status) !== ACTIVE || usageDate < assignment.fromDate || (assignment.toDate && usageDate > assignment.toDate)) {
       throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');

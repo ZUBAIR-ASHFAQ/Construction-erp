@@ -167,128 +167,14 @@ export class ProjectsRepository {
     return baseline !== null;
   }
 
-  /** Return true only when the current Project has no actionable operational or financial close blockers. */
-  async isProjectReadyToClose(projectId: string): Promise<boolean> {
+  /** Check whether any Stage still has an explicit Cost + Percentage override. */
+  async hasStageCostPlusPercent(projectId: string): Promise<boolean> {
     const scope = requireCompanyRepositoryScope();
-    const rows = await this.db.$queryRaw<Array<{ ready: boolean }>>`
-      SELECT NOT (
-        EXISTS (
-          SELECT 1
-          FROM project_team_assignments assignment
-          WHERE assignment.company_id = ${scope.companyId}::uuid
-            AND assignment.project_id = ${projectId}::uuid
-            AND assignment.status = 'ACTIVE'
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM equipment_assignments assignment
-          JOIN equipment item ON item.id = assignment.equipment_id
-          WHERE item.company_id = ${scope.companyId}::uuid
-            AND assignment.project_id = ${projectId}::uuid
-            AND assignment.status = 'ACTIVE'
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM purchase_orders po
-          WHERE po.company_id = ${scope.companyId}::uuid
-            AND po.project_id = ${projectId}::uuid
-            AND (
-              po.status = 'DRAFT'
-              OR (
-                po.status = 'ISSUED'
-                AND EXISTS (
-                  SELECT 1
-                  FROM purchase_order_items line
-                  WHERE line.purchase_order_id = po.id
-                    AND line.received_qty < line.quantity
-                )
-              )
-            )
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM supplier_invoices invoice
-          WHERE invoice.company_id = ${scope.companyId}::uuid
-            AND invoice.project_id = ${projectId}::uuid
-            AND invoice.status = 'DRAFT'
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM progress_claims claim
-          WHERE claim.company_id = ${scope.companyId}::uuid
-            AND claim.project_id = ${projectId}::uuid
-            AND (
-              claim.status = 'DRAFT'
-              OR (
-                claim.status = 'FINALIZED'
-                AND NOT EXISTS (
-                  SELECT 1
-                  FROM client_invoices invoice
-                  WHERE invoice.claim_id = claim.id
-                    AND invoice.company_id = ${scope.companyId}::uuid
-                    AND invoice.project_id = ${projectId}::uuid
-                )
-              )
-            )
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM client_invoices invoice
-          WHERE invoice.company_id = ${scope.companyId}::uuid
-            AND invoice.project_id = ${projectId}::uuid
-            AND invoice.status IN ('ISSUED', 'POSTED')
-            AND invoice.total_receivable > COALESCE((
-              SELECT SUM(allocation.amount)
-              FROM client_receipt_allocations allocation
-              JOIN client_receipts receipt ON receipt.id = allocation.receipt_id
-              WHERE allocation.client_invoice_id = invoice.id
-                AND receipt.company_id = ${scope.companyId}::uuid
-                AND receipt.status = 'POSTED'
-            ), 0)
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM client_receipts receipt
-          WHERE receipt.company_id = ${scope.companyId}::uuid
-            AND receipt.project_id = ${projectId}::uuid
-            AND receipt.status = 'POSTED'
-            AND receipt.amount > COALESCE((
-              SELECT SUM(allocation.amount)
-              FROM client_receipt_allocations allocation
-              WHERE allocation.receipt_id = receipt.id
-            ), 0)
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM supplier_invoices invoice
-          WHERE invoice.company_id = ${scope.companyId}::uuid
-            AND invoice.project_id = ${projectId}::uuid
-            AND invoice.status = 'POSTED'
-            AND invoice.total_amount > COALESCE((
-              SELECT SUM(allocation.amount)
-              FROM supplier_payment_allocations allocation
-              JOIN supplier_payments payment ON payment.id = allocation.supplier_payment_id
-              WHERE allocation.supplier_invoice_id = invoice.id
-                AND payment.company_id = ${scope.companyId}::uuid
-                AND payment.status = 'POSTED'
-            ), 0)
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM supplier_payments payment
-          WHERE payment.company_id = ${scope.companyId}::uuid
-            AND payment.project_id = ${projectId}::uuid
-            AND payment.status = 'POSTED'
-            AND payment.amount > COALESCE((
-              SELECT SUM(allocation.amount)
-              FROM supplier_payment_allocations allocation
-              WHERE allocation.supplier_payment_id = payment.id
-            ), 0)
-        )
-      ) AS ready
-    `;
-
-    return rows[0]?.ready === true;
+    const stage = await this.db.projectStage.findFirst({
+      where: scope.where({ projectId, costPlusPercent: { not: null } }),
+      select: { id: true }
+    });
+    return stage !== null;
   }
 
   /** Update editable Project-master fields without changing code, company ownership or lifecycle status. */

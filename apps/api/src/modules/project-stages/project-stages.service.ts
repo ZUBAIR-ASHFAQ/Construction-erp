@@ -24,6 +24,7 @@ import {
 const PROJECT_ACTIVE = 'ACTIVE';
 const PROJECT_DRAFT = 'DRAFT';
 const PROJECT_MODEL_FIXED_PRICE = 'FIXED_PRICE';
+const PROJECT_MODEL_COST_PLUS_PERCENTAGE = 'COST_PLUS_PERCENTAGE';
 const BASELINE_FROZEN = 'FROZEN';
 const STAGE_DRAFT = 'DRAFT';
 const STAGE_ACTIVE = 'ACTIVE';
@@ -82,6 +83,15 @@ function derivePlannedAmount(projectModel: string, projectValue: DecimalLike, we
   return moneyFromMinorUnits(rounded);
 }
 
+/** Reject a Stage-specific Cost + Percentage rate outside a Cost + Percentage Project. */
+function requireStageCostPlusModel(projectModel: string, costPlusPercent: string | null | undefined): void {
+  if (costPlusPercent !== undefined && costPlusPercent !== null && projectModel !== PROJECT_MODEL_COST_PLUS_PERCENTAGE) {
+    throw new ValidationError({
+      fieldErrors: [{ field: 'costPlusPercent', message: 'Stage Profit / Markup % is available only for Cost + Percentage Projects.' }]
+    });
+  }
+}
+
 /** Build one safe Stage API object without exposing Company ownership. */
 function stageResponse(stage: Readonly<{
   id: string;
@@ -90,6 +100,7 @@ function stageResponse(stage: Readonly<{
   name: string;
   sequenceNo: number;
   weightPercent: DecimalLike;
+  costPlusPercent: DecimalLike | null;
   plannedAmount: DecimalLike | null;
   plannedStartDate: Date | null;
   plannedEndDate: Date | null;
@@ -104,6 +115,7 @@ function stageResponse(stage: Readonly<{
     name: stage.name,
     sequenceNo: stage.sequenceNo,
     weightPercent: stage.weightPercent.toString(),
+    costPlusPercent: stage.costPlusPercent?.toString() ?? null,
     plannedAmount: stage.plannedAmount?.toString() ?? null,
     plannedStartDate: dateOnly(stage.plannedStartDate),
     plannedEndDate: dateOnly(stage.plannedEndDate),
@@ -167,28 +179,6 @@ function baselineResponse(baseline: Readonly<{
 /** Recognize a Prisma unique conflict without leaking Prisma details. */
 function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2002');
-}
-
-/** Read the safe Prisma unique target only to distinguish Stage code from sequence conflicts. */
-function uniqueConstraintTarget(error: unknown): string {
-  if (!error || typeof error !== 'object' || !('meta' in error)) return '';
-  const meta = error.meta;
-  if (!meta || typeof meta !== 'object' || !('target' in meta)) return '';
-  const target = meta.target;
-  if (Array.isArray(target)) return target.filter((value): value is string => typeof value === 'string').join(',');
-  return typeof target === 'string' ? target : '';
-}
-
-/** Return one specific Stage uniqueness message so automatic sequence retry never hides duplicate codes. */
-function stageUniqueConstraintMessage(error: unknown): string {
-  const target = uniqueConstraintTarget(error);
-  if (/sequence_no|sequenceNo|project_stages_company_project_sequence_uq/.test(target)) {
-    return 'Stage sequence number is already in use inside the Project.';
-  }
-  if (/code|project_stages_company_project_code_uq/.test(target)) {
-    return 'Stage code is already in use inside the Project.';
-  }
-  return 'Stage code and sequence number must be unique inside the Project.';
 }
 
 /** Convert one request date-only string into a stable UTC Date. */
@@ -354,7 +344,7 @@ export class ProjectStagesService {
       return result.response.body;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: stageUniqueConstraintMessage(error) });
+        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
       }
       throw error;
     }
@@ -369,6 +359,7 @@ export class ProjectStagesService {
     if (!project) throw createStageError('STAGE_NOT_FOUND');
     this.requireStagePlanningProject(project);
     if (await repository.findLatestBaseline(projectId)) throw createStageError('STAGE_BASELINE_LOCKED');
+    requireStageCostPlusModel(project.projectModel, input.costPlusPercent);
 
     const plannedAmount = derivePlannedAmount(project.projectModel, project.projectValue, input.weightPercent);
     const stage = await repository.createStage({
@@ -377,6 +368,7 @@ export class ProjectStagesService {
       name: input.name,
       sequenceNo: input.sequenceNo,
       weightPercent: input.weightPercent,
+      costPlusPercent: input.costPlusPercent ?? null,
       plannedAmount,
       plannedStartDate: input.plannedStartDate ? inputDate(input.plannedStartDate) : null,
       plannedEndDate: input.plannedEndDate ? inputDate(input.plannedEndDate) : null
@@ -398,7 +390,7 @@ export class ProjectStagesService {
       return result.response.body;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: stageUniqueConstraintMessage(error) });
+        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
       }
       throw error;
     }
@@ -416,6 +408,7 @@ export class ProjectStagesService {
     const before = await repository.findStage(projectId, stageId);
     if (!before) throw createStageError('STAGE_NOT_FOUND');
     if (before.status !== STAGE_DRAFT) throw createStageError('STAGE_BASELINE_LOCKED');
+    requireStageCostPlusModel(project.projectModel, input.costPlusPercent);
 
     const weight = input.weightPercent ?? before.weightPercent.toString();
     const updated = await repository.updateDraftStage(projectId, stageId, {
@@ -423,6 +416,7 @@ export class ProjectStagesService {
       ...(input.name === undefined ? {} : { name: input.name }),
       ...(input.sequenceNo === undefined ? {} : { sequenceNo: input.sequenceNo }),
       ...(input.weightPercent === undefined ? {} : { weightPercent: input.weightPercent }),
+      ...(input.costPlusPercent === undefined ? {} : { costPlusPercent: input.costPlusPercent }),
       plannedAmount: derivePlannedAmount(project.projectModel, project.projectValue, weight),
       ...(input.plannedStartDate === undefined ? {} : { plannedStartDate: input.plannedStartDate ? inputDate(input.plannedStartDate) : null }),
       ...(input.plannedEndDate === undefined ? {} : { plannedEndDate: input.plannedEndDate ? inputDate(input.plannedEndDate) : null })

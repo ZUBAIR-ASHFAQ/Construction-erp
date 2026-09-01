@@ -18,6 +18,7 @@ const PROJECT_COST_PLUS_ID = '00000000-0000-4000-8000-000000017041';
 const PROJECT_B_ID = '00000000-0000-4000-8000-000000017042';
 const STAGE_FIXED_ID = '00000000-0000-4000-8000-000000017050';
 const STAGE_COST_PLUS_ID = '00000000-0000-4000-8000-000000017051';
+const STAGE_COST_PLUS_OVERRIDE_ID = '00000000-0000-4000-8000-000000017053';
 const STAGE_B_ID = '00000000-0000-4000-8000-000000017052';
 const RECEIVABLE_A_ID = '00000000-0000-4000-8000-000000017060';
 const REVENUE_A_ID = '00000000-0000-4000-8000-000000017061';
@@ -112,7 +113,8 @@ async function seedScenario(client, hashPassword) {
   await client.projectStage.createMany({
     data: [
       { id: STAGE_FIXED_ID, companyId: COMPANY_A_ID, projectId: PROJECT_FIXED_ID, code: 'GREY', name: 'Grey Structure', sequenceNo: 1, weightPercent: '40.0000', plannedAmount: '20000000.00', status: 'ACTIVE' },
-      { id: STAGE_COST_PLUS_ID, companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, code: 'COST', name: 'Cost Basis Stage', sequenceNo: 1, weightPercent: '100.0000', plannedAmount: '0.00', status: 'ACTIVE' },
+      { id: STAGE_COST_PLUS_ID, companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, code: 'COST', name: 'Fallback Cost Stage', sequenceNo: 1, weightPercent: '50.0000', costPlusPercent: null, plannedAmount: '0.00', status: 'ACTIVE' },
+      { id: STAGE_COST_PLUS_OVERRIDE_ID, companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, code: 'INTERIOR', name: 'Override Cost Stage', sequenceNo: 2, weightPercent: '50.0000', costPlusPercent: '15.0000', plannedAmount: '0.00', status: 'ACTIVE' },
       { id: STAGE_B_ID, companyId: COMPANY_B_ID, projectId: PROJECT_B_ID, code: 'GREY', name: 'Grey Structure', sequenceNo: 1, weightPercent: '40.0000', plannedAmount: '12000000.00', status: 'ACTIVE' }
     ]
   });
@@ -145,6 +147,7 @@ async function seedScenario(client, hashPassword) {
   await client.costActual.createMany({
     data: [
       { companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, stageId: STAGE_COST_PLUS_ID, category: 'labour', sourceType: 'b17_10_fixture', sourceId: 'stage-cost-1', sourceKey: 'b17-10:stage-cost-1', amount: '1000.00', postingDate: new Date('2026-08-15T00:00:00.000Z') },
+      { companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, stageId: STAGE_COST_PLUS_OVERRIDE_ID, category: 'other', sourceType: 'b17_10_fixture', sourceId: 'stage-cost-2', sourceKey: 'b17-10:stage-cost-2', amount: '500.00', postingDate: new Date('2026-08-15T00:00:00.000Z') },
       { companyId: COMPANY_A_ID, projectId: PROJECT_COST_PLUS_ID, stageId: null, category: 'other', sourceType: 'b17_10_fixture', sourceId: 'project-cost-1', sourceKey: 'b17-10:project-cost-1', amount: '500.00', postingDate: new Date('2026-08-16T00:00:00.000Z') }
     ]
   });
@@ -290,15 +293,19 @@ test('B17.10 live Cost + Percentage uses posted Project/Stage cost and rejects c
     const claim = await createClaim(app, token, {
       projectId: PROJECT_COST_PLUS_ID,
       periodEnd: '2026-08-25',
-      lines: [{ stageId: STAGE_COST_PLUS_ID, description: 'Eligible stage cost plus 10 percent', amount: '1100.00' }]
+      lines: [
+        { stageId: STAGE_COST_PLUS_ID, description: 'Fallback stage cost plus 10 percent', amount: '1100.00' },
+        { stageId: STAGE_COST_PLUS_OVERRIDE_ID, description: 'Override stage cost plus 15 percent', amount: '575.00' },
+        { stageId: null, description: 'Untagged cost plus Project fallback 10 percent', amount: '550.00' }
+      ]
     }, 'b17-10-cost-claim');
     const finalized = await finalizeClaim(app, token, claim.id, 'b17-10-cost-finalize');
-    assert.equal(moneyMinorUnits(finalized.grossValue), 110000n);
+    assert.equal(moneyMinorUnits(finalized.grossValue), 222500n);
 
     const second = await createClaim(app, token, {
       projectId: PROJECT_COST_PLUS_ID,
       periodEnd: '2026-08-25',
-      lines: [{ stageId: STAGE_COST_PLUS_ID, description: 'Duplicate stage cost basis', amount: '1.00' }]
+      lines: [{ stageId: STAGE_COST_PLUS_OVERRIDE_ID, description: 'Duplicate override stage cost basis', amount: '1.00' }]
     }, 'b17-10-cost-over-claim');
     const response = await billingWrite(app, token, 'POST', `/api/v1/client-billing/claims/${second.id}/finalize`, {}, 'b17-10-cost-over-finalize');
     assert.equal(response.statusCode, 409, response.body);

@@ -68,6 +68,17 @@ export class ClientBillingRepository {
     });
   }
 
+  /** List all Project Stages needed to calculate the blended Cost + Percentage Project ceiling. */
+  async listProjectStages(projectId: string, visibility: ClientBillingVisibility) {
+    if (!projectIsVisible(projectId, visibility)) return [];
+    const scope = requireCompanyRepositoryScope();
+    return this.db.projectStage.findMany({
+      where: scope.where({ projectId }),
+      select: { id: true, costPlusPercent: true },
+      orderBy: [{ id: 'asc' }]
+    });
+  }
+
   /** Sum source-derived actual costs for one visible Project through the claim period end. */
   async sumProjectCostActuals(projectId: string, visibility: ClientBillingVisibility, throughDate?: Date) {
     if (!projectIsVisible(projectId, visibility)) return null;

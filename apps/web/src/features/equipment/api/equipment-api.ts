@@ -113,6 +113,13 @@ export function assignEquipment(equipmentId: string, input: AssignEquipmentInput
   return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
+/** End one active Equipment assignment without deleting its history. */
+export function endEquipmentAssignment(equipmentId: string, assignmentId: string, endDate: string): Promise<EquipmentAssignment> {
+  return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments/${assignmentId}/end`, {
+    method: 'POST', headers: commandHeaders(), body: JSON.stringify({ endDate })
+  });
+}
+
 /** Record usage and atomically post its Project/Stage Equipment cost. */
 export function recordEquipmentUsage(equipmentId: string, input: RecordEquipmentUsageInput): Promise<EquipmentUsage> {
   return authenticatedRequest<EquipmentUsage>(`equipment/${equipmentId}/usage`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });

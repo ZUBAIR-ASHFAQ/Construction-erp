@@ -290,7 +290,7 @@ export class ClientBillingService {
     if (stages.length !== stageIds.length) throw createClientBillingError('BILLING_STAGE_INVALID');
   }
 
-  /** Enforce the cumulative Cost + Percentage ceiling from posted Project/Stage actual costs. */
+  /** Enforce cumulative Cost + Percentage ceilings using Stage overrides and the Project fallback rate. */
   private async requireCostPlusBasis(
     repository: ClientBillingRepository,
     project: Readonly<{ id: string; costPlusPercent: DecimalLike | null }>,
@@ -300,23 +300,36 @@ export class ClientBillingService {
   ): Promise<void> {
     if (project.costPlusPercent === null) throw createClientBillingError('INVALID_BILLING_BASIS');
     const gross = lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
-    const projectCost = moneyToMinorUnits((await repository.sumProjectCostActuals(project.id, visibility, periodEnd)) ?? '0');
-    const priorGross = moneyToMinorUnits((await repository.sumFinalizedClaimGross(project.id, visibility)) ?? '0');
-    const projectLimit = projectCost + percentageOf(projectCost, project.costPlusPercent);
+    const [projectCostValue, priorGrossValue, stages] = await Promise.all([
+      repository.sumProjectCostActuals(project.id, visibility, periodEnd),
+      repository.sumFinalizedClaimGross(project.id, visibility),
+      repository.listProjectStages(project.id, visibility)
+    ]);
+    const projectCost = moneyToMinorUnits(projectCostValue ?? '0');
+    const priorGross = moneyToMinorUnits(priorGrossValue ?? '0');
+    const allStageIds = stages.map((stage) => stage.id);
+    const allStageCosts = await repository.sumStageCostActuals(project.id, allStageIds, visibility, periodEnd);
+    const allCostByStage = new Map(allStageCosts.map((row) => [row.stageId, moneyToMinorUnits(row._sum.amount ?? '0')]));
+    const stagePercentById = new Map(stages.map((stage) => [stage.id, stage.costPlusPercent ?? project.costPlusPercent]));
+    const taggedCost = [...allCostByStage.values()].reduce((sum, cost) => sum + cost, 0n);
+    const untaggedCost = projectCost - taggedCost;
+    if (untaggedCost < 0n) throw createClientBillingError('INVALID_BILLING_BASIS');
+    const markup = stages.reduce((sum, stage) => {
+      const cost = allCostByStage.get(stage.id) ?? 0n;
+      return sum + percentageOf(cost, stagePercentById.get(stage.id) ?? project.costPlusPercent);
+    }, percentageOf(untaggedCost, project.costPlusPercent));
+    const projectLimit = projectCost + markup;
     if (priorGross + gross > projectLimit) throw createClientBillingError('INVALID_BILLING_BASIS');
 
     const stageIds = claimStageIds(lines);
     if (stageIds.length === 0) return;
-    const [stageCosts, priorStageClaims] = await Promise.all([
-      repository.sumStageCostActuals(project.id, stageIds, visibility, periodEnd),
-      repository.sumFinalizedClaimLinesByStage(project.id, stageIds, visibility)
-    ]);
-    const costByStage = new Map(stageCosts.map((row) => [row.stageId, moneyToMinorUnits(row._sum.amount ?? '0')]));
+    const priorStageClaims = await repository.sumFinalizedClaimLinesByStage(project.id, stageIds, visibility);
     const priorByStage = new Map(priorStageClaims.map((row) => [row.stageId, moneyToMinorUnits(row._sum.amount ?? '0')]));
     for (const [stageId, claimed] of claimedMinorUnitsByStage(lines)) {
-      const cost = costByStage.get(stageId) ?? 0n;
+      const cost = allCostByStage.get(stageId) ?? 0n;
       const prior = priorByStage.get(stageId) ?? 0n;
-      const limit = cost + percentageOf(cost, project.costPlusPercent);
+      const percent = stagePercentById.get(stageId) ?? project.costPlusPercent;
+      const limit = cost + percentageOf(cost, percent);
       if (prior + claimed > limit) throw createClientBillingError('INVALID_BILLING_BASIS');
     }
   }

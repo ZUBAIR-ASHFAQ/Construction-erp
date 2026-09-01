@@ -11,6 +11,7 @@ import {
   useCreateEquipmentMaintenance,
   useEquipment,
   useEquipmentHistory,
+  useEndEquipmentAssignment,
   useRecordEquipmentUsage
 } from '../hooks/equipment.js';
 
@@ -298,7 +299,16 @@ function MaintenanceForm({ equipmentId }: Readonly<{ equipmentId: string }>) {
 }
 
 /** Render assignment, usage, maintenance and Project/Stage cost history for one Equipment item. */
-function EquipmentHistoryPanel(props: Readonly<{ data: EquipmentHistory | undefined; isPending: boolean; error: unknown }>) {
+function EquipmentHistoryPanel(props: Readonly<{ equipmentId: string; canAssign: boolean; data: EquipmentHistory | undefined; isPending: boolean; error: unknown }>) {
+  const endMutation = useEndEquipmentAssignment(props.equipmentId);
+
+  /** End one active assignment with an explicit effective date instead of deleting it. */
+  async function endAssignment(assignmentId: string): Promise<void> {
+    const endDate = window.prompt('End date (YYYY-MM-DD)');
+    if (!endDate) return;
+    await endMutation.mutateAsync({ assignmentId, endDate });
+  }
+
   if (props.isPending) return <section className="admin-card"><p>Loading Equipment history…</p></section>;
   if (errorMessage(props.error)) return <section className="admin-card"><div className="form-error">{errorMessage(props.error)}</div></section>;
   if (!props.data) return null;
@@ -309,10 +319,11 @@ function EquipmentHistoryPanel(props: Readonly<{ data: EquipmentHistory | undefi
       <EquipmentIdentity equipment={props.data.equipment} />
 
       <h3>Assignments</h3>
-      <div className="table-scroll"><table><thead><tr><th>Project / Stage</th><th>Dates</th><th>Status</th></tr></thead><tbody>
-        {props.data.assignments.map((row) => <tr key={row.id}><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.fromDate} → {row.toDate ?? 'Open'}</td><td>{row.status}</td></tr>)}
-        {props.data.assignments.length === 0 && <tr><td colSpan={3} className="muted">No assignments.</td></tr>}
+      <div className="table-scroll"><table><thead><tr><th>Project / Stage</th><th>Dates</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        {props.data.assignments.map((row) => <tr key={row.id}><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.fromDate} → {row.toDate ?? 'Open'}</td><td>{row.status}</td><td>{props.canAssign && row.status === 'ACTIVE' ? <button type="button" className="secondary-button" disabled={endMutation.isPending} onClick={() => void endAssignment(row.id)}>End</button> : '—'}</td></tr>)}
+        {props.data.assignments.length === 0 && <tr><td colSpan={4} className="muted">No assignments.</td></tr>}
       </tbody></table></div>
+      {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
 
       <h3>Usage & actual cost</h3>
       <div className="table-scroll"><table><thead><tr><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th><th>Entered by</th><th>Cost actual</th><th>Status</th></tr></thead><tbody>
@@ -350,7 +361,7 @@ export function EquipmentWorkspace(props: EquipmentWorkspaceProps) {
           {props.canAssign && <AssignmentForm equipmentId={selectedId} />}
           {props.canRecordUsage && <UsageForm equipmentId={selectedId} assignments={history.data?.assignments ?? []} />}
           {props.canMaintain && <MaintenanceForm equipmentId={selectedId} />}
-          {props.canRead && <EquipmentHistoryPanel data={history.data} isPending={history.isPending} error={history.error} />}
+          {props.canRead && <EquipmentHistoryPanel equipmentId={selectedId} canAssign={props.canAssign} data={history.data} isPending={history.isPending} error={history.error} />}
         </>
       )}
 

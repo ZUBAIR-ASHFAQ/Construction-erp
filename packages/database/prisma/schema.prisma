@@ -734,6 +734,7 @@ model ProjectStage {
   name             String    @db.VarChar(300)
   sequenceNo       Int       @map("sequence_no")
   weightPercent    Decimal   @map("weight_percent") @db.Decimal(7, 4)
+  costPlusPercent  Decimal?  @map("cost_plus_percent") @db.Decimal(7, 4)
   plannedAmount    Decimal?  @map("planned_amount") @db.Decimal(18, 2)
   plannedStartDate DateTime? @map("planned_start_date") @db.Date
   plannedEndDate   DateTime? @map("planned_end_date") @db.Date

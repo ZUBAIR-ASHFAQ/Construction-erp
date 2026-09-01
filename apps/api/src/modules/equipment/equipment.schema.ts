@@ -25,7 +25,8 @@ export const MODULE_12_ERROR_CODES = Object.freeze([
 export const MODULE_12_EVENT_TYPES = Object.freeze([
   'equipment.assigned',
   'equipment.usage_posted',
-  'equipment.maintenance_recorded'
+  'equipment.maintenance_recorded',
+  'equipment.assignment_ended'
 ] as const);
 
 /** Final Module 12 public route catalog. */
@@ -33,6 +34,7 @@ export const MODULE_12_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/equipment' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/usage' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/maintenance' }),
   Object.freeze({ method: 'GET', route: '/api/v1/equipment/:id/history' })
@@ -73,6 +75,9 @@ const pageShape = {
 /** Validate one Equipment path identifier. */
 export const equipmentIdParamsSchema = z.object({ id: uuid }).strict();
 
+/** Validate one Equipment assignment path identifier. */
+export const equipmentAssignmentParamsSchema = z.object({ id: uuid, assignmentId: uuid }).strict();
+
 /** Validate bounded Equipment list pagination. */
 export const listEquipmentQuerySchema = z.object({ ...pageShape }).strict();
 
@@ -111,6 +116,11 @@ export const createEquipmentAssignmentBodySchema = z.object({
   path: ['toDate'],
   message: 'Assignment end date must be on or after the start date.'
 });
+
+/** Validate the effective date used to end one active Equipment assignment. */
+export const endEquipmentAssignmentBodySchema = z.object({
+  endDate: date
+}).strict();
 
 /** Validate one usage/rental record tied to an existing assignment. */
 export const recordEquipmentUsageBodySchema = z.object({
@@ -219,5 +229,6 @@ export type ListEquipmentQuery = z.infer<typeof listEquipmentQuerySchema>;
 export type EquipmentHistoryQuery = z.infer<typeof equipmentHistoryQuerySchema>;
 export type CreateEquipmentBody = z.infer<typeof createEquipmentBodySchema>;
 export type CreateEquipmentAssignmentBody = z.infer<typeof createEquipmentAssignmentBodySchema>;
+export type EndEquipmentAssignmentBody = z.infer<typeof endEquipmentAssignmentBodySchema>;
 export type RecordEquipmentUsageBody = z.infer<typeof recordEquipmentUsageBodySchema>;
 export type CreateEquipmentMaintenanceBody = z.infer<typeof createEquipmentMaintenanceBodySchema>;

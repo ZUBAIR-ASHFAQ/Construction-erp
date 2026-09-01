@@ -7,7 +7,7 @@ import { sanitizeOutboxPayload } from './sanitize.js';
 import type { OutboxProjectScopeSnapshot, RecordOutboxEventInput } from './types.js';
 import { OUTBOX_SCHEMA_VERSION } from './types.js';
 
-const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*(?:\.[a-z][a-z0-9_-]*)+$/;
+const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/;
 
 /** Validate and return a required identifier. */
 function requiredIdentifier(value: string, field: string, maxLength: number): string {

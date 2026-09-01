@@ -50,11 +50,13 @@ test('B17.5 rejects inactive billing settings for claim writes and finalization 
   assert.doesNotMatch(settings, /input\.status === 'INACTIVE'.*INVALID_BILLING_BASIS/s);
 });
 
-test('B17.5 derives the Cost + Percentage Project ceiling only from posted actual-cost sources and Project percent', () => {
+test('B17.5 derives the Cost + Percentage Project ceiling only from posted actual-cost sources and effective Project/Stage percent', () => {
   const region = methodRegion(service, 'requireCostPlusBasis', 'getSettings');
   assert.match(region, /sumProjectCostActuals\(project\.id, visibility, periodEnd\)/);
   assert.match(region, /sumFinalizedClaimGross\(project\.id, visibility\)/);
-  assert.match(region, /projectCost \+ percentageOf\(projectCost, project\.costPlusPercent\)/);
+  assert.match(region, /stage\.costPlusPercent \?\? project\.costPlusPercent/);
+  assert.match(region, /percentageOf\(untaggedCost, project\.costPlusPercent\)/);
+  assert.match(region, /const projectLimit = projectCost \+ markup/);
   assert.match(region, /priorGross \+ gross > projectLimit/);
   assert.match(repository, /costActual\.aggregate/);
   assert.doesNotMatch(region, /budgetLine|costCommitment|forecastLine|physicalProgress/i);
@@ -62,10 +64,11 @@ test('B17.5 derives the Cost + Percentage Project ceiling only from posted actua
 
 test('B17.5 also protects each claimed Stage against its own Cost + Percentage source basis', () => {
   const region = methodRegion(service, 'requireCostPlusBasis', 'getSettings');
-  assert.match(region, /sumStageCostActuals\(project\.id, stageIds, visibility, periodEnd\)/);
+  assert.match(region, /sumStageCostActuals\(project\.id, allStageIds, visibility, periodEnd\)/);
   assert.match(region, /sumFinalizedClaimLinesByStage\(project\.id, stageIds, visibility\)/);
   assert.match(region, /claimedMinorUnitsByStage\(lines\)/);
-  assert.match(region, /cost \+ percentageOf\(cost, project\.costPlusPercent\)/);
+  assert.match(region, /const percent = stagePercentById\.get\(stageId\) \?\? project\.costPlusPercent/);
+  assert.match(region, /cost \+ percentageOf\(cost, percent\)/);
   assert.match(region, /prior \+ claimed > limit/);
 });
 

@@ -7,6 +7,8 @@ import {
   createEquipmentAssignmentBodySchema,
   createEquipmentBodySchema,
   createEquipmentMaintenanceBodySchema,
+  endEquipmentAssignmentBodySchema,
+  equipmentAssignmentParamsSchema,
   equipmentAssignmentResponseSchema,
   equipmentHistoryQuerySchema,
   equipmentHistoryResponseSchema,
@@ -32,6 +34,7 @@ const NULLABLE_DECIMAL_JSON_SCHEMA = { anyOf: [DECIMAL_JSON_SCHEMA, { type: 'nul
 const NULLABLE_DATE_JSON_SCHEMA = { anyOf: [DATE_JSON_SCHEMA, { type: 'null' }] } as const;
 const NULLABLE_STRING_JSON_SCHEMA = { anyOf: [{ type: 'string' }, { type: 'null' }] } as const;
 const ID_PARAMS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['id'], properties: { id: UUID_JSON_SCHEMA } } as const;
+const ASSIGNMENT_PARAMS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['id', 'assignmentId'], properties: { id: UUID_JSON_SCHEMA, assignmentId: UUID_JSON_SCHEMA } } as const;
 const PAGE_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } } as const;
 const HISTORY_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { pageSize: { type: 'integer', minimum: 1, maximum: 100 } } } as const;
 const CREATE_EQUIPMENT_BODY_JSON_SCHEMA = {
@@ -49,6 +52,7 @@ const ASSIGNMENT_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['projectId', 'fromDate'],
   properties: { projectId: UUID_JSON_SCHEMA, stageId: NULLABLE_UUID_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, toDate: NULLABLE_DATE_JSON_SCHEMA }
 } as const;
+const END_ASSIGNMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['endDate'], properties: { endDate: DATE_JSON_SCHEMA } } as const;
 const USAGE_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['assignmentId', 'usageDate', 'quantity'],
   properties: { assignmentId: UUID_JSON_SCHEMA, usageDate: DATE_JSON_SCHEMA, quantity: DECIMAL_JSON_SCHEMA, rate: NULLABLE_DECIMAL_JSON_SCHEMA }
@@ -92,7 +96,7 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return value.trim();
 }
 
-/** Register the exact six Final-21 Equipment Management routes. */
+/** Register the Equipment Management routes, including the controlled assignment-end command. */
 export async function registerEquipmentRoutes(app: FastifyInstance, options: EquipmentRoutesOptions): Promise<void> {
   const service = new EquipmentService(options.database);
 
@@ -120,6 +124,16 @@ export async function registerEquipmentRoutes(app: FastifyInstance, options: Equ
     const body = parseRequest(createEquipmentAssignmentBodySchema, request.body, 'body');
     const data = equipmentAssignmentResponseSchema.parse(await service.assignEquipment(params.id, body, readIdempotencyKey(request)));
     return reply.code(201).send({ data });
+  });
+
+  app.post('/api/v1/equipment/:id/assignments/:assignmentId/end', {
+    schema: { tags: ['Equipment'], operationId: 'endEquipmentAssignment', summary: 'End one active equipment assignment without deleting history', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ASSIGNMENT_PARAMS_JSON_SCHEMA, body: END_ASSIGNMENT_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(equipmentAssignmentParamsSchema, request.params, 'params');
+    const body = parseRequest(endEquipmentAssignmentBodySchema, request.body, 'body');
+    const data = equipmentAssignmentResponseSchema.parse(await service.endAssignment(params.id, params.assignmentId, body, readIdempotencyKey(request)));
+    return reply.send({ data });
   });
 
   app.post('/api/v1/equipment/:id/usage', {

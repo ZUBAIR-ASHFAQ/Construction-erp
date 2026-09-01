@@ -45,6 +45,7 @@ const expectedRoutes = Object.freeze({
     'GET /api/v1/equipment',
     'POST /api/v1/equipment',
     'POST /api/v1/equipment/:id/assignments',
+    'POST /api/v1/equipment/:id/assignments/:assignmentId/end',
     'POST /api/v1/equipment/:id/usage',
     'POST /api/v1/equipment/:id/maintenance',
     'GET /api/v1/equipment/:id/history'

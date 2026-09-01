@@ -9,6 +9,7 @@ export type CreateProjectStageRepositoryInput = Readonly<{
   name: string;
   sequenceNo: number;
   weightPercent: string;
+  costPlusPercent?: string | null;
   plannedAmount?: string | null;
   plannedStartDate?: Date | null;
   plannedEndDate?: Date | null;
@@ -19,6 +20,7 @@ export type UpdateProjectStageRepositoryInput = Readonly<{
   name?: string;
   sequenceNo?: number;
   weightPercent?: string;
+  costPlusPercent?: string | null;
   plannedAmount?: string | null;
   plannedStartDate?: Date | null;
   plannedEndDate?: Date | null;
@@ -92,6 +94,7 @@ export class ProjectStagesRepository {
         name: input.name,
         sequenceNo: input.sequenceNo,
         weightPercent: input.weightPercent,
+        costPlusPercent: input.costPlusPercent ?? null,
         plannedAmount: input.plannedAmount ?? null,
         plannedStartDate: input.plannedStartDate ?? null,
         plannedEndDate: input.plannedEndDate ?? null,
@@ -112,6 +115,7 @@ export class ProjectStagesRepository {
         ...(input.name === undefined ? {} : { name: input.name }),
         ...(input.sequenceNo === undefined ? {} : { sequenceNo: input.sequenceNo }),
         ...(input.weightPercent === undefined ? {} : { weightPercent: input.weightPercent }),
+        ...(input.costPlusPercent === undefined ? {} : { costPlusPercent: input.costPlusPercent }),
         ...(input.plannedAmount === undefined ? {} : { plannedAmount: input.plannedAmount }),
         ...(input.plannedStartDate === undefined ? {} : { plannedStartDate: input.plannedStartDate }),
         ...(input.plannedEndDate === undefined ? {} : { plannedEndDate: input.plannedEndDate })

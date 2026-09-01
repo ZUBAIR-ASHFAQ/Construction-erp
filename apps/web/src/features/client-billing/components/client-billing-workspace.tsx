@@ -90,7 +90,7 @@ function billingMethodLabel(method: BillingMethod): string {
 function billingBasisText(project: Project): string {
   if (project.projectModel === 'COST_PLUS_PERCENTAGE') {
     const percent = project.costPlusPercent ?? 'configured';
-    return `Cost + Percentage: claim amounts are validated by the server against posted actual Project/Stage cost through the claim period end plus ${percent}%.`;
+    return `Cost + Percentage: claim amounts are validated by the server against posted actual Project/Stage cost through the claim period end plus the effective Profit / Markup rate. Each Stage uses its own override when set; otherwise it uses the Project ${percent}% fallback.`;
   }
   return `Fixed Price: Project value ${displayMoney(project.projectValue)} is the commercial reference. Claim amounts remain explicit billing values; physical Stage progress does not auto-create billing.`;
 }
@@ -244,7 +244,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
                       <select {...claimForm.register(`lines.${index}.stageId`)}>
                         <option value="">Project level</option>
                         {hasRestrictedCurrentStage ? <option value={currentStageId}>Linked Stage (restricted)</option> : null}
-                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name} · {stage.status}</option>)}
+                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name} · {stage.status}{selectedProject?.projectModel === 'COST_PLUS_PERCENTAGE' ? ` · Profit / Markup ${stage.costPlusPercent ?? selectedProject.costPlusPercent ?? 'configured'}%` : ''}</option>)}
                       </select>
                       {!props.canReadStages ? <small className="muted">Stage choices require Project Stage read access; Project-level billing remains available.</small> : null}
                     </label>

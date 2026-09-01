@@ -7,6 +7,7 @@ export type ProjectStage = Readonly<{
   name: string;
   sequenceNo: number;
   weightPercent: string;
+  costPlusPercent: string | null;
   plannedAmount: string | null;
   plannedStartDate: string | null;
   plannedEndDate: string | null;
@@ -64,6 +65,7 @@ export type CreateProjectStageInput = Readonly<{
   name: string;
   sequenceNo: number;
   weightPercent: string;
+  costPlusPercent?: string | null;
   plannedStartDate?: string | null;
   plannedEndDate?: string | null;
 }>;

@@ -38,32 +38,45 @@ type ContactEditValues = z.infer<typeof contactEditSchema>;
 
 type ClientDetailsPanelProps = Readonly<{
   clientId: string | null;
+  mode?: 'details' | 'edit';
+  onSaved?: () => void;
   onOpenProjectsForClient?: (clientId: string) => void;
 }>;
 
-/** Show one selected Client, its Contacts, downstream summary, editable fields and lifecycle status. */
-export function ClientDetailsPanel({ clientId, onOpenProjectsForClient }: ClientDetailsPanelProps) {
+/** Load one Client and render either its complete details or its master-data editor. */
+export function ClientDetailsPanel({
+  clientId,
+  mode = 'details',
+  onSaved,
+  onOpenProjectsForClient
+}: ClientDetailsPanelProps) {
   const canUpdate = usePermission('clients.update');
   const clientQuery = useClient(clientId);
 
   if (!clientId) {
-    return (
-      <section className="admin-card">
-        <h2>Client details</h2>
-        <p className="muted">Select a Client to view its master data and Contacts.</p>
-      </section>
-    );
+    return <div className="client-modal-state"><p className="muted">Select a Client to continue.</p></div>;
   }
 
   if (clientQuery.isPending) {
-    return <section className="admin-card"><p>Loading client…</p></section>;
+    return <div className="client-modal-state"><p>Loading client…</p></div>;
   }
 
   if (clientQuery.error instanceof Error) {
-    return <section className="admin-card"><div className="form-error" role="alert">{clientQuery.error.message}</div></section>;
+    return <div className="client-modal-state"><div className="form-error" role="alert">{clientQuery.error.message}</div></div>;
   }
 
   if (!clientQuery.data) return null;
+
+  if (mode === 'edit') {
+    return (
+      <ClientEditContent
+        key={`${clientQuery.data.client.id}-${clientQuery.data.client.updatedAt}`}
+        details={clientQuery.data}
+        canUpdate={canUpdate}
+        {...(onSaved ? { onSaved } : {})}
+      />
+    );
+  }
 
   return (
     <ClientDetailsContent
@@ -75,19 +88,14 @@ export function ClientDetailsPanel({ clientId, onOpenProjectsForClient }: Client
   );
 }
 
-/** Render loaded Client details and keep each form focused on one master-data responsibility. */
-function ClientDetailsContent(props: Readonly<{
+/** Render every editable Client master field inside the dedicated Edit dialog. */
+function ClientEditContent(props: Readonly<{
   details: ClientDetails;
   canUpdate: boolean;
-  onOpenProjectsForClient?: (clientId: string) => void;
+  onSaved?: () => void;
 }>) {
   const client = props.details.client;
-  const billingSummary = props.details.billingSummary;
-  const receiptSummary = props.details.receiptSummary;
-  const canReadProjects = useProjectWorkspaceVisibility();
   const updateMutation = useUpdateClient(client.id);
-  const contactMutation = useCreateClientContact(client.id);
-
   const editForm = useForm<ClientEditValues>({
     resolver: zodResolver(clientEditSchema),
     defaultValues: {
@@ -101,20 +109,7 @@ function ClientDetailsContent(props: Readonly<{
     }
   });
 
-  const contactForm = useForm<ContactValues>({
-    resolver: zodResolver(contactSchema),
-    defaultValues: {
-      name: '',
-      title: '',
-      email: '',
-      phone: '',
-      isPrimary: false
-    }
-  });
-
-  const isArchived = client.status === 'ARCHIVED';
-
-  /** Save final editable Client fields, including the non-destructive lifecycle status. */
+  /** Save every editable Client master field through the existing PATCH contract. */
   async function handleUpdate(values: ClientEditValues): Promise<void> {
     await updateMutation.mutateAsync({
       code: values.code,
@@ -125,7 +120,67 @@ function ClientDetailsContent(props: Readonly<{
       creditTermsDays: values.creditTermsDays,
       status: values.status
     });
+    props.onSaved?.();
   }
+
+  if (!props.canUpdate) {
+    return <div className="client-modal-state"><p className="muted">Your current role does not include client update access.</p></div>;
+  }
+
+  return (
+    <form className="admin-form client-modal-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
+      <div className="client-form-grid">
+        <label>Code<input autoFocus {...editForm.register('code')} /></label>
+        <label>Display name<input {...editForm.register('displayName')} /></label>
+        <label>Legal name<input {...editForm.register('legalName')} /></label>
+        <label>Tax number<input {...editForm.register('taxNo')} /></label>
+        <label>
+          Credit terms (days)
+          <input
+            type="number"
+            min="0"
+            {...editForm.register('creditTermsDays', {
+              setValueAs: (value) => value === '' ? null : Number(value)
+            })}
+          />
+        </label>
+        <label>Status<select {...editForm.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label>
+        <label className="client-form-wide">Billing address<textarea rows={3} {...editForm.register('billingAddress')} /></label>
+      </div>
+      {Object.values(editForm.formState.errors).map((error, index) => (
+        <span className="field-error" key={index}>{error?.message}</span>
+      ))}
+      {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
+      <div className="client-modal-actions">
+        <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save client'}</button>
+      </div>
+    </form>
+  );
+}
+
+/** Render loaded Client details, summaries, Contacts and existing lifecycle/contact actions. */
+function ClientDetailsContent(props: Readonly<{
+  details: ClientDetails;
+  canUpdate: boolean;
+  onOpenProjectsForClient?: (clientId: string) => void;
+}>) {
+  const client = props.details.client;
+  const billingSummary = props.details.billingSummary;
+  const receiptSummary = props.details.receiptSummary;
+  const canReadProjects = useProjectWorkspaceVisibility();
+  const updateMutation = useUpdateClient(client.id);
+  const contactMutation = useCreateClientContact(client.id);
+  const contactForm = useForm<ContactValues>({
+    resolver: zodResolver(contactSchema),
+    defaultValues: {
+      name: '',
+      title: '',
+      email: '',
+      phone: '',
+      isPrimary: false
+    }
+  });
+  const isArchived = client.status === 'ARCHIVED';
 
   /** Add one validated Contact to an active Client and clear the Contact form. */
   async function handleContact(values: ContactValues): Promise<void> {
@@ -150,7 +205,7 @@ function ClientDetailsContent(props: Readonly<{
   }
 
   return (
-    <section className="admin-card" aria-labelledby="client-detail-title">
+    <section className="client-detail-content" aria-labelledby="client-detail-title">
       <div className="client-heading">
         <div>
           <p className="eyebrow">Client</p>
@@ -170,13 +225,22 @@ function ClientDetailsContent(props: Readonly<{
         <div><dt>Legal name</dt><dd>{client.legalName}</dd></div>
         <div><dt>Tax number</dt><dd>{client.taxNo ?? '—'}</dd></div>
         <div><dt>Credit terms</dt><dd>{client.creditTermsDays === null ? '—' : `${client.creditTermsDays} days`}</dd></div>
+        <div><dt>Status</dt><dd>{client.status}</dd></div>
         <div className="client-detail-wide"><dt>Billing address</dt><dd>{client.billingAddress}</dd></div>
         <div><dt>Created</dt><dd>{new Date(client.createdAt).toLocaleString()}</dd></div>
         <div><dt>Updated</dt><dd>{new Date(client.updatedAt).toLocaleString()}</dd></div>
       </dl>
 
-      <div className="document-section">
-        <h3>Project and financial summary</h3>
+      <div className="document-section client-detail-section">
+        <div className="client-section-heading">
+          <div>
+            <p className="eyebrow">Account activity</p>
+            <h3>Project and financial summary</h3>
+          </div>
+          {props.onOpenProjectsForClient && canReadProjects && (
+            <button type="button" className="link-button" onClick={() => props.onOpenProjectsForClient?.(client.id)}>Open Client Projects</button>
+          )}
+        </div>
         <div className="client-detail-grid">
           <div><strong>Projects</strong><span>{props.details.projectSummary.totalProjects} total · {props.details.projectSummary.activeProjects} active</span></div>
           <div><strong>Issued invoices</strong><span>{billingSummary ? billingSummary.invoiceCount : 'Restricted'}</span></div>
@@ -186,70 +250,53 @@ function ClientDetailsContent(props: Readonly<{
           <div><strong>Advance / unallocated</strong><span>{receiptSummary ? receiptSummary.advanceAmount : 'Restricted'}</span></div>
           <div><strong>Outstanding</strong><span>{receiptSummary ? (receiptSummary.outstandingAmount ?? 'Restricted - billing access required') : 'Restricted'}</span></div>
         </div>
-        {props.onOpenProjectsForClient && canReadProjects && (
-          <button type="button" className="link-button" onClick={() => props.onOpenProjectsForClient?.(client.id)}>Open Client Projects</button>
-        )}
       </div>
 
-      {props.canUpdate && (
-        <div className="document-section">
-          <h3>Edit client</h3>
-          <form className="admin-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
-            <div className="client-form-grid">
-              <label>Code<input {...editForm.register('code')} /></label>
-              <label>Display name<input {...editForm.register('displayName')} /></label>
-              <label>Legal name<input {...editForm.register('legalName')} /></label>
-              <label>Tax number<input {...editForm.register('taxNo')} /></label>
-              <label>
-                Credit terms (days)
-                <input
-                  type="number"
-                  min="0"
-                  {...editForm.register('creditTermsDays', {
-                    setValueAs: (value) => value === '' ? null : Number(value)
-                  })}
-                />
-              </label>
-              <label>Status<select {...editForm.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label>
-            </div>
-            <label>Billing address<textarea rows={3} {...editForm.register('billingAddress')} /></label>
-            {Object.values(editForm.formState.errors).map((error, index) => (
-              <span className="field-error" key={index}>{error?.message}</span>
-            ))}
-            <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save client'}</button>
-          </form>
+      <div className="document-section client-detail-section">
+        <div className="client-section-heading">
+          <div>
+            <p className="eyebrow">People</p>
+            <h3>Contacts</h3>
+          </div>
+          <span className="client-record-count">{props.details.contacts.length} contact{props.details.contacts.length === 1 ? '' : 's'}</span>
         </div>
-      )}
-
-      <div className="document-section">
-        <h3>Contacts</h3>
         {props.details.contacts.length === 0 ? (
           <p className="muted">No Contacts have been added yet.</p>
         ) : (
-          <div className="table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>Contact</th><th>Communication</th><th>Primary</th><th>Status</th><th>Created / Updated</th><th>Action</th></tr></thead>
-              <tbody>
-                {props.details.contacts.map((contact) => (
-                  <tr key={contact.id}>
-                    <td><strong>{contact.name}</strong><span>{contact.title ?? '—'}</span></td>
-                    <td>{contact.email ?? '—'}<span>{contact.phone ?? '—'}</span></td>
-                    <td>{contact.isPrimary ? 'Yes' : 'No'}</td>
-                    <td>{contact.status}</td>
-                    <td>{new Date(contact.createdAt).toLocaleString()}<span>{new Date(contact.updatedAt).toLocaleString()}</span></td>
-                    <td>{props.canUpdate ? <ContactEditForm clientId={client.id} contact={contact} /> : '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="client-contact-list">
+            {props.details.contacts.map((contact) => (
+              <article className="client-contact-card" key={contact.id}>
+                <div className="client-contact-heading">
+                  <div>
+                    <strong>{contact.name}</strong>
+                    <span>{contact.title ?? 'No title'}</span>
+                  </div>
+                  <span className={`client-status client-status-${contact.status.toLowerCase()}`}>{contact.status}</span>
+                </div>
+                <dl className="client-contact-grid">
+                  <div><dt>Email</dt><dd>{contact.email ?? '—'}</dd></div>
+                  <div><dt>Phone</dt><dd>{contact.phone ?? '—'}</dd></div>
+                  <div><dt>Primary contact</dt><dd>{contact.isPrimary ? 'Yes' : 'No'}</dd></div>
+                  <div><dt>Status</dt><dd>{contact.status}</dd></div>
+                  <div><dt>Created</dt><dd>{new Date(contact.createdAt).toLocaleString()}</dd></div>
+                  <div><dt>Updated</dt><dd>{new Date(contact.updatedAt).toLocaleString()}</dd></div>
+                </dl>
+                {props.canUpdate && <ContactEditForm clientId={client.id} contact={contact} />}
+              </article>
+            ))}
           </div>
         )}
       </div>
 
       {props.canUpdate && !isArchived && (
-        <div className="document-section">
-          <h3>Add contact</h3>
-          <form className="admin-form" onSubmit={contactForm.handleSubmit(handleContact)} noValidate>
+        <div className="document-section client-detail-section">
+          <div className="client-section-heading">
+            <div>
+              <p className="eyebrow">Contact management</p>
+              <h3>Add contact</h3>
+            </div>
+          </div>
+          <form className="admin-form client-inline-form" onSubmit={contactForm.handleSubmit(handleContact)} noValidate>
             <div className="client-form-grid">
               <label>Name<input {...contactForm.register('name')} /></label>
               <label>Title<input {...contactForm.register('title')} /></label>
@@ -261,17 +308,19 @@ function ClientDetailsContent(props: Readonly<{
               <span className="field-error" key={index}>{error?.message}</span>
             ))}
             {contactMutation.error instanceof Error && <div className="form-error" role="alert">{contactMutation.error.message}</div>}
-            <button type="submit" disabled={contactMutation.isPending}>{contactMutation.isPending ? 'Adding…' : 'Add contact'}</button>
+            <div className="client-modal-actions">
+              <button type="submit" disabled={contactMutation.isPending}>{contactMutation.isPending ? 'Adding…' : 'Add contact'}</button>
+            </div>
           </form>
         </div>
       )}
 
-      {isArchived && <p className="muted">Archived Clients remain available for history. Reactivate the Client before adding new Contacts.</p>}
+      {isArchived && <p className="muted client-archive-note">Archived Clients remain available for history. Reactivate the Client before adding new Contacts.</p>}
     </section>
   );
 }
 
-/** Render a small editor for one existing Client Contact. */
+/** Render a compact two-column editor for one existing Client Contact. */
 function ContactEditForm(props: Readonly<{ clientId: string; contact: ClientContact }>) {
   const updateMutation = useUpdateClientContact(props.clientId, props.contact.id);
   const form = useForm<ContactEditValues>({
@@ -299,18 +348,22 @@ function ContactEditForm(props: Readonly<{ clientId: string; contact: ClientCont
   }
 
   return (
-    <details>
-      <summary>Edit</summary>
-      <form className="admin-form" onSubmit={form.handleSubmit(handleUpdate)} noValidate>
-        <label>Name<input {...form.register('name')} /></label>
-        <label>Title<input {...form.register('title')} /></label>
-        <label>Email<input type="email" {...form.register('email')} /></label>
-        <label>Phone<input {...form.register('phone')} /></label>
-        <label>Status<select {...form.register('status')}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
-        <label className="checkbox-row"><input type="checkbox" {...form.register('isPrimary')} /><span>Primary contact</span></label>
+    <details className="client-contact-editor">
+      <summary>Edit contact</summary>
+      <form className="admin-form client-inline-form" onSubmit={form.handleSubmit(handleUpdate)} noValidate>
+        <div className="client-form-grid">
+          <label>Name<input {...form.register('name')} /></label>
+          <label>Title<input {...form.register('title')} /></label>
+          <label>Email<input type="email" {...form.register('email')} /></label>
+          <label>Phone<input {...form.register('phone')} /></label>
+          <label>Status<select {...form.register('status')}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
+          <label className="checkbox-row"><input type="checkbox" {...form.register('isPrimary')} /><span>Primary contact</span></label>
+        </div>
         {Object.values(form.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
         {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
-        <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save contact'}</button>
+        <div className="client-modal-actions">
+          <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save contact'}</button>
+        </div>
       </form>
     </details>
   );

@@ -3145,3 +3145,1490 @@ textarea {
     border-radius: 20px;
   }
 }
+
+/* R10: shared clean field system for every ERP module. */
+:root {
+  --elite-field-bg: #ffffff;
+  --elite-field-bg-hover: #fbfdff;
+  --elite-field-bg-muted: #f3f6f9;
+  --elite-field-border: #cfd9e5;
+  --elite-field-border-hover: #aebed0;
+  --elite-field-label: #43546a;
+  --elite-field-placeholder: #97a6b8;
+  --elite-field-focus-ring: rgb(45 108 223 / 13%);
+}
+
+/* Keep every standard form field aligned and predictable without changing JSX or payloads. */
+.admin-content label:has(> input:not([type="checkbox"]):not([type="radio"])),
+.admin-content label:has(> select),
+.admin-content label:has(> textarea) {
+  display: grid;
+  min-width: 0;
+  gap: 0.42rem;
+  align-content: start;
+  color: var(--elite-field-label);
+  font-size: 0.74rem;
+  font-weight: 720;
+  line-height: 1.35;
+}
+
+.admin-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.admin-content select,
+.admin-content textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 44px;
+  padding: 0.68rem 0.82rem;
+  border: 1px solid var(--elite-field-border);
+  border-radius: 10px;
+  background-color: var(--elite-field-bg);
+  color: var(--elite-ink);
+  box-shadow: 0 1px 1px rgb(16 32 51 / 2%);
+  outline: none;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background-color 140ms ease;
+}
+
+.admin-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):hover:not(:disabled):not([readonly]),
+.admin-content select:hover:not(:disabled),
+.admin-content textarea:hover:not(:disabled):not([readonly]) {
+  border-color: var(--elite-field-border-hover);
+  background-color: var(--elite-field-bg-hover);
+}
+
+.admin-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]):focus,
+.admin-content select:focus,
+.admin-content textarea:focus {
+  border-color: var(--elite-primary);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px var(--elite-field-focus-ring), 0 1px 2px rgb(16 32 51 / 4%);
+}
+
+.admin-content input::placeholder,
+.admin-content textarea::placeholder {
+  color: var(--elite-field-placeholder);
+  opacity: 1;
+}
+
+.admin-content input:disabled,
+.admin-content select:disabled,
+.admin-content textarea:disabled,
+.admin-content input[readonly],
+.admin-content textarea[readonly] {
+  border-color: #dce4ed;
+  background-color: var(--elite-field-bg-muted);
+  color: #6f7f91;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.admin-content input[aria-invalid="true"],
+.admin-content select[aria-invalid="true"],
+.admin-content textarea[aria-invalid="true"] {
+  border-color: #d88b8b;
+  background-color: #fffafa;
+}
+
+.admin-content input[aria-invalid="true"]:focus,
+.admin-content select[aria-invalid="true"]:focus,
+.admin-content textarea[aria-invalid="true"]:focus {
+  border-color: var(--elite-danger);
+  box-shadow: 0 0 0 3px rgb(195 70 70 / 11%);
+}
+
+/* Give selects a consistent compact chevron instead of the browser-specific default. */
+.admin-content select {
+  appearance: none;
+  padding-right: 2.35rem;
+  background-image:
+    linear-gradient(45deg, transparent 50%, #738399 50%),
+    linear-gradient(135deg, #738399 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) 50%,
+    calc(100% - 11px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.admin-content select:disabled {
+  background-image:
+    linear-gradient(45deg, transparent 50%, #aab5c1 50%),
+    linear-gradient(135deg, #aab5c1 50%, transparent 50%);
+}
+
+.admin-content textarea {
+  min-height: 92px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.admin-content input[type="date"],
+.admin-content input[type="datetime-local"] {
+  color-scheme: light;
+}
+
+.admin-content input[type="date"]::-webkit-calendar-picker-indicator,
+.admin-content input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.62;
+}
+
+/* File fields stay native and accessible, but the action is visually consistent with the ERP. */
+.admin-content input[type="file"] {
+  min-height: 46px;
+  padding: 0.34rem 0.42rem;
+  color: var(--elite-muted);
+}
+
+.admin-content input[type="file"]::file-selector-button {
+  min-height: 34px;
+  margin-right: 0.72rem;
+  padding: 0.45rem 0.72rem;
+  border: 1px solid var(--elite-line-strong);
+  border-radius: 8px;
+  background: var(--elite-surface-soft);
+  color: var(--elite-ink);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.admin-content input[type="file"]::file-selector-button:hover {
+  border-color: var(--elite-field-border-hover);
+  background: #eef4fb;
+}
+
+/* Checkbox and radio controls keep their compact layout while matching the primary UI color. */
+.admin-content input[type="checkbox"],
+.admin-content input[type="radio"] {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  margin: 0.08rem 0 0;
+  accent-color: var(--elite-primary);
+  cursor: pointer;
+}
+
+.admin-content input[type="checkbox"]:disabled,
+.admin-content input[type="radio"]:disabled {
+  cursor: not-allowed;
+}
+
+.admin-content label:has(> input[type="checkbox"]),
+.admin-content label:has(> input[type="radio"]) {
+  display: flex !important;
+  gap: 0.55rem !important;
+  align-items: center;
+  color: var(--elite-field-label);
+  font-size: 0.75rem;
+  font-weight: 650 !important;
+  line-height: 1.4;
+  cursor: pointer;
+}
+
+.admin-content .checkbox-row {
+  align-items: flex-start;
+}
+
+/* Keep validation close to the field and make dense module forms easier to scan. */
+.admin-content .field-error,
+.admin-content .error-text {
+  display: block;
+  margin-top: 0.02rem;
+  font-size: 0.69rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.admin-form,
+.form-grid,
+.two-column-form,
+.client-form-grid,
+.project-form-grid,
+.document-form-grid,
+.module14b-form-grid,
+.reports-filter-grid,
+.dashboard-filter-grid,
+.profitability-filter-grid {
+  column-gap: 1rem;
+  row-gap: 0.9rem;
+}
+
+/* Preserve compact filters while preventing controls from becoming cramped on narrow screens. */
+.search-row,
+.client-filter-row,
+.project-filter-grid,
+.document-filter-grid,
+.reports-catalog-grid {
+  column-gap: 0.8rem;
+  row-gap: 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .admin-content input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+  .admin-content select,
+  .admin-content textarea {
+    min-height: 46px;
+    font-size: 0.84rem;
+  }
+}
+
+/* R11: Professional page composition. Keep workflows intact while making long ERP pages easier to scan. */
+:root {
+  --elite-page-max: 1480px;
+  --elite-section-radius: 16px;
+  --elite-section-shadow: 0 12px 30px rgb(31 55 81 / 7%);
+  --elite-section-shadow-hover: 0 16px 38px rgb(31 55 81 / 10%);
+  --elite-section-soft: #f7f9fc;
+}
+
+/* Give page content a controlled reading width and more breathing room. */
+.admin-content {
+  max-width: var(--elite-page-max);
+  padding: 1.9rem 2rem 3.5rem;
+}
+
+.admin-stack,
+.page-stack,
+.stack,
+.dashboard-workspace,
+.reports-workspace,
+.profitability-workspace {
+  gap: 1.35rem;
+  align-content: start;
+}
+
+/* Turn top-level page headings into a distinct page-introduction zone. */
+.admin-stack > .section-heading,
+.page-stack > .section-heading {
+  position: relative;
+  overflow: hidden;
+  padding: 1.3rem 1.45rem;
+  border: 1px solid var(--elite-line);
+  border-radius: var(--elite-section-radius);
+  background: linear-gradient(135deg, #ffffff 0%, #f8fbff 72%, #f1f6ff 100%);
+  box-shadow: var(--elite-shadow-sm);
+}
+
+.admin-stack > .section-heading::before,
+.page-stack > .section-heading::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: linear-gradient(180deg, var(--elite-primary), #d9aa52);
+}
+
+.admin-stack > .section-heading::after,
+.page-stack > .section-heading::after {
+  content: "";
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  right: -92px;
+  top: -112px;
+  border-radius: 50%;
+  background: rgb(45 108 223 / 5%);
+  pointer-events: none;
+}
+
+.admin-stack > .section-heading h1,
+.page-stack > .section-heading h1 {
+  font-size: clamp(1.65rem, 2vw, 2rem);
+}
+
+/* Major workflow sections read as separate professional work areas instead of one long document. */
+.admin-stack > .admin-card,
+.dashboard-workspace > .admin-card,
+.reports-workspace > .admin-card,
+.profitability-workspace > .admin-card {
+  position: relative;
+  padding: 1.35rem 1.4rem;
+  border-radius: var(--elite-section-radius);
+  box-shadow: var(--elite-section-shadow);
+  scroll-margin-top: 96px;
+}
+
+.admin-stack > .admin-card:hover,
+.dashboard-workspace > .admin-card:hover,
+.reports-workspace > .admin-card:hover,
+.profitability-workspace > .admin-card:hover:hover {
+  border-color: #d7e1ec;
+  box-shadow: var(--elite-section-shadow-hover);
+}
+
+/* Make each section title an obvious visual boundary. */
+.admin-card > h2,
+.admin-card > .section-heading.compact-heading {
+  margin-top: 0;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--elite-line);
+}
+
+.admin-card > h2 {
+  display: flex;
+  gap: 0.65rem;
+  align-items: center;
+  margin-bottom: 1rem;
+  font-size: 1.02rem;
+  line-height: 1.3;
+}
+
+.admin-card > h2::before {
+  content: "";
+  width: 7px;
+  height: 22px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--elite-primary), #d7a94f);
+}
+
+.admin-card > h3 {
+  margin-top: 1.05rem;
+  margin-bottom: 0.7rem;
+  color: #2c4056;
+  font-size: 0.88rem;
+}
+
+.admin-card > h2 + .muted,
+.admin-card > .section-heading + .muted {
+  max-width: 880px;
+  margin-top: -0.3rem;
+  margin-bottom: 1rem;
+  line-height: 1.55;
+}
+
+/* Nested record cards should feel secondary to the main page section. */
+.admin-card .admin-card {
+  border-color: #dfe7f0;
+  background: var(--elite-section-soft);
+  box-shadow: none;
+}
+
+.admin-card .admin-card:hover {
+  border-color: #cfdbe8;
+  box-shadow: none;
+}
+
+/* Separate data-entry areas from read-only results inside the same section. */
+.admin-card > .admin-form,
+.admin-card > form.admin-form,
+.admin-card > .two-column-form,
+.admin-card > form.finance-period-form {
+  padding: 1rem;
+  border: 1px solid #e1e8f0;
+  border-radius: 12px;
+  background: #fafbfd;
+}
+
+/* Filters behave like compact toolbars, not full content sections. */
+.search-row,
+.client-filter-row,
+.project-filter-grid,
+.document-filter-grid,
+.dashboard-filter-grid,
+.reports-filter-grid,
+.reports-catalog-grid,
+.profitability-filter-grid {
+  padding: 0.95rem 1rem;
+  border: 1px solid #e0e8f1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.dashboard-filter-grid,
+.reports-filter-grid,
+.profitability-filter-grid {
+  margin-top: 0.85rem;
+}
+
+/* Long project/detail pages get explicit subsection boundaries. */
+.project-summary-section,
+.project-edit-section,
+.project-lifecycle-section,
+.project-modules-section,
+.project-history-section,
+.document-section,
+.module14b-subsection {
+  margin-top: 1.2rem;
+  padding-top: 1.2rem;
+  border-top: 1px solid var(--elite-line);
+}
+
+.project-summary-section > h3,
+.project-edit-section > h3,
+.project-lifecycle-section > h3,
+.project-modules-section > h3,
+.project-history-section > h3,
+.document-section > h3,
+.module14b-subsection > h3 {
+  margin-top: 0;
+  color: #263b51;
+  font-size: 0.9rem;
+}
+
+/* Read-only details are grouped as compact facts rather than loose text. */
+.project-detail-grid,
+.client-detail-grid,
+.detail-grid,
+.summary-grid,
+.project-summary-grid,
+.module9-summary-grid,
+.module14b-summary-grid {
+  gap: 0.75rem;
+}
+
+.project-detail-grid > div,
+.client-detail-grid > div,
+.detail-grid > div,
+.summary-grid > div,
+.project-summary-grid > div,
+.module9-summary-grid > div,
+.module14b-summary-grid > div {
+  min-width: 0;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid #e2e9f1;
+  border-radius: 11px;
+  background: #fafbfd;
+}
+
+.project-detail-grid dt,
+.client-detail-grid dt,
+.detail-grid dt,
+.summary-grid dt,
+.project-summary-grid dt,
+.module9-summary-grid dt,
+.module14b-summary-grid dt {
+  margin-bottom: 0.22rem;
+  color: #7a8b9d;
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.project-detail-grid dd,
+.client-detail-grid dd,
+.detail-grid dd,
+.summary-grid dd,
+.project-summary-grid dd,
+.module9-summary-grid dd,
+.module14b-summary-grid dd {
+  margin: 0;
+  color: var(--elite-ink);
+  font-size: 0.78rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* Tables become a distinct data region with stronger scan lines and sticky headings. */
+.table-wrap,
+.table-scroll {
+  margin-top: 0.75rem;
+  border-radius: 13px;
+  box-shadow: 0 1px 0 rgb(255 255 255 / 80%) inset;
+}
+
+.admin-content table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f3f6fa;
+  color: #66798d;
+}
+
+.admin-content table tbody tr:nth-child(even) td {
+  background: #fcfdff;
+}
+
+.admin-content table tbody tr:hover td {
+  background: #f5f8fc;
+}
+
+.admin-content table td:first-child {
+  color: #30465d;
+  font-weight: 650;
+}
+
+.admin-content table td small,
+.admin-content table td span {
+  display: block;
+  margin-top: 0.14rem;
+  color: #8b9aaa;
+  font-size: 0.66rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+/* Keep actions visually attached to the section they control. */
+.pagination-row,
+.action-row,
+.button-row,
+.form-actions,
+.admin-actions,
+.project-action-row,
+.reports-action-row,
+.dashboard-filter-actions {
+  margin-top: 0.85rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #edf1f5;
+}
+
+.pagination-row {
+  justify-content: space-between;
+}
+
+/* Informational notes should be readable but visually secondary to working data. */
+.dashboard-cash-note,
+.profitability-cash-note,
+.profitability-contract-note,
+.module9-contract-note,
+.reports-catalog-note,
+.reports-export-status > div,
+.file-dropzone {
+  padding: 0.85rem 0.95rem;
+  border: 1px solid #dfe8f1;
+  line-height: 1.5;
+}
+
+.form-error,
+.form-success {
+  margin-top: 0.8rem;
+  padding: 0.8rem 0.9rem;
+  line-height: 1.45;
+}
+
+/* Dense dashboard/report areas remain readable on large screens without becoming overly wide. */
+.dashboard-workspace,
+.reports-workspace,
+.profitability-workspace {
+  width: 100%;
+  max-width: 100%;
+}
+
+.dashboard-metric-grid,
+.profitability-metric-grid,
+.profitability-reconciliation-grid,
+.module9-summary-grid,
+.module14b-summary-grid,
+.project-summary-grid,
+.summary-grid {
+  margin-top: 0.75rem;
+}
+
+.dashboard-metric,
+.profitability-metric-grid > div,
+.profitability-reconciliation-grid > div {
+  min-height: 88px;
+  padding: 0.95rem 1rem;
+  display: grid;
+  align-content: center;
+}
+
+/* Mobile keeps the hierarchy while avoiding oversized card padding. */
+@media (max-width: 900px) {
+  .admin-content {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  .admin-stack > .section-heading,
+  .page-stack > .section-heading,
+  .admin-stack > .admin-card,
+  .dashboard-workspace > .admin-card,
+  .reports-workspace > .admin-card,
+  .profitability-workspace > .admin-card,
+  .module14b-workspace > .admin-card {
+    padding: 1.1rem;
+    border-radius: 13px;
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-stack,
+  .page-stack,
+  .stack,
+  .dashboard-workspace,
+  .reports-workspace,
+  .profitability-workspace {
+    gap: 1rem;
+  }
+
+  .search-row,
+  .client-filter-row,
+  .project-filter-grid,
+  .document-filter-grid,
+  .dashboard-filter-grid,
+  .reports-filter-grid,
+  .reports-catalog-grid,
+  .profitability-filter-grid,
+  .admin-card > .admin-form,
+  .admin-card > form.admin-form {
+    padding: 0.8rem;
+  }
+
+  .admin-card > h2 {
+    font-size: 0.96rem;
+  }
+}
+
+/* R12: Client Management list-first workflow with focused create/open/edit dialogs. */
+.client-management-page {
+  position: relative;
+}
+
+.client-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.client-page-heading > div {
+  min-width: 0;
+}
+
+.client-primary-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  padding: 0.68rem 1rem;
+  border: 1px solid var(--elite-primary);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--elite-primary), var(--elite-primary-2));
+  color: #ffffff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  box-shadow: 0 8px 18px rgb(45 108 223 / 18%);
+}
+
+.client-primary-action:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgb(45 108 223 / 22%);
+}
+
+.client-primary-action > span {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.client-list-card {
+  min-width: 0;
+}
+
+.client-list-table-wrap {
+  overflow-x: auto;
+}
+
+.client-list-table td:last-child,
+.client-list-table th:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.client-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.client-edit-button {
+  min-height: 34px;
+  padding: 0.42rem 0.72rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.client-status {
+  display: inline-flex !important;
+  width: fit-content;
+  margin: 0 !important;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+}
+
+.client-status-active {
+  border: 1px solid #b9e4d3;
+  background: #edf9f4;
+  color: #167657 !important;
+}
+
+.client-status-archived,
+.client-status-inactive {
+  border: 1px solid #d8e0e8;
+  background: #f3f6f9;
+  color: #66788b !important;
+}
+
+.client-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(5 17 29 / 62%);
+  backdrop-filter: blur(5px);
+}
+
+.client-modal {
+  width: min(720px, calc(100vw - 3rem));
+  max-width: 100%;
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 18px;
+  background: var(--elite-surface);
+  box-shadow: 0 30px 90px rgb(3 14 26 / 32%);
+}
+
+.client-modal-wide {
+  width: min(1040px, calc(100vw - 3rem));
+}
+
+.client-modal-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--elite-line);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.client-modal-header .eyebrow {
+  margin-bottom: 0.25rem;
+  color: var(--elite-primary);
+}
+
+.client-modal-header h2 {
+  margin: 0;
+  color: var(--elite-ink);
+  font-size: 1.12rem;
+  line-height: 1.3;
+}
+
+.client-modal-close {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--elite-line-strong);
+  border-radius: 9px;
+  background: #ffffff;
+  color: #526579;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.client-modal-close:hover {
+  border-color: #bdc9d6;
+  background: #f5f8fb;
+  color: var(--elite-ink);
+}
+
+.client-modal-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.client-modal-state {
+  min-height: 130px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.client-modal-form,
+.client-inline-form {
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.client-modal-form .client-form-grid,
+.client-inline-form .client-form-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.client-form-wide {
+  grid-column: 1 / -1;
+}
+
+.client-modal-form label,
+.client-inline-form label,
+.client-modal-form input,
+.client-modal-form select,
+.client-modal-form textarea,
+.client-inline-form input,
+.client-inline-form select,
+.client-inline-form textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.client-modal-form textarea,
+.client-inline-form textarea {
+  resize: vertical;
+}
+
+.client-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf1f5;
+}
+
+.client-detail-content {
+  min-width: 0;
+}
+
+.client-detail-content > .client-heading {
+  margin-bottom: 0.25rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--elite-line);
+}
+
+.client-detail-content > .client-heading h2 {
+  margin: 0.1rem 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.client-detail-content .client-detail-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.client-detail-section {
+  margin-top: 1.25rem;
+}
+
+.client-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.client-section-heading .eyebrow {
+  margin-bottom: 0.2rem;
+  color: #7b8da0;
+  font-size: 0.62rem;
+}
+
+.client-section-heading h3 {
+  margin: 0;
+  color: #263b51;
+  font-size: 0.92rem;
+}
+
+.client-record-count {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--elite-line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #6b7d90;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.client-contact-list {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.client-contact-card {
+  min-width: 0;
+  padding: 0.95rem;
+  border: 1px solid #e1e8f0;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.client-contact-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.client-contact-heading > div {
+  min-width: 0;
+}
+
+.client-contact-heading strong,
+.client-contact-heading span {
+  display: block;
+}
+
+.client-contact-heading strong {
+  color: var(--elite-ink);
+  font-size: 0.82rem;
+}
+
+.client-contact-heading > div > span {
+  margin-top: 0.15rem;
+  color: var(--elite-muted);
+  font-size: 0.69rem;
+}
+
+.client-contact-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.client-contact-grid > div {
+  min-width: 0;
+  padding: 0.68rem 0.72rem;
+  border: 1px solid #e7edf3;
+  border-radius: 9px;
+  background: #ffffff;
+}
+
+.client-contact-grid dt {
+  margin-bottom: 0.18rem;
+  color: #8292a4;
+  font-size: 0.59rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.client-contact-grid dd {
+  margin: 0;
+  color: #344a61;
+  font-size: 0.72rem;
+  font-weight: 650;
+  overflow-wrap: anywhere;
+}
+
+.client-contact-editor {
+  margin-top: 0.8rem;
+  border-top: 1px solid #e7edf3;
+  padding-top: 0.75rem;
+}
+
+.client-contact-editor summary {
+  width: fit-content;
+  color: var(--elite-primary);
+  font-size: 0.72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.client-contact-editor[open] summary {
+  margin-bottom: 0.85rem;
+}
+
+.client-archive-note {
+  margin: 1rem 0 0;
+  padding: 0.8rem 0.9rem;
+  border: 1px solid #e4e9ef;
+  border-radius: 10px;
+  background: #f7f9fb;
+}
+
+@media (max-width: 760px) {
+  .client-page-heading,
+  .client-section-heading,
+  .client-contact-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .client-primary-action {
+    width: 100%;
+  }
+
+  .client-modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .client-modal,
+  .client-modal-wide {
+    width: calc(100vw - 1.5rem);
+    max-height: calc(100vh - 1.5rem);
+    border-radius: 14px;
+  }
+
+  .client-modal-header,
+  .client-modal-body {
+    padding: 1rem;
+  }
+
+  .client-modal-form .client-form-grid,
+  .client-inline-form .client-form-grid,
+  .client-detail-content .client-detail-grid,
+  .client-contact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-form-wide,
+  .client-detail-wide {
+    grid-column: auto;
+  }
+
+  .client-row-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* R13: Project Management list-first workflow with focused create/open/edit dialogs. */
+.project-management-page {
+  position: relative;
+}
+
+.project-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.project-page-heading > div {
+  min-width: 0;
+}
+
+.project-primary-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 42px;
+  padding: 0.68rem 1rem;
+  border: 1px solid var(--elite-primary);
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--elite-primary), var(--elite-primary-2));
+  color: #ffffff;
+  box-shadow: 0 8px 18px rgb(45 108 223 / 18%);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.project-primary-action:hover {
+  border-color: var(--elite-primary-2);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 22px rgb(45 108 223 / 24%);
+}
+
+.project-list-card {
+  min-width: 0;
+}
+
+.project-filter-row {
+  margin-bottom: 0.9rem;
+}
+
+.project-list-table-wrap {
+  overflow-x: auto;
+}
+
+.project-list-table th:last-child,
+.project-list-table td:last-child {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.project-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.project-edit-button {
+  min-height: 34px;
+  padding: 0.42rem 0.72rem;
+  border-radius: 8px;
+  font-size: 0.72rem;
+}
+
+.project-edit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.project-status {
+  display: inline-flex !important;
+  width: fit-content;
+  margin: 0 !important;
+  padding: 0.28rem 0.55rem;
+  border: 1px solid #d8e0e8;
+  border-radius: 999px;
+  background: #f3f6f9;
+  color: #66788b !important;
+  font-size: 0.65rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em;
+}
+
+.project-status-active {
+  border-color: #b9e4d3;
+  background: #edf9f4;
+  color: #167657 !important;
+}
+
+.project-status-draft {
+  border-color: #cad9f7;
+  background: #f1f6ff;
+  color: #3568b8 !important;
+}
+
+.project-status-suspended {
+  border-color: #f1d6a4;
+  background: #fff8e9;
+  color: #9a6918 !important;
+}
+
+.project-status-completed {
+  border-color: #c9d8f0;
+  background: #f3f7fc;
+  color: #496b99 !important;
+}
+
+.project-status-closed {
+  border-color: #d8e0e8;
+  background: #f3f6f9;
+  color: #66788b !important;
+}
+
+.project-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+  background: rgb(5 17 29 / 62%);
+  backdrop-filter: blur(5px);
+}
+
+.project-modal {
+  width: min(820px, calc(100vw - 3rem));
+  max-width: 100%;
+  max-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 18px;
+  background: var(--elite-surface);
+  box-shadow: 0 30px 90px rgb(3 14 26 / 32%);
+}
+
+.project-modal-wide {
+  width: min(1100px, calc(100vw - 3rem));
+}
+
+.project-modal-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid var(--elite-line);
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+}
+
+.project-modal-header .eyebrow {
+  margin-bottom: 0.25rem;
+  color: var(--elite-primary);
+}
+
+.project-modal-header h2 {
+  margin: 0;
+  color: var(--elite-ink);
+  font-size: 1.12rem;
+  line-height: 1.3;
+}
+
+.project-modal-close {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--elite-line-strong);
+  border-radius: 9px;
+  background: #ffffff;
+  color: #526579;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.project-modal-close:hover {
+  border-color: #bdc9d6;
+  background: #f5f8fb;
+  color: var(--elite-ink);
+}
+
+.project-modal-body {
+  min-width: 0;
+  min-height: 0;
+  padding: 1.25rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+.project-modal-state {
+  min-height: 130px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+
+.project-modal-form {
+  min-width: 0;
+  margin: 0;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+.project-modal-grid,
+.project-detail-content .project-detail-grid,
+.project-detail-content .project-summary-grid,
+.project-edit-context {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.project-form-wide,
+.project-detail-content .project-detail-wide {
+  grid-column: 1 / -1;
+}
+
+.project-modal-form label,
+.project-modal-form input,
+.project-modal-form select,
+.project-modal-form textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.project-modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #edf1f5;
+}
+
+.project-edit-content,
+.project-detail-content {
+  min-width: 0;
+}
+
+.project-edit-context {
+  display: grid;
+  gap: 0.7rem;
+  margin: 0 0 1rem;
+}
+
+.project-edit-context > div {
+  min-width: 0;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid #e3eaf2;
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.project-edit-context dt {
+  margin-bottom: 0.2rem;
+  color: #7a8b9d;
+  font-size: 0.61rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.project-edit-context dd {
+  margin: 0;
+  color: var(--elite-ink);
+  font-size: 0.76rem;
+  font-weight: 750;
+  overflow-wrap: anywhere;
+}
+
+.project-edit-note {
+  margin: 0.9rem 0 0;
+  padding: 0.75rem 0.8rem;
+  border: 1px solid #e5ebf2;
+  border-radius: 9px;
+  background: #f8fafc;
+}
+
+.project-detail-content > .project-heading {
+  margin-bottom: 0.25rem;
+  padding: 0 0 1rem;
+  border-bottom: 1px solid var(--elite-line);
+}
+
+.project-detail-content > .project-heading h2 {
+  margin: 0.1rem 0 0.25rem;
+  font-size: 1.15rem;
+}
+
+.project-detail-content .project-detail-grid {
+  margin-top: 1rem;
+}
+
+.project-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.85rem;
+}
+
+.project-section-heading-spaced {
+  margin-top: 1.1rem;
+}
+
+.project-section-heading .eyebrow {
+  margin-bottom: 0.2rem;
+  color: #7b8da0;
+  font-size: 0.62rem;
+}
+
+.project-section-heading h3 {
+  margin: 0;
+  color: #263b51;
+  font-size: 0.92rem;
+}
+
+.project-record-count {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.55rem;
+  border: 1px solid var(--elite-line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #6b7d90;
+  font-size: 0.66rem;
+  font-weight: 750;
+}
+
+.project-detail-content .project-summary-section,
+.project-detail-content .project-lifecycle-section,
+.project-detail-content .project-modules-section,
+.project-detail-content .project-history-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--elite-line);
+}
+
+.project-detail-content .project-summary-grid > div {
+  min-height: 88px;
+}
+
+.project-detail-content .project-summary-grid small {
+  display: block;
+  margin-top: 0.3rem;
+  color: #7b8da0;
+  font-size: 0.66rem;
+  line-height: 1.45;
+}
+
+.project-detail-content .project-close-form {
+  min-width: 0;
+}
+
+.project-detail-content .project-close-form label,
+.project-detail-content .project-close-form input {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 760px) {
+  .project-page-heading,
+  .project-section-heading,
+  .project-detail-heading {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .project-primary-action {
+    width: 100%;
+  }
+
+  .project-modal-backdrop {
+    padding: 0.75rem;
+  }
+
+  .project-modal,
+  .project-modal-wide {
+    width: calc(100vw - 1.5rem);
+    max-height: calc(100vh - 1.5rem);
+    border-radius: 14px;
+  }
+
+  .project-modal-header,
+  .project-modal-body {
+    padding: 1rem;
+  }
+
+  .project-modal-grid,
+  .project-detail-content .project-detail-grid,
+  .project-detail-content .project-summary-grid,
+  .project-edit-context {
+    grid-template-columns: 1fr;
+  }
+
+  .project-form-wide,
+  .project-detail-content .project-detail-wide {
+    grid-column: auto;
+  }
+
+  .project-row-actions {
+    flex-wrap: wrap;
+  }
+}
+
+/* Keep Project detail dialogs horizontally fixed; dense history cells wrap instead of creating a modal scrollbar. */
+.project-modal-body .project-detail-content .table-wrap {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.project-modal-body .project-detail-content .admin-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.project-modal-body .project-detail-content .admin-table th,
+.project-modal-body .project-detail-content .admin-table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}

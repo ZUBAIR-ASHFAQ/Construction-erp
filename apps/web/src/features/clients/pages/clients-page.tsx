@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { usePermission } from '../../administration/hooks/auth.js';
@@ -17,6 +17,11 @@ const createClientSchema = z.object({
 });
 
 type CreateClientValues = z.infer<typeof createClientSchema>;
+type ClientDialog =
+  | Readonly<{ kind: 'create' }>
+  | Readonly<{ kind: 'open'; clientId: string }>
+  | Readonly<{ kind: 'edit'; clientId: string }>
+  | null;
 
 type ClientsPageProps = Readonly<{
   onOpenProjectsForClient?: (clientId: string) => void;
@@ -26,11 +31,12 @@ type ClientsPageProps = Readonly<{
 export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) {
   const canReadClients = usePermission('clients.read');
   const canCreate = usePermission('clients.create');
+  const canUpdate = usePermission('clients.update');
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ClientStatus | ''>('');
   const [page, setPage] = useState(1);
-  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<ClientDialog>(null);
 
   const clientsQuery = useClients({
     ...(search ? { search } : {}),
@@ -70,7 +76,7 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
     setPage(1);
   }
 
-  /** Create one active Client and select the newly created record. */
+  /** Create one active Client and open the newly created record. */
   async function handleCreate(values: CreateClientValues): Promise<void> {
     const client = await createMutation.mutateAsync({
       code: values.code,
@@ -82,18 +88,31 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
     });
 
     createForm.reset();
-    setSelectedClientId(client.id);
+    setDialog({ kind: 'open', clientId: client.id });
+  }
+
+  /** Close the active Client dialog without changing list filters or pagination. */
+  function closeDialog(): void {
+    setDialog(null);
   }
 
   return (
-    <section className="admin-stack" aria-labelledby="clients-title">
-      <div className="section-heading">
-        <p className="eyebrow">Commercial</p>
-        <h1 id="clients-title">Client Management</h1>
-        <p className="muted">Maintain Client organizations and Contacts used by Projects, Billing, Receipts and reporting.</p>
+    <section className="admin-stack client-management-page" aria-labelledby="clients-title">
+      <div className="section-heading client-page-heading">
+        <div>
+          <p className="eyebrow">Commercial</p>
+          <h1 id="clients-title">Client Management</h1>
+          <p className="muted">Search, review and maintain the Client organizations used by Projects, Billing, Receipts and reporting.</p>
+        </div>
+        {canCreate && (
+          <button type="button" className="client-primary-action" onClick={() => setDialog({ kind: 'create' })}>
+            <span aria-hidden="true">+</span>
+            Create client
+          </button>
+        )}
       </div>
 
-      <section className="admin-card">
+      <section className="admin-card client-list-card" aria-label="Client list">
         <form className="client-filter-row" onSubmit={handleSearch}>
           <label>
             Search clients
@@ -114,16 +133,23 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
         {clientsQuery.error instanceof Error && <div className="form-error" role="alert">{clientsQuery.error.message}</div>}
 
         {clientsQuery.data && (
-          <div className="table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>Client</th><th>Status</th><th>Credit terms</th><th>Action</th></tr></thead>
+          <div className="table-wrap client-list-table-wrap">
+            <table className="admin-table client-list-table">
+              <thead><tr><th>Client</th><th>Status</th><th>Credit terms</th><th>Actions</th></tr></thead>
               <tbody>
                 {clients.map((client) => (
-                  <tr key={client.id} className={client.id === selectedClientId ? 'selected-row' : undefined}>
+                  <tr key={client.id}>
                     <td><strong>{client.displayName}</strong><span>{client.code} · {client.legalName}</span></td>
-                    <td>{client.status}</td>
+                    <td><span className={`client-status client-status-${client.status.toLowerCase()}`}>{client.status}</span></td>
                     <td>{client.creditTermsDays === null ? '—' : `${client.creditTermsDays} days`}</td>
-                    <td><button type="button" className="link-button" onClick={() => setSelectedClientId(client.id)}>Open</button></td>
+                    <td>
+                      <div className="client-row-actions">
+                        <button type="button" className="link-button" onClick={() => setDialog({ kind: 'open', clientId: client.id })}>Open</button>
+                        {canUpdate && (
+                          <button type="button" className="secondary-button client-edit-button" onClick={() => setDialog({ kind: 'edit', clientId: client.id })}>Edit</button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -140,12 +166,11 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
         </div>
       </section>
 
-      {canCreate && (
-        <section className="admin-card">
-          <h2>Create client</h2>
-          <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
+      {dialog?.kind === 'create' && (
+        <ClientModal title="Create client" eyebrow="New client account" onClose={closeDialog}>
+          <form className="admin-form client-modal-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="client-form-grid">
-              <label>Code<input {...createForm.register('code')} /></label>
+              <label>Code<input autoFocus {...createForm.register('code')} /></label>
               <label>Display name<input {...createForm.register('displayName')} /></label>
               <label>Legal name<input {...createForm.register('legalName')} /></label>
               <label>Tax number<input {...createForm.register('taxNo')} /></label>
@@ -159,21 +184,77 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
                   })}
                 />
               </label>
+              <label className="client-form-wide">Billing address<textarea rows={3} {...createForm.register('billingAddress')} /></label>
             </div>
-            <label>Billing address<textarea rows={3} {...createForm.register('billingAddress')} /></label>
             {Object.values(createForm.formState.errors).map((error, index) => (
               <span className="field-error" key={index}>{error?.message}</span>
             ))}
             {createMutation.error instanceof Error && <div className="form-error" role="alert">{createMutation.error.message}</div>}
-            <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create client'}</button>
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={closeDialog}>Cancel</button>
+              <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create client'}</button>
+            </div>
           </form>
-        </section>
+        </ClientModal>
       )}
 
-      <ClientDetailsPanel
-        clientId={selectedClientId}
-        {...(onOpenProjectsForClient ? { onOpenProjectsForClient } : {})}
-      />
+      {dialog?.kind === 'open' && (
+        <ClientModal title="Client details" eyebrow="Client account" onClose={closeDialog} wide>
+          <ClientDetailsPanel
+            clientId={dialog.clientId}
+            mode="details"
+            {...(onOpenProjectsForClient ? { onOpenProjectsForClient } : {})}
+          />
+        </ClientModal>
+      )}
+
+      {dialog?.kind === 'edit' && (
+        <ClientModal title="Edit client" eyebrow="Client master data" onClose={closeDialog}>
+          <ClientDetailsPanel clientId={dialog.clientId} mode="edit" onSaved={closeDialog} />
+        </ClientModal>
+      )}
     </section>
+  );
+}
+
+/** Render one accessible Client modal without introducing another UI dependency. */
+function ClientModal(props: Readonly<{
+  title: string;
+  eyebrow: string;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+}>) {
+  useEffect(() => {
+    /** Close only the active Client modal when Escape is pressed. */
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section
+        className={`client-modal${props.wide ? ' client-modal-wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="client-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="client-modal-header">
+          <div>
+            <p className="eyebrow">{props.eyebrow}</p>
+            <h2 id="client-modal-title">{props.title}</h2>
+          </div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label={`Close ${props.title}`}>
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
+    </div>
   );
 }

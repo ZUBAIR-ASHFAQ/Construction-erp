@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useClients } from '../../clients/hooks/clients.js';
@@ -9,7 +9,6 @@ import { usePermission, useProjectWorkspaceVisibility } from '../../administrati
 import { ProjectDetailsPanel } from '../components/project-details-panel.js';
 import { useCreateProject, useProjects } from '../hooks/projects.js';
 import type { ProjectModel, ProjectStatus } from '../api/projects-api.js';
-
 
 const createProjectSchema = z.object({
   projectCode: z.string().trim().min(1, 'Project code is required.').max(100),
@@ -60,16 +59,22 @@ const createProjectSchema = z.object({
 });
 
 type CreateProjectValues = z.infer<typeof createProjectSchema>;
+type ProjectDialog =
+  | Readonly<{ kind: 'create' }>
+  | Readonly<{ kind: 'open'; projectId: string }>
+  | Readonly<{ kind: 'edit'; projectId: string }>
+  | null;
 
 type ProjectsPageProps = Readonly<{ initialClientId?: string | null }>;
 
 const PROJECT_STATUSES: readonly ProjectStatus[] = ['DRAFT', 'ACTIVE', 'SUSPENDED', 'COMPLETED', 'CLOSED'];
 const PROJECT_MODELS: readonly ProjectModel[] = ['FIXED_PRICE', 'COST_PLUS_PERCENTAGE'];
 
-/** Render the Final Module 6 Project register, create form and read-only Project detail. */
+/** Render the Project register as a list-first workspace with focused create, detail and edit dialogs. */
 export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {}) {
   const canRead = useProjectWorkspaceVisibility();
   const canCreate = usePermission('projects.create');
+  const canUpdate = usePermission('projects.update');
   const canReadClients = usePermission('clients.read');
   const canReadUsers = usePermission('admin.users.read');
   const [searchText, setSearchText] = useState('');
@@ -79,7 +84,7 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const [clientFilterText, setClientFilterText] = useState(initialClientId ?? '');
   const [clientId, setClientId] = useState(initialClientId ?? '');
   const [page, setPage] = useState(1);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<ProjectDialog>(null);
 
   const projectsQuery = useProjects({
     ...(search ? { search } : {}),
@@ -129,16 +134,15 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const clientLabels = new Map((clientsQuery.data?.items ?? []).map((client) => [client.id, `${client.code} · ${client.displayName}`]));
   const managerLabels = new Map(activeManagers.map((user) => [user.id, `${user.name} · ${user.email}`]));
 
-  /** Apply Project register filters from page one and clear the previous detail selection. */
+  /** Apply Project register filters from page one without changing any active Project record. */
   function handleSearch(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     setSearch(searchText.trim());
     setClientId(clientFilterText.trim());
     setPage(1);
-    setSelectedProjectId(null);
   }
 
-  /** Create one DRAFT Project from validated business fields and select the returned Project. */
+  /** Create one DRAFT Project from every validated create field and open the new Project details. */
   async function handleCreate(values: CreateProjectValues): Promise<void> {
     const project = await createMutation.mutateAsync({
       projectCode: values.projectCode,
@@ -167,33 +171,46 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
       projectManagerUserId: '',
       location: ''
     });
-    setSelectedProjectId(project.id);
+    setDialog({ kind: 'open', projectId: project.id });
+  }
+
+  /** Close only the active Project dialog while preserving filters and pagination. */
+  function closeDialog(): void {
+    setDialog(null);
   }
 
   return (
-    <section className="admin-stack" aria-labelledby="projects-title">
-      <div className="section-heading">
-        <p className="eyebrow">Final Module 6</p>
-        <h1 id="projects-title">Project Management</h1>
-        <p className="muted">Create Projects directly from Clients with Fixed Price or Cost + Percentage commercial terms. No Tender, Estimate, BOQ, Contract or WBS is required.</p>
+    <section className="admin-stack project-management-page" aria-labelledby="projects-title">
+      <div className="section-heading project-page-heading">
+        <div>
+          <p className="eyebrow">Projects</p>
+          <h1 id="projects-title">Project Management</h1>
+          <p className="muted">Search, review and maintain Project master records, commercial terms, dates and lifecycle controls.</p>
+        </div>
+        {canCreate && (
+          <button type="button" className="project-primary-action" onClick={() => setDialog({ kind: 'create' })}>
+            <span aria-hidden="true">+</span>
+            Create project
+          </button>
+        )}
       </div>
 
-      <section className="admin-card">
-        <form className="project-filter-grid" onSubmit={handleSearch}>
+      <section className="admin-card project-list-card" aria-label="Project list">
+        <form className="project-filter-grid project-filter-row" onSubmit={handleSearch}>
           <label>
-            Search
+            Search projects
             <input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Project code or name" />
           </label>
           <label>
             Status
-            <select value={statusText} onChange={(event) => setStatusText(event.target.value as ProjectStatus | '')}>
+            <select value={statusText} onChange={(event) => { setStatusText(event.target.value as ProjectStatus | ''); setPage(1); }}>
               <option value="">All statuses</option>
               {PROJECT_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </label>
           <label>
             Commercial model
-            <select value={projectModelText} onChange={(event) => setProjectModelText(event.target.value as ProjectModel | '')}>
+            <select value={projectModelText} onChange={(event) => { setProjectModelText(event.target.value as ProjectModel | ''); setPage(1); }}>
               <option value="">All models</option>
               {PROJECT_MODELS.map((model) => <option key={model} value={model}>{model === 'FIXED_PRICE' ? 'Fixed Price' : 'Cost + Percentage'}</option>)}
             </select>
@@ -212,8 +229,8 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
         {projectsQuery.error instanceof Error && <div className="form-error" role="alert">{projectsQuery.error.message}</div>}
 
         {projectsQuery.data && (
-          <div className="table-wrap">
-            <table className="admin-table">
+          <div className="table-wrap project-list-table-wrap">
+            <table className="admin-table project-list-table">
               <thead>
                 <tr>
                   <th>Project</th>
@@ -222,19 +239,34 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
                   <th>Model / Value</th>
                   <th>Manager</th>
                   <th>Dates</th>
-                  <th>Action</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {projects.map((project) => (
-                  <tr key={project.id} className={selectedProjectId === project.id ? 'selected-row' : undefined}>
+                  <tr key={project.id}>
                     <td><strong>{project.projectCode}</strong><span>{project.name}</span></td>
-                    <td>{project.status}</td>
+                    <td><span className={`project-status project-status-${project.status.toLowerCase()}`}>{project.status}</span></td>
                     <td>{clientLabels.get(project.clientId) ?? 'Client linked'}</td>
                     <td>{project.projectModel === 'FIXED_PRICE' ? 'Fixed Price' : 'Cost + Percentage'}<span>{project.currency} {project.projectValue}</span></td>
                     <td>{project.projectManagerUserId ? (managerLabels.get(project.projectManagerUserId) ?? 'Assigned') : 'Unassigned'}</td>
                     <td>{project.startDate}<span>to {project.plannedEndDate}</span></td>
-                    <td><button type="button" className="link-button" onClick={() => setSelectedProjectId(project.id)}>Open</button></td>
+                    <td>
+                      <div className="project-row-actions">
+                        <button type="button" className="link-button" onClick={() => setDialog({ kind: 'open', projectId: project.id })}>Open</button>
+                        {canUpdate && (
+                          <button
+                            type="button"
+                            className="secondary-button project-edit-button"
+                            disabled={project.status === 'CLOSED'}
+                            title={project.status === 'CLOSED' ? 'Closed Projects are read-only.' : 'Edit Project'}
+                            onClick={() => setDialog({ kind: 'edit', projectId: project.id })}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -245,19 +277,17 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
         {projectsQuery.data && projects.length === 0 && <p className="muted">No Projects found.</p>}
 
         <div className="pagination-row">
-          <button type="button" className="secondary-button" disabled={page <= 1} onClick={() => { setPage((value) => value - 1); setSelectedProjectId(null); }}>Previous</button>
+          <button type="button" className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>Previous</button>
           <span>Page {page} of {pageCount}</span>
-          <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => { setPage((value) => value + 1); setSelectedProjectId(null); }}>Next</button>
+          <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button>
         </div>
       </section>
 
-      {canCreate && (
-        <section className="admin-card">
-          <h2>Create Project</h2>
-          <p className="muted">New Projects start as DRAFT and are created directly from an active Client. Project Manager and location are optional.</p>
-          <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
-            <div className="project-form-grid">
-              <label>Project code<input {...createForm.register('projectCode')} /></label>
+      {dialog?.kind === 'create' && (
+        <ProjectModal title="Create project" eyebrow="New project" onClose={closeDialog}>
+          <form className="admin-form project-modal-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
+            <div className="project-form-grid project-modal-grid">
+              <label>Project code<input autoFocus {...createForm.register('projectCode')} /></label>
               <label>Project name<input {...createForm.register('name')} /></label>
               <label>
                 Client
@@ -291,7 +321,7 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
                   ))}
                 </select>
               </label>
-              <label className="project-detail-wide">Location (optional)<input {...createForm.register('location')} /></label>
+              <label className="project-form-wide">Location (optional)<input {...createForm.register('location')} /></label>
             </div>
 
             {Object.values(createForm.formState.errors).map((error, index) => (
@@ -300,12 +330,67 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
             {clientsQuery.error instanceof Error && <div className="form-error" role="alert">{clientsQuery.error.message}</div>}
             {managersQuery.error instanceof Error && <div className="form-error" role="alert">{managersQuery.error.message}</div>}
             {createMutation.error instanceof Error && <div className="form-error" role="alert">{createMutation.error.message}</div>}
-            <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create Project'}</button>
+            <div className="project-modal-actions">
+              <button type="button" className="secondary-button" onClick={closeDialog}>Cancel</button>
+              <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create Project'}</button>
+            </div>
           </form>
-        </section>
+        </ProjectModal>
       )}
 
-      {selectedProjectId && <ProjectDetailsPanel key={selectedProjectId} projectId={selectedProjectId} />}
+      {dialog?.kind === 'open' && (
+        <ProjectModal title="Project details" eyebrow="Project record" onClose={closeDialog} wide>
+          <ProjectDetailsPanel projectId={dialog.projectId} mode="details" />
+        </ProjectModal>
+      )}
+
+      {dialog?.kind === 'edit' && (
+        <ProjectModal title="Edit project" eyebrow="Project master data" onClose={closeDialog}>
+          <ProjectDetailsPanel projectId={dialog.projectId} mode="edit" onSaved={closeDialog} />
+        </ProjectModal>
+      )}
     </section>
+  );
+}
+
+/** Render one accessible Project modal without introducing another UI dependency. */
+function ProjectModal(props: Readonly<{
+  title: string;
+  eyebrow: string;
+  onClose: () => void;
+  children: ReactNode;
+  wide?: boolean;
+}>) {
+  useEffect(() => {
+    /** Close only the active Project modal when Escape is pressed. */
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="project-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section
+        className={`project-modal${props.wide ? ' project-modal-wide' : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-modal-title"
+        onMouseDown={(event) => event.stopPropagation()}
+      >
+        <header className="project-modal-header">
+          <div>
+            <p className="eyebrow">{props.eyebrow}</p>
+            <h2 id="project-modal-title">{props.title}</h2>
+          </div>
+          <button type="button" className="project-modal-close" onClick={props.onClose} aria-label={`Close ${props.title}`}>
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+        <div className="project-modal-body">{props.children}</div>
+      </section>
+    </div>
   );
 }

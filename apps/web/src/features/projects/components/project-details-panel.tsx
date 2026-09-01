@@ -16,7 +16,6 @@ import {
   useUpdateProject
 } from '../hooks/projects.js';
 
-
 const editProjectSchema = z.object({
   name: z.string().trim().min(1, 'Project name is required.').max(300),
   clientId: z.string().uuid('Enter a valid Client ID.'),
@@ -27,7 +26,8 @@ const editProjectSchema = z.object({
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date is required.'),
   plannedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Planned end date is required.'),
   projectManagerUserId: z.string().trim(),
-  location: z.string().trim().max(1000, 'Location is too long.')
+  location: z.string().trim().max(1000, 'Location is too long.'),
+  status: z.enum(['DRAFT', 'ACTIVE', 'SUSPENDED', 'COMPLETED', 'CLOSED'])
 }).superRefine((value, context) => {
   if (value.plannedEndDate < value.startDate) {
     context.addIssue({
@@ -77,22 +77,38 @@ type ProjectTransitionValues = z.infer<typeof projectTransitionSchema>;
 type CloseProjectValues = z.infer<typeof closeProjectSchema>;
 
 export type ProjectDetailsPanelProps = Readonly<{
-  projectId: string;
+  projectId: string | null;
+  mode?: 'details' | 'edit';
+  onSaved?: () => void;
 }>;
 
-/** Load one Project detail record before rendering its edit, lifecycle and source-summary workspace. */
-export function ProjectDetailsPanel({ projectId }: ProjectDetailsPanelProps) {
+/** Load one Project before rendering either its complete details or its master-data editor. */
+export function ProjectDetailsPanel({ projectId, mode = 'details', onSaved }: ProjectDetailsPanelProps) {
   const projectQuery = useProject(projectId);
 
+  if (!projectId) {
+    return <div className="project-modal-state"><p className="muted">Select a Project to continue.</p></div>;
+  }
+
   if (projectQuery.isPending) {
-    return <section className="admin-card"><p>Loading Project details…</p></section>;
+    return <div className="project-modal-state"><p>Loading Project details…</p></div>;
   }
 
   if (projectQuery.error instanceof Error) {
-    return <section className="admin-card"><div className="form-error" role="alert">{projectQuery.error.message}</div></section>;
+    return <div className="project-modal-state"><div className="form-error" role="alert">{projectQuery.error.message}</div></div>;
   }
 
   if (!projectQuery.data) return null;
+
+  if (mode === 'edit') {
+    return (
+      <ProjectEditContent
+        key={`${projectQuery.data.project.id}-${projectQuery.data.project.updatedAt}`}
+        details={projectQuery.data}
+        {...(onSaved ? { onSaved } : {})}
+      />
+    );
+  }
 
   return (
     <ProjectDetailsContent
@@ -102,22 +118,20 @@ export function ProjectDetailsPanel({ projectId }: ProjectDetailsPanelProps) {
   );
 }
 
-/** Render loaded Project data with permission-aware edit, lifecycle and source-summary controls. */
-function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }>) {
-  const project = details.project;
+/** Render every editable Project master field inside the dedicated Edit dialog. */
+function ProjectEditContent(props: Readonly<{
+  details: ProjectDetails;
+  onSaved?: () => void;
+}>) {
+  const project = props.details.project;
   const canUpdate = usePermission('projects.update');
   const canActivate = usePermission('projects.activate');
-  const canComplete = usePermission('projects.complete');
-  const canClose = usePermission('projects.close');
   const canReadClients = usePermission('clients.read');
   const canReadUsers = usePermission('admin.users.read');
   const updateMutation = useUpdateProject(project.id);
   const activateMutation = useActivateProject(project.id);
-  const suspendMutation = useSuspendProject(project.id);
-  const completeMutation = useCompleteProject(project.id);
-  const closeMutation = useCloseProject(project.id);
   const clientQuery = useQuery({
-    queryKey: ['module-2', 'clients', 'project-source-summary', project.clientId],
+    queryKey: ['module-2', 'clients', 'project-edit-current-client', project.clientId],
     queryFn: () => getClient(project.clientId),
     enabled: canReadClients
   });
@@ -125,7 +139,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
   const managerOptionsQuery = useQuery({
     queryKey: ['module-24a', 'users', 'project-edit-manager-options'],
     queryFn: () => listUsers({ page: 1, pageSize: 100 }),
-    enabled: canReadUsers
+    enabled: canReadUsers && canUpdate
   });
   const editForm = useForm<EditProjectValues>({
     resolver: zodResolver(editProjectSchema),
@@ -139,28 +153,35 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
       startDate: project.startDate,
       plannedEndDate: project.plannedEndDate,
       projectManagerUserId: project.projectManagerUserId ?? '',
-      location: project.location ?? ''
+      location: project.location ?? '',
+      status: project.status
     }
   });
   const selectedProjectModel = editForm.watch('projectModel');
-  const transitionForm = useForm<ProjectTransitionValues>({
-    resolver: zodResolver(projectTransitionSchema),
-    defaultValues: { reason: '' }
-  });
-  const closeForm = useForm<CloseProjectValues>({
-    resolver: zodResolver(closeProjectSchema),
-    defaultValues: { reason: '' }
-  });
-  const canEditProject = canUpdate && project.status !== 'CLOSED';
   const activeManagers = (managerOptionsQuery.data?.items ?? []).filter((user) => user.status === 'ACTIVE');
-  const projectManager = activeManagers.find((user) => user.id === project.projectManagerUserId) ?? null;
-  const lifecycleError = activateMutation.error
-    ?? suspendMutation.error
-    ?? completeMutation.error
-    ?? closeMutation.error;
+  const canActivateFromEdit = project.status === 'DRAFT' && canActivate;
+  const canEditProject = canUpdate && project.status !== 'CLOSED';
 
-  /** Save only the editable Project master fields and keep Project code/status server-owned. */
+  /** Save Project master fields, then use the existing audited lifecycle command when Draft is activated. */
   async function handleUpdate(values: EditProjectValues): Promise<void> {
+    const requestsActivation = project.status === 'DRAFT' && values.status === 'ACTIVE';
+
+    if (values.status !== project.status && !requestsActivation) {
+      editForm.setError('status', {
+        type: 'validate',
+        message: 'This status transition is not available from Edit Project.'
+      });
+      return;
+    }
+
+    if (requestsActivation && !canActivate) {
+      editForm.setError('status', {
+        type: 'validate',
+        message: 'Your current role does not include Project activation access.'
+      });
+      return;
+    }
+
     await updateMutation.mutateAsync({
       name: values.name,
       clientId: values.clientId,
@@ -173,7 +194,140 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
       projectManagerUserId: values.projectManagerUserId || null,
       location: values.location || null
     });
+
+    if (requestsActivation) {
+      await activateMutation.mutateAsync();
+    }
+
+    props.onSaved?.();
   }
+
+  if (!canUpdate) {
+    return <div className="project-modal-state"><p className="muted">Your current role does not include Project update access.</p></div>;
+  }
+
+  if (!canEditProject) {
+    return <div className="project-modal-state"><p className="muted">Closed Projects are read-only in Project Management.</p></div>;
+  }
+
+  return (
+    <div className="project-edit-content">
+      <dl className="project-edit-context" aria-label="Selected Project">
+        <div><dt>Project code</dt><dd>{project.projectCode}</dd></div>
+        <div><dt>Current status</dt><dd>{project.status}</dd></div>
+      </dl>
+
+      <form className="admin-form project-modal-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
+        <div className="project-form-grid project-modal-grid">
+          <label>Project name<input autoFocus {...editForm.register('name')} /></label>
+          <label>
+            Project status
+            <select {...editForm.register('status')}>
+              <option value={project.status}>{project.status}</option>
+              {canActivateFromEdit && <option value="ACTIVE">ACTIVE</option>}
+            </select>
+            <span className="muted">{canActivateFromEdit ? 'Draft Projects can be activated when you save.' : 'Current lifecycle status.'}</span>
+          </label>
+          <label>
+            Client
+            {canReadClients ? (
+              <select {...editForm.register('clientId')}>
+                {clientQuery.data && !clientOptionsQuery.data?.items.some((client) => client.id === project.clientId) && (
+                  <option value={project.clientId}>{clientQuery.data.client.code} · {clientQuery.data.client.displayName}</option>
+                )}
+                {(clientOptionsQuery.data?.items ?? []).map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
+              </select>
+            ) : (
+              <><input type="hidden" {...editForm.register('clientId')} /><span className="muted">Current Client preserved · Client read permission required to change it.</span></>
+            )}
+          </label>
+          <label>
+            Commercial model
+            <select {...editForm.register('projectModel')}>
+              <option value="FIXED_PRICE">Fixed Price</option>
+              <option value="COST_PLUS_PERCENTAGE">Cost + Percentage</option>
+            </select>
+          </label>
+          <label>Project value<input inputMode="decimal" {...editForm.register('projectValue')} /></label>
+          {selectedProjectModel === 'COST_PLUS_PERCENTAGE' && (
+            <label>Cost + percent<input inputMode="decimal" {...editForm.register('costPlusPercent')} /></label>
+          )}
+          <label>Currency<input maxLength={3} {...editForm.register('currency')} /></label>
+          <label>Start date<input type="date" {...editForm.register('startDate')} /></label>
+          <label>Planned end date<input type="date" {...editForm.register('plannedEndDate')} /></label>
+          <label>
+            Project Manager (optional)
+            {canReadUsers ? (
+              <select {...editForm.register('projectManagerUserId')}>
+                <option value="">Unassigned</option>
+                {project.projectManagerUserId && !activeManagers.some((user) => user.id === project.projectManagerUserId) && (
+                  <option value={project.projectManagerUserId}>Current assigned manager</option>
+                )}
+                {activeManagers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}
+              </select>
+            ) : (
+              <><input type="hidden" {...editForm.register('projectManagerUserId')} /><span className="muted">Current manager assignment preserved · User read permission required to change it.</span></>
+            )}
+          </label>
+          <label className="project-form-wide">Location (optional)<input {...editForm.register('location')} /></label>
+        </div>
+
+        <p className="muted project-edit-note">Project code remains immutable. Draft → Active uses the existing audited Project activation command; other lifecycle transitions remain available from Open Project.</p>
+        {Object.values(editForm.formState.errors).map((error, index) => (
+          <span className="field-error" key={index}>{error?.message}</span>
+        ))}
+        {clientQuery.error instanceof Error && <div className="form-error" role="alert">{clientQuery.error.message}</div>}
+        {clientOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{clientOptionsQuery.error.message}</div>}
+        {managerOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{managerOptionsQuery.error.message}</div>}
+        {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
+        {activateMutation.error instanceof Error && <div className="form-error" role="alert">{activateMutation.error.message}</div>}
+        <div className="project-modal-actions">
+          <button type="submit" disabled={updateMutation.isPending || activateMutation.isPending}>
+            {activateMutation.isPending ? 'Activating…' : updateMutation.isPending ? 'Saving…' : 'Save Project'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/** Render loaded Project details, source summaries, lifecycle controls and append-only history. */
+function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }>) {
+  const project = details.project;
+  const canUpdate = usePermission('projects.update');
+  const canActivate = usePermission('projects.activate');
+  const canComplete = usePermission('projects.complete');
+  const canClose = usePermission('projects.close');
+  const canReadClients = usePermission('clients.read');
+  const canReadUsers = usePermission('admin.users.read');
+  const activateMutation = useActivateProject(project.id);
+  const suspendMutation = useSuspendProject(project.id);
+  const completeMutation = useCompleteProject(project.id);
+  const closeMutation = useCloseProject(project.id);
+  const clientQuery = useQuery({
+    queryKey: ['module-2', 'clients', 'project-source-summary', project.clientId],
+    queryFn: () => getClient(project.clientId),
+    enabled: canReadClients
+  });
+  const managerOptionsQuery = useQuery({
+    queryKey: ['module-24a', 'users', 'project-detail-manager-options'],
+    queryFn: () => listUsers({ page: 1, pageSize: 100 }),
+    enabled: canReadUsers
+  });
+  const transitionForm = useForm<ProjectTransitionValues>({
+    resolver: zodResolver(projectTransitionSchema),
+    defaultValues: { reason: '' }
+  });
+  const closeForm = useForm<CloseProjectValues>({
+    resolver: zodResolver(closeProjectSchema),
+    defaultValues: { reason: '' }
+  });
+  const activeManagers = (managerOptionsQuery.data?.items ?? []).filter((user) => user.status === 'ACTIVE');
+  const projectManager = activeManagers.find((user) => user.id === project.projectManagerUserId) ?? null;
+  const lifecycleError = activateMutation.error
+    ?? suspendMutation.error
+    ?? completeMutation.error
+    ?? closeMutation.error;
 
   /** Activate the selected DRAFT Project without sending a lifecycle request body. */
   async function handleActivate(): Promise<void> {
@@ -196,14 +350,14 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
   }
 
   return (
-    <section className="admin-card" aria-labelledby="project-detail-title">
-      <div className="project-heading">
+    <section className="project-detail-content" aria-labelledby="project-detail-title">
+      <div className="project-heading project-detail-heading">
         <div>
-          <p className="eyebrow">Project detail</p>
+          <p className="eyebrow">Project</p>
           <h2 id="project-detail-title">{project.projectCode} · {project.name}</h2>
-          <p className="muted">Project Management owns the Client link, commercial model/value, dates and lifecycle. Project team assignments belong to Final Module 8 and are intentionally not edited here.</p>
+          <p className="muted">Project master data, commercial terms, source-owned summaries and lifecycle history.</p>
         </div>
-        <strong>{project.status}</strong>
+        <span className={`project-status project-status-${project.status.toLowerCase()}`}>{project.status}</span>
       </div>
 
       <dl className="project-detail-grid">
@@ -221,7 +375,12 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
       </dl>
 
       <div className="project-summary-section">
-        <h3>Commercial / source summary</h3>
+        <div className="project-section-heading">
+          <div>
+            <p className="eyebrow">Commercial</p>
+            <h3>Commercial / source summary</h3>
+          </div>
+        </div>
         <dl className="project-summary-grid">
           <div>
             <dt>Client</dt>
@@ -235,7 +394,12 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
           </div>
         </dl>
 
-        <h3>Project module summary</h3>
+        <div className="project-section-heading project-section-heading-spaced">
+          <div>
+            <p className="eyebrow">Integrated modules</p>
+            <h3>Project module summary</h3>
+          </div>
+        </div>
         <dl className="project-summary-grid">
           <div>
             <dt>Stages / progress</dt>
@@ -281,70 +445,16 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
           </div>
         </dl>
         {clientQuery.error instanceof Error && <div className="form-error" role="alert">{clientQuery.error.message}</div>}
-        {clientOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{clientOptionsQuery.error.message}</div>}
         {managerOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{managerOptionsQuery.error.message}</div>}
       </div>
 
-      {canEditProject && (
-        <div className="project-edit-section">
-          <h3>Edit Project</h3>
-          <form className="admin-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
-            <div className="project-form-grid">
-              <label>Project name<input {...editForm.register('name')} /></label>
-              <label>Client
-                {canReadClients ? (
-                  <select {...editForm.register('clientId')}>
-                    {clientQuery.data && !clientOptionsQuery.data?.items.some((client) => client.id === project.clientId) && (
-                      <option value={project.clientId}>{clientQuery.data.client.code} · {clientQuery.data.client.displayName}</option>
-                    )}
-                    {(clientOptionsQuery.data?.items ?? []).map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
-                  </select>
-                ) : (
-                  <><input type="hidden" {...editForm.register('clientId')} /><span className="muted">Current Client preserved · Client read permission required to change it.</span></>
-                )}
-              </label>
-              <label>
-                Commercial model
-                <select {...editForm.register('projectModel')}>
-                  <option value="FIXED_PRICE">Fixed Price</option>
-                  <option value="COST_PLUS_PERCENTAGE">Cost + Percentage</option>
-                </select>
-              </label>
-              <label>Project value<input inputMode="decimal" {...editForm.register('projectValue')} /></label>
-              {selectedProjectModel === 'COST_PLUS_PERCENTAGE' && (
-                <label>Cost + percent<input inputMode="decimal" {...editForm.register('costPlusPercent')} /></label>
-              )}
-              <label>Currency<input maxLength={3} {...editForm.register('currency')} /></label>
-              <label>Start date<input type="date" {...editForm.register('startDate')} /></label>
-              <label>Planned end date<input type="date" {...editForm.register('plannedEndDate')} /></label>
-              <label>Project Manager (optional)
-                {canReadUsers ? (
-                  <select {...editForm.register('projectManagerUserId')}>
-                    <option value="">Unassigned</option>
-                    {project.projectManagerUserId && !activeManagers.some((user) => user.id === project.projectManagerUserId) && (
-                      <option value={project.projectManagerUserId}>{projectManager ? `${projectManager.name} · ${projectManager.email}` : 'Current assigned manager'}</option>
-                    )}
-                    {activeManagers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}
-                  </select>
-                ) : (
-                  <><input type="hidden" {...editForm.register('projectManagerUserId')} /><span className="muted">Current manager assignment preserved · User read permission required to change it.</span></>
-                )}
-              </label>
-              <label>Location (optional)<input {...editForm.register('location')} /></label>
-            </div>
-            <p className="muted">Project code and lifecycle status are controlled separately. Commercial values are stored on the Project and do not depend on Tender, Estimate, BOQ, Contract or WBS records.</p>
-            {Object.values(editForm.formState.errors).map((error, index) => (
-              <span className="field-error" key={index}>{error?.message}</span>
-            ))}
-            {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
-            <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save Project'}</button>
-          </form>
-        </div>
-      )}
-
-
       <div className="project-lifecycle-section">
-        <h3>Lifecycle controls</h3>
+        <div className="project-section-heading">
+          <div>
+            <p className="eyebrow">Workflow</p>
+            <h3>Lifecycle controls</h3>
+          </div>
+        </div>
         <div className="project-action-row">
           {canActivate && project.status === 'DRAFT' && (
             <button type="button" onClick={() => void handleActivate()} disabled={activateMutation.isPending}>
@@ -387,12 +497,23 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
       </div>
 
       <div className="project-modules-section">
-        <h3>Integrated Project modules</h3>
+        <div className="project-section-heading">
+          <div>
+            <p className="eyebrow">Ownership</p>
+            <h3>Integrated Project modules</h3>
+          </div>
+        </div>
         <p className="muted">Stages, team, budget, job cost, billing and receipts stay owned by their source modules. This Project view only reads permission-safe summaries and never stores duplicate totals.</p>
       </div>
 
       <div className="project-history-section">
-        <h3>Lifecycle history</h3>
+        <div className="project-section-heading">
+          <div>
+            <p className="eyebrow">Audit trail</p>
+            <h3>Lifecycle history</h3>
+          </div>
+          <span className="project-record-count">{details.statusHistory.length} event{details.statusHistory.length === 1 ? '' : 's'}</span>
+        </div>
         {details.statusHistory.length === 0 ? (
           <p className="muted">No lifecycle history is available.</p>
         ) : (

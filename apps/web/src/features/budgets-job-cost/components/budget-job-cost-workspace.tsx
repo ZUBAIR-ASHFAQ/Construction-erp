@@ -168,6 +168,7 @@ export function BudgetJobCostWorkspace({
             <div><dt>Version</dt><dd>{currentBudget.versionNo}</dd></div>
             <div><dt>Status</dt><dd>{currentBudget.status}</dd></div>
             <div><dt>Budget total</dt><dd>{currentBudget.currency} {currentBudget.totalAmount}</dd></div>
+            <div><dt>Created by</dt><dd>{currentBudget.createdBy}</dd></div>
             <div><dt>Frozen</dt><dd>{currentBudget.frozenAt ? new Date(currentBudget.frozenAt).toLocaleString() : 'No'}</dd></div>
           </dl>
         )}
@@ -249,13 +250,28 @@ export function BudgetJobCostWorkspace({
         <section className="admin-card">
           <h2>Job-cost position</h2>
           {jobCostQuery.data && (
-            <dl className="module9-summary-grid">
-              <div><dt>Budget</dt><dd>{project.currency} {jobCostQuery.data.totals.budgetCost}</dd></div>
-              <div><dt>Committed</dt><dd>{project.currency} {jobCostQuery.data.totals.committedCost}</dd></div>
-              <div><dt>Actual</dt><dd>{project.currency} {jobCostQuery.data.totals.actualCost}</dd></div>
-              <div><dt>Forecast</dt><dd>{project.currency} {jobCostQuery.data.totals.forecastCost}</dd></div>
-              <div><dt>Variance</dt><dd>{project.currency} {jobCostQuery.data.totals.variance}</dd></div>
-            </dl>
+            <>
+              <dl className="module9-summary-grid">
+                <div><dt>Budget</dt><dd>{project.currency} {jobCostQuery.data.totals.budgetCost}</dd></div>
+                <div><dt>Committed</dt><dd>{project.currency} {jobCostQuery.data.totals.committedCost}</dd></div>
+                <div><dt>Actual</dt><dd>{project.currency} {jobCostQuery.data.totals.actualCost}</dd></div>
+                <div><dt>Forecast</dt><dd>{project.currency} {jobCostQuery.data.totals.forecastCost}</dd></div>
+                <div><dt>Variance</dt><dd>{project.currency} {jobCostQuery.data.totals.variance}</dd></div>
+              </dl>
+              {jobCostQuery.data.forecasts.length > 0 && (
+                <div className="table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>Stage</th><th>Category</th><th>Forecast</th><th>Updated by</th><th>Updated</th></tr></thead>
+                    <tbody>{jobCostQuery.data.forecasts.map((line) => (
+                      <tr key={line.id}>
+                        <td>{line.stageId ? (stageById.get(line.stageId)?.name ?? line.stageId) : 'Project level'}</td>
+                        <td>{line.category}</td><td>{project.currency} {line.forecastAmount}</td><td>{line.updatedBy}</td><td>{new Date(line.updatedAt).toLocaleString()}</td>
+                      </tr>
+                    ))}</tbody>
+                  </table>
+                </div>
+              )}
+            </>
           )}
         </section>
       )}
@@ -305,7 +321,7 @@ export function BudgetJobCostWorkspace({
                 <tr key={`${entry.recordType}-${entry.id}`}>
                   <td>{entry.postingDate}</td><td>{entry.recordType}</td><td>{entry.category}</td>
                   <td>{entry.stageId ? (stageById.get(entry.stageId)?.name ?? entry.stageId) : 'Project level'}</td>
-                  <td><code>{entry.sourceKey}</code></td><td>{project.currency} {entry.amount}</td><td>{entry.status ?? 'POSTED'}</td>
+                  <td><code>{entry.sourceKey}</code><br /><small>{entry.sourceType} · {entry.sourceId}</small></td><td>{project.currency} {entry.amount}</td><td>{entry.status ?? 'POSTED'}</td>
                 </tr>
               ))}</tbody>
             </table>

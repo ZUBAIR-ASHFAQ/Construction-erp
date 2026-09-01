@@ -228,11 +228,14 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
         {Object.values(requisitionForm.formState.errors)[0]?.message && <p className="error-text">{String(Object.values(requisitionForm.formState.errors)[0]?.message)}</p>}
         {createRequisition.error && <p className="error-text">{mutationMessage(createRequisition.error)}</p>}
         <div className="table-wrap">
-          <table><thead><tr><th>No.</th><th>Required</th><th>Status</th><th>Lines</th><th>Action</th></tr></thead><tbody>
+          <table><thead><tr><th>No.</th><th>Required</th><th>Requested by</th><th>Status</th><th>Lines</th><th>Action</th></tr></thead><tbody>
             {(requisitions.data?.items ?? []).map((item) => (
-              <tr key={item.id}><td>{item.requestNo}</td><td>{item.requiredDate}</td><td>{item.status}</td><td>{item.items.length}</td><td>
-                {props.canApproveRequisition && item.status.toUpperCase() === 'DRAFT' && <button type="button" onClick={() => approveRequisition.mutate(item.id)}>Approve</button>}
-              </td></tr>
+              <tr key={item.id}>
+                <td>{item.requestNo}<br /><small>Project {item.projectId} · Stage {item.stageId ?? 'Project level'} · {item.notes ?? 'No notes'} · {item.id}</small></td>
+                <td>{item.requiredDate}</td><td>{item.requestedBy}</td><td>{item.status}</td>
+                <td><details><summary>{item.items.length} line(s)</summary>{item.items.map((line) => <div key={line.id}>{line.description} · {line.quantity} {line.unit} · Material {line.materialId ?? '—'} · Stage {line.stageId ?? 'Project level'} · Line {line.id} · Requisition {line.requisitionId}</div>)}</details></td>
+                <td>{props.canApproveRequisition && item.status.toUpperCase() === 'DRAFT' && <button type="button" onClick={() => approveRequisition.mutate(item.id)}>Approve</button>}</td>
+              </tr>
             ))}
           </tbody></table>
         </div>
@@ -243,7 +246,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
         {props.canCreatePurchaseOrder && approvedRequisitions.length > 0 && (
           <form className="form-grid" onSubmit={purchaseOrderForm.handleSubmit((values) => void handleCreatePurchaseOrder(values))}>
             <label>Approved requirement<select {...purchaseOrderForm.register('requisitionId')}><option value="">Select</option>{approvedRequisitions.map((item) => <option key={item.id} value={item.id}>{item.requestNo}</option>)}</select></label>
-            <label>Vendor<select {...purchaseOrderForm.register('vendorId')}><option value="">Select</option>{(vendors.data?.items ?? []).filter((item) => item.status.toUpperCase() === 'ACTIVE' && item.qualificationStatus !== 'PENDING').map((item) => <option key={item.id} value={item.id}>{item.displayName}</option>)}</select></label>
+            <label>Vendor<select {...purchaseOrderForm.register('vendorId')}><option value="">Select</option>{(vendors.data?.items ?? []).filter((item) => item.status.toUpperCase() === 'ACTIVE' && item.qualificationStatus !== 'PENDING').map((item) => <option key={item.id} value={item.id}>{item.displayName} · {item.legalName} · {item.code} · {item.qualificationStatus ?? 'Not qualified'}</option>)}</select></label>
             <label>Order date<input type="date" {...purchaseOrderForm.register('orderDate')} /></label>
             <label>Currency<input {...purchaseOrderForm.register('currency')} /></label>
             <label>Delivery address<input {...purchaseOrderForm.register('deliveryAddress')} /></label>
@@ -275,6 +278,12 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
           {!props.canReadInventory && <p className="muted"><code>inventory.read</code> is required for the Warehouse selector; raw Warehouse IDs are not accepted.</p>}
           {goodsReceiptForm.formState.errors.root?.message && <p className="error-text">{goodsReceiptForm.formState.errors.root.message}</p>}
           {createGoodsReceipt.error && <p className="error-text">{mutationMessage(createGoodsReceipt.error)}</p>}
+          {createGoodsReceipt.data && (
+            <div className="muted">
+              <strong>{createGoodsReceipt.data.receiptNo}</strong> · {createGoodsReceipt.data.status} · Received {new Date(createGoodsReceipt.data.receivedAt).toLocaleString()} by {createGoodsReceipt.data.receivedBy} · Project {createGoodsReceipt.data.projectId} · Vendor {createGoodsReceipt.data.vendorId} · Warehouse {createGoodsReceipt.data.warehouseId} · PO {createGoodsReceipt.data.purchaseOrderId} · Receipt {createGoodsReceipt.data.id}
+              {createGoodsReceipt.data.items.map((line) => <div key={line.id}>Item {line.id} · GR {line.goodsReceiptId} · PO line {line.poItemId} · Material {line.materialId} · Stage {line.stageId ?? 'Project level'} · Qty {line.quantity} · Accepted {line.acceptedQuantity} · Rejected {line.rejectedQuantity} · Batch {line.batchNo ?? '—'}</div>)}
+            </div>
+          )}
         </section>
       )}
     </div>
@@ -288,5 +297,11 @@ function PurchaseOrderRow({ item, canIssue, onIssue, onCancel }: PurchaseOrderRo
   const status = item.status.toUpperCase();
   const received = item.items.reduce((total, line) => total + decimalToScale4(line.receivedQuantity), 0n);
   const open = item.items.reduce((total, line) => total + decimalToScale4(openQuantity(line.quantity, line.receivedQuantity)), 0n);
-  return <tr><td>{item.poNo}</td><td>{item.status}</td><td>{item.totalAmount}</td><td>{scale4ToDecimal(received)}</td><td>{scale4ToDecimal(open)}</td><td>{canIssue && status === 'DRAFT' && <button type="button" onClick={onIssue}>Issue</button>} {canIssue && (status === 'DRAFT' || status === 'ISSUED') && received === 0n && <button type="button" onClick={onCancel}>Cancel</button>}</td></tr>;
+  return <tr>
+    <td>{item.poNo}<br /><small>Project {item.projectId} · Requisition {item.requisitionId ?? '—'} · Vendor {item.vendorId} · {item.orderDate} · {item.currency} · {item.id}</small><details><summary>{item.items.length} line(s)</summary>{item.items.map((line) => <div key={line.id}>{line.description} · {line.quantity} {line.unit} × {line.unitPrice} · Tax {line.taxRate} · Line total {line.lineTotal} · Received {line.receivedQuantity} · Material {line.materialId ?? '—'} · Stage {line.stageId ?? 'Project level'} · Requisition line {line.requisitionItemId ?? '—'} · PO line {line.id} · PO {line.purchaseOrderId}</div>)}</details></td>
+    <td>{item.status}<br /><small>{item.cancelReason ?? 'No cancellation reason'}</small></td>
+    <td>{item.totalAmount}<br /><small>Subtotal {item.subtotal} · Tax {item.taxAmount}</small></td>
+    <td>{scale4ToDecimal(received)}</td><td>{scale4ToDecimal(open)}</td>
+    <td><small>{item.deliveryAddress} · {item.terms}</small><br />{canIssue && status === 'DRAFT' && <button type="button" onClick={onIssue}>Issue</button>} {canIssue && (status === 'DRAFT' || status === 'ISSUED') && received === 0n && <button type="button" onClick={onCancel}>Cancel</button>}</td>
+  </tr>;
 }

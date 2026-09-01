@@ -89,3 +89,95 @@ test('B2 uses one forward migration and preserves historical migrations', async 
   assert.match(migration, /'audit\.read'/);
   assert.match(migration, /'audit\.export'/);
 });
+
+test('R5 renders the Document and Audit fields already returned by Module 21 APIs', async () => {
+  const [api, browser, details, page] = await Promise.all([
+    read('apps/web/src/features/documents-audit/api/documents-api.ts'),
+    read('apps/web/src/features/documents-audit/components/document-browser.tsx'),
+    read('apps/web/src/features/documents-audit/components/document-details-panel.tsx'),
+    read('apps/web/src/features/documents-audit/pages/documents-page.tsx')
+  ]);
+
+  assert.match(api, /versionId: string \| null;/);
+  for (const field of [
+    'document.id',
+    'document.mimeType',
+    'document.sizeBytes',
+    'document.createdBy',
+    'document.currentVersion.id',
+    'document.currentVersion.originalName',
+    'document.currentVersion.revisionCode',
+    'document.currentVersion.createdAt',
+    'document.createdAt',
+    'document.updatedAt'
+  ]) assert.ok(browser.includes(field), `browser does not render ${field}`);
+
+  for (const field of [
+    'document.currentVersionId',
+    'document.capabilities.canVersion',
+    'document.capabilities.canLink',
+    'version.id',
+    'version.checksum',
+    'version.createdBy',
+    'link.id',
+    'link.versionId',
+    'link.projectId',
+    'link.stageId',
+    'link.createdAt'
+  ]) assert.ok(details.includes(field), `details do not render ${field}`);
+
+  for (const field of [
+    'row.id',
+    'row.actor?.id',
+    'row.actorUserId',
+    'row.projectId',
+    'row.stageId',
+    'row.before',
+    'row.after',
+    'row.requestId'
+  ]) assert.ok(page.includes(field), `audit browser does not render ${field}`);
+});
+
+test('R5 keeps every existing Document POST form value on the API-to-database persistence path', async () => {
+  const [browser, details, api, schema, routes, service, repository] = await Promise.all([
+    read('apps/web/src/features/documents-audit/components/document-browser.tsx'),
+    read('apps/web/src/features/documents-audit/components/document-details-panel.tsx'),
+    read('apps/web/src/features/documents-audit/api/documents-api.ts'),
+    read(`${apiFolder}/documents-audit.schema.ts`),
+    read(`${apiFolder}/documents-audit.routes.ts`),
+    read(`${apiFolder}/documents-audit.service.ts`),
+    read(`${apiFolder}/documents-audit.repository.ts`)
+  ]);
+
+  for (const field of ['projectId', 'title', 'category', 'documentNo']) {
+    assert.match(browser, new RegExp(`uploadForm\\.register\\('${field}'\\)`));
+    assert.match(api, new RegExp(`${field}: input\\.${field}|${field}: values\\.${field}`));
+    assert.match(schema, new RegExp(`${field}:`));
+    assert.match(service, new RegExp(`${field}: input\\.${field}|${field}: intent\\.${field}`));
+    assert.match(repository, new RegExp(`${field}: input\\.${field}`));
+  }
+
+  for (const field of ['originalName', 'mimeType', 'sizeBytes', 'checksum']) {
+    assert.match(api, new RegExp(`${field}:`));
+    assert.match(schema, new RegExp(`${field}:`));
+    assert.match(service, new RegExp(`${field}: input\\.${field}|${field}: intent\\.${field}`));
+    assert.match(repository, new RegExp(`${field}: input\\.${field}`));
+  }
+
+  assert.match(details, /versionForm\.register\('revisionCode'\)/);
+  assert.match(api, /revisionCode: input\.revisionCode/);
+  assert.match(schema, /revisionCode: revisionCodeSchema/);
+  assert.match(service, /revisionCode: input\.revisionCode/);
+  assert.match(repository, /revisionCode: input\.revisionCode \?\? null/);
+
+  for (const field of ['versionId', 'resourceType', 'resourceId']) assert.match(schema, new RegExp(`${field}:`));
+  assert.match(routes, /versionId: body\.versionId/);
+  assert.match(routes, /linkedResourceType: body\.resourceType/);
+  assert.match(routes, /linkedResourceId: body\.resourceId/);
+  assert.match(service, /versionId: versionId \?\? null/);
+  assert.match(service, /linkedResourceType: resourceType/);
+  assert.match(service, /linkedResourceId: resource\.id/);
+  assert.match(repository, /versionId: input\.versionId/);
+  assert.match(repository, /linkedResourceType: input\.linkedResourceType/);
+  assert.match(repository, /linkedResourceId: input\.linkedResourceId/);
+});

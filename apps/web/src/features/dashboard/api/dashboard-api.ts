@@ -48,6 +48,8 @@ export type DashboardAlertsQuery = DashboardDateFilters & Readonly<{
 
 export type DashboardPreferenceFilters = DashboardDateFilters & Readonly<{
   projectId?: string;
+  search?: string;
+  status?: string;
 }>;
 
 export type UpdateDashboardPreferencesInput = Readonly<{

@@ -51,12 +51,14 @@ export function DepartmentsPage() {
         {departmentsQuery.data && (
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Status</th></tr></thead>
+              <thead><tr><th>Name</th><th>Status</th><th>Created</th><th>Updated</th></tr></thead>
               <tbody>
                 {departmentsQuery.data.items.map((department) => (
                   <tr key={department.id}>
                     <td>{department.name}</td>
                     <td>{department.status}</td>
+                    <td>{new Date(department.createdAt).toLocaleString()}</td>
+                    <td>{new Date(department.updatedAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

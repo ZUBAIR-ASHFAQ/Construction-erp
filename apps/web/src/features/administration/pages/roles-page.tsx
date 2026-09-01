@@ -99,7 +99,10 @@ export function RolesPage() {
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td><strong>{role.name}</strong><span>{role.code}</span></td>
+                    <td>
+                      <strong>{role.name}</strong><span>{role.code}</span>
+                      <small className="muted">Company {role.companyId} · Created {new Date(role.createdAt).toLocaleString()} · Updated {new Date(role.updatedAt).toLocaleString()}</small>
+                    </td>
                     <td>{role.isSystem ? 'System' : 'Company'}</td>
                     <td>{role.permissionCodes.length}</td>
                     <td><button type="button" className="link-button" onClick={() => selectRole(role.id)}>View permissions</button></td>

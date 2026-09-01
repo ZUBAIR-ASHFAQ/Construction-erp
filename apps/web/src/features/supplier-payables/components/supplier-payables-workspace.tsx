@@ -365,11 +365,11 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           {invoiceDetailQuery.data && (
             <section className="admin-card">
               <h2>Invoice {invoiceDetailQuery.data.invoiceNo}</h2>
-              <p><strong>Status:</strong> {invoiceDetailQuery.data.status} · <strong>Total:</strong> {displayMoney(invoiceDetailQuery.data.totalAmount)} · <strong>Tax:</strong> {displayMoney(invoiceDetailQuery.data.taxAmount)}</p>
-              <p className="muted">PO: {invoiceDetailQuery.data.purchaseOrderId ?? 'None'} · Goods Receipt: {invoiceDetailQuery.data.goodsReceiptId ?? 'None'}</p>
+              <p><strong>Status:</strong> {invoiceDetailQuery.data.status} · <strong>Subtotal:</strong> {displayMoney(invoiceDetailQuery.data.subtotal)} · <strong>Tax:</strong> {displayMoney(invoiceDetailQuery.data.taxAmount)} · <strong>Total:</strong> {displayMoney(invoiceDetailQuery.data.totalAmount)}</p>
+              <p className="muted">Vendor {invoiceDetailQuery.data.vendorId} · Project {invoiceDetailQuery.data.projectId} · Invoice date {invoiceDetailQuery.data.invoiceDate} · Due {invoiceDetailQuery.data.dueDate ?? '—'} · PO {invoiceDetailQuery.data.purchaseOrderId ?? 'None'} · Goods Receipt {invoiceDetailQuery.data.goodsReceiptId ?? 'None'} · Record {invoiceDetailQuery.data.id}</p>
               <div className="table-wrap">
                 <table><thead><tr><th>Description</th><th>Stage</th><th>Account</th><th>Amount</th></tr></thead><tbody>
-                  {invoiceDetailQuery.data.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{line.stageId ?? 'Project'}</td><td>{line.expenseOrInventoryAccountId ?? 'Not set'}</td><td>{displayMoney(line.amount)}</td></tr>)}
+                  {invoiceDetailQuery.data.lines.map((line) => <tr key={line.id}><td>{line.description}<br /><small>Line {line.id} · Invoice {line.supplierInvoiceId}</small></td><td>{line.stageId ?? 'Project'}</td><td>{line.expenseOrInventoryAccountId ?? 'Not set'}</td><td>{displayMoney(line.amount)}</td></tr>)}
                 </tbody></table>
               </div>
               {props.canPostInvoice && invoiceDetailQuery.data.status === 'DRAFT' && (
@@ -405,7 +405,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           <section className="admin-card">
             <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option></select></label></div>
             <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Amount</th><th>Reference</th><th>Action</th></tr></thead><tbody>
-              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}</td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => setSelectedPayment(payment)}>Allocate</button> : '—'}</td></tr>)}
+              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Vendor {payment.vendorId} · Project {payment.projectId ?? 'Company'} · Cash/Bank {payment.cashBankAccountId} · {payment.id}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => setSelectedPayment(payment)}>Allocate</button> : '—'}</td></tr>)}
               {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={6} className="muted">No Supplier Payments match the current filters.</td></tr>}
             </tbody></table></div>
           </section>
@@ -425,6 +425,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                 <button type="submit" disabled={allocatePayment.isPending}>{allocatePayment.isPending ? 'Allocating…' : 'Allocate payment'}</button>
               </form>
               {mutationMessage(allocatePayment.error) && <p className="field-error">{mutationMessage(allocatePayment.error)}</p>}
+              {allocatePayment.data?.map((allocation) => <p className="muted" key={allocation.id}>Allocation {allocation.id} · Payment {allocation.supplierPaymentId} · Invoice {allocation.supplierInvoiceId} · Amount {displayMoney(allocation.amount)} · Allocated {new Date(allocation.allocatedAt).toLocaleString()}</p>)}
             </section>
           )}
         </>
@@ -435,7 +436,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           <div className="section-heading compact-heading"><h2>Supplier Outstanding &amp; Aging</h2><label>As of date<input type="date" value={agingAsOfDate} onChange={(event) => setAgingAsOfDate(event.target.value)} /></label></div>
           <p className="muted">Outstanding is derived from POSTED Supplier Invoices minus immutable POSTED-payment allocations. As of: {agingQuery.data?.asOfDate ?? 'current date'}.</p>
           <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Invoice date</th><th>Due</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Age days</th></tr></thead><tbody>
-            {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}</td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td></tr>)}
+            {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}<br /><small>Invoice {row.supplierInvoiceId} · Vendor {row.vendorId} · Project {row.projectId}</small></td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td></tr>)}
             {(agingQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={7} className="muted">No outstanding Supplier Invoices match the current filters.</td></tr>}
           </tbody></table></div>
         </section>

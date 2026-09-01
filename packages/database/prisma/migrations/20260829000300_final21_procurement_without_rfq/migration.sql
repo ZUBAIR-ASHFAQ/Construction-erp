@@ -81,11 +81,9 @@ INSERT INTO "permissions" ("id", "code", "name", "domain") VALUES
   (gen_random_uuid(), 'goods_receipts.create', 'Create Goods Receipts', 'procurement')
 ON CONFLICT ("code") DO UPDATE SET "name" = EXCLUDED."name", "domain" = EXCLUDED."domain";
 
-INSERT INTO "role_permissions" ("role_id", "permission_id")
-SELECT DISTINCT rp."role_id", final_permission."id"
+INSERT INTO "role_permissions" ("role_id", "permission_code")
+SELECT DISTINCT rp."role_id", mapping."final_code"
 FROM "role_permissions" rp
-JOIN "permissions" legacy_permission
-  ON legacy_permission."id" = rp."permission_id"
 JOIN (VALUES
   ('procurement.pr.read', 'procurement.read'),
   ('purchase_orders.read', 'procurement.read'),
@@ -97,8 +95,5 @@ JOIN (VALUES
   ('purchase_orders.direct_purchase', 'purchase_orders.create'),
   ('purchase_orders.submit', 'purchase_orders.issue'),
   ('inventory.receive', 'goods_receipts.create')
-) AS mapping("legacy_code", "final_code")
-  ON mapping."legacy_code" = legacy_permission."code"
-JOIN "permissions" final_permission
-  ON final_permission."code" = mapping."final_code"
+) AS mapping("legacy_code", "final_code") ON mapping."legacy_code" = rp."permission_code"
 ON CONFLICT DO NOTHING;

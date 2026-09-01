@@ -81,6 +81,9 @@ export function OrganizationProfilePage({ canEdit }: OrganizationProfilePageProp
             <div className="summary-grid">
               <div><span>Status</span><strong>{profile.status}</strong></div>
               <div><span>Base currency</span><strong>{profile.baseCurrency}</strong></div>
+              <div><span>Fiscal settings</span><strong>{JSON.stringify(profile.fiscalSettings)}</strong></div>
+              <div><span>Created</span><strong>{new Date(profile.createdAt).toLocaleString()}</strong></div>
+              <div><span>Updated</span><strong>{new Date(profile.updatedAt).toLocaleString()}</strong></div>
             </div>
             <p className="muted">Status, base currency and fiscal settings are read-only here because they affect Foundation and Finance behavior.</p>
           </section>

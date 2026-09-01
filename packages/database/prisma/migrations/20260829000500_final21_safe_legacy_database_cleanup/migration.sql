@@ -153,10 +153,8 @@ DROP FUNCTION IF EXISTS "prevent_submittal_review_mutation"();
 DROP FUNCTION IF EXISTS "prevent_rfi_response_mutation"();
 
 -- Remove obsolete permission grants after all A2-A10 role mappings have been applied.
-DELETE FROM "role_permissions" role_permission
-USING "permissions" permission
-WHERE permission."id" = role_permission."permission_id"
-  AND permission."code" IN (
+DELETE FROM "role_permissions"
+WHERE "permission_code" IN (
   'approvals.inbox.read', 'approvals.act', 'approval_definitions.read', 'approval_definitions.manage', 'approval_delegations.manage',
   'opportunities.read', 'opportunities.manage',
   'procurement.pr.read', 'procurement.pr.create', 'procurement.rfq.manage', 'procurement.quotation.record', 'procurement.quotation.select',

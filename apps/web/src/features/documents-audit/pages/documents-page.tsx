@@ -25,6 +25,11 @@ const auditFilterSchema = z.object({
 
 type AuditFilterValues = z.infer<typeof auditFilterSchema>;
 
+/** Format one audit JSON snapshot for compact browser display. */
+function formatAuditValue(value: unknown): string {
+  return value === null || value === undefined ? '—' : JSON.stringify(value);
+}
+
 /** Render the permission-aware final Module 21 Documents & Audit workspace. */
 export function DocumentsPage() {
   const canOpenWorkspace = useDocumentWorkspaceVisibility();
@@ -156,15 +161,27 @@ function AuditLogPanel() {
       {auditQuery.data && auditQuery.data.items.length > 0 && (
         <div className="table-wrap">
           <table className="admin-table">
-            <thead><tr><th>Time</th><th>Actor</th><th>Action</th><th>Resource</th><th>Project / Stage</th><th>Request</th></tr></thead>
+            <thead><tr><th>Time / ID</th><th>Actor</th><th>Action</th><th>Resource</th><th>Project / Stage</th><th>Before</th><th>After</th><th>Request</th></tr></thead>
             <tbody>
               {auditQuery.data.items.map((row) => (
                 <tr key={row.id}>
-                  <td>{new Date(row.createdAt).toLocaleString()}</td>
-                  <td>{row.actor?.name ?? row.actorUserId ?? 'System'}<span>{row.actor?.email ?? ''}</span></td>
+                  <td>{new Date(row.createdAt).toLocaleString()}<span>{row.id}</span></td>
+                  <td>
+                    {row.actor?.name ?? row.actorUserId ?? 'System'}
+                    <span>{row.actor?.email ?? ''}</span>
+                    <span>Actor ID: {row.actor?.id ?? '—'}</span>
+                    <span>Actor user ID: {row.actorUserId ?? '—'}</span>
+                  </td>
                   <td>{row.action}</td>
                   <td>{row.resourceType}<span>{row.resourceId}</span></td>
-                  <td>{row.projectId ? (projectLabels.get(row.projectId) ?? 'Project') : 'Company-wide'}<span>{row.stageId ? (stageLabels.get(row.stageId) ?? 'Stage') : ''}</span></td>
+                  <td>
+                    {row.projectId ? (projectLabels.get(row.projectId) ?? 'Project') : 'Company-wide'}
+                    <span>{row.projectId ?? ''}</span>
+                    <span>{row.stageId ? (stageLabels.get(row.stageId) ?? 'Stage') : ''}</span>
+                    <span>{row.stageId ?? ''}</span>
+                  </td>
+                  <td>{formatAuditValue(row.before)}</td>
+                  <td>{formatAuditValue(row.after)}</td>
                   <td>{row.requestId}</td>
                 </tr>
               ))}
@@ -173,9 +190,13 @@ function AuditLogPanel() {
         </div>
       )}
 
+      {auditQuery.data && (
+        <p className="muted">{auditQuery.data.total} audit record(s) · {auditQuery.data.pageSize} per page</p>
+      )}
+
       <div className="pagination-row">
         <button type="button" className="secondary-button" disabled={page <= 1} onClick={() => changePage(page - 1)}>Previous</button>
-        <span>Page {page} of {pageCount}</span>
+        <span>Page {auditQuery.data?.page ?? page} of {pageCount}</span>
         <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => changePage(page + 1)}>Next</button>
       </div>
     </section>

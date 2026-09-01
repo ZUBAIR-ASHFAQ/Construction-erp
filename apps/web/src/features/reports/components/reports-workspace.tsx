@@ -322,7 +322,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             {selectedReport && (
               <div className="reports-catalog-note">
                 <strong>{selectedReport.name}</strong>
-                <span>{selectedReport.domain} · Export: {selectedReport.outputFormats.join(', ')}</span>
+                <span>{selectedReport.domain} · {selectedReport.status} · Export: {selectedReport.outputFormats.join(', ')} · Permissions: {selectedReport.requiredPermissions.join(', ') || 'None'}</span>
               </div>
             )}
           </div>
@@ -418,7 +418,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
           {savedFiltersQuery.data && savedFiltersQuery.data.items.length > 0 && (
             <div className="reports-saved-list">
               {savedFiltersQuery.data.items.map((saved) => (
-                <button key={saved.id} type="button" className="secondary-button" onClick={() => handleApplySavedFilter(saved)}>{saved.name}</button>
+                <button key={saved.id} type="button" className="secondary-button" onClick={() => handleApplySavedFilter(saved)}>{saved.name}<span className="muted"> · {new Date(saved.createdAt).toLocaleString()} · {saved.id}</span></button>
               ))}
             </div>
           )}
@@ -433,8 +433,10 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
           {errorMessage(runQuery.error) && <div className="form-error" role="alert">{errorMessage(runQuery.error)}</div>}
           {runQuery.data && (
             <div className="reports-export-status">
-              <div><strong>{runQuery.data.reportCode}</strong><span>{runQuery.data.outputFormat}</span></div>
-              <div><strong>{runQuery.data.status}</strong><span>{runQuery.data.errorCode ?? 'No error'}</span></div>
+              <div><strong>{runQuery.data.reportCode}</strong><span>{runQuery.data.outputFormat} · Run {runQuery.data.id}</span></div>
+              <div><strong>{runQuery.data.status}</strong><span>{runQuery.data.errorCode ?? 'No error'} · File {runQuery.data.fileId ?? '—'}</span></div>
+              <div><strong>Started</strong><span>{runQuery.data.startedAt ? new Date(runQuery.data.startedAt).toLocaleString() : '—'}</span></div>
+              <div><strong>Finished</strong><span>{runQuery.data.finishedAt ? new Date(runQuery.data.finishedAt).toLocaleString() : '—'}</span></div>
               {runQuery.data.status === 'COMPLETED' && (
                 <button type="button" onClick={handleDownload} disabled={downloadMutation.isPending}>{downloadMutation.isPending ? 'Authorizing…' : 'Download export'}</button>
               )}

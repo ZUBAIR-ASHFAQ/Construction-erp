@@ -260,7 +260,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
       )}
 
       <section className="admin-card">
-        <div className="section-heading compact-heading"><h2>Client Receipt register</h2></div>
+        <div className="section-heading compact-heading"><h2>Client Receipt register</h2><span className="muted">Total {receiptQuery.data?.total ?? 0}</span></div>
         <p className="muted">Filter the same register to review Client or Project payment history. Received, allocated and advance balances below come directly from Module 16.</p>
         <div className="two-column-form">
           {props.canReadClients && <label>Client filter<select value={clientFilter} onChange={(event) => { setClientFilter(event.target.value); setProjectFilter(''); }}><option value="">All clients</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}</select></label>}
@@ -302,10 +302,11 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
             <div><strong>Advance / unallocated</strong><span>{displayMoney(receiptDetailQuery.data.unallocatedAmount)}</span></div>
             <div><strong>Stage</strong><span>{stageLabel(receiptDetailQuery.data.stageId)}</span></div>
           </div>
+          <p className="muted">Cash/Bank account {receiptDetailQuery.data.cashBankAccountId} · Created by {receiptDetailQuery.data.createdBy} · Created {new Date(receiptDetailQuery.data.createdAt).toLocaleString()} · Posted {receiptDetailQuery.data.postedAt ? new Date(receiptDetailQuery.data.postedAt).toLocaleString() : '—'}</p>
           <p className="muted">Outstanding remains an Invoice-level server calculation: billed minus allocated receipts. This screen does not treat cash received as profit.</p>
-          <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Allocated</th><th>Allocated at</th><th>Action</th></tr></thead><tbody>
-            {receiptDetailQuery.data.allocations.map((allocation) => <tr key={allocation.id}><td>{invoiceLabel(allocation.clientInvoiceId)}</td><td>{displayMoney(allocation.amount)}</td><td>{new Date(allocation.allocatedAt).toLocaleString()}</td><td>{props.canAllocate && receiptDetailQuery.data?.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={unallocateReceipt.isPending} onClick={() => void reverseAllocation(allocation.id)}>Unallocate</button> : '—'}</td></tr>)}
-            {receiptDetailQuery.data.allocations.length === 0 && <tr><td colSpan={4} className="muted">No active Invoice allocations.</td></tr>}
+          <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Allocated</th><th>Allocated at</th><th>Allocated by</th><th>Action</th></tr></thead><tbody>
+            {receiptDetailQuery.data.allocations.map((allocation) => <tr key={allocation.id}><td>{invoiceLabel(allocation.clientInvoiceId)}</td><td>{displayMoney(allocation.amount)}</td><td>{new Date(allocation.allocatedAt).toLocaleString()}</td><td>{allocation.allocatedBy}</td><td>{props.canAllocate && receiptDetailQuery.data?.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={unallocateReceipt.isPending} onClick={() => void reverseAllocation(allocation.id)}>Unallocate</button> : '—'}</td></tr>)}
+            {receiptDetailQuery.data.allocations.length === 0 && <tr><td colSpan={5} className="muted">No active Invoice allocations.</td></tr>}
           </tbody></table></div>
           {mutationMessage(unallocateReceipt.error) && <p className="field-error">{mutationMessage(unallocateReceipt.error)}</p>}
           {mutationMessage(reverseReceipt.error) && <p className="field-error">{mutationMessage(reverseReceipt.error)}</p>}

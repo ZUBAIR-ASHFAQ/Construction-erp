@@ -135,11 +135,7 @@ ALTER TABLE "cost_actuals" DROP COLUMN "cost_structure_id";
 CREATE UNIQUE INDEX "cost_actuals_company_source_key_uq" ON "cost_actuals"("company_id", "source_key");
 CREATE INDEX "cost_actuals_project_stage_category_date_idx" ON "cost_actuals"("project_id", "stage_id", "category", "posting_date");
 
--- Client Billing may no longer depend on BOQ. Remove the legacy BOQ validation trigger before dropping boq_item_id.
-DROP TRIGGER IF EXISTS "progress_claim_lines_scope_integrity" ON "progress_claim_lines";
-DROP FUNCTION IF EXISTS "module_16_validate_progress_claim_line_scope"();
-
--- Stage linkage is nullable until Project Stages owns the FK.
+-- Client Billing may no longer depend on BOQ. Stage linkage is nullable until Project Stages owns the FK.
 ALTER TABLE "progress_claim_lines" ADD COLUMN "stage_id" UUID;
 DROP INDEX IF EXISTS "progress_claim_lines_boq_item_idx";
 ALTER TABLE "progress_claim_lines" DROP CONSTRAINT IF EXISTS "progress_claim_lines_boq_item_fkey";

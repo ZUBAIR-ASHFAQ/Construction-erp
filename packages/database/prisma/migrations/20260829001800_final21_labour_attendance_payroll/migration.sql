@@ -162,19 +162,6 @@ ALTER TABLE "payslip_items" RENAME TO "payslip_items_legacy_b14";
 ALTER TABLE "payroll_calculation_exceptions" RENAME TO "payroll_calculation_exceptions_legacy_b14";
 ALTER TABLE "payroll_source_consumptions" RENAME TO "payroll_source_consumptions_legacy_b14";
 
--- Free legacy index names before creating the Final-21 payroll tables.
-ALTER TABLE "payroll_runs_legacy_b14"
-  RENAME CONSTRAINT "payroll_runs_pkey" TO "payroll_runs_legacy_b14_pkey";
-
-ALTER INDEX "payroll_runs_company_period_idx"
-  RENAME TO "payroll_runs_legacy_b14_company_period_idx";
-
-ALTER INDEX "payroll_runs_company_status_period_idx"
-  RENAME TO "payroll_runs_legacy_b14_company_status_period_idx";
-
-ALTER TABLE "payslips_legacy_b14"
-  RENAME CONSTRAINT "payslips_pkey" TO "payslips_legacy_b14_pkey";
-
 CREATE TABLE "payroll_runs" (
   "id" UUID NOT NULL DEFAULT gen_random_uuid(),
   "company_id" UUID NOT NULL,

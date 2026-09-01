@@ -171,6 +171,8 @@ function ClientDetailsContent(props: Readonly<{
         <div><dt>Tax number</dt><dd>{client.taxNo ?? '—'}</dd></div>
         <div><dt>Credit terms</dt><dd>{client.creditTermsDays === null ? '—' : `${client.creditTermsDays} days`}</dd></div>
         <div className="client-detail-wide"><dt>Billing address</dt><dd>{client.billingAddress}</dd></div>
+        <div><dt>Created</dt><dd>{new Date(client.createdAt).toLocaleString()}</dd></div>
+        <div><dt>Updated</dt><dd>{new Date(client.updatedAt).toLocaleString()}</dd></div>
       </dl>
 
       <div className="document-section">
@@ -226,7 +228,7 @@ function ClientDetailsContent(props: Readonly<{
         ) : (
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Contact</th><th>Communication</th><th>Primary</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Contact</th><th>Communication</th><th>Primary</th><th>Status</th><th>Created / Updated</th><th>Action</th></tr></thead>
               <tbody>
                 {props.details.contacts.map((contact) => (
                   <tr key={contact.id}>
@@ -234,6 +236,7 @@ function ClientDetailsContent(props: Readonly<{
                     <td>{contact.email ?? '—'}<span>{contact.phone ?? '—'}</span></td>
                     <td>{contact.isPrimary ? 'Yes' : 'No'}</td>
                     <td>{contact.status}</td>
+                    <td>{new Date(contact.createdAt).toLocaleString()}<span>{new Date(contact.updatedAt).toLocaleString()}</span></td>
                     <td>{props.canUpdate ? <ContactEditForm clientId={client.id} contact={contact} /> : '—'}</td>
                   </tr>
                 ))}

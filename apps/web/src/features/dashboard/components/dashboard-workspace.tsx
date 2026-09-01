@@ -74,6 +74,8 @@ function projectOption(project: DashboardProject): ProjectOption {
 function preferenceFilters(values: DashboardFilterValues): DashboardPreferenceFilters {
   return {
     ...(values.projectId ? { projectId: values.projectId } : {}),
+    ...(values.search ? { search: values.search } : {}),
+    ...(values.status ? { status: values.status } : {}),
     ...(values.fromDate ? { fromDate: values.fromDate } : {}),
     ...(values.toDate ? { toDate: values.toDate } : {}),
     ...(values.asOfDate ? { asOfDate: values.asOfDate } : {})
@@ -86,6 +88,8 @@ function valuesFromPreference(preference: DashboardPreference): DashboardFilterV
   return {
     ...EMPTY_FILTERS,
     projectId: preference.defaultProjectId ?? filters.projectId ?? '',
+    search: filters.search ?? '',
+    status: filters.status ?? '',
     fromDate: filters.fromDate ?? '',
     toDate: filters.toDate ?? '',
     asOfDate: filters.asOfDate ?? EMPTY_FILTERS.asOfDate
@@ -99,6 +103,8 @@ function valuesFromSavedFilter(saved: DashboardSavedFilter): DashboardFilterValu
   const candidate = {
     ...EMPTY_FILTERS,
     projectId: typeof stored.projectId === 'string' ? stored.projectId : '',
+    search: typeof stored.search === 'string' ? stored.search : '',
+    status: typeof stored.status === 'string' ? stored.status : '',
     fromDate: typeof stored.fromDate === 'string' ? stored.fromDate : '',
     toDate: typeof stored.toDate === 'string' ? stored.toDate : '',
     asOfDate: typeof stored.asOfDate === 'string' ? stored.asOfDate : EMPTY_FILTERS.asOfDate
@@ -160,6 +166,7 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
   }, [projectQuery.data, projectsQuery.data?.items]);
   const projectPageCount = projectsQuery.data ? Math.max(1, Math.ceil(projectsQuery.data.total / projectsQuery.data.pageSize)) : 1;
   const alertPageCount = alertsQuery.data ? Math.max(1, Math.ceil(alertsQuery.data.projectTotal / alertsQuery.data.pageSize)) : 1;
+  const cashBank = projectQuery.data?.cashBank ?? summaryQuery.data?.cashBank ?? null;
 
   useEffect(() => {
     if (preferencesApplied || !summaryQuery.data?.preference) return;
@@ -184,12 +191,14 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
     setAlertPage(1);
   }
 
-  /** Save the current Project/date view as the authenticated user's default Dashboard preference. */
+  /** Save the current validated Dashboard view as the authenticated user's default preference. */
   function handleSavePreferences(): void {
-    preferencesMutation.mutate({
-      defaultProjectId: selectedProjectId,
-      defaultFilters: preferenceFilters(appliedFilters)
-    });
+    void form.handleSubmit((values) => {
+      preferencesMutation.mutate({
+        defaultProjectId: values.projectId || null,
+        defaultFilters: preferenceFilters(values)
+      });
+    })();
   }
 
   /** Apply one valid server-returned saved filter without accepting arbitrary browser expressions. */
@@ -281,13 +290,15 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
             {props.canReadFinance && summaryQuery.data.executiveSummary.financialsByCurrency && (
               <div className="table-wrap dashboard-section-space">
                 <table className="admin-table dashboard-table">
-                  <thead><tr><th>Currency</th><th>Projects</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Outstanding</th><th>Supplier payable</th><th>Profit / loss</th></tr></thead>
+                  <thead><tr><th>Currency</th><th>Projects</th><th>Recognized revenue</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated</th><th>Advance / unallocated</th><th>Outstanding</th><th>Supplier payable</th><th>Profit / loss</th></tr></thead>
                   <tbody>
                     {summaryQuery.data.executiveSummary.financialsByCurrency.map((item) => (
                       <tr key={item.currency}>
                         <td>{item.currency}</td><td>{item.projectCount}</td>
-                        <td>{displayMoney(item.actualCost, item.currency)}</td><td>{displayMoney(item.billedAmount, item.currency)}</td>
-                        <td>{displayMoney(item.receivedAmount, item.currency)}</td><td>{displayMoney(item.outstandingAmount, item.currency)}</td>
+                        <td>{displayMoney(item.recognizedRevenue, item.currency)}</td><td>{displayMoney(item.actualCost, item.currency)}</td>
+                        <td>{displayMoney(item.billedAmount, item.currency)}</td><td>{displayMoney(item.receivedAmount, item.currency)}</td>
+                        <td>{displayMoney(item.allocatedAmount, item.currency)}</td><td>{displayMoney(item.advanceAmount, item.currency)}</td>
+                        <td>{displayMoney(item.outstandingAmount, item.currency)}</td>
                         <td>{displayMoney(item.supplierPayableAmount, item.currency)}</td><td>{displayMoney(item.profitAmount, item.currency)}</td>
                       </tr>
                     ))}
@@ -295,8 +306,10 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
                 </table>
               </div>
             )}
-            {summaryQuery.data.executiveSummary.financialCoverage && !summaryQuery.data.executiveSummary.financialCoverage.complete && (
-              <p className="muted">Financial summary covers {summaryQuery.data.executiveSummary.financialCoverage.includedProjects} of {summaryQuery.data.executiveSummary.financialCoverage.totalProjects} Projects for this bounded read.</p>
+            {summaryQuery.data.executiveSummary.financialCoverage && (
+              <p className="muted">
+                Financial summary covers {summaryQuery.data.executiveSummary.financialCoverage.includedProjects} of {summaryQuery.data.executiveSummary.financialCoverage.totalProjects} Projects as of {summaryQuery.data.executiveSummary.financialCoverage.asOfDate}. Coverage is {summaryQuery.data.executiveSummary.financialCoverage.complete ? 'complete' : 'partial'}.
+              </p>
             )}
             <p className="dashboard-cash-note"><strong>Cash received is not profit.</strong> Dashboard displays received cash, outstanding, advances, costs and profit as separate source-derived measures.</p>
           </>
@@ -312,12 +325,13 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
             <>
               <div className="table-wrap">
                 <table className="admin-table dashboard-table">
-                  <thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Physical progress</th><th>Stages</th><th>Baseline</th><th></th></tr></thead>
+                  <thead><tr><th>Project</th><th>Client</th><th>Status</th><th>Currency</th><th>Start</th><th>Planned end</th><th>Physical progress</th><th>Stages</th><th>Baseline</th><th></th></tr></thead>
                   <tbody>
                     {projectsQuery.data.items.map((project) => (
                       <tr key={project.id}>
-                        <td>{project.projectCode}<span>{project.name}</span></td>
-                        <td>{project.client.displayName}</td><td>{project.status}</td>
+                        <td>{project.projectCode}<span>{project.name}</span><span>{project.id}</span></td>
+                        <td>{project.client.displayName}<span>{project.clientId}</span></td><td>{project.status}</td><td>{project.currency}</td>
+                        <td>{project.startDate.slice(0, 10)}</td><td>{project.plannedEndDate.slice(0, 10)}</td>
                         <td>{project.overallPhysicalProgressPercent === null ? '—' : `${project.overallPhysicalProgressPercent}%`}</td>
                         <td>{project.stageCount ?? '—'}</td><td>{project.stageBaselineStatus ?? '—'}</td>
                         <td><button type="button" className="secondary-button" onClick={() => handleOpenProject(project.id)}>Open</button></td>
@@ -328,7 +342,7 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
               </div>
               <div className="pagination-row">
                 <button type="button" className="secondary-button" disabled={projectPage <= 1} onClick={() => setProjectPage((page) => Math.max(1, page - 1))}>Previous</button>
-                <span>Page {projectPage} of {projectPageCount} · {projectsQuery.data.total} Project(s)</span>
+                <span>Page {projectsQuery.data.page} of {projectPageCount} · {projectsQuery.data.total} Project(s) · {projectsQuery.data.pageSize} per page</span>
                 <button type="button" className="secondary-button" disabled={projectPage >= projectPageCount} onClick={() => setProjectPage((page) => page + 1)}>Next</button>
               </div>
             </>
@@ -344,18 +358,25 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
           {projectQuery.data && (
             <>
               <p><strong>{projectQuery.data.project.projectCode} · {projectQuery.data.project.name}</strong> <span className="muted">{projectQuery.data.project.client.displayName}</span></p>
+              <p className="muted">Project ID <code>{projectQuery.data.project.id}</code> · Client ID <code>{projectQuery.data.project.clientId}</code> · {projectQuery.data.project.status} · {projectQuery.data.project.currency} · {projectQuery.data.project.startDate.slice(0, 10)} to {projectQuery.data.project.plannedEndDate.slice(0, 10)}</p>
               <div className="dashboard-metric-grid">
                 <div className="dashboard-metric"><span>Overall physical progress</span><strong>{projectQuery.data.overallPhysicalProgressPercent ?? '—'}{projectQuery.data.overallPhysicalProgressPercent === null ? '' : '%'}</strong></div>
                 {props.canReadFinance && projectQuery.data.budgetVsActual && (
                   <>
                     <MoneyMetric label="Budget" value={projectQuery.data.budgetVsActual.budgetCost} currency={projectQuery.data.project.currency} />
+                    <MoneyMetric label="Committed cost" value={projectQuery.data.budgetVsActual.committedCost} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Actual cost" value={projectQuery.data.budgetVsActual.actualCost} currency={projectQuery.data.project.currency} />
+                    <MoneyMetric label="Forecast cost" value={projectQuery.data.budgetVsActual.forecastCost} currency={projectQuery.data.project.currency} />
+                    <MoneyMetric label="Budget variance" value={projectQuery.data.budgetVsActual.variance} currency={projectQuery.data.project.currency} />
                   </>
                 )}
                 {props.canReadFinance && projectQuery.data.financialPosition && (
                   <>
+                    <MoneyMetric label="Recognized revenue" value={projectQuery.data.financialPosition.recognizedRevenue} currency={projectQuery.data.project.currency} />
+                    <MoneyMetric label="Profitability actual cost" value={projectQuery.data.financialPosition.actualCost} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Billed" value={projectQuery.data.financialPosition.billedAmount} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Received" value={projectQuery.data.financialPosition.receivedAmount} currency={projectQuery.data.project.currency} />
+                    <MoneyMetric label="Allocated receipts" value={projectQuery.data.financialPosition.allocatedAmount} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Outstanding" value={projectQuery.data.financialPosition.outstandingAmount} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Advance / unallocated" value={projectQuery.data.financialPosition.advanceAmount} currency={projectQuery.data.project.currency} />
                     <MoneyMetric label="Supplier payable" value={projectQuery.data.financialPosition.supplierPayableAmount} currency={projectQuery.data.project.currency} />
@@ -371,14 +392,22 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
       {selectedProjectId && projectQuery.data?.stageProgress && (
         <section className="admin-card">
           <h2>Stage progress snapshot</h2>
+          <p className="muted">Project <code>{projectQuery.data.stageProgress.projectId}</code> · Overall physical progress {projectQuery.data.stageProgress.overallPhysicalProgressPercent}%</p>
+          {projectQuery.data.stageProgress.baseline && (
+            <p className="muted">
+              Baseline <code>{projectQuery.data.stageProgress.baseline.id}</code> · Project <code>{projectQuery.data.stageProgress.baseline.projectId}</code> · Version {projectQuery.data.stageProgress.baseline.versionNo} · {projectQuery.data.stageProgress.baseline.status} · Total weight {projectQuery.data.stageProgress.baseline.totalWeightPercent}% · Frozen {projectQuery.data.stageProgress.baseline.frozenAt ?? '—'} by {projectQuery.data.stageProgress.baseline.frozenBy ?? '—'}
+            </p>
+          )}
           <div className="table-wrap">
             <table className="admin-table dashboard-table">
-              <thead><tr><th>Stage</th><th>Weight</th><th>Physical</th><th>Planned</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Outstanding</th></tr></thead>
+              <thead><tr><th>Stage</th><th>Sequence</th><th>Status</th><th>Weight</th><th>Physical</th><th>Planned amount</th><th>Planned start</th><th>Planned end</th><th>Actual start</th><th>Actual end</th><th>Financial planned</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Outstanding</th></tr></thead>
               <tbody>
                 {projectQuery.data.stageProgress.items.map((stage) => (
                   <tr key={stage.id}>
-                    <td>{stage.code}<span>{stage.name}</span></td><td>{stage.weightPercent}%</td><td>{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
+                    <td>{stage.code}<span>{stage.name}</span><span>{stage.id} · Project {stage.projectId}</span></td><td>{stage.sequenceNo}</td><td>{stage.status}</td><td>{stage.weightPercent}%</td><td>{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
                     <td>{stage.plannedAmount === null ? '—' : displayMoney(stage.plannedAmount, projectQuery.data.project.currency)}</td>
+                    <td>{stage.plannedStartDate ?? '—'}</td><td>{stage.plannedEndDate ?? '—'}</td><td>{stage.actualStartDate ?? '—'}</td><td>{stage.actualEndDate ?? '—'}</td>
+                    <td>{stage.financials?.plannedAmount == null ? '—' : displayMoney(stage.financials.plannedAmount, projectQuery.data.project.currency)}</td>
                     <td>{stage.financials ? displayMoney(stage.financials.actualCost, projectQuery.data.project.currency) : '—'}</td>
                     <td>{stage.financials ? displayMoney(stage.financials.billedAmount, projectQuery.data.project.currency) : '—'}</td>
                     <td>{stage.financials ? displayMoney(stage.financials.receivedAmount, projectQuery.data.project.currency) : '—'}</td>
@@ -388,20 +417,40 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
               </tbody>
             </table>
           </div>
+          {projectQuery.data.stageProgress.items.some((stage) => (stage.progressUpdates?.length ?? 0) > 0) && (
+            <div className="table-wrap dashboard-section-space">
+              <table className="admin-table dashboard-table">
+                <thead><tr><th>Stage</th><th>Update</th><th>Progress</th><th>Progress date</th><th>Status</th><th>Note</th><th>Evidence</th><th>Entered by</th><th>Approved by</th><th>Approved at</th><th>Created at</th></tr></thead>
+                <tbody>
+                  {projectQuery.data.stageProgress.items.flatMap((stage) => (stage.progressUpdates ?? []).map((update) => (
+                    <tr key={update.id}>
+                      <td>{stage.code}<span>{update.stageId}</span></td><td>{update.id}</td><td>{update.progressPercent}%</td><td>{update.progressDate ?? '—'}</td><td>{update.status}</td>
+                      <td>{update.note ?? '—'}</td><td>{update.evidenceDocumentId ?? '—'}</td><td>{update.enteredBy}</td><td>{update.approvedBy ?? '—'}</td><td>{update.approvedAt ?? '—'}</td><td>{update.createdAt}</td>
+                    </tr>
+                  )))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
 
-      {props.canReadFinance && projectQuery.data?.cashBank && (
+      {props.canReadFinance && cashBank && (
         <section className="admin-card">
           <h2>Cash / Bank</h2>
-          <div className="dashboard-metric-grid">
-            {projectQuery.data.cashBank.items.map((account) => (
-              <div key={account.id} className="dashboard-metric">
-                <span>{account.code} · {account.name}</span>
-                <strong>{account.balance}</strong>
-              </div>
-            ))}
+          <div className="table-wrap">
+            <table className="admin-table dashboard-table">
+              <thead><tr><th>Account</th><th>Type</th><th>GL account</th><th>Bank</th><th>Reference</th><th>Status</th><th>Balance</th></tr></thead>
+              <tbody>
+                {cashBank.items.map((account) => (
+                  <tr key={account.id}>
+                    <td>{account.code}<span>{account.name}</span><span>{account.id}</span></td><td>{account.accountType}</td><td>{account.glAccountId}</td><td>{account.bankName ?? '—'}</td><td>{account.accountReference ?? '—'}</td><td>{account.status}</td><td>{account.balance}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+          <p className="muted">Page {cashBank.page} · {cashBank.pageSize} per page · {cashBank.total} account(s)</p>
         </section>
       )}
 
@@ -410,13 +459,14 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
           <h2>Alerts</h2>
           {alertsQuery.isPending && <p>Loading alerts…</p>}
           {errorMessage(alertsQuery.error) && <div className="form-error" role="alert">{errorMessage(alertsQuery.error)}</div>}
+          {alertsQuery.data && <p className="muted">{alertsQuery.data.alertCount} alert(s) as of {alertsQuery.data.asOfDate} · Page {alertsQuery.data.page} · {alertsQuery.data.pageSize} Project(s) per scan · {alertsQuery.data.scannedProjectCount} scanned of {alertsQuery.data.projectTotal}</p>}
           {alertsQuery.data && alertsQuery.data.items.length === 0 && <p className="muted">No source-module alerts matched the current filters.</p>}
           {alertsQuery.data && alertsQuery.data.items.length > 0 && (
             <div className="dashboard-alert-list">
               {alertsQuery.data.items.map((alert, index) => (
                 <article key={`${alert.code}-${alert.projectId}-${alert.stageId ?? 'project'}-${index}`} className="dashboard-alert-item">
-                  <div><strong>{alert.severity} · {alert.projectCode}</strong><span>{alert.title}</span></div>
-                  <span className="muted">{alert.dueDate ? `Due ${alert.dueDate}` : alert.value && alert.currency ? displayMoney(alert.value, alert.currency) : alert.sourceModule}</span>
+                  <div><strong>{alert.severity} · {alert.code} · {alert.projectCode}</strong><span>{alert.projectName} · {alert.title}</span></div>
+                  <span className="muted">Source {alert.sourceModule} · Project {alert.projectId}{alert.stageId ? ` · Stage ${alert.stageId}` : ''} · {alert.dueDate ? `Due ${alert.dueDate}` : 'No due date'} · {alert.value === null ? 'No value' : alert.currency ? displayMoney(alert.value, alert.currency) : `${alert.value}%`}</span>
                 </article>
               ))}
             </div>
@@ -434,12 +484,17 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
       <section className="admin-card">
         <h2>Saved filters & preferences</h2>
         <p className="muted">Saved filters are read from the existing Dashboard store. The API remains authoritative for Project scope and preference changes.</p>
+        {summaryQuery.data?.preference && (
+          <p className="muted">
+            Current preference updated {new Date(summaryQuery.data.preference.updatedAt).toLocaleString()} · Widgets {(summaryQuery.data.preference.widgetCodes ?? []).join(', ') || 'default'} · Default Project {summaryQuery.data.preference.defaultProjectId ?? 'none'} · Filters <code>{JSON.stringify(summaryQuery.data.preference.defaultFilters ?? {})}</code>
+          </p>
+        )}
         {summaryQuery.data?.savedFilters.length === 0 && <p className="muted">No saved Dashboard filters are available.</p>}
         {summaryQuery.data && summaryQuery.data.savedFilters.length > 0 && (
           <div className="dashboard-saved-list">
             {summaryQuery.data.savedFilters.map((saved) => {
               const values = valuesFromSavedFilter(saved);
-              return <button key={saved.id} type="button" className="secondary-button" disabled={!values} onClick={() => handleApplySavedFilter(saved)}>{saved.name}</button>;
+              return <button key={saved.id} type="button" className="secondary-button" disabled={!values} onClick={() => handleApplySavedFilter(saved)}>{saved.name} · {new Date(saved.createdAt).toLocaleString()} · {saved.id} · {JSON.stringify(saved.filterJson)}</button>;
             })}
           </div>
         )}

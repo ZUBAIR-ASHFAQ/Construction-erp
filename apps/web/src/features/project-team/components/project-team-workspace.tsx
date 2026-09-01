@@ -236,7 +236,12 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
                     <td>{assignment.stage ? `${assignment.stage.code} · ${assignment.stage.name}` : 'Project level'}</td>
                     <td>{assignment.fromDate} → {assignment.toDate ?? 'Open'}</td>
                     <td>{assignment.status}</td>
-                    <td>{assignment.history.length}</td>
+                    <td>
+                      <details>
+                        <summary>{assignment.history.length} event(s)</summary>
+                        {assignment.history.map((event) => <div key={event.id}>{event.action} · {event.changedAt} · by {event.changedBy} · {event.note ?? 'No note'} · {event.id}</div>)}
+                      </details>
+                    </td>
                     <td>
                       {props.canManage && assignment.status === 'ACTIVE' && (
                         <div className="button-row">

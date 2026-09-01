@@ -485,9 +485,12 @@ function SiteExpenseDetail(props: Readonly<{
         <div><span className="muted">Stage</span><code>{props.expense.stageId ?? 'Project-level'}</code></div>
         <div><span className="muted">Category</span><code>{props.expense.categoryId}</code></div>
         <div><span className="muted">Evidence</span><code>{props.expense.documentId ?? 'None'}</code></div>
+        <div><span className="muted">Cash / Bank account</span><code>{props.expense.cashBankAccountId ?? 'None'}</code></div>
+        <div><span className="muted">Created by</span><code>{props.expense.createdBy}</code></div>
+        <div><span className="muted">Record ID</span><code>{props.expense.id}</code></div>
       </div>
       <p>{props.expense.description}</p>
-      {props.expense.postedAt && <p className="muted">Posted at {props.expense.postedAt}</p>}
+      <p className="muted">Posted at {props.expense.postedAt ? new Date(props.expense.postedAt).toLocaleString() : 'Not posted'}</p>
 
       <div className="button-row">
         {props.canPost && props.expense.status === 'DRAFT' && (

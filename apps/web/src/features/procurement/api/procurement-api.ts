@@ -90,6 +90,30 @@ export type CreateGoodsReceiptInput = Readonly<{
   items: Array<Readonly<{ poItemId: string; materialId: string; quantity: string; acceptedQuantity: string; rejectedQuantity: string; batchNo?: string | null }>>;
 }>;
 
+export type GoodsReceiptItem = Readonly<{
+  id: string;
+  goodsReceiptId: string;
+  poItemId: string;
+  materialId: string;
+  stageId: string | null;
+  quantity: string;
+  acceptedQuantity: string;
+  rejectedQuantity: string;
+  batchNo: string | null;
+}>;
+
+export type GoodsReceipt = Readonly<{
+  id: string;
+  projectId: string;
+  vendorId: string;
+  warehouseId: string;
+  receiptNo: string;
+  purchaseOrderId: string;
+  receivedAt: string;
+  status: string;
+  receivedBy: string;
+  items: GoodsReceiptItem[];
+}>;
 
 /** Build a new Foundation idempotency header for one user write command. */
 function writeHeaders(): Readonly<Record<string, string>> {
@@ -144,8 +168,8 @@ export function cancelPurchaseOrder(purchaseOrderId: string, reason: string): Pr
 }
 
 /** Create one retry-safe Goods Receipt against an issued Purchase Order. */
-export function createGoodsReceipt(input: CreateGoodsReceiptInput): Promise<unknown> {
-  return authenticatedRequest<unknown>('procurement/goods-receipts', {
+export function createGoodsReceipt(input: CreateGoodsReceiptInput): Promise<GoodsReceipt> {
+  return authenticatedRequest<GoodsReceipt>('procurement/goods-receipts', {
     method: 'POST',
     headers: writeHeaders(),
     body: JSON.stringify(input)

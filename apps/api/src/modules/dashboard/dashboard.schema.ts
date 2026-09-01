@@ -180,6 +180,8 @@ export const dashboardAlertsQuerySchema = z.object({
 /** Validate the small filter shape that may be stored inside user Dashboard preferences. */
 export const dashboardPreferenceFiltersSchema = z.object({
   projectId: uuidSchema.optional(),
+  search: searchSchema.optional(),
+  status: z.string().trim().min(1).max(80).optional(),
   ...dateFilterShape
 }).strict().superRefine(validateDashboardDateRange);
 

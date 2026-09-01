@@ -91,12 +91,16 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
       {downloadMutation.error instanceof Error && <div className="form-error" role="alert">{downloadMutation.error.message}</div>}
 
       <dl className="document-meta">
+        <div><dt>Document ID</dt><dd>{document.id}</dd></div>
         <div><dt>Status</dt><dd>{document.status}</dd></div>
         <div><dt>Category</dt><dd>{document.category}</dd></div>
         <div><dt>Project</dt><dd>{document.projectId ?? 'Company-wide'}</dd></div>
         <div><dt>File</dt><dd>{document.fileName}</dd></div>
         <div><dt>MIME type</dt><dd>{document.mimeType}</dd></div>
         <div><dt>Size</dt><dd>{document.sizeBytes.toLocaleString()} bytes</dd></div>
+        <div><dt>Current version ID</dt><dd>{document.currentVersionId ?? '—'}</dd></div>
+        <div><dt>Can version</dt><dd>{document.capabilities.canVersion ? 'Yes' : 'No'}</dd></div>
+        <div><dt>Can link</dt><dd>{document.capabilities.canLink ? 'Yes' : 'No'}</dd></div>
         <div><dt>Created by</dt><dd>{document.createdBy}</dd></div>
         <div><dt>Created</dt><dd>{new Date(document.createdAt).toLocaleString()}</dd></div>
         <div><dt>Updated</dt><dd>{new Date(document.updatedAt).toLocaleString()}</dd></div>
@@ -132,7 +136,7 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
           <div className="table-wrap">
             <table className="admin-table">
               <thead>
-                <tr><th>Version</th><th>File</th><th>Revision</th><th>Size</th><th>Created</th></tr>
+                <tr><th>Version</th><th>File</th><th>Revision</th><th>Size</th><th>Checksum</th><th>Created by</th><th>Created</th></tr>
               </thead>
               <tbody>
                 {document.versions.map((version) => (
@@ -140,10 +144,13 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
                     <td>
                       v{version.versionNo}
                       {version.id === document.currentVersionId && <span>Current</span>}
+                      <span>{version.id}</span>
                     </td>
                     <td>{version.originalName}<span>{version.mimeType}</span></td>
                     <td>{version.revisionCode ?? '—'}</td>
                     <td>{version.sizeBytes.toLocaleString()} bytes</td>
+                    <td>{version.checksum}</td>
+                    <td>{version.createdBy}</td>
                     <td>{new Date(version.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
@@ -160,13 +167,17 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
         ) : (
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Resource</th><th>Scope</th><th>ID</th></tr></thead>
+              <thead><tr><th>Link ID</th><th>Resource</th><th>Resource ID</th><th>Version ID</th><th>Project</th><th>Stage</th><th>Created</th></tr></thead>
               <tbody>
                 {document.links.map((link) => (
                   <tr key={link.id}>
+                    <td>{link.id}</td>
                     <td>{link.resourceType}</td>
-                    <td>{link.projectId ?? link.stageId ?? '—'}</td>
                     <td>{link.resourceId}</td>
+                    <td>{link.versionId ?? 'Current document'}</td>
+                    <td>{link.projectId ?? '—'}</td>
+                    <td>{link.stageId ?? '—'}</td>
+                    <td>{new Date(link.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>

@@ -240,7 +240,7 @@ BEFORE INSERT OR UPDATE OF "issue_id", "material_id" ON "material_issue_items"
 FOR EACH ROW EXECUTE FUNCTION "final21_validate_material_issue_item_scope"();
 
 -- Rename the active permission while preserving existing role grants.
-INSERT INTO "permissions" ("id", "code", "name", "domain")
+INSERT INTO "permissions" ("id", "code", "description", "domain")
 SELECT gen_random_uuid(), 'materials.manage', 'Manage material master', 'inventory'
 WHERE NOT EXISTS (SELECT 1 FROM "permissions" WHERE "code" = 'materials.manage');
 

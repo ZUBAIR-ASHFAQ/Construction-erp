@@ -165,13 +165,23 @@ export function FinanceJournalWorkspace({ accounts, journals }: FinanceJournalWo
 
       <div className="table-wrap">
         <table className="admin-table">
-          <thead><tr><th>Journal</th><th>Date</th><th>Status</th><th>Debit</th><th>Credit</th><th>Scope</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Journal</th><th>Date</th><th>Status</th><th>Period</th><th>Debit</th><th>Credit</th><th>Scope / Lines</th><th>Actions</th></tr></thead>
           <tbody>
             {journals.map((journal) => (
               <tr key={journal.id}>
-                <td><strong>{journal.journalNo}</strong></td>
-                <td>{journal.postingDate}</td><td>{journal.status}</td><td>{journal.totalDebit}</td><td>{journal.totalCredit}</td>
-                <td>{journal.lines.some((line) => line.stageId) ? 'Project / Stage' : journal.lines.some((line) => line.projectId) ? 'Project' : 'Company'}</td>
+                <td>
+                  <strong>{journal.journalNo}</strong><span>{journal.description}</span>
+                  <small className="muted">{journal.sourceType} · {journal.sourceKey ?? 'No source key'} · {journal.sourceId ?? 'No source ID'} · {journal.id}</small>
+                </td>
+                <td>{journal.postingDate}<br /><small>{journal.postedAt ? `Posted ${new Date(journal.postedAt).toLocaleString()}` : 'Not posted'}</small></td>
+                <td>{journal.status}<br /><small>Created by {journal.createdBy ?? 'System'}</small></td>
+                <td>{journal.periodId}</td><td>{journal.totalDebit}</td><td>{journal.totalCredit}</td>
+                <td>
+                  <span>{journal.lines.some((line) => line.stageId) ? 'Project / Stage' : journal.lines.some((line) => line.projectId) ? 'Project' : 'Company'}</span>
+                  <details><summary>{journal.lines.length} line(s)</summary>
+                    {journal.lines.map((line) => <div key={line.id}><code>{line.id}</code> · Account {line.accountId} · Project {line.projectId ?? '—'} · Stage {line.stageId ?? '—'} · Debit {line.debit} · Credit {line.credit} · {line.description} · Journal {line.journalId}</div>)}
+                  </details>
+                </td>
                 <td className="action-row">
                   {canPost && journal.status === 'DRAFT' && <button type="button" disabled={postMutation.isPending} onClick={() => postMutation.mutate(journal.id)}>Post</button>}
                   {canReverse && journal.status === 'POSTED' && <button type="button" className="secondary-button" disabled={reverseMutation.isPending} onClick={() => reverseMutation.mutate(journal.id)}>Reverse</button>}

@@ -82,7 +82,7 @@ test('B18.9 displays source-derived Receipt balances and keeps cash separate fro
 /** Confirm allocation uses issued Client Invoice selection and leaves authoritative outstanding on the server. */
 test('B18.9 allocates only through issued Invoice selectors and server outstanding checks', () => {
   const workspace = read(`${FEATURE}/components/client-receipts-workspace.tsx`);
-  assert.match(workspace, /useClientInvoices\(\{ projectId: allocationProjectId/);
+  assert.match(workspace, /allocationInvoicesQuery = useClientInvoices\(\{[\s\S]*?projectId: allocationProjectId[\s\S]*?status: 'ISSUED'/);
   assert.match(workspace, /status: 'ISSUED'/);
   assert.match(workspace, /Select invoice/);
   assert.match(workspace, /server rechecks current Invoice outstanding and prevents over-allocation/);

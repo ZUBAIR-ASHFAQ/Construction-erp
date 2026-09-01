@@ -108,14 +108,14 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
 
       {props.canRead && (
         <section className="admin-card">
-          <h2>Warehouse stock</h2>
+          <h2>Warehouse stock <small className="muted">({stock.data?.total ?? 0} row(s))</small></h2>
           <div className="table-scroll">
             <table>
               <thead><tr><th>Warehouse</th><th>Material</th><th>Unit</th><th>On hand</th><th>Average cost</th></tr></thead>
               <tbody>
                 {(stock.data?.items ?? []).map((row) => (
                   <tr key={`${row.warehouseId}:${row.materialId}`}>
-                    <td>{row.warehouseCode} · {row.warehouseName}</td>
+                    <td>{row.warehouseCode} · {row.warehouseName}<br /><small>{row.projectId ?? 'Company warehouse'} · {row.warehouseId}</small></td>
                     <td>{row.materialCode} · {row.materialName}</td>
                     <td>{row.unit}</td><td>{row.quantityOnHand}</td><td>{row.averageCost}</td>
                   </tr>
@@ -138,6 +138,7 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
             <label>Issue date<input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} required /></label>
             <button type="submit" disabled={createIssue.isPending}>Issue material</button>
           </form>
+          {createIssue.data && <p className="muted">Issued {createIssue.data.issueNo} · {createIssue.data.status} · {createIssue.data.issueDate} · Record {createIssue.data.id}</p>}
         </section>
       )}
 
@@ -169,9 +170,9 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
 
       {props.canRead && (
         <section className="admin-card">
-          <h2>Append-only stock ledger</h2>
-          <div className="table-scroll"><table><thead><tr><th>When</th><th>Type</th><th>Warehouse</th><th>Material</th><th>Project / Stage</th><th>Quantity</th><th>Unit cost</th></tr></thead><tbody>
-            {(ledger.data?.items ?? []).map((row) => <tr key={row.id}><td>{new Date(row.occurredAt).toLocaleString()}</td><td>{row.movementType}</td><td>{row.warehouseId}</td><td>{row.materialId}</td><td>{row.projectId ?? 'Company'}{row.stageId ? ` / ${row.stageId}` : ''}</td><td>{row.quantity}</td><td>{row.unitCost}</td></tr>)}
+          <h2>Append-only stock ledger <small className="muted">({ledger.data?.total ?? 0} row(s))</small></h2>
+          <div className="table-scroll"><table><thead><tr><th>When</th><th>Type</th><th>Warehouse</th><th>Material</th><th>Project / Stage</th><th>Source</th><th>Quantity</th><th>Unit cost</th></tr></thead><tbody>
+            {(ledger.data?.items ?? []).map((row) => <tr key={row.id}><td>{new Date(row.occurredAt).toLocaleString()}<br /><small>{row.id}</small></td><td>{row.movementType}</td><td>{row.warehouseId}</td><td>{row.materialId}</td><td>{row.projectId ?? 'Company'}{row.stageId ? ` / ${row.stageId}` : ''}</td><td>{row.sourceType}<br /><small>{row.sourceId}</small></td><td>{row.quantity}</td><td>{row.unitCost}</td></tr>)}
           </tbody></table></div>
         </section>
       )}

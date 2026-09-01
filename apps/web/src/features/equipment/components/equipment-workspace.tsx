@@ -315,9 +315,9 @@ function EquipmentHistoryPanel(props: Readonly<{ data: EquipmentHistory | undefi
       </tbody></table></div>
 
       <h3>Usage & actual cost</h3>
-      <div className="table-scroll"><table><thead><tr><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th></tr></thead><tbody>
-        {props.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.quantity}</td><td>{row.rate}</td><td>{row.amount}</td></tr>)}
-        {props.data.usage.length === 0 && <tr><td colSpan={5} className="muted">No usage posted.</td></tr>}
+      <div className="table-scroll"><table><thead><tr><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th><th>Entered by</th><th>Cost actual</th><th>Status</th></tr></thead><tbody>
+        {props.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.quantity}</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.enteredBy}</td><td>{row.costActualId ?? '—'}</td><td>{row.status}</td></tr>)}
+        {props.data.usage.length === 0 && <tr><td colSpan={8} className="muted">No usage posted.</td></tr>}
       </tbody></table></div>
 
       <h3>Maintenance</h3>

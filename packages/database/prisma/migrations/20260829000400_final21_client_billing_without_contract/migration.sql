@@ -125,11 +125,9 @@ INSERT INTO "permissions" ("id", "code", "name", "domain") VALUES
   (gen_random_uuid(), 'client_invoices.read', 'Read Client Invoices', 'client_billing')
 ON CONFLICT ("code") DO UPDATE SET "name" = EXCLUDED."name", "domain" = EXCLUDED."domain";
 
-INSERT INTO "role_permissions" ("role_id", "permission_id")
-SELECT DISTINCT rp."role_id", final_permission."id"
+INSERT INTO "role_permissions" ("role_id", "permission_code")
+SELECT DISTINCT rp."role_id", mapping."final_code"
 FROM "role_permissions" rp
-JOIN "permissions" legacy_permission
-  ON legacy_permission."id" = rp."permission_id"
 JOIN (VALUES
   ('client_contracts.manage', 'client_billing.settings.manage'),
   ('client_claims.create', 'claims.create'),
@@ -137,8 +135,5 @@ JOIN (VALUES
   ('client_claims.certify', 'claims.finalize'),
   ('client_invoices.issue', 'client_invoices.create'),
   ('client_billing.read', 'client_invoices.read')
-) AS mapping("legacy_code", "final_code")
-  ON mapping."legacy_code" = legacy_permission."code"
-JOIN "permissions" final_permission
-  ON final_permission."code" = mapping."final_code"
+) AS mapping("legacy_code", "final_code") ON mapping."legacy_code" = rp."permission_code"
 ON CONFLICT DO NOTHING;

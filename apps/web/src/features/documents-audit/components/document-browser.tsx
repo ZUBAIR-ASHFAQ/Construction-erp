@@ -201,8 +201,9 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
                   <th>Project</th>
                   <th>File</th>
                   <th>Category</th>
-                  <th>Version</th>
+                  <th>Current version</th>
                   <th>Status</th>
+                  <th>Created / updated</th>
                 </tr>
               </thead>
               <tbody>
@@ -213,12 +214,34 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
                         {document.title}
                       </button>
                       <span>{document.documentNo ?? 'No document number'}</span>
+                      <span>{document.id}</span>
                     </td>
                     <td>{document.projectId ?? 'Company-wide'}</td>
-                    <td>{document.fileName}</td>
+                    <td>
+                      {document.fileName}
+                      <span>{document.mimeType}</span>
+                      <span>{document.sizeBytes.toLocaleString()} bytes</span>
+                    </td>
                     <td>{document.category}</td>
-                    <td>{document.currentVersion ? `v${document.currentVersion.versionNo}` : '—'}</td>
+                    <td>
+                      {document.currentVersion ? `v${document.currentVersion.versionNo}` : '—'}
+                      {document.currentVersion && (
+                        <>
+                          <span>{document.currentVersion.originalName}</span>
+                          <span>{document.currentVersion.mimeType} · {document.currentVersion.sizeBytes.toLocaleString()} bytes</span>
+                          <span>Revision: {document.currentVersion.revisionCode ?? '—'}</span>
+                          <span>Version ID: {document.currentVersion.id}</span>
+                          <span>Created by: {document.currentVersion.createdBy}</span>
+                          <span>{new Date(document.currentVersion.createdAt).toLocaleString()}</span>
+                        </>
+                      )}
+                    </td>
                     <td>{document.status}</td>
+                    <td>
+                      {document.createdBy}
+                      <span>Created: {new Date(document.createdAt).toLocaleString()}</span>
+                      <span>Updated: {new Date(document.updatedAt).toLocaleString()}</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -226,11 +249,17 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
           </div>
         )}
 
+        {documentsQuery.data && (
+          <p className="muted">
+            {documentsQuery.data.total} document(s) · {documentsQuery.data.pageSize} per page · Accessible Projects: {documentsQuery.data.accessibleProjectIds?.join(', ') ?? 'All'}
+          </p>
+        )}
+
         <div className="pagination-row">
           <button type="button" className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => value - 1)}>
             Previous
           </button>
-          <span>Page {page} of {pageCount}</span>
+          <span>Page {documentsQuery.data?.page ?? page} of {pageCount}</span>
           <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)}>
             Next
           </button>

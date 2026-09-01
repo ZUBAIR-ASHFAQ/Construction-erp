@@ -151,6 +151,10 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
             <div><dt>Department</dt><dd>{employee.department}</dd></div>
             <div><dt>Job title</dt><dd>{employee.jobTitle}</dd></div>
             <div><dt>Joining date</dt><dd>{employee.joiningDate}</dd></div>
+            <div><dt>User link</dt><dd>{employee.userId ?? 'Not linked'}</dd></div>
+            <div><dt>CNIC / ID</dt><dd>{employee.cnicOrId ?? '—'}</dd></div>
+            <div><dt>Phone</dt><dd>{employee.phone ?? '—'}</dd></div>
+            <div><dt>Email</dt><dd>{employee.email ?? '—'}</dd></div>
           </div>
 
           {props.canUpdate && (

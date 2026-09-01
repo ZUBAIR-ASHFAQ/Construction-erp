@@ -216,6 +216,8 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
         <div><dt>Start date</dt><dd>{project.startDate}</dd></div>
         <div><dt>Planned end</dt><dd>{project.plannedEndDate}</dd></div>
         <div className="project-detail-wide"><dt>Location</dt><dd>{project.location ?? 'Not set'}</dd></div>
+        <div><dt>Created</dt><dd>{new Date(project.createdAt).toLocaleString()}</dd></div>
+        <div><dt>Updated</dt><dd>{new Date(project.updatedAt).toLocaleString()}</dd></div>
       </dl>
 
       <div className="project-summary-section">

@@ -99,6 +99,8 @@ const PREFERENCE_FILTERS = {
   additionalProperties: false,
   properties: {
     projectId: UUID,
+    search: { type: 'string', minLength: 1, maxLength: 200 },
+    status: { type: 'string', minLength: 1, maxLength: 80 },
     ...DATE_FILTER_PROPERTIES
   }
 } as const;

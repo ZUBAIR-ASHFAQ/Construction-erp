@@ -188,11 +188,11 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
 
       {props.canReadAttendance && (
         <section className="admin-card">
-          <h2>Attendance register</h2>
+          <h2>Attendance register <small className="muted">({attendance.data?.total ?? 0} total · page {attendance.data?.page ?? 1})</small></h2>
           {attendance.isLoading && <p className="muted">Loading attendance…</p>}
           {errorMessage(attendance.error) && <p className="field-error">{errorMessage(attendance.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Stage</th><th>Status</th><th>Hours</th><th>Overtime</th>{props.canCorrectAttendance && <th>Action</th>}</tr></thead><tbody>
-            {(attendance.data?.items ?? []).map((row) => <tr key={row.id}><td>{row.workDate}</td><td>{employeeNames.get(row.employeeId) ?? row.employeeId}</td><td>{projectNames.get(row.projectId) ?? row.projectId}</td><td>{row.stageId ?? 'Project'}</td><td>{row.status}</td><td>{row.hours ?? '0'}</td><td>{row.overtimeHours ?? '0'}</td>{props.canCorrectAttendance && <td><button type="button" className="secondary-button" onClick={() => chooseAttendance(row)}>Correct</button></td>}</tr>)}
+          <div className="table-scroll"><table><thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Stage</th><th>Status</th><th>Hours</th><th>Overtime</th><th>Entered by</th>{props.canCorrectAttendance && <th>Action</th>}</tr></thead><tbody>
+            {(attendance.data?.items ?? []).map((row) => <tr key={row.id}><td>{row.workDate}</td><td>{employeeNames.get(row.employeeId) ?? row.employeeId}</td><td>{projectNames.get(row.projectId) ?? row.projectId}</td><td>{row.stageId ?? 'Project'}</td><td>{row.status}</td><td>{row.hours ?? '0'}</td><td>{row.overtimeHours ?? '0'}</td><td>{row.enteredBy}</td>{props.canCorrectAttendance && <td><button type="button" className="secondary-button" onClick={() => chooseAttendance(row)}>Correct</button></td>}</tr>)}
             {(attendance.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No attendance records.</td></tr>}
           </tbody></table></div>
         </section>
@@ -227,10 +227,10 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
 
       {props.canReadPayroll && (
         <section className="admin-card">
-          <h2>Payroll runs</h2>
+          <h2>Payroll runs <small className="muted">({runs.data?.total ?? 0} total · page {runs.data?.page ?? 1})</small></h2>
           {errorMessage(runs.error) && <p className="field-error">{errorMessage(runs.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>Period</th><th>Status</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
-            {(runs.data?.items ?? []).map((run) => <tr key={run.id}><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
+          <div className="table-scroll"><table><thead><tr><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
+            {(runs.data?.items ?? []).map((run) => <tr key={run.id}><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdBy}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
             {(runs.data?.items.length ?? 0) === 0 && <tr><td colSpan={4} className="muted">No Payroll Runs.</td></tr>}
           </tbody></table></div>
         </section>
@@ -239,7 +239,7 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
       {selectedRunId && selectedRun.data && (
         <section className="admin-card">
           <h2>Payroll calculation preview</h2>
-          <p><strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status}</p>
+          <p><strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status} · Created by {selectedRun.data.createdBy} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
           <div className="form-actions">
             {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && <button type="button" onClick={() => calculateMutation.mutate()} disabled={calculateMutation.isPending}>Calculate</button>}
             {props.canFinalizePayroll && selectedRun.data.status === 'CALCULATED' && <button type="button" onClick={() => finalizeMutation.mutate()} disabled={finalizeMutation.isPending}>Finalize & post</button>}
@@ -247,7 +247,7 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
           {errorMessage(calculateMutation.error) && <p className="field-error">{errorMessage(calculateMutation.error)}</p>}
           {errorMessage(finalizeMutation.error) && <p className="field-error">{errorMessage(finalizeMutation.error)}</p>}
           <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Project / Stage labour cost</th><th>Payslip</th></tr></thead><tbody>
-            {selectedRun.data.lines.map((line) => <tr key={line.id}><td>{employeeNames.get(line.employeeId) ?? line.employeeId}</td><td><Money value={line.grossAmount} /></td><td><Money value={line.deductions} /></td><td><Money value={line.netAmount} /></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? allocation.projectId} / {allocation.stageId ?? 'Project'} · {allocation.category} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? `Generated ${line.payslip.generatedAt ?? ''}` : 'Not generated'}</td></tr>)}
+            {selectedRun.data.lines.map((line) => <tr key={line.id}><td>{employeeNames.get(line.employeeId) ?? line.employeeId}</td><td><Money value={line.grossAmount} /></td><td><Money value={line.deductions} /></td><td><Money value={line.netAmount} /></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? allocation.projectId} / {allocation.stageId ?? 'Project'} · {allocation.category} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}<br /><small>Payslip {line.payslip.id} · Document {line.payslip.documentId ?? '—'}</small></> : 'Not generated'}</td></tr>)}
             {selectedRun.data.lines.length === 0 && <tr><td colSpan={6} className="muted">Calculate this run to create Employee Payroll lines.</td></tr>}
           </tbody></table></div>
         </section>

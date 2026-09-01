@@ -29,6 +29,7 @@ export type DocumentListItem = Readonly<{
 
 export type DocumentLink = Readonly<{
   id: string;
+  versionId: string | null;
   resourceType: string;
   resourceId: string;
   projectId: string | null;

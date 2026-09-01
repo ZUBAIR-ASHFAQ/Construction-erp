@@ -270,7 +270,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
           {(claimsQuery.data?.items ?? []).map((claim) => (
             <div className="admin-card" key={claim.id}>
               <div className="module-row">
-                <div><strong>{claim.claimNo}</strong><div className="muted">{claim.periodEnd} · {claim.status} · Gross {displayMoney(claim.grossValue)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div></div>
+                <div><strong>{claim.claimNo}</strong><div className="muted">{claim.periodEnd} · {claim.status} · Client {claim.clientId} · Gross {displayMoney(claim.grossValue)} · Deductions {displayMoney(claim.deductions)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div></div>
                 <div className="admin-actions">
                   {claim.status === 'DRAFT' && props.canEditClaims ? <button type="button" onClick={() => startEditingClaim(claim)}>Edit</button> : null}
                   {claim.status === 'DRAFT' && props.canFinalizeClaims ? <button type="button" disabled={finalizeClaim.isPending} onClick={() => finalizeClaim.mutate(claim.id)}>Finalize</button> : null}
@@ -308,7 +308,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
           {(invoicesQuery.data?.items ?? []).length === 0 ? <p className="muted">No Client Invoices for this Project.</p> : null}
           {(invoicesQuery.data?.items ?? []).map((invoice) => (
             <div className="admin-card" key={invoice.id}>
-              <div className="module-row"><strong>{invoice.invoiceNo}</strong><span>{invoice.invoiceDate} · {invoice.status} · Billed {displayMoney(invoice.totalAmount)}</span></div>
+              <div className="module-row"><strong>{invoice.invoiceNo}</strong><span>{invoice.invoiceDate} · Due {invoice.dueDate ?? '—'} · {invoice.status} · Client {invoice.clientId} · Subtotal {displayMoney(invoice.subtotal)} · Tax {displayMoney(invoice.taxAmount)} · Billed {displayMoney(invoice.totalAmount)}</span></div>
               <table>
                 <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
                 <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>

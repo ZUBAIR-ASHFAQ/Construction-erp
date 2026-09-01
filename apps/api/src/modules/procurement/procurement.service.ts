@@ -37,6 +37,12 @@ const DECIMAL_SCALE_4 = 10_000n;
 const MAX_MONEY_MINOR_UNITS = 999_999_999_999_999_999n;
 
 type DecimalLike = Readonly<{ toString(): string }> | string;
+type PurchaseRequisitionRecord = NonNullable<Awaited<ReturnType<ProcurementRepository['findPurchaseRequisitionById']>>>;
+type PurchaseRequisitionItemRecord = PurchaseRequisitionRecord['items'][number];
+type PurchaseOrderRecord = NonNullable<Awaited<ReturnType<ProcurementRepository['findPurchaseOrderById']>>>;
+type PurchaseOrderItemRecord = PurchaseOrderRecord['items'][number];
+type GoodsReceiptRecord = NonNullable<Awaited<ReturnType<ProcurementRepository['findGoodsReceiptById']>>>;
+type GoodsReceiptItemRecord = GoodsReceiptRecord['items'][number];
 
 /** Compare one internal string-backed lifecycle token. */
 function hasStatus(value: string, expected: string): boolean {
@@ -71,7 +77,7 @@ function dateOnly(value: Date): string {
 }
 
 /** Map one persisted material requirement to the Final-21 response contract. */
-function requisitionResponse(row: any) {
+function requisitionResponse(row: PurchaseRequisitionRecord) {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -81,7 +87,7 @@ function requisitionResponse(row: any) {
     requiredDate: dateOnly(row.requiredDate),
     status: row.status,
     notes: row.purpose?.trim() ? row.purpose : null,
-    items: row.items.map((item: any) => ({
+    items: row.items.map((item: PurchaseRequisitionItemRecord) => ({
       id: item.id,
       requisitionId: item.requisitionId,
       materialId: item.itemId,
@@ -94,7 +100,7 @@ function requisitionResponse(row: any) {
 }
 
 /** Map one persisted Purchase Order to the Final-21 response contract. */
-function purchaseOrderResponse(row: any) {
+function purchaseOrderResponse(row: PurchaseOrderRecord) {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -110,7 +116,7 @@ function purchaseOrderResponse(row: any) {
     deliveryAddress: row.deliveryAddress,
     terms: row.terms,
     cancelReason: row.cancelReason ?? null,
-    items: row.items.map((item: any) => ({
+    items: row.items.map((item: PurchaseOrderItemRecord) => ({
       id: item.id,
       purchaseOrderId: item.purchaseOrderId,
       requisitionItemId: item.requisitionItemId ?? null,
@@ -128,7 +134,7 @@ function purchaseOrderResponse(row: any) {
 }
 
 /** Map one Inventory-owned receipt record to the Final-21 Procurement response contract. */
-function goodsReceiptResponse(row: any) {
+function goodsReceiptResponse(row: GoodsReceiptRecord) {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -139,7 +145,7 @@ function goodsReceiptResponse(row: any) {
     receivedAt: row.receivedAt instanceof Date ? row.receivedAt.toISOString() : row.receivedAt,
     status: row.status,
     receivedBy: row.receivedBy,
-    items: row.items.map((item: any) => ({
+    items: row.items.map((item: GoodsReceiptItemRecord) => ({
       id: item.id,
       goodsReceiptId: item.goodsReceiptId,
       poItemId: item.poItemId,
@@ -162,8 +168,8 @@ function isPurchasableVendor(vendor: Readonly<{ status: string; qualificationSta
 }
 
 /** Calculate authoritative PO line and header totals from approved requirement lines. */
-function preparePurchaseOrderLines(input: CreatePurchaseOrderBody, requisition: any): Readonly<{ items: PurchaseOrderLineWrite[]; subtotal: string; taxAmount: string; totalAmount: string }> {
-  const requestedById = new Map(requisition.items.map((item: any) => [item.id, item]));
+function preparePurchaseOrderLines(input: CreatePurchaseOrderBody, requisition: PurchaseRequisitionRecord): Readonly<{ items: PurchaseOrderLineWrite[]; subtotal: string; taxAmount: string; totalAmount: string }> {
+  const requestedById = new Map(requisition.items.map((item) => [item.id, item] as const));
   const unique = new Set<string>();
   const items: PurchaseOrderLineWrite[] = [];
   let subtotal = 0n;
@@ -172,7 +178,7 @@ function preparePurchaseOrderLines(input: CreatePurchaseOrderBody, requisition: 
   for (const line of input.items) {
     if (unique.has(line.requisitionItemId)) throw new ValidationError({ message: 'A material requirement line may appear only once in one Purchase Order.' });
     unique.add(line.requisitionItemId);
-    const requirement: any = requestedById.get(line.requisitionItemId);
+    const requirement = requestedById.get(line.requisitionItemId);
     if (!requirement) throw new ValidationError({ message: 'Every Purchase Order line must belong to the approved material requirement.' });
 
     if (!requirement.itemId) throw new ValidationError({ message: 'Every Purchase Order line requires a material from the approved requirement.' });
@@ -313,7 +319,7 @@ export class ProcurementService {
     const current = await new ProcurementRepository(this.db).findPurchaseRequisitionById(requisitionId, visibility);
     if (!current) throw createProcurementError('REQUISITION_NOT_FOUND');
     await this.requireProjectPermission(users, current.projectId, 'requisitions.approve', now);
-    await this.requireProjectStages(new ProcurementRepository(this.db), current.projectId, [current.stageId, ...current.items.map((item: any) => item.stageId)]);
+    await this.requireProjectStages(new ProcurementRepository(this.db), current.projectId, [current.stageId, ...current.items.map((item) => item.stageId)]);
 
     const result = await executeIdempotentCommand(
       this.db,
@@ -375,12 +381,12 @@ export class ProcurementService {
     const project = await repository.findProjectById(requisition.projectId);
     if (!project) throw new NotFoundError({ message: 'Project was not found.' });
     this.requireWritableProject(project);
-    await this.requireProjectStages(repository, requisition.projectId, [requisition.stageId, ...requisition.items.map((item: any) => item.stageId)]);
+    await this.requireProjectStages(repository, requisition.projectId, [requisition.stageId, ...requisition.items.map((item) => item.stageId)]);
 
     const vendor = await repository.findVendorById(input.vendorId);
     if (!vendor || !isPurchasableVendor(vendor)) throw createProcurementError('VENDOR_NOT_ACTIVE');
     const prepared = preparePurchaseOrderLines(input, requisition);
-    const required = new Map(requisition.items.map((item: any) => [item.id, decimalToScale4(item.quantity.toString())]));
+    const required = new Map(requisition.items.map((item) => [item.id, decimalToScale4(item.quantity.toString())] as const));
 
     const result = await executeIdempotentCommand(
       this.db,
@@ -391,7 +397,7 @@ export class ProcurementService {
         if (!locked || !hasStatus(locked.status, REQUISITION_APPROVED)) throw createProcurementError('REQUISITION_NOT_APPROVABLE');
 
         const ordered = await txRepository.listOrderedQuantities(prepared.items.map((item) => item.requisitionItemId));
-        const existing = new Map(ordered.map((row: any) => [row.requisitionItemId, decimalToScale4(row._sum.quantity?.toString() ?? '0')]));
+        const existing = new Map(ordered.map((row) => [row.requisitionItemId, decimalToScale4(row._sum.quantity?.toString() ?? '0')] as const));
         for (const item of prepared.items) {
           const next = (existing.get(item.requisitionItemId) ?? 0n) + decimalToScale4(item.quantity);
           if (next > (required.get(item.requisitionItemId) ?? 0n)) throw createProcurementError('OVER_ORDER_NOT_ALLOWED');
@@ -428,7 +434,7 @@ export class ProcurementService {
     const current = await new ProcurementRepository(this.db).findPurchaseOrderById(purchaseOrderId, visibility);
     if (!current) throw createProcurementError('PO_NOT_FOUND');
     await this.requireProjectPermission(users, current.projectId, 'purchase_orders.issue', now);
-    await this.requireProjectStages(new ProcurementRepository(this.db), current.projectId, current.items.map((item: any) => item.stageId));
+    await this.requireProjectStages(new ProcurementRepository(this.db), current.projectId, current.items.map((item) => item.stageId));
 
     const result = await executeIdempotentCommand(
       this.db,
@@ -486,7 +492,7 @@ export class ProcurementService {
         if (!lockedPurchaseOrder) throw createProcurementError('PO_NOT_FOUND');
         if (hasStatus(lockedPurchaseOrder.status, PO_CANCELLED)) return { statusCode: 200, body: purchaseOrderResponse(lockedPurchaseOrder) };
         if (![PO_DRAFT, PO_ISSUED].some((status) => hasStatus(lockedPurchaseOrder.status, status))) throw createProcurementError('PO_NOT_CANCELLABLE');
-        if (lockedPurchaseOrder.items.some((item: any) => decimalToScale4(item.receivedQty.toString()) > 0n)) {
+        if (lockedPurchaseOrder.items.some((item) => decimalToScale4(item.receivedQty.toString()) > 0n)) {
           throw new ConflictError({ code: 'PO_NOT_CANCELLABLE', message: 'A Purchase Order with received material cannot be cancelled.' });
         }
         const cancelled = await repository.updatePurchaseOrderStatus(current.id, lockedPurchaseOrder.status, PO_CANCELLED, { reason: input.reason, actorUserId: security.actorUserId, at: now });
@@ -509,7 +515,7 @@ export class ProcurementService {
     if (!purchaseOrder) throw createProcurementError('PO_NOT_FOUND');
     await this.requireProjectPermission(users, purchaseOrder.projectId, 'goods_receipts.create', now);
     if (!hasStatus(purchaseOrder.status, PO_ISSUED)) throw createProcurementError('PO_NOT_RECEIVABLE');
-    await this.requireProjectStages(new ProcurementRepository(this.db), purchaseOrder.projectId, purchaseOrder.items.map((item: any) => item.stageId));
+    await this.requireProjectStages(new ProcurementRepository(this.db), purchaseOrder.projectId, purchaseOrder.items.map((item) => item.stageId));
 
     try {
       const received = await new InventoryService(this.db).receiveInventory({

@@ -159,7 +159,10 @@ export function UsersPage() {
               <tbody>
                 {users.map((user) => (
                   <tr key={user.id}>
-                    <td><strong>{user.name}</strong><span>{user.email}</span></td>
+                    <td>
+                      <strong>{user.name}</strong><span>{user.email}</span>
+                      <small className="muted">Company {user.companyId} · Last login {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleString() : 'Never'} · Created {new Date(user.createdAt).toLocaleString()} · Updated {new Date(user.updatedAt).toLocaleString()}</small>
+                    </td>
                     <td>{user.status}</td>
                     <td>{roleNames(user, roles)}</td>
                     <td>{user.projectScopes.length}</td>

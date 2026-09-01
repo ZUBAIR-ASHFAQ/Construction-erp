@@ -8,6 +8,7 @@ import {
   activateProjectBodySchema,
   closeProjectBodySchema,
   completeProjectBodySchema,
+  resumeProjectBodySchema,
   suspendProjectBodySchema,
   createProjectBodySchema,
   listProjectsQuerySchema,
@@ -555,6 +556,37 @@ export async function registerProjectsRoutes(app: FastifyInstance, options: Proj
     const params = parseRequest(projectIdParamsSchema, request.params, 'params');
     const body = parseRequest(suspendProjectBodySchema, request.body ?? {}, 'body');
     return reply.send({ data: serializeProject(await service.suspendProject(params.id, body)) });
+  });
+
+  app.post('/api/v1/projects/:id/resume', {
+    schema: {
+      tags: ['Module 6 - Project Management'],
+      operationId: 'module6ResumeProject',
+      summary: 'Resume one SUSPENDED Project after activation-readiness validation',
+      security: BEARER_SECURITY,
+      params: PROJECT_PARAMS_SCHEMA,
+      body: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          reason: { type: 'string', minLength: 1, maxLength: 5000 }
+        }
+      },
+      response: {
+        200: PROJECT_SUCCESS_SCHEMA,
+        400: INVALID_REQUEST_RESPONSE,
+        401: AUTHENTICATION_RESPONSE,
+        403: PROJECT_SCOPE_AUTHORIZATION_RESPONSE,
+        404: PROJECT_NOT_FOUND_RESPONSE,
+        409: PROJECT_LIFECYCLE_CONFLICT_RESPONSE,
+        500: INTERNAL_ERROR_RESPONSE
+      }
+    }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(projectIdParamsSchema, request.params, 'params');
+    const body = parseRequest(resumeProjectBodySchema, request.body ?? {}, 'body');
+    return reply.send({ data: serializeProject(await service.resumeProject(params.id, body)) });
   });
 
   app.post('/api/v1/projects/:id/complete', {

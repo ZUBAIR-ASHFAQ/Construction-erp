@@ -94,6 +94,8 @@
     "20260831000100_final21_permission_contract_alignment": "feece2ad25f554b280a68cfc370136cf022e385bee5dfe1494ada92241b0dd7a",
     "20260831000200_final21_reports_persistence": "ea716a92c1af63d8e76bdad9eaacaee5c74077f0c681e60ecf2aba10d92ac32f",
     "20260831000300_final21_dashboard_persistence": "e86e92e886af6915e3a43c9c91b98317b654ee267cddd72441d332f1770521ab",
-    "20260831000400_final21_reports_dashboard_permissions": "f66d352993b639b9506987592347faaf9c02089d08af73b95123bd335ca665d5"
+    "20260831000400_final21_reports_dashboard_permissions": "f66d352993b639b9506987592347faaf9c02089d08af73b95123bd335ca665d5",
+    "20260901000100_final21_client_project_permissions": "d58cba72ce4d766d6c79aa982dc35002036cdfe10b3c4ee13f86d6ffc5b232bc",
+    "20260901000200_final21_project_stage_create_repair": "b49c10deac3c4eebfdc41bd5dcdac2ff75e6299d1bae88d4f322667f9ab1ba5a"
   }
 }

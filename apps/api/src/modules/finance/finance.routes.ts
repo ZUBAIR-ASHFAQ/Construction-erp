@@ -76,6 +76,10 @@ const CREATE_JOURNAL_BODY_JSON_SCHEMA = {
     lines: { type: 'array', minItems: 1, maxItems: 500, items: JOURNAL_LINE_BODY_JSON_SCHEMA }
   }
 } as const;
+const REVERSE_JOURNAL_BODY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  properties: { postingDate: DATE_JSON_SCHEMA }
+} as const;
 const LIST_ACCOUNTS_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: PAGINATION_PROPERTIES } as const;
 const LIST_PERIODS_QUERY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false,
@@ -257,13 +261,13 @@ export async function registerFinanceRoutes(app: FastifyInstance, options: Finan
   });
 
   app.post('/api/v1/finance/journals/:id/reverse', {
-    schema: { tags: tag, operationId: 'financeReverseJournal', summary: 'Reverse posted Journal', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: JOURNAL_PARAMS_JSON_SCHEMA, body: EMPTY_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+    schema: { tags: tag, operationId: 'financeReverseJournal', summary: 'Reverse posted manual Journal', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: JOURNAL_PARAMS_JSON_SCHEMA, body: REVERSE_JOURNAL_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     requireRouteAccess('finance.journals.reverse', true);
     const { id } = parseRequest(financeJournalParamsSchema, request.params, 'params');
-    parseRequest(reverseJournalBodySchema, request.body ?? {}, 'body');
-    return reply.send({ data: financeJournalResponseSchema.parse(await service.reverseJournal(id, readIdempotencyKey(request))) });
+    const body = parseRequest(reverseJournalBodySchema, request.body ?? {}, 'body');
+    return reply.send({ data: financeJournalResponseSchema.parse(await service.reverseJournal(id, readIdempotencyKey(request), body)) });
   });
 
   app.get('/api/v1/finance/ledger', {

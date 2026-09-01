@@ -6,7 +6,6 @@ import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { recordOutboxEvent } from '@construction-erp/outbox';
 import { requireRequestSecurityContext } from '@construction-erp/request-context';
 import { AdministrationRepository } from '../administration/administration.repository.js';
-import { FinanceRepository } from '../finance/finance.repository.js';
 import { FinanceService } from '../finance/finance.service.js';
 import {
   SiteExpensesRepository,
@@ -457,17 +456,11 @@ export class SiteExpensesService {
     const originalSourceKey = siteExpenseSourceKey(expenseId);
     const reversalSourceKey = siteExpenseReversalSourceKey(expenseId);
     const originalCost = await repository.findCostActualBySourceKey(originalSourceKey);
-    const originalJournal = await new FinanceRepository(tx).findJournalBySourceKey(originalSourceKey);
     if (!originalCost
       || originalCost.sourceType !== 'site_expense'
       || originalCost.sourceId !== expenseId
       || originalCost.projectId !== locked.projectId
-      || originalCost.stageId !== locked.stageId
-      || !originalJournal
-      || originalJournal.status !== POSTED
-      || originalJournal.sourceType !== 'site_expense'
-      || originalJournal.sourceId !== expenseId
-      || originalJournal.lines.length === 0) {
+      || originalCost.stageId !== locked.stageId) {
       throw new ConflictError({ message: 'Posted Site Expense source effects are incomplete and cannot be reversed safely.' });
     }
 
@@ -488,20 +481,16 @@ export class SiteExpensesService {
       || moneyString(reversalCost.amount) !== negativeMoneyString(originalCost.amount)) {
       throw new ConflictError({ message: 'Site Expense reversal cost source key is already owned by different posting data.' });
     }
-    await new FinanceService(this.db).postSourceJournalInTransaction(tx, {
-      sourceType: 'site_expense_reversal',
-      sourceId: expenseId,
-      sourceKey: reversalSourceKey,
+    await new FinanceService(this.db).postSourceReversalInTransaction(tx, {
+      originalSourceType: 'site_expense',
+      originalSourceId: expenseId,
+      originalSourceKey,
+      reversalSourceType: 'site_expense_reversal',
+      reversalSourceId: expenseId,
+      reversalSourceKey,
       postingDate: reversalDate,
       description: `Reversal of site expense ${locked.expenseNo}`,
-      lines: originalJournal.lines.map((line) => ({
-        accountId: line.accountId,
-        projectId: line.projectId,
-        stageId: line.stageId,
-        debit: moneyString(line.credit),
-        credit: moneyString(line.debit),
-        description: `Reversal of ${locked.expenseNo}`
-      }))
+      lineDescription: `Reversal of ${locked.expenseNo}`
     });
 
     const reversed = await repository.markReversed(expenseId, { allowedProjectIds: [locked.projectId] });

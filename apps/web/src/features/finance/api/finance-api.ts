@@ -58,6 +58,7 @@ export type FinanceJournal = Readonly<{
 
 export type FinanceJournalPage = Readonly<{ items: FinanceJournal[]; total: number; page: number; pageSize: number }>;
 export type ListFinanceJournalsInput = Readonly<{ page?: number; pageSize?: number; periodId?: string; status?: string }>;
+export type ReverseFinanceJournalInput = Readonly<{ journalId: string; postingDate?: string }>;
 
 export type FinanceLedgerLine = Readonly<{
   id: string;
@@ -166,9 +167,10 @@ export function postFinanceJournal(journalId: string): Promise<FinanceJournal> {
   return authenticatedRequest<FinanceJournal>(`finance/journals/${encodeURIComponent(journalId)}/post`, financeWriteInit('POST'));
 }
 
-/** Reverse one posted Journal with a compensating Journal. */
-export function reverseFinanceJournal(journalId: string): Promise<FinanceJournal> {
-  return authenticatedRequest<FinanceJournal>(`finance/journals/${encodeURIComponent(journalId)}/reverse`, financeWriteInit('POST'));
+/** Reverse one posted manual Journal, optionally selecting an open-period posting date. */
+export function reverseFinanceJournal(journalId: string, postingDate?: string): Promise<FinanceJournal> {
+  const body = postingDate ? { postingDate } : undefined;
+  return authenticatedRequest<FinanceJournal>(`finance/journals/${encodeURIComponent(journalId)}/reverse`, financeWriteInit('POST', body));
 }
 
 /** Load one bounded General Ledger slice. */

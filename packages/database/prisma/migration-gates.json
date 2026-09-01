@@ -745,6 +745,22 @@
       "migrations": [
         "20260831000400_final21_reports_dashboard_permissions"
       ]
+    },
+    {
+      "stage": 59,
+      "gate": "final-21-repair-client-project-permission-visibility",
+      "description": "Registers the missing Client Management and Project Management permission vocabulary on the stable permission-code schema and grants it to existing active system-admin roles so the already-wired browser pages are visible without changing application behavior.",
+      "migrations": [
+        "20260901000100_final21_client_project_permissions"
+      ]
+    },
+    {
+      "stage": 60,
+      "gate": "final-21-repair-project-stage-create-flow",
+      "description": "Repairs Project Stage creation after the later Project permission registration by backfilling the intended Project-to-Stage grants, while the browser refreshes automatic sequence state at submit time and retries only sequence conflicts without hiding duplicate Stage codes.",
+      "migrations": [
+        "20260901000200_final21_project_stage_create_repair"
+      ]
     }
   ]
 }

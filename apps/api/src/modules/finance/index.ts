@@ -89,6 +89,6 @@ export type {
 } from './finance.repository.js';
 
 export { FinanceService } from './finance.service.js';
-export type { SourceJournalPostingInput } from './finance.service.js';
+export type { SourceJournalPostingInput, SourceJournalReversalInput } from './finance.service.js';
 export { registerFinanceRoutes } from './finance.routes.js';
 export type { FinanceRoutesOptions } from './finance.routes.js';

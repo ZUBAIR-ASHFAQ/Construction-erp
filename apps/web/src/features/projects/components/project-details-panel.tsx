@@ -11,6 +11,7 @@ import {
   useActivateProject,
   useCloseProject,
   useCompleteProject,
+  useResumeProject,
   useSuspendProject,
   useProject,
   useUpdateProject
@@ -302,6 +303,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
   const canReadUsers = usePermission('admin.users.read');
   const activateMutation = useActivateProject(project.id);
   const suspendMutation = useSuspendProject(project.id);
+  const resumeMutation = useResumeProject(project.id);
   const completeMutation = useCompleteProject(project.id);
   const closeMutation = useCloseProject(project.id);
   const clientQuery = useQuery({
@@ -326,6 +328,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
   const projectManager = activeManagers.find((user) => user.id === project.projectManagerUserId) ?? null;
   const lifecycleError = activateMutation.error
     ?? suspendMutation.error
+    ?? resumeMutation.error
     ?? completeMutation.error
     ?? closeMutation.error;
 
@@ -337,6 +340,11 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
   /** Suspend the selected ACTIVE Project and preserve only the optional lifecycle reason. */
   async function handleSuspend(values: ProjectTransitionValues): Promise<void> {
     await suspendMutation.mutateAsync(values.reason ? { reason: values.reason } : {});
+  }
+
+  /** Resume the selected SUSPENDED Project and preserve only the optional lifecycle reason. */
+  async function handleResume(values: ProjectTransitionValues): Promise<void> {
+    await resumeMutation.mutateAsync(values.reason ? { reason: values.reason } : {});
   }
 
   /** Complete the selected ACTIVE Project without sending a lifecycle request body. */
@@ -479,6 +487,17 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
           </form>
         )}
 
+        {canActivate && project.status === 'SUSPENDED' && (
+          <form className="project-close-form" onSubmit={transitionForm.handleSubmit(handleResume)} noValidate>
+            <label>
+              Resume reason (optional)
+              <input {...transitionForm.register('reason')} placeholder="Reason saved in lifecycle history" />
+            </label>
+            <button type="submit" disabled={resumeMutation.isPending}>{resumeMutation.isPending ? 'Resuming…' : 'Resume Project'}</button>
+            {transitionForm.formState.errors.reason && <span className="field-error">{transitionForm.formState.errors.reason.message}</span>}
+          </form>
+        )}
+
         {canClose && project.status === 'COMPLETED' && (
           <form className="project-close-form" onSubmit={closeForm.handleSubmit(handleClose)} noValidate>
             <label>
@@ -491,7 +510,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
         )}
 
         {!canActivate && !canUpdate && !canComplete && !canClose && <p className="muted">Your current role does not include Project lifecycle authority.</p>}
-        {project.status === 'SUSPENDED' && <p className="muted">Suspended Projects remain visible for administration while normal downstream operational transactions stay blocked.</p>}
+        {project.status === 'SUSPENDED' && <p className="muted">Suspended Projects remain visible for administration while normal downstream operational transactions stay blocked until an authorized resume.</p>}
         {project.status === 'CLOSED' && <p className="muted">Closed Projects are read-only in normal Project Management workflows.</p>}
         {lifecycleError instanceof Error && <div className="form-error" role="alert">{lifecycleError.message}</div>}
       </div>

@@ -23,6 +23,8 @@ export type StageFinancials = Readonly<{
   actualCost: string;
   billedAmount: string;
   receivedAmount: string;
+  allocatedReceiptAmount: string;
+  advanceAmount: string;
   outstandingAmount: string;
 }>;
 

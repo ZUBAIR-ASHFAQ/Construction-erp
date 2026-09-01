@@ -5,6 +5,7 @@ export type ClientContactStatus = 'ACTIVE' | 'INACTIVE';
 
 export type Client = Readonly<{
   id: string;
+  companyId: string;
   code: string;
   legalName: string;
   displayName: string;
@@ -18,6 +19,7 @@ export type Client = Readonly<{
 
 export type ClientContact = Readonly<{
   id: string;
+  companyId: string;
   clientId: string;
   name: string;
   title: string | null;

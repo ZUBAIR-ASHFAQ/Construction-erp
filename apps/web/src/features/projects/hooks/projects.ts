@@ -3,6 +3,7 @@ import {
   activateProject,
   closeProject,
   completeProject,
+  resumeProject,
   suspendProject,
   createProject,
   getProject,
@@ -77,6 +78,18 @@ export function useSuspendProject(projectId: string) {
 
   return useMutation({
     mutationFn: (input: ProjectLifecycleReasonInput) => suspendProject(projectId, input),
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+    }
+  });
+}
+
+/** Resume one SUSPENDED Project and refresh Project lifecycle state. */
+export function useResumeProject(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (input: ProjectLifecycleReasonInput) => resumeProject(projectId, input),
     async onSuccess() {
       await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
     }

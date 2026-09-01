@@ -42,6 +42,7 @@ export const PROJECT_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/projects/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:id/activate' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:id/suspend' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/projects/:id/resume' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:id/complete' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:id/close' })
 ] as const);
@@ -217,6 +218,11 @@ export const suspendProjectBodySchema = z.object({
   reason: closeReasonSchema.optional()
 }).strict();
 
+/** Resume accepts only an optional reason used by lifecycle history and audit. */
+export const resumeProjectBodySchema = z.object({
+  reason: closeReasonSchema.optional()
+}).strict();
+
 /** Close accepts only an optional reason used by lifecycle history and audit. */
 export const closeProjectBodySchema = z.object({
   reason: closeReasonSchema.optional()
@@ -306,6 +312,7 @@ export type UpdateProjectBody = z.infer<typeof updateProjectBodySchema>;
 export type ActivateProjectBody = z.infer<typeof activateProjectBodySchema>;
 export type CompleteProjectBody = z.infer<typeof completeProjectBodySchema>;
 export type SuspendProjectBody = z.infer<typeof suspendProjectBodySchema>;
+export type ResumeProjectBody = z.infer<typeof resumeProjectBodySchema>;
 export type CloseProjectBody = z.infer<typeof closeProjectBodySchema>;
 export type ProjectResponse = z.infer<typeof projectResponseSchema>;
 export type ProjectStatusHistoryResponse = z.infer<typeof projectStatusHistoryResponseSchema>;

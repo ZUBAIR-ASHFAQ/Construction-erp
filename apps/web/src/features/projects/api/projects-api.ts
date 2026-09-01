@@ -169,6 +169,14 @@ export function suspendProject(projectId: string, input: ProjectLifecycleReasonI
   });
 }
 
+/** Resume one SUSPENDED Project with only an optional audit/history reason. */
+export function resumeProject(projectId: string, input: ProjectLifecycleReasonInput = {}): Promise<Project> {
+  return authenticatedRequest<Project>(`projects/${projectId}/resume`, {
+    method: 'POST',
+    ...(input.reason ? { body: JSON.stringify(input) } : {})
+  });
+}
+
 /** Mark one ACTIVE Project operationally complete through the explicit bodyless command. */
 export function completeProject(projectId: string): Promise<Project> {
   return authenticatedRequest<Project>(`projects/${projectId}/complete`, {

@@ -5,6 +5,7 @@ import { test } from 'node:test';
 const ROOT = new URL('../', import.meta.url);
 const SERVICE = 'apps/api/src/modules/site-expenses/site-expenses.service.ts';
 const REPOSITORY = 'apps/api/src/modules/site-expenses/site-expenses.repository.ts';
+const FINANCE_SERVICE = 'apps/api/src/modules/finance/finance.service.ts';
 
 /** Read one project file relative to the repository root. */
 function read(relativePath) {
@@ -112,11 +113,13 @@ test('B15.5 keeps posted Site Expense history immutable and retry-safe', () => {
 /** Confirm reversal appends compensating Finance and negative cost history with a distinct stable source key. */
 test('B15.5 reverses through compensating Finance and Project cost entries instead of deletion', () => {
   const service = read(SERVICE);
+  const finance = read(FINANCE_SERVICE);
   assert.match(service, /siteExpenseReversalSourceKey\(expenseId\)/);
-  assert.match(service, /sourceType: 'site_expense_reversal'/);
+  assert.match(service, /postSourceReversalInTransaction\(tx/);
+  assert.match(service, /reversalSourceType: 'site_expense_reversal'/);
   assert.match(service, /negativeMoneyString\(originalCost\.amount\)/);
-  assert.match(service, /debit: moneyString\(line\.credit\)/);
-  assert.match(service, /credit: moneyString\(line\.debit\)/);
+  assert.match(finance, /debit: line\.credit\.toString\(\)/);
+  assert.match(finance, /credit: line\.debit\.toString\(\)/);
   assert.match(service, /markReversed/);
   assert.match(service, /eventType: 'site_expense\.reversed'/);
   assert.doesNotMatch(service, /\.delete\(|deleteMany/);

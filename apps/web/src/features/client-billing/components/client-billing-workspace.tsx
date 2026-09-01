@@ -208,6 +208,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
         <section className="admin-card">
           <h2>Billing settings</h2>
           <p className="muted">The commercial model is owned by Project Management. Client Billing controls retention, cycle, advance-recovery flag and billing status only.</p>
+          <p className="muted">Project ID {settingsQuery.data.projectId}</p>
           {props.canManageSettings ? (
             <form className="admin-form" onSubmit={settingsForm.handleSubmit(submitSettings)}>
               <label>Billing method
@@ -221,7 +222,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
               <button type="submit" disabled={updateSettings.isPending}>Save settings</button>
             </form>
           ) : (
-            <p>{billingMethodLabel(settingsQuery.data.billingMethod)} · Retention {settingsQuery.data.retentionPercent ?? '0'}% · {settingsQuery.data.status}</p>
+            <p>{billingMethodLabel(settingsQuery.data.billingMethod)} · Retention {settingsQuery.data.retentionPercent ?? '0'}% · Cycle {settingsQuery.data.billingCycle ?? '—'} · Advance recovery {settingsQuery.data.advanceRecoveryEnabled ? 'Enabled' : 'Disabled'} · {settingsQuery.data.status}</p>
           )}
         </section>
       ) : null}
@@ -266,11 +267,16 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
       {projectId ? (
         <section className="admin-card">
           <h2>Claims</h2>
+          {claimsQuery.data ? <p className="muted">Total {claimsQuery.data.total} · Page {claimsQuery.data.page} · Page size {claimsQuery.data.pageSize}</p> : null}
           {(claimsQuery.data?.items ?? []).length === 0 ? <p className="muted">No claims for this Project.</p> : null}
           {(claimsQuery.data?.items ?? []).map((claim) => (
             <div className="admin-card" key={claim.id}>
               <div className="module-row">
-                <div><strong>{claim.claimNo}</strong><div className="muted">{claim.periodEnd} · {claim.status} · Client {claim.clientId} · Gross {displayMoney(claim.grossValue)} · Deductions {displayMoney(claim.deductions)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div></div>
+                <div>
+                  <strong>{claim.claimNo}</strong>
+                  <div className="muted">Claim ID {claim.id} · Project ID {claim.projectId} · Client ID {claim.clientId}</div>
+                  <div className="muted">{claim.periodEnd} · {claim.status} · Gross {displayMoney(claim.grossValue)} · Deductions {displayMoney(claim.deductions)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div>
+                </div>
                 <div className="admin-actions">
                   {claim.status === 'DRAFT' && props.canEditClaims ? <button type="button" onClick={() => startEditingClaim(claim)}>Edit</button> : null}
                   {claim.status === 'DRAFT' && props.canFinalizeClaims ? <button type="button" disabled={finalizeClaim.isPending} onClick={() => finalizeClaim.mutate(claim.id)}>Finalize</button> : null}
@@ -278,9 +284,20 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
                 </div>
               </div>
               <table>
-                <thead><tr><th>Description</th><th>Stage</th><th>Billing progress</th><th>Amount</th></tr></thead>
-                <tbody>{claim.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.billingProgressPercent ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Billing progress</th><th>Amount</th></tr></thead>
+                <tbody>{claim.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{line.billingProgressPercent ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
               </table>
+              {claim.invoice ? (
+                <div className="admin-card">
+                  <strong>Linked invoice {claim.invoice.invoiceNo}</strong>
+                  <div className="muted">Invoice ID {claim.invoice.id} · Project ID {claim.invoice.projectId} · Client ID {claim.invoice.clientId} · Claim ID {claim.invoice.claimId ?? '—'}</div>
+                  <div className="muted">{claim.invoice.invoiceDate} · Due {claim.invoice.dueDate ?? '—'} · {claim.invoice.status} · Subtotal {displayMoney(claim.invoice.subtotal)} · Tax {displayMoney(claim.invoice.taxAmount)} · Billed {displayMoney(claim.invoice.totalAmount)}</div>
+                  <table>
+                    <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Amount</th></tr></thead>
+                    <tbody>{claim.invoice.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                  </table>
+                </div>
+              ) : <p className="muted">Linked invoice —</p>}
             </div>
           ))}
         </section>
@@ -305,13 +322,20 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
         <section className="admin-card">
           <h2>Client invoices</h2>
           <p className="muted">Invoice total is the billed source. Received, advance and outstanding values are intentionally not calculated here; Module 16 Client Receipts / Payments owns cash receipt and allocation history.</p>
+          {invoicesQuery.data ? <p className="muted">Total {invoicesQuery.data.total} · Page {invoicesQuery.data.page} · Page size {invoicesQuery.data.pageSize}</p> : null}
           {(invoicesQuery.data?.items ?? []).length === 0 ? <p className="muted">No Client Invoices for this Project.</p> : null}
           {(invoicesQuery.data?.items ?? []).map((invoice) => (
             <div className="admin-card" key={invoice.id}>
-              <div className="module-row"><strong>{invoice.invoiceNo}</strong><span>{invoice.invoiceDate} · Due {invoice.dueDate ?? '—'} · {invoice.status} · Client {invoice.clientId} · Subtotal {displayMoney(invoice.subtotal)} · Tax {displayMoney(invoice.taxAmount)} · Billed {displayMoney(invoice.totalAmount)}</span></div>
+              <div className="module-row">
+                <div>
+                  <strong>{invoice.invoiceNo}</strong>
+                  <div className="muted">Invoice ID {invoice.id} · Project ID {invoice.projectId} · Client ID {invoice.clientId} · Claim ID {invoice.claimId ?? '—'}</div>
+                  <div>{invoice.invoiceDate} · Due {invoice.dueDate ?? '—'} · {invoice.status} · Subtotal {displayMoney(invoice.subtotal)} · Tax {displayMoney(invoice.taxAmount)} · Billed {displayMoney(invoice.totalAmount)}</div>
+                </div>
+              </div>
               <table>
-                <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
-                <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Amount</th></tr></thead>
+                <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
               </table>
             </div>
           ))}

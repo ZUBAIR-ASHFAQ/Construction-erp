@@ -27,6 +27,7 @@ import {
   type ListFinanceAccountsQuery,
   type ListFinancePeriodsQuery,
   type ListFinanceJournalsQuery,
+  type ReverseJournalBody,
   type TrialBalanceQuery
 } from './finance.schema.js';
 
@@ -53,6 +54,18 @@ export type SourceJournalPostingInput = Readonly<{
   postingDate: Date;
   description: string;
   lines: readonly CreateJournalLineRepositoryInput[];
+}>;
+
+export type SourceJournalReversalInput = Readonly<{
+  originalSourceType: string;
+  originalSourceId?: string | null;
+  originalSourceKey: string;
+  reversalSourceType: string;
+  reversalSourceId?: string | null;
+  reversalSourceKey: string;
+  postingDate: Date;
+  description: string;
+  lineDescription?: string | null;
 }>;
 
 /** Return unique non-null identifiers while preserving first-seen order. */
@@ -443,13 +456,13 @@ export class FinanceService {
     return posted;
   }
 
-  /** Reverse one posted Journal exactly once with an opposite posted Journal. */
-  async reverseJournal(journalId: string, idempotencyKey: string) {
+  /** Reverse one posted manual Journal exactly once with an opposite posted Journal. */
+  async reverseJournal(journalId: string, idempotencyKey: string, input: ReverseJournalBody = {}) {
     try {
       const result = await executeIdempotentCommand(
         this.db,
-        { operation: 'finance.journals.reverse', idempotencyKey, fingerprintInput: { journalId } },
-        async (tx) => ({ statusCode: 200, body: financeJournalResponseBody(await this.reverseJournalOnce(tx, journalId)) })
+        { operation: 'finance.journals.reverse', idempotencyKey, fingerprintInput: { journalId, postingDate: input.postingDate ?? null } },
+        async (tx) => ({ statusCode: 200, body: financeJournalResponseBody(await this.reverseJournalOnce(tx, journalId, input)) })
       );
       return result.response.body;
     } catch (error) {
@@ -458,8 +471,8 @@ export class FinanceService {
     }
   }
 
-  /** Persist one compensating Journal without mutating posted accounting history. */
-  private async reverseJournalOnce(tx: TransactionClient, journalId: string) {
+  /** Persist one compensating Journal for a manual Journal without mutating posted accounting history. */
+  private async reverseJournalOnce(tx: TransactionClient, journalId: string, input: ReverseJournalBody) {
     const repository = new FinanceRepository(tx);
     const locked = await repository.lockJournalForWrite(journalId);
     if (!locked) throw createFinanceNotFoundError();
@@ -469,6 +482,7 @@ export class FinanceService {
     const now = new Date();
     const lineScope = await this.resolveLineProjectScope(repository, journal.lines);
     await this.requireLinePermissions(new AdministrationRepository(tx), lineScope, 'finance.journals.reverse', now);
+    if (locked.sourceType !== JOURNAL_SOURCE_MANUAL) throw createFinanceError('SOURCE_JOURNAL_REVERSAL_FORBIDDEN');
     const reversalSourceKey = `finance-reversal:${journalId}`;
     if (locked.status === JOURNAL_REVERSED) {
       const existing = await repository.findJournalBySourceKey(reversalSourceKey);
@@ -477,19 +491,29 @@ export class FinanceService {
     }
     if (locked.status !== JOURNAL_POSTED) throw new ConflictError({ message: 'Only posted Journals can be reversed.' });
 
-    const period = await repository.lockFiscalPeriodForWrite(locked.periodId);
-    if (!period || period.status !== PERIOD_OPEN) throw createFinanceError('FISCAL_PERIOD_CLOSED');
+    let reversalPostingDate = locked.postingDate;
+    let reversalPeriodId = locked.periodId;
+    if (input.postingDate) {
+      reversalPostingDate = new Date(`${input.postingDate}T00:00:00.000Z`);
+      const targetPeriod = await this.resolveOpenPeriod(repository, reversalPostingDate);
+      const lockedTargetPeriod = await repository.lockFiscalPeriodForWrite(targetPeriod.id);
+      if (!lockedTargetPeriod || lockedTargetPeriod.status !== PERIOD_OPEN) throw createFinanceError('FISCAL_PERIOD_CLOSED');
+      reversalPeriodId = lockedTargetPeriod.id;
+    } else {
+      const originalPeriod = await repository.lockFiscalPeriodForWrite(locked.periodId);
+      if (!originalPeriod || originalPeriod.status !== PERIOD_OPEN) throw createFinanceError('FISCAL_PERIOD_CLOSED');
+    }
     const allocation = await allocateCompanyNumber(tx, { sequenceKey: JOURNAL_SEQUENCE_KEY });
     const security = requireRequestSecurityContext();
     const reversal = await repository.createJournal({
       journalNo: allocation.formatted,
-      postingDate: locked.postingDate,
+      postingDate: reversalPostingDate,
       sourceType: JOURNAL_SOURCE_REVERSAL,
       sourceId: journalId,
       sourceKey: reversalSourceKey,
       description: `Reversal of ${locked.journalNo}`,
       status: JOURNAL_POSTED,
-      periodId: locked.periodId,
+      periodId: reversalPeriodId,
       createdBy: security.actorUserId,
       postedAt: now,
       totalDebit: locked.totalCredit.toString(),
@@ -552,7 +576,46 @@ export class FinanceService {
     return this.postSourceJournalOnce(tx, input);
   }
 
+  /** Build one compensating source Journal from the immutable original source Journal. */
+  private async postSourceReversalOnce(tx: TransactionClient, input: SourceJournalReversalInput) {
+    const repository = new FinanceRepository(tx);
+    const original = await repository.findJournalBySourceKey(input.originalSourceKey);
+    if (!original
+      || original.status !== JOURNAL_POSTED
+      || original.sourceType !== input.originalSourceType
+      || original.sourceId !== (input.originalSourceId ?? null)
+      || original.lines.length === 0) {
+      throw new ConflictError({ message: 'Posted source Journal is incomplete and cannot be reversed safely.' });
+    }
 
+    const reversal = await this.postSourceJournalOnce(tx, {
+      sourceType: input.reversalSourceType,
+      sourceId: input.reversalSourceId ?? null,
+      sourceKey: input.reversalSourceKey,
+      postingDate: input.postingDate,
+      description: input.description,
+      lines: original.lines.map((line) => ({
+        accountId: line.accountId,
+        projectId: line.projectId,
+        stageId: line.stageId,
+        debit: line.credit.toString(),
+        credit: line.debit.toString(),
+        description: input.lineDescription ?? line.description
+      }))
+    });
+    if (reversal.status !== JOURNAL_POSTED
+      || reversal.sourceType !== input.reversalSourceType
+      || reversal.sourceId !== (input.reversalSourceId ?? null)
+      || reversal.sourceKey !== input.reversalSourceKey) {
+      throw new ConflictError({ message: 'Source Journal reversal key is already owned by different posting data.' });
+    }
+    return reversal;
+  }
+
+  /** Post one compensating source Journal inside the caller's transaction without changing the original Journal. */
+  async postSourceReversalInTransaction(tx: TransactionClient, input: SourceJournalReversalInput) {
+    return this.postSourceReversalOnce(tx, input);
+  }
 
   /** List bounded Company fiscal periods for Finance selectors without exposing Company ownership. */
   async listFiscalPeriods(input: ListFinancePeriodsQuery) {

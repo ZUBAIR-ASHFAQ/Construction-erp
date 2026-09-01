@@ -74,6 +74,7 @@ test('B15.9 verifies idempotent Finance and Job Cost reconciliation', () => {
   assert.match(service, /siteExpenseSourceKey\(expenseId/);
   assert.match(service, /siteExpenseReversalSourceKey\(expenseId/);
   assert.match(service, /postSourceJournalInTransaction\(tx/);
+  assert.match(service, /postSourceReversalInTransaction\(tx/);
   assert.match(service, /upsertSiteExpenseCostActual/);
 });
 

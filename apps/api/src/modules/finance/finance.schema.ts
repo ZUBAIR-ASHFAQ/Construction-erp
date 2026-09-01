@@ -26,6 +26,7 @@ export const FINANCE_ERROR_CODES = Object.freeze([
   'FISCAL_PERIOD_CLOSED',
   'DUPLICATE_POSTING_SOURCE',
   'GL_ACCOUNT_INVALID',
+  'SOURCE_JOURNAL_REVERSAL_FORBIDDEN',
   'FINANCE_SCOPE_FORBIDDEN'
 ] as const);
 
@@ -127,8 +128,10 @@ export const createManualJournalBodySchema = z.object({
 /** Posting is an explicit bodyless command. */
 export const postJournalBodySchema = z.object({}).strict();
 
-/** Reversal is an explicit bodyless command. */
-export const reverseJournalBodySchema = z.object({}).strict();
+/** Reversal may select an open-period posting date while preserving the original date by default. */
+export const reverseJournalBodySchema = z.object({
+  postingDate: dateSchema.optional()
+}).strict();
 
 /** Bounded fiscal-period selector query for Finance reads and close commands. */
 export const listFinancePeriodsQuerySchema = z.object({
@@ -356,6 +359,7 @@ const FINANCE_ERROR_MESSAGES: Readonly<Record<FinanceErrorCode, string>> = Objec
   FISCAL_PERIOD_CLOSED: 'The posting date belongs to a closed or unavailable fiscal period.',
   DUPLICATE_POSTING_SOURCE: 'This financial source has already been posted.',
   GL_ACCOUNT_INVALID: 'The requested General Ledger account is unavailable.',
+  SOURCE_JOURNAL_REVERSAL_FORBIDDEN: 'Source-module Journals cannot be reversed independently from Finance.',
   FINANCE_SCOPE_FORBIDDEN: 'Finance access is outside the authenticated Company or Project scope.'
 });
 
@@ -368,6 +372,7 @@ export function createFinanceError(code: FinanceErrorCode): AppError {
       return new ValidationError({ code, message });
     case 'FISCAL_PERIOD_CLOSED':
     case 'DUPLICATE_POSTING_SOURCE':
+    case 'SOURCE_JOURNAL_REVERSAL_FORBIDDEN':
       return new ConflictError({ code, message });
     case 'FINANCE_SCOPE_FORBIDDEN':
       return new AuthorizationError({ code, message });

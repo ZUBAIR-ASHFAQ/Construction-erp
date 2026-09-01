@@ -74,6 +74,8 @@ function StageRow({ stage, canEdit, onEdit }: Readonly<{
       <td>{stage.financials?.actualCost ?? 'Restricted'}</td>
       <td>{stage.financials?.billedAmount ?? 'Restricted'}</td>
       <td>{stage.financials?.receivedAmount ?? 'Restricted'}</td>
+      <td>{stage.financials?.allocatedReceiptAmount ?? 'Restricted'}</td>
+      <td>{stage.financials?.advanceAmount ?? 'Restricted'}</td>
       <td>{stage.financials?.outstandingAmount ?? 'Restricted'}</td>
       <td>Planned {stage.plannedStartDate ?? '—'} → {stage.plannedEndDate ?? '—'}<br /><small>Actual {stage.actualStartDate ?? '—'} → {stage.actualEndDate ?? '—'}</small></td>
       <td>{stage.status}</td>
@@ -180,17 +182,17 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
         {errorMessage(stagesQuery.error) && <div className="form-error" role="alert">{errorMessage(stagesQuery.error)}</div>}
         {stagesQuery.data && (
           <>
-            <p><strong>Overall physical progress:</strong> {stagesQuery.data.overallPhysicalProgressPercent}%</p>
+            <p><strong>Project:</strong> {stagesQuery.data.projectId} · <strong>Overall physical progress:</strong> {stagesQuery.data.overallPhysicalProgressPercent}%</p>
             <p><strong>Weight total:</strong> {weightTotal.toFixed(4)}% · <strong>Baseline:</strong> {stagesQuery.data.baseline?.status ?? 'Not frozen'}</p>
             {stagesQuery.data.baseline && <p className="muted">Baseline {stagesQuery.data.baseline.id} · Project {stagesQuery.data.baseline.projectId} · Version {stagesQuery.data.baseline.versionNo} · Server weight {stagesQuery.data.baseline.totalWeightPercent}% · Frozen {stagesQuery.data.baseline.frozenAt ? new Date(stagesQuery.data.baseline.frozenAt).toLocaleString() : '—'} by {stagesQuery.data.baseline.frozenBy ?? '—'}</p>}
             <div className="table-scroll">
               <table>
                 <thead>
-                  <tr><th>#</th><th>Stage</th><th>Weight</th><th>Physical</th><th>Planned value</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Outstanding</th><th>Dates</th><th>Status</th><th>Action</th></tr>
+                  <tr><th>#</th><th>Stage</th><th>Weight</th><th>Physical</th><th>Planned value</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated receipts</th><th>Advance</th><th>Outstanding</th><th>Dates</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
                   {stages.map((stage) => <StageRow key={stage.id} stage={stage} canEdit={props.canManage && !stagesQuery.data?.baseline && stage.status === 'DRAFT'} onEdit={handleEditStage} />)}
-                  {stages.length === 0 && <tr><td colSpan={12} className="muted">No Stage has been created yet.</td></tr>}
+                  {stages.length === 0 && <tr><td colSpan={14} className="muted">No Stage has been created yet.</td></tr>}
                 </tbody>
               </table>
             </div>

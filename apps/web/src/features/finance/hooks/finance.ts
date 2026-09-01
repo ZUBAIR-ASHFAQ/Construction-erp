@@ -19,7 +19,8 @@ import {
   type ListCashBankAccountsInput,
   type ListFinanceAccountsInput,
   type ListFinanceJournalsInput,
-  type ListFinancePeriodsInput
+  type ListFinancePeriodsInput,
+  type ReverseFinanceJournalInput
 } from '../api/finance-api.js';
 
 const FINANCE_KEY = ['final21', 'finance'] as const;
@@ -64,10 +65,10 @@ export function usePostFinanceJournal() {
   return useMutation({ mutationFn: (journalId: string) => postFinanceJournal(journalId), onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY }) });
 }
 
-/** Reverse a posted Journal and refresh all Finance read models. */
+/** Reverse a posted manual Journal and refresh all Finance read models. */
 export function useReverseFinanceJournal() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (journalId: string) => reverseFinanceJournal(journalId), onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY }) });
+  return useMutation({ mutationFn: (input: ReverseFinanceJournalInput) => reverseFinanceJournal(input.journalId, input.postingDate), onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY }) });
 }
 
 /** Load one General Ledger query only after the user supplies a fiscal period. */

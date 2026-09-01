@@ -124,10 +124,17 @@ export function FinanceJournalWorkspace({ accounts, journals }: FinanceJournalWo
     form.reset({ postingDate: values.postingDate, description: '', lines: [{ ...EMPTY_LINE }, { ...EMPTY_LINE }] });
   }
 
+  /** Reverse one manual Journal on an explicitly confirmed posting date. */
+  async function handleReverse(journal: FinanceJournal): Promise<void> {
+    const postingDate = window.prompt('Reversal posting date (YYYY-MM-DD). Use a date in an open fiscal period if the original period is closed.', journal.postingDate);
+    if (!postingDate) return;
+    await reverseMutation.mutateAsync({ journalId: journal.id, postingDate });
+  }
+
   return (
     <section className="admin-card">
       <h2>Journals</h2>
-      <p className="muted">Draft manually, then post only when balanced. Posted Journals are corrected with an explicit reversal.</p>
+      <p className="muted">Draft manually, then post only when balanced. Only posted manual Journals can be reversed from Finance.</p>
 
       {canCreate && !canReadFinance && (
         <p className="muted">Finance read permission is required to choose ledger accounts. Raw account IDs are not accepted.</p>
@@ -184,7 +191,7 @@ export function FinanceJournalWorkspace({ accounts, journals }: FinanceJournalWo
                 </td>
                 <td className="action-row">
                   {canPost && journal.status === 'DRAFT' && <button type="button" disabled={postMutation.isPending} onClick={() => postMutation.mutate(journal.id)}>Post</button>}
-                  {canReverse && journal.status === 'POSTED' && <button type="button" className="secondary-button" disabled={reverseMutation.isPending} onClick={() => reverseMutation.mutate(journal.id)}>Reverse</button>}
+                  {canReverse && journal.status === 'POSTED' && journal.sourceType === 'MANUAL' && <button type="button" className="secondary-button" disabled={reverseMutation.isPending} onClick={() => void handleReverse(journal)}>Reverse</button>}
                 </td>
               </tr>
             ))}

@@ -61,6 +61,7 @@ test('R1 freezes exact Module 6 Project API route parity', () => {
     'PATCH /api/v1/projects/:id',
     'POST /api/v1/projects/:id/activate',
     'POST /api/v1/projects/:id/suspend',
+    'POST /api/v1/projects/:id/resume',
     'POST /api/v1/projects/:id/complete',
     'POST /api/v1/projects/:id/close'
   ]);

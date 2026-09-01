@@ -24,6 +24,7 @@ import {
   type CreateProjectBody,
   type ListProjectsQuery,
   type ProjectPermissionCode,
+  type ResumeProjectBody,
   type SuspendProjectBody,
   type UpdateProjectBody
 } from './projects.schema.js';
@@ -39,14 +40,7 @@ const PROJECT_MODEL_COST_PLUS_PERCENTAGE = 'COST_PLUS_PERCENTAGE';
 const ASSIGNMENT_ACTIVE = 'ACTIVE';
 const ROLE_ACTIVE = 'ACTIVE';
 
-type ProjectCloseReadinessCheck = (
-  tx: TransactionClient,
-  projectId: string
-) => Promise<boolean>;
-
-export type ProjectsServiceOptions = Readonly<{
-  closeReadinessCheck?: ProjectCloseReadinessCheck;
-}>;
+export type ProjectsServiceOptions = Readonly<Record<never, never>>;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
 
@@ -147,15 +141,11 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 /** Final Project Management rules with Project-scope authorization and lifecycle transactions. */
 export class ProjectsService {
-  private readonly closeReadinessCheck: ProjectCloseReadinessCheck | undefined;
-
-  /** Bind Project business logic to the database and optional future close-blocker policy. */
+  /** Bind Project business logic to the application database; close readiness is always repository-owned. */
   constructor(
     private readonly db: DatabaseClient,
-    options: ProjectsServiceOptions = {}
-  ) {
-    this.closeReadinessCheck = options.closeReadinessCheck;
-  }
+    _options: ProjectsServiceOptions = {}
+  ) {}
 
   /** Require one reviewed Project permission from trusted request context. */
   private requirePermission(permission: ProjectPermissionCode): void {
@@ -626,6 +616,73 @@ export class ProjectsService {
     });
   }
 
+  /** Resume one SUSPENDED Project after revalidating the same references required for activation. */
+  async resumeProject(projectId: string, input: ResumeProjectBody) {
+    const actorUserId = requireActorUserId();
+    const now = new Date();
+
+    return withTransaction(this.db, async (tx) => {
+      const repository = new ProjectsRepository(tx);
+      await this.requireProjectPermission(
+        new AdministrationRepository(tx),
+        projectId,
+        'projects.activate',
+        now
+      );
+      const locked = await repository.lockProjectForWrite(projectId);
+      if (!locked) throw createProjectError('PROJECT_NOT_FOUND');
+
+      const before = await repository.findProjectById(projectId);
+      if (!before) throw createProjectError('PROJECT_NOT_FOUND');
+      if (before.status === PROJECT_ACTIVE) return before;
+      if (before.status !== PROJECT_SUSPENDED) {
+        throw createProjectError('INVALID_PROJECT_TRANSITION');
+      }
+
+      assertValidDateRange(before.startDate, before.plannedEndDate);
+      assertValidCommercialModel(before.projectModel, before.projectValue, before.costPlusPercent);
+      await this.requireActiveProjectReferences(repository, {
+        clientId: before.clientId,
+        projectManagerUserId: before.projectManagerUserId
+      });
+
+      const updated = await repository.transitionProjectStatus(projectId, PROJECT_SUSPENDED, PROJECT_ACTIVE);
+      if (!updated) throw createProjectError('INVALID_PROJECT_TRANSITION');
+
+      await repository.createProjectStatusHistory({
+        projectId,
+        fromStatus: PROJECT_SUSPENDED,
+        toStatus: PROJECT_ACTIVE,
+        changedBy: actorUserId,
+        reason: input.reason ?? null
+      });
+
+      await recordAudit(tx, {
+        action: 'project.resumed',
+        entityType: 'project',
+        entityId: projectId,
+        before: { status: PROJECT_SUSPENDED },
+        after: {
+          status: PROJECT_ACTIVE,
+          reason: input.reason ?? null
+        }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'project.status_changed',
+        resourceType: 'project',
+        resourceId: projectId,
+        payload: {
+          projectId,
+          fromStatus: PROJECT_SUSPENDED,
+          toStatus: PROJECT_ACTIVE,
+          reason: input.reason ?? null
+        }
+      });
+
+      return updated;
+    });
+  }
+
   /** Mark one ACTIVE Project complete after exact Project resource authorization passes. */
   async completeProject(projectId: string) {
     const actorUserId = requireActorUserId();
@@ -712,7 +769,7 @@ export class ProjectsService {
         throw createProjectError('INVALID_PROJECT_TRANSITION');
       }
 
-      if (this.closeReadinessCheck && !(await this.closeReadinessCheck(tx, projectId))) {
+      if (!(await repository.isProjectReadyToClose(projectId))) {
         throw createProjectError('PROJECT_NOT_READY');
       }
 

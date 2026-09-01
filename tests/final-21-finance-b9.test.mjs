@@ -44,6 +44,7 @@ test('B9 migration adds source keys Stage dimensions Cash Bank and reconciliatio
 /** Confirm the Finance route catalog keeps the Final-21 commands plus the R10 period selector read. */
 test('B9 exposes the approved Final Module 18 route surface and removes repair CRUD aliases', () => {
   const schema = read(`${backend}/finance.schema.ts`);
+  const routes = read(`${backend}/finance.routes.ts`);
   for (const route of [
     "GET', route: '/api/v1/finance/accounts'",
     "POST', route: '/api/v1/finance/accounts'",
@@ -58,6 +59,9 @@ test('B9 exposes the approved Final Module 18 route surface and removes repair C
     "POST', route: '/api/v1/finance/reconciliations'",
     "POST', route: '/api/v1/finance/periods/:id/close'"
   ]) assert.ok(schema.includes(route), `missing ${route}`);
+  assert.match(schema, /reverseJournalBodySchema = z\.object\(\{[\s\S]*postingDate: dateSchema\.optional\(\)/);
+  assert.match(routes, /body: REVERSE_JOURNAL_BODY_JSON_SCHEMA/);
+  assert.match(routes, /service\.reverseJournal\(id, readIdempotencyKey\(request\), body\)/);
   assert.doesNotMatch(schema, /general-ledger|accounts\/:id|periods\/:id\/reopen|POST', route: '\/api\/v1\/finance\/periods'/);
 });
 
@@ -67,7 +71,7 @@ test('B9 uses the required Finance permissions errors and events and retires old
   const administration = read('apps/api/src/modules/administration/administration.schema.ts');
   const permissionMigration = read('packages/database/prisma/migrations/20260829001300_final21_finance_core_alignment/migration.sql');
   for (const value of ['finance.read', 'finance.accounts.manage', 'finance.journals.create', 'finance.journals.post', 'finance.journals.reverse', 'finance.periods.close', 'finance.reconcile']) assert.ok(schema.includes(`'${value}'`));
-  for (const value of ['JOURNAL_UNBALANCED', 'FISCAL_PERIOD_CLOSED', 'DUPLICATE_POSTING_SOURCE', 'GL_ACCOUNT_INVALID', 'FINANCE_SCOPE_FORBIDDEN']) assert.ok(schema.includes(`'${value}'`));
+  for (const value of ['JOURNAL_UNBALANCED', 'FISCAL_PERIOD_CLOSED', 'DUPLICATE_POSTING_SOURCE', 'GL_ACCOUNT_INVALID', 'SOURCE_JOURNAL_REVERSAL_FORBIDDEN', 'FINANCE_SCOPE_FORBIDDEN']) assert.ok(schema.includes(`'${value}'`));
   for (const value of ['journal.posted', 'journal.reversed', 'period.closed', 'bank_reconciliation.completed']) assert.ok(schema.includes(`'${value}'`));
   for (const value of ['finance.accounts.read', 'finance.journals.read', 'finance.reports.read']) {
     assert.doesNotMatch(administration, new RegExp(`'${value.replaceAll('.', '\\.')}'`));
@@ -87,6 +91,14 @@ test('B9 Finance service enforces balanced posting stable source keys Project St
   assert.match(service, /postSourceJournal/);
   assert.match(service, /sourceKey/);
   assert.match(service, /finance-reversal:/);
+  assert.match(service, /locked\.sourceType !== JOURNAL_SOURCE_MANUAL[\s\S]*SOURCE_JOURNAL_REVERSAL_FORBIDDEN/);
+  assert.match(service, /fingerprintInput: \{ journalId, postingDate: input\.postingDate \?\? null \}/);
+  assert.match(service, /if \(input\.postingDate\) \{[\s\S]*resolveOpenPeriod\(repository, reversalPostingDate\)[\s\S]*lockFiscalPeriodForWrite\(targetPeriod\.id\)/);
+  assert.match(service, /else \{[\s\S]*lockFiscalPeriodForWrite\(locked\.periodId\)[\s\S]*FISCAL_PERIOD_CLOSED/);
+  assert.match(service, /postingDate: reversalPostingDate[\s\S]*periodId: reversalPeriodId/);
+  assert.match(service, /async postSourceReversalInTransaction\(tx: TransactionClient, input: SourceJournalReversalInput\)/);
+  assert.match(service, /original\.status !== JOURNAL_POSTED[\s\S]*original\.sourceType !== input\.originalSourceType[\s\S]*original\.sourceId !== \(input\.originalSourceId \?\? null\)/);
+  assert.match(service, /debit: line\.credit\.toString\(\)[\s\S]*credit: line\.debit\.toString\(\)/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);
   assert.doesNotMatch(service, /costStructureId|wbsNodeId|costCodeId|costTypeId/);
@@ -130,10 +142,17 @@ test('B9 aligns Finance React API hooks and workspace to ledger Cash Bank reconc
   assert.match(api, /finance\/periods/);
   assert.match(api, /finance\/reconciliations/);
   assert.match(api, /stageId/);
+  assert.match(api, /ReverseFinanceJournalInput/);
+  assert.match(api, /reverseFinanceJournal\(journalId: string, postingDate\?: string\)/);
+  assert.match(api, /body = postingDate \? \{ postingDate \} : undefined/);
   assert.doesNotMatch(api, /general-ledger|costStructureId|updateFinanceAccount|reopenFinancePeriod|createFinancePeriod/);
   assert.match(hooks, /@tanstack\/react-query/);
+  assert.match(hooks, /mutationFn: \(input: ReverseFinanceJournalInput\) => reverseFinanceJournal\(input\.journalId, input\.postingDate\)/);
   assert.match(workspace, /react-hook-form/);
   assert.match(workspace, /zodResolver/);
+  assert.match(workspace, /journal\.status === 'POSTED' && journal\.sourceType === 'MANUAL'/);
+  assert.match(workspace, /window\.prompt\('Reversal posting date \(YYYY-MM-DD\)\.[\s\S]*journal\.postingDate\)/);
+  assert.match(workspace, /reverseMutation\.mutateAsync\(\{ journalId: journal\.id, postingDate \}\)/);
   assert.match(page, /Cash \/ Bank & Reconciliation/);
   assert.match(page, /useFinancePeriods/);
   assert.match(page, /<select \{\.\.\.ledgerForm\.register\('periodId'\)\}/);

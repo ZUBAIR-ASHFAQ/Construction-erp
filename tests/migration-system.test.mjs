@@ -41,9 +41,9 @@ test('migration gates remain ordered and the latest gate is the current Final-21
     assert.ok(gateManifest.gates[index].stage >= gateManifest.gates[index - 1].stage, 'migration gate stages must be non-decreasing');
   }
   const latest = gateManifest.gates.at(-1);
-  assert.equal(latest?.stage, 58);
-  assert.equal(latest?.gate, 'final-21-pass-b1-10-final-permission-acceptance');
-  assert.deepEqual(latest?.migrations, ['20260831000400_final21_reports_dashboard_permissions']);
+  assert.equal(latest?.stage, 60);
+  assert.equal(latest?.gate, 'final-21-repair-project-stage-create-flow');
+  assert.deepEqual(latest?.migrations, ['20260901000200_final21_project_stage_create_repair']);
 });
 
 test('previous-schema calculation rebuilds every accepted migration before the latest gate', () => {

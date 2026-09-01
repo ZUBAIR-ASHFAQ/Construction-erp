@@ -45,7 +45,15 @@ test('active Project API contract creates directly from Client with Fixed Price 
   assert.match(routes, /projectModel: PROJECT_MODEL_JSON_SCHEMA/);
   assert.match(routes, /projectValue: PROJECT_VALUE_JSON_SCHEMA/);
   assert.doesNotMatch(routes, /tenderId|Tender/);
-  assert.doesNotMatch(routes, /projects\/:id\/resume|resumeProject|module5ResumeProject/);
+  assert.match(routes, /app\.post\('\/api\/v1\/projects\/:id\/resume'/);
+  assert.match(routes, /operationId: 'module6ResumeProject'/);
+});
+
+test('Project close always applies source-derived readiness before the COMPLETED-to-CLOSED transition', () => {
+  assert.match(repository, /async isProjectReadyToClose\(projectId: string\): Promise<boolean>/);
+  assert.match(service, /repository\.isProjectReadyToClose\(projectId\)/);
+  assert.doesNotMatch(service, /closeReadinessCheck/);
+  assert.match(service, /PROJECT_NOT_READY/);
 });
 
 test('Project repository and service contain no active Tender linkage or Tender validation', () => {
@@ -66,18 +74,22 @@ test('Project update clears Fixed Price markup and validates Cost + Percentage a
   assert.match(service, /costPlusPercent: nextCostPlusPercent/);
 });
 
-test('Project lifecycle emits the final generic status-change event and removes the extra resume command', () => {
+test('Project lifecycle keeps the generic status-change event and adds the controlled SUSPENDED-to-ACTIVE repair command', () => {
   assert.match(schema, /'project\.status_changed'/);
+  assert.match(schema, /resumeProjectBodySchema = z\.object/);
+  assert.match(service, /async resumeProject\(projectId: string, input: ResumeProjectBody\)/);
+  assert.match(service, /transitionProjectStatus\(projectId, PROJECT_SUSPENDED, PROJECT_ACTIVE\)/);
+  assert.match(service, /action: 'project\.resumed'/);
   assert.match(service, /eventType: 'project\.status_changed'/);
-  assert.doesNotMatch(schema, /projects\/:id\/resume|resumeProjectBodySchema|ResumeProjectBody/);
-  assert.doesNotMatch(service, /resumeProject|project\.resumed/);
 });
 
 test('Project React API and workspace expose commercial fields without Tender controls', () => {
   for (const source of [webApi, webPage, webDetails]) {
     assert.doesNotMatch(source, /tenderId/);
-    assert.doesNotMatch(source, /resumeProject|Resume Project|projects\/\$\{projectId\}\/resume/);
   }
+
+  assert.match(webApi, /export function resumeProject\(projectId: string/);
+  assert.match(webDetails, /Resume Project/);
 
   assert.match(webApi, /ProjectModel = 'FIXED_PRICE' \| 'COST_PLUS_PERCENTAGE'/);
   assert.match(webPage, /Commercial model/);

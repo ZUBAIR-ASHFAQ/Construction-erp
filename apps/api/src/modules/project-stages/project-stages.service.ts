@@ -169,6 +169,28 @@ function isUniqueConstraintError(error: unknown): boolean {
   return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2002');
 }
 
+/** Read the safe Prisma unique target only to distinguish Stage code from sequence conflicts. */
+function uniqueConstraintTarget(error: unknown): string {
+  if (!error || typeof error !== 'object' || !('meta' in error)) return '';
+  const meta = error.meta;
+  if (!meta || typeof meta !== 'object' || !('target' in meta)) return '';
+  const target = meta.target;
+  if (Array.isArray(target)) return target.filter((value): value is string => typeof value === 'string').join(',');
+  return typeof target === 'string' ? target : '';
+}
+
+/** Return one specific Stage uniqueness message so automatic sequence retry never hides duplicate codes. */
+function stageUniqueConstraintMessage(error: unknown): string {
+  const target = uniqueConstraintTarget(error);
+  if (/sequence_no|sequenceNo|project_stages_company_project_sequence_uq/.test(target)) {
+    return 'Stage sequence number is already in use inside the Project.';
+  }
+  if (/code|project_stages_company_project_code_uq/.test(target)) {
+    return 'Stage code is already in use inside the Project.';
+  }
+  return 'Stage code and sequence number must be unique inside the Project.';
+}
+
 /** Convert one request date-only string into a stable UTC Date. */
 function inputDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
@@ -332,7 +354,7 @@ export class ProjectStagesService {
       return result.response.body;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
+        throw new ValidationError({ message: stageUniqueConstraintMessage(error) });
       }
       throw error;
     }
@@ -376,7 +398,7 @@ export class ProjectStagesService {
       return result.response.body;
     } catch (error) {
       if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
+        throw new ValidationError({ message: stageUniqueConstraintMessage(error) });
       }
       throw error;
     }

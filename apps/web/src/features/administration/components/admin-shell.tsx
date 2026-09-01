@@ -230,6 +230,7 @@ export function AdminShell() {
   const canManageDepartments = usePermission('admin.departments.manage');
   const [view, setView] = useState<WorkspaceView>('dashboard');
   const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (auth.isCheckingSession) {
     return (
@@ -283,110 +284,191 @@ export function AdminShell() {
   function showClients(): void {
     setLinkedClientId(null);
     setView('clients');
+    setIsSidebarOpen(false);
   }
 
   /** Open Project Management already filtered to the selected Client. */
   function showClientProjects(clientId: string): void {
     setLinkedClientId(clientId);
     setView('projects');
+    setIsSidebarOpen(false);
   }
 
   /** Show Project Management without a Client filter. */
   function showProjects(): void {
     setLinkedClientId(null);
     setView('projects');
+    setIsSidebarOpen(false);
+  }
+
+  /** Select one workspace and close the mobile navigation drawer. */
+  function selectView(nextView: WorkspaceView): void {
+    setView(nextView);
+    setIsSidebarOpen(false);
   }
 
   return (
     <main className="app-shell">
       <header className="topbar">
-        <div>
-          <p className="eyebrow">{webConfig.appName}</p>
-          <strong>{auth.identity.user.name}</strong>
-          <span className="muted"> · {auth.identity.user.email}</span>
+        <div className="topbar-left">
+          <button
+            type="button"
+            className="mobile-nav-toggle"
+            aria-label="Open module navigation"
+            aria-expanded={isSidebarOpen}
+            onClick={() => setIsSidebarOpen((current) => !current)}
+          >
+            <span aria-hidden="true">☰</span>
+          </button>
+          <div className="topbar-title">
+            <p className="eyebrow">Construction ERP</p>
+            <strong>{webConfig.appName}</strong>
+          </div>
         </div>
-        <button type="button" className="secondary-button" onClick={handleSignOut} disabled={auth.isSigningOut}>
-          {auth.isSigningOut ? 'Signing out…' : 'Sign out'}
-        </button>
+
+        <div className="topbar-right">
+          <div className="user-chip">
+            <span className="user-avatar" aria-hidden="true">{auth.identity.user.name.slice(0, 1).toUpperCase()}</span>
+            <span className="user-copy">
+              <strong>{auth.identity.user.name}</strong>
+              <small>{auth.identity.user.email}</small>
+            </span>
+          </div>
+          <button type="button" className="secondary-button" onClick={handleSignOut} disabled={auth.isSigningOut}>
+            {auth.isSigningOut ? 'Signing out…' : 'Sign out'}
+          </button>
+        </div>
       </header>
 
       <div className="admin-layout">
-        <aside className="admin-nav" aria-label="ERP workspace navigation">
-          <p className="eyebrow">Workspace</p>
-          {canReadDashboard && (
-            <button type="button" className={navigationButtonClass(activeView, 'dashboard')} onClick={() => setView('dashboard')}>Dashboard</button>
-          )}
-          {canReadDocuments && (
-            <button type="button" className={navigationButtonClass(activeView, 'documents')} onClick={() => setView('documents')}>Documents</button>
-          )}
-          {canReadClients && (
-            <button type="button" className={navigationButtonClass(activeView, 'clients')} onClick={showClients}>Client Management</button>
-          )}
-          {canReadProjects && (
-            <button type="button" className={navigationButtonClass(activeView, 'projects')} onClick={showProjects}>Project Management</button>
-          )}
-          {canUseProjectStages && (
-            <button type="button" className={navigationButtonClass(activeView, 'project-stages')} onClick={() => setView('project-stages')}>Project Stages / Progress</button>
-          )}
-          {canUseProjectTeam && (
-            <button type="button" className={navigationButtonClass(activeView, 'project-team')} onClick={() => setView('project-team')}>Project Team / Assignment</button>
-          )}
-          {canUseFinance && (
-            <button type="button" className={navigationButtonClass(activeView, 'finance')} onClick={() => setView('finance')}>Finance Core</button>
-          )}
-          {canUseBudgets && (
-            <button type="button" className={navigationButtonClass(activeView, 'budgets-job-cost')} onClick={() => setView('budgets-job-cost')}>Budget & Cost Tracking</button>
-          )}
-          {canUseProcurement && (
-            <button type="button" className={navigationButtonClass(activeView, 'procurement')} onClick={() => setView('procurement')}>Procurement</button>
-          )}
-          {canUseInventory && (
-            <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => setView('inventory')}>Inventory & Materials</button>
-          )}
-          {canUseVendorsSubcontractors && (
-            <button type="button" className={navigationButtonClass(activeView, 'vendors-subcontractors')} onClick={() => setView('vendors-subcontractors')}>Suppliers & Subcontractors</button>
-          )}
-          {canUseEquipment && (
-            <button type="button" className={navigationButtonClass(activeView, 'equipment')} onClick={() => setView('equipment')}>Equipment Management</button>
-          )}
-          {canUseEmployees && (
-            <button type="button" className={navigationButtonClass(activeView, 'employees')} onClick={() => setView('employees')}>Employees & Salaries</button>
-          )}
-          {canUseLabourPayroll && (
-            <button type="button" className={navigationButtonClass(activeView, 'labour-payroll')} onClick={() => setView('labour-payroll')}>Attendance & Payroll</button>
-          )}
-          {canUseSiteExpenses && (
-            <button type="button" className={navigationButtonClass(activeView, 'site-expenses')} onClick={() => setView('site-expenses')}>Site Expenses</button>
-          )}
-          {canUseSupplierPayables && (
-            <button type="button" className={navigationButtonClass(activeView, 'supplier-payables')} onClick={() => setView('supplier-payables')}>Supplier Payables</button>
-          )}
-          {canUseClientBilling && (
-            <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => setView('client-billing')}>Client Billing</button>
-          )}
-          {canUseClientReceipts && (
-            <button type="button" className={navigationButtonClass(activeView, 'client-receipts')} onClick={() => setView('client-receipts')}>Client Receipts / Payments</button>
-          )}
-          {canUseProjectProfitability && (
-            <button type="button" className={navigationButtonClass(activeView, 'project-profitability')} onClick={() => setView('project-profitability')}>Project Profitability</button>
-          )}
-          {canReadReports && (
-            <button type="button" className={navigationButtonClass(activeView, 'reports')} onClick={() => setView('reports')}>Reports & Analytics</button>
-          )}
-          {canReadUsers && (
-            <button type="button" className={navigationButtonClass(activeView, 'organization-profile')} onClick={() => setView('organization-profile')}>Organization profile</button>
-          )}
-          {canReadUsers && (
-            <button type="button" className={navigationButtonClass(activeView, 'users')} onClick={() => setView('users')}>Users</button>
-          )}
-          {canReadRoles && (
-            <button type="button" className={navigationButtonClass(activeView, 'roles')} onClick={() => setView('roles')}>Roles & permissions</button>
-          )}
-          {canManageDepartments && (
-            <button type="button" className={navigationButtonClass(activeView, 'departments')} onClick={() => setView('departments')}>Departments</button>
-          )}
-          <p className="nav-note">Project scope: {auth.identity.projectScope.kind === 'all' ? 'all Projects' : `${auth.identity.projectScope.projectIds.length} assigned Project(s)`}.</p>
+        <aside className={isSidebarOpen ? 'admin-nav open' : 'admin-nav'} aria-label="ERP workspace navigation">
+          <div className="sidebar-brand">
+            <span className="brand-mark" aria-hidden="true">CE</span>
+            <span className="brand-copy">
+              <strong>Construction ERP</strong>
+              <small>Operations workspace</small>
+            </span>
+          </div>
+
+          <div className="nav-scroll">
+            <details className="nav-group" open>
+              <summary>Overview</summary>
+              <div className="nav-group-links">
+                {canReadDashboard && (
+                  <button type="button" className={navigationButtonClass(activeView, 'dashboard')} onClick={() => selectView('dashboard')}>Dashboard</button>
+                )}
+                {canReadDocuments && (
+                  <button type="button" className={navigationButtonClass(activeView, 'documents')} onClick={() => selectView('documents')}>Documents</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Projects</summary>
+              <div className="nav-group-links">
+                {canReadClients && (
+                  <button type="button" className={navigationButtonClass(activeView, 'clients')} onClick={showClients}>Client Management</button>
+                )}
+                {canReadProjects && (
+                  <button type="button" className={navigationButtonClass(activeView, 'projects')} onClick={showProjects}>Project Management</button>
+                )}
+                {canUseProjectStages && (
+                  <button type="button" className={navigationButtonClass(activeView, 'project-stages')} onClick={() => selectView('project-stages')}>Project Stages / Progress</button>
+                )}
+                {canUseProjectTeam && (
+                  <button type="button" className={navigationButtonClass(activeView, 'project-team')} onClick={() => selectView('project-team')}>Project Team / Assignment</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Commercial & Operations</summary>
+              <div className="nav-group-links">
+                {canUseFinance && (
+                  <button type="button" className={navigationButtonClass(activeView, 'finance')} onClick={() => selectView('finance')}>Finance Core</button>
+                )}
+                {canUseBudgets && (
+                  <button type="button" className={navigationButtonClass(activeView, 'budgets-job-cost')} onClick={() => selectView('budgets-job-cost')}>Budget & Cost Tracking</button>
+                )}
+                {canUseProcurement && (
+                  <button type="button" className={navigationButtonClass(activeView, 'procurement')} onClick={() => selectView('procurement')}>Procurement</button>
+                )}
+                {canUseInventory && (
+                  <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => selectView('inventory')}>Inventory & Materials</button>
+                )}
+                {canUseVendorsSubcontractors && (
+                  <button type="button" className={navigationButtonClass(activeView, 'vendors-subcontractors')} onClick={() => selectView('vendors-subcontractors')}>Suppliers & Subcontractors</button>
+                )}
+                {canUseEquipment && (
+                  <button type="button" className={navigationButtonClass(activeView, 'equipment')} onClick={() => selectView('equipment')}>Equipment Management</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>People & Site</summary>
+              <div className="nav-group-links">
+                {canUseEmployees && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employees')} onClick={() => selectView('employees')}>Employees & Salaries</button>
+                )}
+                {canUseLabourPayroll && (
+                  <button type="button" className={navigationButtonClass(activeView, 'labour-payroll')} onClick={() => selectView('labour-payroll')}>Attendance & Payroll</button>
+                )}
+                {canUseSiteExpenses && (
+                  <button type="button" className={navigationButtonClass(activeView, 'site-expenses')} onClick={() => { setView('site-expenses'); setIsSidebarOpen(false); }}>Site Expenses</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Billing & Analytics</summary>
+              <div className="nav-group-links">
+                {canUseSupplierPayables && (
+                  <button type="button" className={navigationButtonClass(activeView, 'supplier-payables')} onClick={() => { setView('supplier-payables'); setIsSidebarOpen(false); }}>Supplier Payables</button>
+                )}
+                {canUseClientBilling && (
+                  <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => { setView('client-billing'); setIsSidebarOpen(false); }}>Client Billing</button>
+                )}
+                {canUseClientReceipts && (
+                  <button type="button" className={navigationButtonClass(activeView, 'client-receipts')} onClick={() => selectView('client-receipts')}>Client Receipts / Payments</button>
+                )}
+                {canUseProjectProfitability && (
+                  <button type="button" className={navigationButtonClass(activeView, 'project-profitability')} onClick={() => selectView('project-profitability')}>Project Profitability</button>
+                )}
+                {canReadReports && (
+                  <button type="button" className={navigationButtonClass(activeView, 'reports')} onClick={() => selectView('reports')}>Reports & Analytics</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Administration</summary>
+              <div className="nav-group-links">
+                {canReadUsers && (
+                  <button type="button" className={navigationButtonClass(activeView, 'organization-profile')} onClick={() => selectView('organization-profile')}>Organization profile</button>
+                )}
+                {canReadUsers && (
+                  <button type="button" className={navigationButtonClass(activeView, 'users')} onClick={() => selectView('users')}>Users</button>
+                )}
+                {canReadRoles && (
+                  <button type="button" className={navigationButtonClass(activeView, 'roles')} onClick={() => selectView('roles')}>Roles & Permissions</button>
+                )}
+                {canManageDepartments && (
+                  <button type="button" className={navigationButtonClass(activeView, 'departments')} onClick={() => { setView('departments'); setIsSidebarOpen(false); }}>Departments</button>
+                )}
+              </div>
+            </details>
+          </div>
+
+          <div className="sidebar-footer">
+            <span>Project scope</span>
+            <strong>{auth.identity.projectScope.kind === 'all' ? 'All projects' : `${auth.identity.projectScope.projectIds.length} assigned project(s)`}</strong>
+          </div>
         </aside>
+
+        {isSidebarOpen && (
+          <button type="button" className="sidebar-overlay" aria-label="Close module navigation" onClick={() => setIsSidebarOpen(false)} />
+        )}
 
         <div className="admin-content">
           {activeView === 'dashboard' && <DashboardPage />}

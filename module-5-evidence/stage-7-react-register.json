@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-react-register-evidence",
+  "generatedAt": "2026-08-23T09:12:58.561Z",
+  "status": "STAGE_7_REACT_REGISTER_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 146,
+  "stage6LiveAccepted": false,
+  "reactCoverage": [
+    "permission-aware Project Management workspace navigation",
+    "server-paginated Project register with search, status, Client and Tender filters",
+    "React Hook Form + Zod Project create form",
+    "permission-aware active Client, WON Tender and active Project Manager choices",
+    "Project detail with append-only lifecycle history",
+    "TanStack Query ownership of Project server state",
+    "no Project membership controls before Module 24B"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "membershipDeferredToModule24B": true,
+  "nextPass": "Pass 147 - Module 5 React Project edit, lifecycle controls and commercial summary.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-api-contract-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:45.701Z",
+      "finishedAt": "2026-08-23T09:12:58.306Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:58.306Z",
+      "finishedAt": "2026-08-23T09:12:58.436Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:58.436Z",
+      "finishedAt": "2026-08-23T09:12:58.467Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:58.467Z",
+      "finishedAt": "2026-08-23T09:12:58.485Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:58.485Z",
+      "finishedAt": "2026-08-23T09:12:58.520Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:12:58.520Z",
+      "finishedAt": "2026-08-23T09:12:58.561Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

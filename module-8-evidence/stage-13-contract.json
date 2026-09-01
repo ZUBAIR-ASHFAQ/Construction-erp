@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-contract-evidence",
+  "generatedAt": "2026-08-24T11:41:36.667Z",
+  "pass": 223,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_CONTRACT_FROZEN_STAGE_12_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage12LiveAccepted": false,
+  "ownedTables": [
+    "vendors",
+    "vendor_contacts",
+    "purchase_requisitions",
+    "purchase_requisition_items",
+    "rfqs",
+    "rfq_vendors",
+    "supplier_quotations",
+    "supplier_quotation_items"
+  ],
+  "reviewedRouteCount": 8,
+  "reviewedRoutes": [
+    "GET /api/v1/procurement/requisitions",
+    "POST /api/v1/procurement/requisitions",
+    "POST /api/v1/procurement/requisitions/:id/submit",
+    "POST /api/v1/procurement/rfqs",
+    "POST /api/v1/procurement/rfqs/:id/issue",
+    "POST /api/v1/procurement/rfqs/:id/quotations",
+    "GET /api/v1/procurement/rfqs/:id/comparison",
+    "POST /api/v1/procurement/rfqs/:id/select-quotation"
+  ],
+  "publicVendorMasterRouteCount": 0,
+  "reviewedPermissions": [
+    "procurement.pr.read",
+    "procurement.pr.create",
+    "procurement.rfq.manage",
+    "procurement.quotation.record",
+    "procurement.quotation.select"
+  ],
+  "reviewedErrors": [
+    "REQUISITION_NOT_FOUND",
+    "RFQ_NOT_FOUND",
+    "RFQ_CLOSED",
+    "QUOTATION_INVALID",
+    "PROCUREMENT_BUDGET_BLOCK",
+    "INVALID_VENDOR_SELECTION"
+  ],
+  "reviewedEvents": [
+    "purchase_requisition.submitted",
+    "rfq.issued",
+    "supplier_quotation.received",
+    "rfq.quotation_selected"
+  ],
+  "hardPrerequisites": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "22 - Approval Workflows",
+    "24B - Project Scope Activation"
+  ],
+  "ownsSupplierVendorMaster": true,
+  "selectionCreatesFinancialCommitment": false,
+  "inventoryItemForeignKeyDeferredUntilModule10": true,
+  "vendorMasterPublicApiGapRecorded": true,
+  "rfqItemRelationshipGapRecorded": true,
+  "unresolvedSourceAmbiguities": [
+    "Part I owns vendors/vendor_contacts in Module 8, but the reviewed Module-8 route table exposes no vendor-master CRUD/read/contact endpoint.",
+    "supplier_quotation_items.rfq_item_id is required, but no rfq_items table or explicit foreign-key target is defined.",
+    "rfqs.requisition_id is nullable, so rfq_item_id cannot safely be assumed to reference purchase_requisition_items for every RFQ.",
+    "purchase_requisition_items.item_id points toward later Module-10 inventory ownership and must not receive a premature foreign key.",
+    "Requisition, RFQ, RFQ-vendor-response, vendor qualification and quotation status token vocabularies are not enumerated.",
+    "Submitted/approved requisition revision or return-to-draft is required by a business rule, but no reviewed route exists for either command.",
+    "The exact budget-block threshold/tolerance policy behind PROCUREMENT_BUDGET_BLOCK is not defined.",
+    "Non-lowest-offer selection requires documented rationale when policy requires, but the policy source and exact request field names are not defined.",
+    "Quotation comparison currency, exchange-rate, unit-conversion, tax-normalization and ranking formulas are not defined.",
+    "Quotation import is required in the React UI description, but no dedicated import endpoint is defined."
+  ],
+  "productionFilesGenerated": false,
+  "databaseMigrationGenerated": false,
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 224 - Module 8 reviewed Prisma models, constraints, indexes and migration. Deployment remains blocked until the Stage-12 live handoff is genuine; RFQ-item relationship inference must remain explicit.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:35.834Z",
+      "finishedAt": "2026-08-24T11:41:35.956Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:35.956Z",
+      "finishedAt": "2026-08-24T11:41:36.080Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.080Z",
+      "finishedAt": "2026-08-24T11:41:36.198Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.198Z",
+      "finishedAt": "2026-08-24T11:41:36.291Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.291Z",
+      "finishedAt": "2026-08-24T11:41:36.429Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.429Z",
+      "finishedAt": "2026-08-24T11:41:36.574Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.574Z",
+      "finishedAt": "2026-08-24T11:41:36.614Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.614Z",
+      "finishedAt": "2026-08-24T11:41:36.667Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

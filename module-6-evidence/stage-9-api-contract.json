@@ -1,0 +1,107 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-api-contract-evidence",
+  "generatedAt": "2026-08-26T14:47:41.422Z",
+  "pass": 184,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "static",
+  "status": "STAGE_9_API_CONTRACT_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "contractCoverage": [
+    "exact seven-operation Module 6 OpenAPI inventory",
+    "bearer security on every reviewed Module 6 operation",
+    "strict request schemas with Company, actor, permission, Project and derived level authority absent",
+    "bodyless WBS freeze command",
+    "exact WBS tree, Cost Code list, mapping and freeze success DTO schemas",
+    "shared error envelope with requestId nested under error",
+    "route-specific stable validation, authorization, not-found and conflict error-code enums",
+    "no Cost Type CRUD, archive, reopen, generic CRUD or DELETE route"
+  ],
+  "sourceDefinedButUnreachableError": {
+    "code": "COST_CODE_IN_USE",
+    "reason": "The source freezes this error code, but the reviewed seven-route contract defines no Cost Code archive/delete command that can emit it."
+  },
+  "openApiRoute": "/openapi.json",
+  "productionBusinessBehaviorChanges": 0,
+  "openApiMetadataCorrections": [
+    "replace permissive generic error schemas with the real shared error envelope",
+    "document only the stable error codes each current operation can actually emit"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 185 may be prepared next, but Pass 184 live verification remains blocked until the genuine Stage-8 live handoff is available.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.144Z",
+      "finishedAt": "2026-08-26T14:47:35.145Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-security",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.145Z",
+      "finishedAt": "2026-08-26T14:47:40.150Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-api-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:40.150Z",
+      "finishedAt": "2026-08-26T14:47:40.667Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:40.667Z",
+      "finishedAt": "2026-08-26T14:47:40.780Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-api-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:40.780Z",
+      "finishedAt": "2026-08-26T14:47:40.886Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-registration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:40.886Z",
+      "finishedAt": "2026-08-26T14:47:40.994Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:40.995Z",
+      "finishedAt": "2026-08-26T14:47:41.215Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:41.215Z",
+      "finishedAt": "2026-08-26T14:47:41.421Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

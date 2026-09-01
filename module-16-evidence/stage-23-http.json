@@ -1,0 +1,151 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-http-evidence",
+  "generatedAt": "2026-08-26T11:26:33.602Z",
+  "pass": 352,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "status": "STAGE_23_MODULE_16_HTTP_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "routeFile": "apps/api/src/modules/client-billing/client-billing.routes.ts",
+  "indexFile": "apps/api/src/modules/client-billing/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "exactReviewedRouteCount": 7,
+  "routes": [
+    "GET /api/v1/client-billing/contracts",
+    "POST /api/v1/client-billing/contracts",
+    "POST /api/v1/client-billing/contracts/:id/claims",
+    "PUT /api/v1/client-billing/claims/:id/lines",
+    "POST /api/v1/client-billing/claims/:id/certify",
+    "POST /api/v1/client-billing/claims/:id/invoice",
+    "POST /api/v1/client-billing/retention/:id/release"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "projectResourcePolicyRemainsAuthoritativeInService": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "idempotentCommandRouteCount": 6,
+  "bodylessCommandCount": 1,
+  "retentionReleaseBodyless": true,
+  "reviewedPermissionCount": 6,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "appRegistrationPrepared": true,
+  "openApiOperationsPrepared": true,
+  "genericCrudRoutesAdded": 0,
+  "claimSubmitRouteAdded": false,
+  "contractUpdateRouteAdded": false,
+  "paymentRouteAdded": false,
+  "financeArAdapterGeneratedEarly": false,
+  "approvedChangeAdapterImplemented": false,
+  "reactGenerated": false,
+  "databaseMigrationGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 353 - Module 16 PostgreSQL/Fastify integration, generated OpenAPI, Company/Project isolation, negative RBAC, transaction and idempotency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-invoice-retention",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:22.394Z",
+      "finishedAt": "2026-08-26T11:26:31.111Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:31.111Z",
+      "finishedAt": "2026-08-26T11:26:31.285Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:31.286Z",
+      "finishedAt": "2026-08-26T11:26:31.766Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "runtime-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:31.766Z",
+      "finishedAt": "2026-08-26T11:26:32.174Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:32.174Z",
+      "finishedAt": "2026-08-26T11:26:32.316Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:32.316Z",
+      "finishedAt": "2026-08-26T11:26:32.504Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:32.504Z",
+      "finishedAt": "2026-08-26T11:26:32.664Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:32.664Z",
+      "finishedAt": "2026-08-26T11:26:32.958Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:32.958Z",
+      "finishedAt": "2026-08-26T11:26:33.252Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:33.252Z",
+      "finishedAt": "2026-08-26T11:26:33.411Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:33.411Z",
+      "finishedAt": "2026-08-26T11:26:33.486Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:26:33.486Z",
+      "finishedAt": "2026-08-26T11:26:33.601Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

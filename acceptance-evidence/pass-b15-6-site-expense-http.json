@@ -1,0 +1,51 @@
+{
+  "pass": "B15.6",
+  "module": "Final Module 14 - Site Expense Management",
+  "scope": "Fastify routes, module registration and OpenAPI metadata",
+  "productionFilesAdded": [
+    "apps/api/src/modules/site-expenses/site-expenses.routes.ts",
+    "apps/api/src/modules/site-expenses/index.ts"
+  ],
+  "productionFilesUpdated": [
+    "apps/api/src/app.ts"
+  ],
+  "databaseMigrationAdded": false,
+  "routesRegistered": true,
+  "routeCount": 6,
+  "routes": [
+    "GET /api/v1/site-expenses",
+    "POST /api/v1/site-expenses",
+    "GET /api/v1/site-expenses/:id",
+    "PATCH /api/v1/site-expenses/:id",
+    "POST /api/v1/site-expenses/:id/post",
+    "POST /api/v1/site-expenses/:id/reverse"
+  ],
+  "idempotentWriteRoutes": 4,
+  "reactFeatureAdded": false,
+  "openApi": {
+    "tag": "Site Expenses",
+    "operationIds": [
+      "listSiteExpenses",
+      "createSiteExpense",
+      "getSiteExpense",
+      "updateSiteExpense",
+      "postSiteExpense",
+      "reverseSiteExpense"
+    ],
+    "bearerSecurityOnAllRoutes": true
+  },
+  "regressionMaintenance": [
+    "updated cumulative B15.1-B15.5 deferral assertions to allow the approved B15.6 HTTP layer",
+    "updated stale migration-system latest-gate assertion to existing B15.3 stage 46 without changing migrations"
+  ],
+  "nextPass": "B15.7 - Site Expense evidence/document resource authorization and backend integration verification",
+  "verification": {
+    "siteExpenseFocusedTests": "57/57 PASS",
+    "final21StaticTests": "233/233 PASS",
+    "workspaceTests": "31/31 PASS",
+    "legacyCleanupManifest": "PASS",
+    "migrationSystemTests": "8/8 PASS",
+    "migrationPolicy": "81/81 migrations locked across 81 gates",
+    "dependencyBackedBuildPrismaPostgresSwagger": "NOT RUN - archive has no node_modules"
+  }
+}

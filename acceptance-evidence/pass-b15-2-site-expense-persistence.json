@@ -1,0 +1,33 @@
+{
+  "pass": "B15.2",
+  "module": "Module 14 - Site Expense Management",
+  "scope": "Prisma models and one forward migration only",
+  "prismaModelsAdded": [
+    "ExpenseCategory",
+    "SiteExpense"
+  ],
+  "migrationAdded": "20260829001900_final21_site_expenses",
+  "historicalMigrationsEdited": false,
+  "runtimeAdded": false,
+  "apiRoutesAdded": false,
+  "reactFeatureAdded": false,
+  "integrity": {
+    "projectSameCompany": true,
+    "stageBelongsToProject": true,
+    "categorySameCompany": true,
+    "cashBankSameCompany": true,
+    "documentSameCompany": true,
+    "creatorSameCompany": true,
+    "companyExpenseNumberUnique": true,
+    "positiveDecimalAmount": true
+  },
+  "nextPass": "B15.3 - Zod schemas, permissions and stable error vocabulary only",
+  "verification": {
+    "focusedSiteExpenseTests": "16/16 PASS",
+    "allFinal21StaticTests": "192/192 PASS",
+    "workspaceCheck": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "migrationPolicy": "PASS - 80 migrations locked across 80 gates",
+    "prismaCliValidate": "NOT RUN - archive does not include installed dependencies"
+  }
+}

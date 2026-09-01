@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-react-register-evidence",
+  "generatedAt": "2026-08-23T12:36:49.357Z",
+  "status": "STAGE_8_REACT_REGISTER_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 160,
+  "stage7LiveAccepted": false,
+  "reactCoverage": [
+    "browser authentication types consume only resolved all/restricted Project scope",
+    "Project workspace navigation can reach server-authorized Project reads for restricted memberships",
+    "Project membership API DTOs call only PUT /api/v1/projects/:id/members",
+    "TanStack Query membership mutation refreshes the existing Project query family",
+    "user administration API exposes the complete COMPANY/PROJECT role-assignment replacement contract",
+    "legacy company-only role editor is hidden until Pass 161 can submit the complete assignment set safely",
+    "no client-supplied company, actor, permission or effective Project-scope authority is added"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFeatureFolders": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 161 - Module 24B React Project membership and PROJECT role-scope workflow.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-api-contract-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.606Z",
+      "finishedAt": "2026-08-23T12:36:49.081Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.081Z",
+      "finishedAt": "2026-08-23T12:36:49.204Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-auth-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.204Z",
+      "finishedAt": "2026-08-23T12:36:49.222Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-admin-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.222Z",
+      "finishedAt": "2026-08-23T12:36:49.240Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-projects-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.240Z",
+      "finishedAt": "2026-08-23T12:36:49.258Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-project-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.258Z",
+      "finishedAt": "2026-08-23T12:36:49.275Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.275Z",
+      "finishedAt": "2026-08-23T12:36:49.308Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.308Z",
+      "finishedAt": "2026-08-23T12:36:49.357Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

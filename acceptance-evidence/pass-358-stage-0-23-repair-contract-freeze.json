@@ -1,0 +1,67 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-358-stage-0-23-repair-contract-freeze",
+  "generatedAt": "2026-08-26T13:37:01.206Z",
+  "pass": 358,
+  "baselinePass": 357,
+  "status": "PASS_358_STAGE_0_23_REPAIR_CONTRACT_FROZEN",
+  "documentationAndVerificationOnly": true,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "productionSnapshotExpected": "52b0538092af159bb687586a83e59f61e70311abb9d5eed40c1d9d1713010f16",
+  "productionSnapshotActual": "52b0538092af159bb687586a83e59f61e70311abb9d5eed40c1d9d1713010f16",
+  "productionSnapshotFileCount": 430,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "policyRequiredItemsRemainFailClosed": true,
+  "nextReviewedPass": "Pass 359 - Module 6 durable WBS freeze/reopen state",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-357-production-snapshot",
+      "status": "passed",
+      "details": "Production snapshot unchanged across 430 files."
+    },
+    {
+      "name": "pass-358-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:36:52.139Z",
+      "finishedAt": "2026-08-26T13:36:52.500Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:36:52.500Z",
+      "finishedAt": "2026-08-26T13:37:00.333Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:37:00.333Z",
+      "finishedAt": "2026-08-26T13:37:00.784Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:37:00.785Z",
+      "finishedAt": "2026-08-26T13:37:01.206Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

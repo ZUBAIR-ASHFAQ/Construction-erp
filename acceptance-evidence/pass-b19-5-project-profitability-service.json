@@ -1,0 +1,48 @@
+{
+  "pass": "B19.5",
+  "module": "Module 19 - Project Profitability",
+  "scope": "Core single-Project profitability service",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": false,
+  "profitabilityPersistenceAdded": false,
+  "httpRegistered": false,
+  "reactFeatureAdded": false,
+  "backendFileCount": 5,
+  "implementedServiceMethods": [
+    "getProjectSummary"
+  ],
+  "requiredProjectPermissions": [
+    "project_profitability.read",
+    "project_profitability.finance.read"
+  ],
+  "sourceGroups": [
+    "Module 9 CostActual",
+    "Module 15 billed Client Invoice lines",
+    "Module 15 + Module 18 Finance-confirmed revenue",
+    "Module 16 + Module 18 durable Client Receipt/allocation history",
+    "Module 17 Supplier Payables"
+  ],
+  "criticalRules": [
+    "profit = recognized revenue - actual cost",
+    "client cash received is not profit",
+    "billed and recognized revenue remain separate",
+    "advance = received - allocated",
+    "outstanding = billed - allocated",
+    "supplier payable remains separate from profit",
+    "every billed invoice must have Finance-confirmed revenue ownership",
+    "impossible negative derived positions fail closed"
+  ],
+  "moneyArithmetic": "signed bigint minor units",
+  "historicalReceiptSource": "durable Finance journal and reversal history",
+  "nextPass": "B19.6 Stage, trend and portfolio service",
+  "verification": {
+    "b19_1ThroughB19_5Alignment": "58/58 PASS",
+    "b19_5FocusedGate": "86/86 PASS",
+    "final21Static": "681/681 PASS",
+    "foundationMaintenanceStatic": "99/99 PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

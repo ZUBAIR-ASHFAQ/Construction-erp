@@ -1,0 +1,161 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-playwright-evidence",
+  "generatedAt": "2026-08-25T05:47:49.362Z",
+  "pass": 264,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "mode": "static",
+  "status": "STAGE_16_MODULE_11_PLAYWRIGHT_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "browserFile": "tests/e2e/module-11-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open the permission-aware Subcontractor Management workspace",
+    "create one subcontractor linked to the existing same-Company Module-8 Vendor master and verify the persistent register",
+    "create one server-numbered Project-scoped DRAFT subcontract with one valid Module-6 cost-coded scope line and server-owned header totals",
+    "exercise the reviewed DRAFT PATCH without changing Project identity or lifecycle authority",
+    "attempt execution to create/replay the Module-22 approval request, approve it through the real Approval inbox, then execute the subcontract",
+    "verify execution exposes one read-only Module-7 subcontract commitment without any browser-side commitment mutation",
+    "create one server-numbered progress application, certify its full line value with server-calculated zero retention, and close the eligible final account",
+    "verify execution/application/certification/close outbox events, audit-backed persistence, one Module-7 commitment and no Stage-16 Finance journal/cost-actual posting",
+    "inspect browser requests to prove the exact eight-operation contract, Idempotency-Key on every write and absence of server-owned lifecycle/totals/approval/Finance state",
+    "verify a read-only Module-11 user sees the register but no write controls and receives HTTP 403 on direct create/execute attempts"
+  ],
+  "intentionallyAbsent": [
+    "No subcontract list/detail GET, payment-application history GET or retention-ledger GET route is added for browser convenience.",
+    "No submit/approve, variation/revision or retention-release Module-11 command is invented.",
+    "No Vendor-list/write route is duplicated; Module 8 remains the supplier/vendor master owner.",
+    "No Finance/AP/GL posting or Module-7 cost-actual posting is added; formal subcontract payable adapters remain deferred to Module 15B / Stage 26.",
+    "Cross-Company database isolation, cumulative-overrun, immutable-certification and late-outbox rollback remain additionally covered by the Pass-262 PostgreSQL/Fastify integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newBrowserFiles": 1,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 265 - Module 11 operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.535Z",
+      "finishedAt": "2026-08-25T05:47:29.535Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.535Z",
+      "finishedAt": "2026-08-25T05:47:47.705Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.705Z",
+      "finishedAt": "2026-08-25T05:47:47.843Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.843Z",
+      "finishedAt": "2026-08-25T05:47:47.859Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.859Z",
+      "finishedAt": "2026-08-25T05:47:47.878Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.878Z",
+      "finishedAt": "2026-08-25T05:47:48.570Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:48.570Z",
+      "finishedAt": "2026-08-25T05:47:48.693Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:48.693Z",
+      "finishedAt": "2026-08-25T05:47:48.824Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:48.824Z",
+      "finishedAt": "2026-08-25T05:47:48.943Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:48.943Z",
+      "finishedAt": "2026-08-25T05:47:49.071Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:49.071Z",
+      "finishedAt": "2026-08-25T05:47:49.159Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:49.159Z",
+      "finishedAt": "2026-08-25T05:47:49.281Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:49.281Z",
+      "finishedAt": "2026-08-25T05:47:49.319Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:49.319Z",
+      "finishedAt": "2026-08-25T05:47:49.362Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

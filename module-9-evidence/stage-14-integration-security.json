@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-integration-security-evidence",
+  "generatedAt": "2026-08-24T15:56:22.434Z",
+  "pass": 240,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "static",
+  "status": "STAGE_14_MODULE_9_INTEGRATION_SECURITY_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-9-api.integration.test.mjs",
+  "coverage": [
+    "PO register/create/detail/draft-edit runs through real Fastify, service, repository and PostgreSQL boundaries",
+    "Module-22 submission and approval remain replay-safe before the owning PO issues",
+    "approved issue creates Module-7 source-keyed commitments atomically with the PO state transition",
+    "controlled revision updates commitment values and cancellation reduces remaining commitment to zero without deleting issuance history",
+    "server-calculated totals, selected Module-8 Vendor/quotation authority and frozen Module-7 budget readiness remain authoritative",
+    "missing permission, restricted Project scope, cross-Company access, closed Project and browser-owned fields are rejected",
+    "database triggers protect quotation Vendor/Company/Project scope, PO item cost structure and revision creator Company scope",
+    "audit/outbox records cover the five reviewed Purchase Order events while Finance journals and Inventory receipt writes remain absent",
+    "generated OpenAPI exposes exactly eight reviewed Module-9 operations with bearer security and strict request authority",
+    "direct-purchase, generic approve/delete, receipt, invoice, Finance posting and commitment-management routes remain absent"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "financePostingWritesAdded": 0,
+  "inventoryReceiptWritesAdded": 0,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 241 - Module 9 React Purchase Orders API, hooks, register/editor, approval timeline, preview, progress and commitment UI preparation.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:19.090Z",
+      "finishedAt": "2026-08-24T15:56:19.090Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:19.090Z",
+      "finishedAt": "2026-08-24T15:56:21.134Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.134Z",
+      "finishedAt": "2026-08-24T15:56:21.353Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.353Z",
+      "finishedAt": "2026-08-24T15:56:21.530Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.530Z",
+      "finishedAt": "2026-08-24T15:56:21.682Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.682Z",
+      "finishedAt": "2026-08-24T15:56:21.770Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.770Z",
+      "finishedAt": "2026-08-24T15:56:21.887Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.887Z",
+      "finishedAt": "2026-08-24T15:56:21.904Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:21.904Z",
+      "finishedAt": "2026-08-24T15:56:22.352Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:22.352Z",
+      "finishedAt": "2026-08-24T15:56:22.391Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:22.391Z",
+      "finishedAt": "2026-08-24T15:56:22.434Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

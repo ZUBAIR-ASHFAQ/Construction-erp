@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-http-evidence",
+  "generatedAt": "2026-08-24T12:43:56.197Z",
+  "pass": 228,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_HTTP_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "servicePrepared": true,
+  "routeFile": "apps/api/src/modules/procurement/procurement.routes.ts",
+  "indexFile": "apps/api/src/modules/procurement/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "exactReviewedRouteCount": 8,
+  "routes": [
+    "GET /api/v1/procurement/requisitions",
+    "POST /api/v1/procurement/requisitions",
+    "POST /api/v1/procurement/requisitions/:id/submit",
+    "POST /api/v1/procurement/rfqs",
+    "POST /api/v1/procurement/rfqs/:id/issue",
+    "POST /api/v1/procurement/rfqs/:id/quotations",
+    "GET /api/v1/procurement/rfqs/:id/comparison",
+    "POST /api/v1/procurement/rfqs/:id/select-quotation"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "projectPermissionRemainsServiceAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "exactDecimalOpenApiSerialization": true,
+  "procurementServiceOptionsWiredFromBuildApp": true,
+  "openApiOperationsPrepared": true,
+  "publicVendorMasterRoutesAdded": 0,
+  "commitmentWriteRoutesAdded": 0,
+  "financePostingRoutesAdded": 0,
+  "newDatabaseMigrationAdded": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 229 - Module 8 PostgreSQL/Fastify integration, generated OpenAPI and security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-service-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.436Z",
+      "finishedAt": "2026-08-24T12:43:54.436Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.436Z",
+      "finishedAt": "2026-08-24T12:43:54.608Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.608Z",
+      "finishedAt": "2026-08-24T12:43:55.044Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "app-registration-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.044Z",
+      "finishedAt": "2026-08-24T12:43:55.419Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.420Z",
+      "finishedAt": "2026-08-24T12:43:55.570Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.570Z",
+      "finishedAt": "2026-08-24T12:43:55.692Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.692Z",
+      "finishedAt": "2026-08-24T12:43:55.827Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.827Z",
+      "finishedAt": "2026-08-24T12:43:55.915Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:55.915Z",
+      "finishedAt": "2026-08-24T12:43:56.054Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:56.054Z",
+      "finishedAt": "2026-08-24T12:43:56.129Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:56.129Z",
+      "finishedAt": "2026-08-24T12:43:56.197Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

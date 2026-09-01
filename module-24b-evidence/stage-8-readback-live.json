@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-readback-backend-openapi-evidence",
+  "generatedAt": "2026-08-23T13:34:28.041Z",
+  "status": "BLOCKED",
+  "pass": 166,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 167 - Stage-8 safe React editor initialization and Playwright read-before-replace regression.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

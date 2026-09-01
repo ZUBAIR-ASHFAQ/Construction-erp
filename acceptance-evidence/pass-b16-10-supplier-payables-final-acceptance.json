@@ -1,0 +1,54 @@
+{
+  "pass": "B16.10",
+  "module": "Module 17 Supplier Payables",
+  "scope": "final integration, E2E, reconciliation and module freeze",
+  "routeCount": 8,
+  "databaseModels": [
+    "SupplierInvoice",
+    "SupplierInvoiceLine",
+    "SupplierPayment",
+    "SupplierPaymentAllocation"
+  ],
+  "databaseMigrationAdded": false,
+  "frozenMigrations": [
+    "20260829002100_final21_supplier_payables",
+    "20260829002200_final21_supplier_payables_contract"
+  ],
+  "financeSourceKeys": [
+    "supplier_invoice:<invoiceId>",
+    "supplier_payment:<paymentId>"
+  ],
+  "liveIntegration": {
+    "file": "tests/integration/final-21-supplier-payables-api.integration.test.mjs",
+    "guard": "RUN_FOUNDATION_DB_TESTS=1",
+    "covers": [
+      "invoice AP posting and idempotency",
+      "payment Finance posting",
+      "allocation and aging reconciliation",
+      "procurement cost double-count guard",
+      "direct invoice Project Cost",
+      "over-allocation rejection",
+      "negative permissions",
+      "project and company isolation",
+      "transaction rollback",
+      "generated OpenAPI"
+    ]
+  },
+  "playwright": {
+    "file": "tests/e2e/final-21-supplier-payables-browser.spec.mjs",
+    "guard": "RUN_FINAL_21_SUPPLIER_PAYABLES_E2E=1",
+    "workflow": "Supplier Invoice -> Post -> Supplier Payment -> Allocation -> Outstanding/Aging"
+  },
+  "nextPass": "B17.1 Module 15 Client Billing alignment audit",
+  "verification": {
+    "b16FocusedStatic": "113/113 PASS",
+    "completeFinal21Static": "386/386 PASS",
+    "b16FinalGate": "152/152 PASS",
+    "databaseCleanup": "6/6 PASS",
+    "migrationPolicy": "83/83 migrations locked across 83 gates",
+    "legacyCleanupManifest": "PASS/current",
+    "nodeSyntax": "PASS",
+    "liveIntegration": "6 scenarios discovered; execution guarded/not claimed without disposable PostgreSQL + installed dependencies",
+    "playwright": "workflow added; execution guarded/not claimed without disposable PostgreSQL + browser/dependencies"
+  }
+}

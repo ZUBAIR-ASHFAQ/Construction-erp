@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-integration-security-evidence",
+  "generatedAt": "2026-08-26T02:23:19.948Z",
+  "pass": 328,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage20LiveAccepted": false,
+  "reason": "STAGE_20_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the Stage-20 live prerequisite, then rerun module-21:integration-security:gate:live before claiming Stage-21 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

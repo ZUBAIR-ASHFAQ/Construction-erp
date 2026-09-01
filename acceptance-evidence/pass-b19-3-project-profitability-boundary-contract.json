@@ -1,0 +1,45 @@
+{
+  "pass": "B19.3",
+  "module": "Final Module 19 - Project Profitability",
+  "purpose": "Freeze the minimal read-only five-file backend shell and strict Project Profitability boundary contracts before source aggregation begins.",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": false,
+  "backendShellFileCount": 5,
+  "routeCount": 4,
+  "writeRouteCount": 0,
+  "permissionCount": 3,
+  "errorCount": 3,
+  "requestContracts": [
+    "project UUID path",
+    "optional real-calendar asOfDate",
+    "ordered trend date window bounded to 366 days",
+    "DAY/WEEK/MONTH trend granularity",
+    "portfolio search/client/as-of filters",
+    "portfolio page size bounded to 100",
+    "strict schemas reject arbitrary formula/expression fields"
+  ],
+  "responseContracts": [
+    "Project summary keeps recognized revenue, actual cost, profit, billed, received, allocated, advance, outstanding and Supplier payable separate",
+    "Stage summary keeps weight percent, physical progress and financial measures distinct",
+    "Stage response exposes explicit projectOnly plus projectTotal reconciliation buckets",
+    "trend includes recognized revenue, actual cost and profit only",
+    "portfolio keeps per-Project currency and defines no cross-currency grand total"
+  ],
+  "deferred": [
+    "repository source aggregation until B19.4",
+    "core profitability calculations until B19.5",
+    "Stage/trend/portfolio service behavior until B19.6",
+    "Fastify registration/RBAC/OpenAPI until B19.7",
+    "React feature until B19.9"
+  ],
+  "nextPass": "B19.4 Project Profitability repository source aggregation",
+  "verification": {
+    "b19_3Gate": "59/59 PASS",
+    "postPassFinal21Static": "654/654 PASS",
+    "currentStaticSuite": "759/759 PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

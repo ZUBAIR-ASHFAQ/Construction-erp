@@ -1,0 +1,45 @@
+{
+  "pass": "B18.8",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "Cross-module receipt reconciliation, audit traceability and Module 21 document-link integration",
+  "productionFilesChanged": [
+    "apps/api/src/modules/client-receipts/client-receipts.repository.ts",
+    "apps/api/src/modules/project-stages/project-stages.service.ts",
+    "apps/api/src/modules/clients/clients.repository.ts",
+    "apps/api/src/modules/clients/clients.service.ts",
+    "apps/api/src/modules/projects/projects.repository.ts",
+    "apps/api/src/modules/projects/projects.service.ts",
+    "apps/api/src/modules/projects/projects.schema.ts",
+    "apps/api/src/modules/projects/projects.routes.ts",
+    "apps/api/src/modules/documents-audit/documents-audit.schema.ts",
+    "apps/api/src/modules/documents-audit/documents-audit.repository.ts",
+    "apps/api/src/modules/documents-audit/documents-audit.service.ts"
+  ],
+  "reconciliation": {
+    "billedSource": "issued/posted Client Invoice values",
+    "receivedSource": "POSTED Client Receipts",
+    "allocatedSource": "active Client Receipt allocations from POSTED receipts",
+    "advanceFormula": "received - allocated",
+    "outstandingFormula": "billed - allocated",
+    "stageAttribution": "explicit receipt Stage tag only; untagged cash remains Project-level",
+    "cashIsProfit": false
+  },
+  "documentsIntegrationAdded": true,
+  "documentResourceType": "client_receipt",
+  "migrationAdded": false,
+  "publicRouteCount": 6,
+  "reactFeatureAdded": false,
+  "nextPass": "B18.9 Client Receipts React completion",
+  "verification": {
+    "b18FocusedTests": "92/92 PASS",
+    "b18_8Gate": "120/120 PASS",
+    "final21Tests": "599/599 PASS",
+    "fullStaticSuite": "704/704 PASS",
+    "workspaceRequiredStack": "PASS",
+    "migrationPolicy": "88/88 PASS",
+    "functionPurposeComments": "PASS",
+    "changedProductionTypeScriptSyntax": "11/11 PASS",
+    "dependencyBackedPrismaTypeScriptViteBuild": "NOT RUN - source archive has no installed project dependencies",
+    "liveMigrationVerification": "NOT RUN - MIGRATION_TEST_DATABASE_URL not provided"
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-174-dependency-backed-live-acceptance-chain",
+  "generatedAt": "2026-08-23T15:20:56.228Z",
+  "pass": 174,
+  "mode": "live",
+  "status": "BLOCKED",
+  "blockReason": "PACKAGE_LOCK_REQUIRED",
+  "pass173Accepted": true,
+  "repairHoldActive": true,
+  "packageLockPresent": false,
+  "packageLockRequiredForLive": true,
+  "runtimeVerificationComplete": false,
+  "module6Allowed": false,
+  "repairHoldCleared": false,
+  "liveCoverage": [
+    "clean npm install from a synchronized package-lock",
+    "TypeScript typecheck and ESLint",
+    "Prisma validate/generate and full build",
+    "clean plus previous-schema migration verification",
+    "Foundation Stage-0 PostgreSQL/object-storage recovery acceptance",
+    "Module 24A, Module 18, Module 22, Module 2, Module 3, Module 4A and Module 5 live acceptance in dependency order",
+    "Module 24B integration/security/API/Playwright/operations/readback runtime verification",
+    "Pass-168/169/170 Module 18 Project persistence/security/browser completion verification"
+  ],
+  "deliberateBoundary": "Pass 174 never clears STAGE_8_REPAIR_HOLD_ACTIVE and never runs the final Module-24B Stage-8 acceptance gate. Pass 175 owns final re-audit, hold release and Stage-8 handoff.",
+  "nextPass": "Generate package-lock.json with npm run module-24a:lockfile on a machine with npm registry access, then run the guarded live chain.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-173-consolidated-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:53.536Z",
+      "finishedAt": "2026-08-23T15:20:56.061Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "pass-174-runner-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.061Z",
+      "finishedAt": "2026-08-23T15:20:56.081Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "foundation-live-runner-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.081Z",
+      "finishedAt": "2026-08-23T15:20:56.099Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "stage-0-3-runner-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.099Z",
+      "finishedAt": "2026-08-23T15:20:56.118Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-final-gate-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.118Z",
+      "finishedAt": "2026-08-23T15:20:56.141Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-required-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.141Z",
+      "finishedAt": "2026-08-23T15:20:56.177Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:20:56.177Z",
+      "finishedAt": "2026-08-23T15:20:56.228Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "package-lock",
+      "status": "failed",
+      "startedAt": "2026-08-23T15:20:56.228Z",
+      "finishedAt": "2026-08-23T15:20:56.228Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "PACKAGE_LOCK_REQUIRED"
+    }
+  ]
+}

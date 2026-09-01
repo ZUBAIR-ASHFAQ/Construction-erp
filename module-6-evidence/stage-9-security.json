@@ -1,0 +1,111 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-security-evidence",
+  "generatedAt": "2026-08-26T14:47:40.092Z",
+  "pass": 183,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "static",
+  "status": "STAGE_9_SECURITY_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "securityFile": "tests/integration/module-6-api.integration.test.mjs",
+  "coverage": [
+    "authentication is required on all seven reviewed Module 6 operations",
+    "wbs.read does not grant wbs.manage, wbs.freeze or Company Cost Code permissions",
+    "Project-A membership and permission scope cannot access Project B",
+    "Project membership never creates missing role permissions",
+    "Company A cannot read Company B WBS, mappings or Cost Codes",
+    "Company Cost Codes remain Company-scoped and are not filtered by Project membership",
+    "client companyId, actorUserId, permissions and projectScope fields are rejected",
+    "nested client projectId cannot override the route Project",
+    "repository Company filters hide foreign Project and Cost Code rows",
+    "service revalidates exact Project permission instead of trusting request scope",
+    "database constraints reject cross-company WBS, cross-Project parent and invalid mapping ownership"
+  ],
+  "repositoryPolicy": "Company isolation is repository-owned; Project membership/resource authorization is service-owned.",
+  "productionRuntimeChanges": 0,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 184 may be prepared next, but Pass 183 live verification remains blocked until the genuine Stage-8 live handoff is available.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-integration-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.516Z",
+      "finishedAt": "2026-08-26T14:47:35.517Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-integration",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.517Z",
+      "finishedAt": "2026-08-26T14:47:38.707Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-security-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:38.707Z",
+      "finishedAt": "2026-08-26T14:47:39.209Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-security-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.209Z",
+      "finishedAt": "2026-08-26T14:47:39.303Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.304Z",
+      "finishedAt": "2026-08-26T14:47:39.394Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.394Z",
+      "finishedAt": "2026-08-26T14:47:39.489Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.489Z",
+      "finishedAt": "2026-08-26T14:47:39.601Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.601Z",
+      "finishedAt": "2026-08-26T14:47:39.837Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:39.837Z",
+      "finishedAt": "2026-08-26T14:47:40.091Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

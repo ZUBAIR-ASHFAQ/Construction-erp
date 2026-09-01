@@ -1,0 +1,102 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-project-security-repair",
+  "generatedAt": "2026-08-23T14:40:19.782Z",
+  "status": "MODULE_18_PROJECT_SECURITY_PREPARED_REPAIR_HOLD_ACTIVE",
+  "pass": 169,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "securityCoverage": [
+    "company-wide Documents continue to require the existing company permission",
+    "Project-scoped reads require resolved Project membership plus documents.project.read for that exact Project",
+    "Project-scoped upload, version and archive commands require the matching exact Project permission",
+    "Document and folder lists filter Project rows in the repository before returning them",
+    "Project-A role permissions cannot authorize Project-B Document rows",
+    "trusted folder Project ownership flows into upload intent and created Document metadata",
+    "existing Document Project ownership flows into version upload intents",
+    "upload completion revalidates the persisted Project target before mutation",
+    "cross-company Document isolation remains unchanged"
+  ],
+  "productionFilesChanged": 4,
+  "apiRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "migrationsAdded": 0,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 170 - Module 18 HTTP, OpenAPI, React and E2E Project completion.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-168-project-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.147Z",
+      "finishedAt": "2026-08-23T14:40:19.447Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.448Z",
+      "finishedAt": "2026-08-23T14:40:19.551Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.551Z",
+      "finishedAt": "2026-08-23T14:40:19.572Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.572Z",
+      "finishedAt": "2026-08-23T14:40:19.589Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.589Z",
+      "finishedAt": "2026-08-23T14:40:19.619Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.619Z",
+      "finishedAt": "2026-08-23T14:40:19.638Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.638Z",
+      "finishedAt": "2026-08-23T14:40:19.711Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.711Z",
+      "finishedAt": "2026-08-23T14:40:19.782Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

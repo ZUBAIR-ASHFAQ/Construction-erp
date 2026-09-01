@@ -1,0 +1,93 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-playwright-evidence",
+  "generatedAt": "2026-08-26T14:47:44.989Z",
+  "pass": 187,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "static",
+  "status": "STAGE_9_PLAYWRIGHT_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "browserFile": "tests/e2e/module-6-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module 24A browser flow",
+    "open the permission-aware WBS & Cost Codes workspace",
+    "select one existing active Project through the Project register contract",
+    "create one Company Cost Code using reviewed business fields only",
+    "create root and child WBS nodes while level remains server-derived",
+    "reject a browser-attempted WBS hierarchy cycle through the authoritative API",
+    "replace the complete Project WBS, Cost Code and Cost Type mapping set",
+    "run the reviewed bodyless freeze command without inventing durable freeze state",
+    "verify Module 6 audit and reviewed outbox events are durable",
+    "verify read-only controls stay hidden and a direct denied write still returns HTTP 403",
+    "verify browser writes never send Company, actor, permission, Project scope or WBS level authority"
+  ],
+  "unresolvedBrowserContract": [
+    "Cost Type master CRUD remains absent because the reviewed API defines no Cost Type list/create route.",
+    "Archive controls remain absent because the reviewed API defines no archive command.",
+    "Persistent freeze status and reopen/revision controls remain absent because the reviewed contract defines no durable freeze-state or reopen API."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live Playwright gate after genuine Stage-8 handoff; Pass 188 may be prepared but cannot claim live Stage-9 browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-react-workflow",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:33.882Z",
+      "finishedAt": "2026-08-26T14:47:43.970Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:43.970Z",
+      "finishedAt": "2026-08-26T14:47:44.417Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:44.417Z",
+      "finishedAt": "2026-08-26T14:47:44.504Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:44.504Z",
+      "finishedAt": "2026-08-26T14:47:44.593Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:44.594Z",
+      "finishedAt": "2026-08-26T14:47:44.786Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:44.787Z",
+      "finishedAt": "2026-08-26T14:47:44.988Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

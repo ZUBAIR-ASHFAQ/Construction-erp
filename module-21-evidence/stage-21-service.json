@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-service-evidence",
+  "generatedAt": "2026-08-26T02:16:17.026Z",
+  "pass": 326,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_SERVICE_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/scheduling/scheduling.service.ts",
+  "projectScopeRevalidatedWithModule24B": true,
+  "exactPermissionMappingPreserved": true,
+  "reviewedOperationsImplemented": 8,
+  "idempotentMutationsImplemented": 6,
+  "oneCurrentScheduleCreationSerialized": true,
+  "serverOwnedScheduleAndActivityStatusUsed": true,
+  "activityCodeCollisionHandled": true,
+  "activityParentSameScheduleValidated": true,
+  "activityParentCyclePreventedWithoutNewPublicError": true,
+  "optionalWbsSameProjectValidated": true,
+  "partialActivityDateOrderRevalidated": true,
+  "milestoneChangedEventCondition": "explicit milestone boolean change only",
+  "completeDependencySetValidated": true,
+  "dependencyCycleCheckedInServiceAndDatabase": true,
+  "dependencyChangesAudited": true,
+  "baselineSnapshotCanonicalAndImmutable": true,
+  "baselineNumberServerMonotonic": true,
+  "baselineActorServerOwned": true,
+  "baselineEventRecorded": true,
+  "progressHistoryAppendOnly": true,
+  "currentActivityProgressUpdatedAtomically": true,
+  "progressEventRecorded": true,
+  "broadPostBaselineLockInvented": false,
+  "firstScopeLookahead": "14 calendar days from non-null project_schedules.data_date",
+  "publicLookaheadQueryNamesInvented": false,
+  "advancedCpmGenerated": false,
+  "changeOrderIntegrationGenerated": false,
+  "dailyReportIntegrationGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "Project Schedule and Schedule Activity status vocabularies remain implementation-private and not published as enums.",
+    "The source does not define a baseline reopen/revision lifecycle or the exact SCHEDULE_BASELINE_LOCKED scope, so progress remains allowed after baseline.",
+    "The first executable look-ahead uses the minimum source-defined two-week window from Schedule data_date because public query names and other start-date semantics remain undefined.",
+    "Progress duplicate/replace and approval policy remain undefined; progress evidence therefore remains append-only.",
+    "Only an explicit milestone boolean change emits schedule.milestone_changed; broader milestone-date/status event semantics remain undefined.",
+    "Change Order and Daily Report integrations remain downstream."
+  ],
+  "nextPass": "Pass 327 - Module 21 Fastify routes, authentication/RBAC, OpenAPI and module registration for exactly the eight reviewed Scheduling operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-repository",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:11.567Z",
+      "finishedAt": "2026-08-26T02:16:15.791Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.791Z",
+      "finishedAt": "2026-08-26T02:16:15.939Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-service-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.939Z",
+      "finishedAt": "2026-08-26T02:16:16.367Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.367Z",
+      "finishedAt": "2026-08-26T02:16:16.500Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.500Z",
+      "finishedAt": "2026-08-26T02:16:16.630Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.630Z",
+      "finishedAt": "2026-08-26T02:16:16.769Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-14b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.769Z",
+      "finishedAt": "2026-08-26T02:16:16.915Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.915Z",
+      "finishedAt": "2026-08-26T02:16:16.957Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:16.957Z",
+      "finishedAt": "2026-08-26T02:16:17.025Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

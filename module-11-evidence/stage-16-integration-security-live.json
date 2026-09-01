@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-integration-security-evidence",
+  "generatedAt": "2026-08-25T05:22:23.752Z",
+  "pass": 262,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage15LiveAccepted": false,
+  "reason": "STAGE_15_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the Stage-15 live prerequisite, then rerun module-11:integration-security:gate:live before claiming Stage-16 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

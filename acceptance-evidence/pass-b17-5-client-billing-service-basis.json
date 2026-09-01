@@ -1,0 +1,35 @@
+{
+  "pass": "B17.5",
+  "module": "Module 15 Client Billing",
+  "scope": "same-Project Stage validation and Fixed Price / Cost + Percentage claim-basis service alignment",
+  "databaseMigrationAdded": false,
+  "publicRoutesChanged": false,
+  "serviceChanges": [
+    "same-Project Stage validation before claim line persistence",
+    "Stage revalidation at finalization",
+    "Project commercial model remains authoritative",
+    "inactive billing settings block claim writes/finalization",
+    "server-derived Cost + Percentage Project ceiling from cost_actuals through claim period end plus Project percent",
+    "previously finalized claim gross prevents repeated certification of the same Project cost basis",
+    "server-derived cumulative Cost + Percentage Stage ceilings",
+    "retention remains server-calculated",
+    "no invented deductions or advance-recovery formula"
+  ],
+  "deferred": [
+    "Stage-preserving runtime Client Invoice lines",
+    "Client Invoice Finance/AR posting",
+    "Client Billing OpenAPI completion",
+    "Client Billing React Stage selector and Cost + Percentage basis display"
+  ],
+  "nextPass": "B17.6 Client Invoice Stage preservation and Finance / AR posting",
+  "verification": {
+    "b17FocusedStatic": "10/10 PASS",
+    "b17CumulativeGate": "67/67 PASS",
+    "completeFinal21Static": "455/455 PASS",
+    "currentFullStatic": "559/559 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "86/86 migrations locked across 86 gates",
+    "functionPurposeComments": "PASS",
+    "dependencyBackedTypecheck": "not claimed; archive has no installed @types/node/node_modules"
+  }
+}

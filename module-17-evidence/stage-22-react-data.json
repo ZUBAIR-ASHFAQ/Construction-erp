@@ -1,0 +1,153 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-react-data-evidence",
+  "generatedAt": "2026-08-26T08:20:57.494Z",
+  "pass": 342,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_REACT_DATA_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "integrationPrepared": true,
+  "reactDataCoverage": [
+    "typed browser API maps exactly to the seven reviewed Change Orders operations",
+    "Change register query accepts only bounded page and pageSize fields",
+    "all five Change Order writes send a browser-generated Idempotency-Key while Company, actor, Project scope, numbering, lifecycle, approval and impact authority remain server-owned",
+    "Change Request, formal Change Order and applied-impact money values remain exact decimal strings in browser types",
+    "submit and reject stay bodyless because the source defines no browser payload for either command",
+    "approval sends only effectiveDate plus optional approvedDays and does not expose approved totals or impact targets",
+    "TanStack Query owns Change register and applied-impact server state",
+    "successful Change Request lifecycle mutations refresh the Change register and approval also refreshes the resulting Change Order impact query"
+  ],
+  "intentionallyAbsent": [
+    "No Change Orders component, page, navigation or CSS is generated in this data-layer pass.",
+    "No generic Change Request detail, PATCH, DELETE, withdraw, apply or reopen browser operation is generated.",
+    "No rejection reason payload is invented because the reviewed API defines reject as bodyless.",
+    "No Schedule, Subcontract or Client Billing adapter is generated.",
+    "No browser-owned Company, actor, permissions, Project authorization, status, numbering, approved totals, impact target or applied state is accepted."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newReactFiles": 2,
+  "reactComponentsAdded": 0,
+  "reactPagesAdded": 0,
+  "reviewedRouteCount": 7,
+  "reviewedWriteCount": 5,
+  "reviewedReadCount": 2,
+  "bodylessCommandCount": 2,
+  "listBrowserQueryFields": 2,
+  "exactDecimalBrowserTypes": true,
+  "scheduleAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 343 - Module 17 accessible permission-aware React Change Orders workspace using only the reviewed Stage-22 data layer.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:50.990Z",
+      "finishedAt": "2026-08-26T08:20:50.990Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:50.990Z",
+      "finishedAt": "2026-08-26T08:20:54.608Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-react-data-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:54.608Z",
+      "finishedAt": "2026-08-26T08:20:55.218Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-react-data-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:55.218Z",
+      "finishedAt": "2026-08-26T08:20:56.220Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:56.221Z",
+      "finishedAt": "2026-08-26T08:20:56.753Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:56.753Z",
+      "finishedAt": "2026-08-26T08:20:56.903Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:56.903Z",
+      "finishedAt": "2026-08-26T08:20:57.041Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:57.041Z",
+      "finishedAt": "2026-08-26T08:20:57.141Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:57.141Z",
+      "finishedAt": "2026-08-26T08:20:57.263Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:57.263Z",
+      "finishedAt": "2026-08-26T08:20:57.406Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:57.406Z",
+      "finishedAt": "2026-08-26T08:20:57.450Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:57.450Z",
+      "finishedAt": "2026-08-26T08:20:57.494Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

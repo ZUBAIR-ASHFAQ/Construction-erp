@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-integration-security-evidence",
+  "generatedAt": "2026-08-24T00:57:45.251Z",
+  "pass": 196,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage9LiveAccepted": false,
+  "reason": "STAGE_9_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite, then rerun module-4b:integration-security:gate:live before claiming Stage-10 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

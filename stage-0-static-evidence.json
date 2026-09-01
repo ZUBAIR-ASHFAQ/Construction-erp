@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-foundation-stage-0-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-22T11:25:39.218Z",
+  "status": "READY_FOR_STAGE_1_STATIC",
+  "nextStage": "Module 24A - Users/RBAC Core",
+  "identityHandoff": {
+    "status": "MODULE_24A_REQUIRED",
+    "note": "Foundation owns the initial provisioning orchestration; Module 24A supplies the identity adapter that creates the system administrator and system roles without moving Users/RBAC table ownership into Foundation."
+  },
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "workspace",
+      "status": "passed",
+      "startedAt": "2026-08-22T11:25:38.563Z",
+      "finishedAt": "2026-08-22T11:25:38.626Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-22T11:25:38.627Z",
+      "finishedAt": "2026-08-22T11:25:38.673Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "static-foundation-tests",
+      "status": "passed",
+      "startedAt": "2026-08-22T11:25:38.673Z",
+      "finishedAt": "2026-08-22T11:25:39.142Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "stage-0-contract-tests",
+      "status": "passed",
+      "startedAt": "2026-08-22T11:25:39.142Z",
+      "finishedAt": "2026-08-22T11:25:39.218Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

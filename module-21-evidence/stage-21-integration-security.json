@@ -1,0 +1,139 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-integration-security-evidence",
+  "generatedAt": "2026-08-26T02:43:33.147Z",
+  "pass": 328,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "mode": "static",
+  "status": "STAGE_21_MODULE_21_INTEGRATION_SECURITY_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-21-api.integration.test.mjs",
+  "coverage": [
+    "live suite covers all eight reviewed Scheduling operations through real Fastify, service, repository and PostgreSQL boundaries",
+    "live suite verifies one current Schedule, Activity hierarchy and same-Project optional WBS scope without unsupported planning fields",
+    "live suite verifies complete FS dependency replacement plus service and PostgreSQL dependency-cycle protection",
+    "live suite verifies immutable baseline snapshots remain unchanged after later progress while progress history stays append-only",
+    "live suite verifies source-defined audit/outbox evidence for Schedule create, milestone change, baseline and progress transitions",
+    "live suite verifies authentication, the four reviewed permissions, Module-24B Project scope and cross-Company fail-closed behavior",
+    "live suite verifies mandatory Idempotency-Key replay and strict rejection of browser-owned Company/lifecycle/baseline/audit authority",
+    "live suite verifies generated OpenAPI exposes exactly eight Stage-21 operations, bearer security, six idempotent writes and no advanced CPM/P6 routes"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "reviewedRouteCount": 8,
+  "reviewedWriteCount": 6,
+  "reviewedPermissionCount": 4,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 4,
+  "onlyGuaranteedDependencyType": "FS",
+  "scheduleWorkflowVerified": false,
+  "dependencySecurityVerified": false,
+  "baselineImmutabilityVerified": false,
+  "progressAppendOnlyVerified": false,
+  "negativeAuthorizationVerified": false,
+  "crossProjectIsolationVerified": false,
+  "crossCompanyIsolationVerified": false,
+  "generatedOpenApiVerified": false,
+  "advancedCpmAdded": false,
+  "externalSchedulerSyncAdded": false,
+  "changeOrderIntegrationAdded": false,
+  "dailyReportIntegrationAdded": false,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 329 - Module 21 React typed API client and TanStack Query hooks for exactly the eight reviewed Scheduling operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:31.660Z",
+      "finishedAt": "2026-08-26T02:43:31.660Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:31.660Z",
+      "finishedAt": "2026-08-26T02:43:31.818Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:31.818Z",
+      "finishedAt": "2026-08-26T02:43:31.837Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:31.837Z",
+      "finishedAt": "2026-08-26T02:43:32.362Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:32.362Z",
+      "finishedAt": "2026-08-26T02:43:32.565Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:32.565Z",
+      "finishedAt": "2026-08-26T02:43:32.726Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:32.727Z",
+      "finishedAt": "2026-08-26T02:43:32.888Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-14b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:32.888Z",
+      "finishedAt": "2026-08-26T02:43:33.043Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:33.044Z",
+      "finishedAt": "2026-08-26T02:43:33.091Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:43:33.091Z",
+      "finishedAt": "2026-08-26T02:43:33.147Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

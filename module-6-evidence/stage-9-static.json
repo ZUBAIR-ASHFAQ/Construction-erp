@@ -1,0 +1,117 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T14:47:55.976Z",
+  "status": "STAGE_9_STATIC_GATE_PASSED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module": "6 - WBS & Cost Codes",
+  "pass": 189,
+  "stage": 9,
+  "module6LiveHandoffAccepted": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_9_UNTIL_STAGE_8_LIVE_HANDOFF",
+  "ownedTables": [
+    "wbs_nodes",
+    "cost_codes",
+    "cost_types",
+    "project_cost_codes"
+  ],
+  "routeCount": 7,
+  "activePermissions": [
+    "wbs.read",
+    "wbs.manage",
+    "cost_codes.read",
+    "cost_codes.manage",
+    "wbs.freeze"
+  ],
+  "activeEvents": [
+    "wbs.node_created",
+    "wbs.updated",
+    "cost_code.created",
+    "project.cost_structure_frozen"
+  ],
+  "unresolvedSourceContract": [
+    "The source requires a Cost Type master UI but defines no reviewed Cost Type HTTP CRUD operations.",
+    "The source mentions archive behavior but defines no reviewed WBS or Cost Code archive command.",
+    "The source requires controlled frozen-baseline revision or reopen but defines no durable freeze-state field or reviewed reopen command."
+  ],
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "productionRuntimeChanges": 0,
+  "runtimeVerificationComplete": false,
+  "nextStage": "Complete the genuine Stage-8 live handoff before Stage-9 live acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-8-final-handoff-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:32.408Z",
+      "finishedAt": "2026-08-26T14:47:33.061Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-operations-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:33.061Z",
+      "finishedAt": "2026-08-26T14:47:54.847Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.847Z",
+      "finishedAt": "2026-08-26T14:47:55.318Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:55.318Z",
+      "finishedAt": "2026-08-26T14:47:55.517Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:55.517Z",
+      "finishedAt": "2026-08-26T14:47:55.693Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:55.693Z",
+      "finishedAt": "2026-08-26T14:47:55.795Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:55.795Z",
+      "finishedAt": "2026-08-26T14:47:55.885Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:55.885Z",
+      "finishedAt": "2026-08-26T14:47:55.974Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

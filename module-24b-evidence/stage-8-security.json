@@ -1,0 +1,132 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-security-evidence",
+  "generatedAt": "2026-08-23T12:36:48.730Z",
+  "status": "STAGE_8_SECURITY_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 158,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "securityFile": "tests/integration/module-24b-api.integration.test.mjs",
+  "coverage": [
+    "protected requests resolve trusted Project scope from PostgreSQL on every authentication",
+    "active reviewed system-admin COMPANY role resolves to all-Project scope",
+    "ordinary users resolve only active same-company Project memberships",
+    "empty membership scope remains restricted and fails closed",
+    "Project register is filtered by membership plus exact Project-scoped projects.read authority",
+    "Project detail and writes revalidate exact Project permission in the service",
+    "Project-A role permission cannot authorize Project-B",
+    "auth sign-in, refresh and current identity use all/restricted Project-scope response contracts",
+    "client company, actor, permissions and Project scope remain untrusted"
+  ],
+  "allProjectPolicy": "active COMPANY-scoped system-admin role only; no new all_projects permission",
+  "productionRuntimeFilesChanged": 7,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live security gate after genuine Stage-7 acceptance; Pass 159 may be prepared but cannot claim live Stage-8 security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-integration",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.836Z",
+      "finishedAt": "2026-08-23T12:36:48.367Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-security-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.367Z",
+      "finishedAt": "2026-08-23T12:36:48.496Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-security-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.496Z",
+      "finishedAt": "2026-08-23T12:36:48.515Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "authentication-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.515Z",
+      "finishedAt": "2026-08-23T12:36:48.535Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.535Z",
+      "finishedAt": "2026-08-23T12:36:48.552Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.552Z",
+      "finishedAt": "2026-08-23T12:36:48.570Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.570Z",
+      "finishedAt": "2026-08-23T12:36:48.587Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.587Z",
+      "finishedAt": "2026-08-23T12:36:48.605Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.605Z",
+      "finishedAt": "2026-08-23T12:36:48.623Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.623Z",
+      "finishedAt": "2026-08-23T12:36:48.642Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.642Z",
+      "finishedAt": "2026-08-23T12:36:48.680Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.680Z",
+      "finishedAt": "2026-08-23T12:36:48.730Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

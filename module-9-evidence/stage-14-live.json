@@ -1,0 +1,77 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-9-stage-14-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-24T16:02:08.431Z",
+  "status": "BLOCKED",
+  "module": "9 - Purchase Orders",
+  "pass": 244,
+  "stage": 14,
+  "stage13LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_14_UNTIL_STAGE_13_LIVE_HANDOFF",
+  "ownedTables": [
+    "purchase_orders",
+    "purchase_order_items",
+    "purchase_order_revisions"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "purchase_orders.read",
+    "purchase_orders.create",
+    "purchase_orders.edit",
+    "purchase_orders.submit",
+    "purchase_orders.issue",
+    "purchase_orders.revise"
+  ],
+  "activeEvents": [
+    "purchase_order.created",
+    "purchase_order.submitted",
+    "purchase_order.issued",
+    "purchase_order.revised",
+    "purchase_order.cancelled"
+  ],
+  "vendorAndQuotationAuthority": "Module 8 - Procurement & RFQ",
+  "costCommitmentAuthority": "Module 7 - Budgeting & Job Costing",
+  "approvalAuthority": "Module 22 - Approval Workflows",
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "inventoryReceiptWritesDeferredToStage15": true,
+  "financeSourceAdapterDeferredToStage26": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The source allows a direct-purchase exception but defines no public bypass route, body field, reason field or dedicated permission, so the normal Stage-14 create flow remains quotation-backed.",
+    "The source defines a cancellation command with reason but no dedicated cancel permission or persistent cancellation-reason column; Stage 14 uses purchase_orders.revise and preserves the reason in audit/outbox evidence.",
+    "The source does not define an exact PO tax/rounding formula; Stage 14 records its percentage and half-up money convention explicitly rather than presenting it as source text.",
+    "The source defines nullable purchase_order_items.item_id before Module 10 owns inventory_items; the Inventory foreign key remains deferred until Stage 15.",
+    "The source does not define an issued-PO FX/repricing contract, so issued currency changes remain blocked rather than silently revalued."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-13/Stage-14 live chain and rerun module-9:acceptance:live before starting Stage 15 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-13-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-24T16:02:08.431Z",
+      "finishedAt": "2026-08-24T16:02:08.431Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_13_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

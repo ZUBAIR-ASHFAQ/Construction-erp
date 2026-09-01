@@ -1,0 +1,64 @@
+{
+  "pass": "B18.3",
+  "module": "Module 16 Client Receipts / Payments",
+  "scope": "Zod and boundary contract only",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": false,
+  "schemaFile": "apps/api/src/modules/client-receipts/client-receipts.schema.ts",
+  "requiredPermissions": [
+    "client_receipts.read",
+    "client_receipts.create",
+    "client_receipts.allocate",
+    "client_receipts.reverse"
+  ],
+  "stableErrors": [
+    "RECEIPT_NOT_FOUND",
+    "ALLOCATION_EXCEEDS_RECEIPT",
+    "ALLOCATION_EXCEEDS_INVOICE",
+    "RECEIPT_SCOPE_MISMATCH",
+    "RECEIPT_LOCKED"
+  ],
+  "routeCount": 6,
+  "paymentMethods": [
+    "CASH",
+    "BANK"
+  ],
+  "receiptTypes": [
+    "ADVANCE",
+    "INVOICE_PAYMENT"
+  ],
+  "statuses": [
+    "POSTED",
+    "REVERSED"
+  ],
+  "serverOwned": [
+    "companyId",
+    "actorUserId",
+    "permissions",
+    "projectScope",
+    "allowedProjectIds",
+    "receiptNo",
+    "status",
+    "createdBy",
+    "postedAt",
+    "allocatedAt",
+    "allocatedBy",
+    "allocatedAmount",
+    "unallocatedAmount",
+    "invoiceOutstanding",
+    "financeSourceKey"
+  ],
+  "runtimeDeferred": true,
+  "nextPass": "B18.4 Client Receipts repository completion",
+  "verification": {
+    "b18_3Focused": "12/12 PASS",
+    "b18_3Gate": "62/62 PASS",
+    "postPassFinal21Static": "541/541 PASS",
+    "postPassCurrentStatic": "646/646 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "schemaSyntax": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules",
+    "functionPurposeComments": "PASS through current static gate"
+  }
+}

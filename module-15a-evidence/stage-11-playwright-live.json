@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-playwright-evidence",
+  "generatedAt": "2026-08-24T06:14:40.471Z",
+  "pass": 209,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage10LiveAccepted": false,
+  "reason": "STAGE_10_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-15a:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

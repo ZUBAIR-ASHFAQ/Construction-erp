@@ -1,0 +1,51 @@
+{
+  "pass": "B19.4",
+  "module": "Module 19 Project Profitability",
+  "scope": "read-only Company and allowed-Project scoped cross-module repository source aggregation",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": false,
+  "repository": {
+    "transactionCapable": true,
+    "companyScoped": true,
+    "allowedProjectScopeIntersected": true,
+    "writeMethodsAdded": false,
+    "sourceMethods": [
+      "findProject",
+      "listPortfolioProjects",
+      "listProjectStages",
+      "listActualCostSources",
+      "listBilledSources",
+      "listRecognizedRevenueSources",
+      "listClientReceiptFinanceSources",
+      "listSupplierPayableSources"
+    ]
+  },
+  "sourceSemantics": {
+    "actualCost": "Module 9 CostActual rows with business posting-date cutoff",
+    "billed": "Module 15 ISSUED plus compatible historical POSTED Client Invoice lines",
+    "recognizedRevenue": "Finance REVENUE lines from eligible client_invoice Journals plus direct Finance reversal history",
+    "receivedAndAllocated": "durable Client Receipt / allocation / controlled reversal Finance source Journals plus direct Finance reversal history",
+    "supplierPayable": "POSTED Supplier Invoices plus allocations from POSTED Supplier Payments through as-of cutoff",
+    "stageContext": "Module 7 Stage identity plus latest APPROVED progress through progressDate cutoff"
+  },
+  "deferred": [
+    "profitability arithmetic",
+    "advance and outstanding derivation",
+    "Stage reconciliation policy",
+    "trend bucketing",
+    "portfolio metric calculation",
+    "Fastify route registration",
+    "React Project Profitability feature"
+  ],
+  "migrationCount": 88,
+  "nextPass": "B19.5 Core Project profitability service",
+  "verification": {
+    "b19_4Gate": "73/73 PASS",
+    "postPassFinal21Static": "668/668 PASS",
+    "currentStaticSuite": "773/773 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "legacyCleanupManifest": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

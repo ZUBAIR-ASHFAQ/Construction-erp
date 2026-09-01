@@ -1,0 +1,146 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-contract-evidence",
+  "generatedAt": "2026-08-24T14:22:12.703Z",
+  "pass": 234,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_CONTRACT_FROZEN_STAGE_13_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage13LiveAccepted": false,
+  "ownedTables": [
+    "purchase_orders",
+    "purchase_order_items",
+    "purchase_order_revisions"
+  ],
+  "reviewedRouteCount": 8,
+  "reviewedRoutes": [
+    "GET /api/v1/purchase-orders",
+    "POST /api/v1/purchase-orders",
+    "GET /api/v1/purchase-orders/:id",
+    "PATCH /api/v1/purchase-orders/:id",
+    "POST /api/v1/purchase-orders/:id/submit",
+    "POST /api/v1/purchase-orders/:id/issue",
+    "POST /api/v1/purchase-orders/:id/revise",
+    "POST /api/v1/purchase-orders/:id/cancel"
+  ],
+  "reviewedPermissions": [
+    "purchase_orders.read",
+    "purchase_orders.create",
+    "purchase_orders.edit",
+    "purchase_orders.submit",
+    "purchase_orders.issue",
+    "purchase_orders.revise"
+  ],
+  "reviewedErrors": [
+    "PO_NOT_FOUND",
+    "PO_NOT_APPROVED",
+    "PO_ALREADY_ISSUED",
+    "PO_REVISION_BELOW_CONSUMED_VALUE",
+    "PO_BUDGET_BLOCK"
+  ],
+  "reviewedEvents": [
+    "purchase_order.created",
+    "purchase_order.submitted",
+    "purchase_order.issued",
+    "purchase_order.revised",
+    "purchase_order.cancelled"
+  ],
+  "hardPrerequisites": [
+    "8 - Procurement & RFQ",
+    "7 - Budgeting & Job Costing",
+    "22 - Approval Workflows"
+  ],
+  "vendorMasterOwner": "8 - Procurement & RFQ",
+  "quotationMasterOwner": "8 - Procurement & RFQ",
+  "commitmentOwner": "7 - Budgeting & Job Costing",
+  "issueCreatesOrUpdatesJobCostCommitment": true,
+  "revisionAndCancellationUpdateCommitmentAtomically": true,
+  "financeAdapterDeferredToModule15B": true,
+  "inventoryReceiptsDeferredToModule10": true,
+  "inventoryItemForeignKeyDeferredUntilModule10": true,
+  "browserCanWriteCommitmentsDirectly": false,
+  "browserCanWriteReceivedOrInvoicedConsumption": false,
+  "cancelPermissionGapRecorded": true,
+  "directPurchasePermissionGapRecorded": true,
+  "directPurchasePersistenceGapRecorded": true,
+  "revisionLineHistoryGapRecorded": true,
+  "cancellationReasonStorageGapRecorded": true,
+  "unresolvedSourceAmbiguities": [
+    "Purchase Order lifecycle status tokens are not enumerated.",
+    "The cancel route exists but the source names no dedicated cancellation permission or explicit mapping to an existing permission.",
+    "Direct-purchase bypass requires explicit permission and reason, but the permission token, request shape, approval contract and persistence location are not defined.",
+    "quotation_id is nullable while the source schema does not define a dedicated selected-quotation pointer; Module 9 must reuse authoritative Module-8 selection state rather than duplicate it.",
+    "The exact PO line/header tax and rounding formula is not defined.",
+    "The source requires approved currency but defines no currency master or direct quotation-currency contract.",
+    "purchase_order_items.item_id points toward later Module-10 inventory ownership and must not receive a premature required foreign key.",
+    "received_qty and invoiced_amount are server-owned downstream consumption fields whose writers arrive in later Module-10/Module-15B integrations.",
+    "The reviewed three-table design has no revision-line snapshot table although controlled line/rate revision history is required.",
+    "Cancellation requires a reason but the source defines no cancellation-reason persistence field.",
+    "Module-7 commitment source_type/source-line key tokens and exact internal ingestion function shape are not defined.",
+    "The source does not state whether every PO revision requires a fresh Module-22 approval before commitment adjustment."
+  ],
+  "productionFilesGenerated": false,
+  "databaseMigrationGenerated": false,
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 235 - Module 9 reviewed Prisma models, constraints, indexes and migration. Deployment remains blocked until the Stage-13 live handoff is genuine; future Inventory item references and contract gaps must remain explicit.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:11.870Z",
+      "finishedAt": "2026-08-24T14:22:12.051Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.051Z",
+      "finishedAt": "2026-08-24T14:22:12.271Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.271Z",
+      "finishedAt": "2026-08-24T14:22:12.384Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.384Z",
+      "finishedAt": "2026-08-24T14:22:12.551Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.551Z",
+      "finishedAt": "2026-08-24T14:22:12.596Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.596Z",
+      "finishedAt": "2026-08-24T14:22:12.703Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

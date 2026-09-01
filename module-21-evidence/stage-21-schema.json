@@ -1,0 +1,145 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-schema-evidence",
+  "generatedAt": "2026-08-26T02:16:14.396Z",
+  "pass": 324,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_SCHEMA_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/scheduling/scheduling.schema.ts",
+  "reviewedRouteCount": 8,
+  "reviewedPermissions": [
+    "schedule.read",
+    "schedule.manage",
+    "schedule.baseline",
+    "schedule.progress"
+  ],
+  "reviewedErrors": [
+    "SCHEDULE_NOT_FOUND",
+    "DUPLICATE_ACTIVITY_CODE",
+    "SCHEDULE_DEPENDENCY_CYCLE",
+    "SCHEDULE_BASELINE_LOCKED",
+    "INVALID_PROGRESS_UPDATE"
+  ],
+  "reviewedEvents": [
+    "schedule.created",
+    "schedule.baselined",
+    "schedule.progress_updated",
+    "schedule.milestone_changed"
+  ],
+  "createScheduleBrowserFields": [
+    "name",
+    "dataDate"
+  ],
+  "createActivityBrowserFields": [
+    "parentId",
+    "activityCode",
+    "name",
+    "wbsNodeId",
+    "plannedStart",
+    "plannedFinish",
+    "milestone"
+  ],
+  "activityProgressFieldsAcceptedOnPlanningCreateOrPatch": false,
+  "activityStatusAcceptedFromBrowser": false,
+  "dependencyTypesAccepted": [
+    "FS"
+  ],
+  "dependencyLagWholeNonnegativeDays": true,
+  "dependencyCycleValidatedInSchemaOnly": false,
+  "baselineBodyless": true,
+  "baselineSnapshotBrowserOwned": false,
+  "baselineSnapshotCanonicalKeys": [
+    "schedule",
+    "activities",
+    "dependencies"
+  ],
+  "progressBrowserFields": [
+    "activityId",
+    "dataDate",
+    "percentComplete",
+    "actualStart",
+    "actualFinish",
+    "forecastFinish",
+    "remarks"
+  ],
+  "percentCompleteSerializedAsExactDecimalString": true,
+  "actualFinishRequiresCompleteAtApiBoundary": true,
+  "lookaheadQueryFiltersInvented": false,
+  "scheduleStatusEnumInvented": false,
+  "activityStatusEnumInvented": false,
+  "activityOwnerOrDurationInvented": false,
+  "advancedCpmOrP6FieldsInvented": false,
+  "extraRoutesInvented": false,
+  "extraPermissionsInvented": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "Project Schedule and Schedule Activity status vocabularies remain undefined.",
+    "Activity owner and persisted planned duration remain undefined.",
+    "Full Activity parent-cycle policy remains a service concern beyond no-self/same-Schedule persistence.",
+    "Dependency types beyond FS and lead/fractional lag behavior remain undefined.",
+    "Baseline numbering start and reopen/revision policy remain undefined.",
+    "Exact SCHEDULE_BASELINE_LOCKED scope and post-baseline editable Activity fields remain undefined.",
+    "Look-ahead start-date/window semantics remain undefined; no query filters are accepted in Pass 324.",
+    "Progress duplicate/replace and approval policy remain undefined.",
+    "schedule.milestone_changed emission condition remains undefined.",
+    "Change Order and Daily Report integrations remain downstream."
+  ],
+  "nextPass": "Pass 325 - Module 21 Company/Project-scoped Scheduling repository primitives using only the Pass-324 schemas and Pass-323 persistence.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:11.790Z",
+      "finishedAt": "2026-08-26T02:16:13.751Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.751Z",
+      "finishedAt": "2026-08-26T02:16:13.917Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.918Z",
+      "finishedAt": "2026-08-26T02:16:14.284Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:14.284Z",
+      "finishedAt": "2026-08-26T02:16:14.341Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:14.341Z",
+      "finishedAt": "2026-08-26T02:16:14.396Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-budgeting-job-costing-http-evidence",
+  "generatedAt": "2026-08-24T10:03:07.349Z",
+  "pass": 217,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "status": "STAGE_12_MODULE_7_HTTP_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "servicePrepared": true,
+  "routeFile": "apps/api/src/modules/budgets-job-cost/budgets-job-cost.routes.ts",
+  "indexFile": "apps/api/src/modules/budgets-job-cost/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "exactReviewedRouteCount": 7,
+  "routes": [
+    "GET /api/v1/projects/:projectId/budgets/current",
+    "POST /api/v1/projects/:projectId/budgets",
+    "PUT /api/v1/projects/:projectId/budgets/:id/lines",
+    "POST /api/v1/projects/:projectId/budgets/:id/freeze",
+    "GET /api/v1/projects/:projectId/job-cost",
+    "PUT /api/v1/projects/:projectId/forecast",
+    "GET /api/v1/projects/:projectId/job-cost/ledger"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "projectPermissionRemainsServiceAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "exactDecimalOpenApiSerialization": true,
+  "openApiOperationsPrepared": true,
+  "sourceIngestionRoutesAdded": 0,
+  "approvalRoutesAdded": 0,
+  "newDatabaseMigrationAdded": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 218 - Module 7 PostgreSQL/Fastify integration, OpenAPI and security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-service-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.979Z",
+      "finishedAt": "2026-08-24T10:03:05.979Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.979Z",
+      "finishedAt": "2026-08-24T10:03:06.117Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:06.118Z",
+      "finishedAt": "2026-08-24T10:03:06.571Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "app-registration-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:06.571Z",
+      "finishedAt": "2026-08-24T10:03:06.877Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:06.877Z",
+      "finishedAt": "2026-08-24T10:03:07.004Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.004Z",
+      "finishedAt": "2026-08-24T10:03:07.143Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.143Z",
+      "finishedAt": "2026-08-24T10:03:07.268Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.268Z",
+      "finishedAt": "2026-08-24T10:03:07.307Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.307Z",
+      "finishedAt": "2026-08-24T10:03:07.349Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

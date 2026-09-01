@@ -1,0 +1,37 @@
+{
+  "pass": "B17.10",
+  "module": "Module 15 Client Billing",
+  "scope": "Final integration, browser verification harness and production freeze",
+  "databaseMigrationAdded": false,
+  "backendRoutesChanged": false,
+  "backendRouteCount": 9,
+  "productionLogicChanged": false,
+  "liveIntegrationAdded": true,
+  "playwrightWorkflowAdded": true,
+  "frozenWorkflow": "Client -> Project -> Stage -> Claim -> Client Invoice -> Finance / AR -> Stage billed views",
+  "verifiedBoundaries": [
+    "Fixed Price remains explicit billing and separate from physical progress",
+    "Cost + Percentage uses posted Project/Stage actual cost and Project-owned percentage",
+    "Client Invoice preserves Stage attribution",
+    "Client Invoice Finance posting is atomic and source-key idempotent",
+    "Module 21 owns Client Invoice documents",
+    "Client Receipts, advances, allocations and receipt-derived outstanding remain deferred to Module 16"
+  ],
+  "nextPass": "B18.1 Module 16 Client Receipts / Payments alignment audit",
+  "verification": {
+    "b17FocusedStatic": "103/103 PASS",
+    "b17CumulativeGate": "119/119 PASS",
+    "completeFinal21Static": "507/507 PASS",
+    "currentFullStatic": "611/611 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "87/87 migrations locked across 87 gates",
+    "functionPurposeComments": "PASS",
+    "newVerificationSyntax": "PASS for B17.10 integration test, Playwright spec and Playwright config using Node syntax checks",
+    "liveIntegration": "prepared but not executed without installed runtime dependencies/disposable PostgreSQL",
+    "playwright": "prepared but not executed without installed runtime dependencies/browser runtime",
+    "dependencyBackedBuild": "not claimed; verify:toolchain reaches Prisma validation and stops at prisma: not found because the archive has no installed node_modules",
+    "databaseCleanup": "6/6 PASS",
+    "legacyCleanupManifest": "PASS/current",
+    "liveIntegrationDiscovery": "5 scenarios discovered and correctly guarded/skipped without RUN_FOUNDATION_DB_TESTS=1"
+  }
+}

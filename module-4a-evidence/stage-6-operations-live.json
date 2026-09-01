@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-operations-evidence",
+  "generatedAt": "2026-08-23T07:48:51.379Z",
+  "status": "BLOCKED",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 135,
+  "mode": "live",
+  "stage5LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_5_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "productionRuntimeChanges": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-4a:operations:gate:live before claiming operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

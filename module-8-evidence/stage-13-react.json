@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-react-evidence",
+  "generatedAt": "2026-08-24T12:43:58.201Z",
+  "pass": 230,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_REACT_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API for exactly the eight reviewed Procurement operations",
+    "TanStack Query requisition register and RFQ comparison reads plus reviewed procurement mutations",
+    "React Hook Form plus Zod for requisition, RFQ, Vendor invitation, supplier quotation and selection rationale inputs",
+    "Project selector reuses the existing Project register while Project authorization stays server-authoritative",
+    "requisition editor reuses active posting-enabled Module-6 Project cost structures without creating a new lookup API",
+    "RFQ builder keeps server numbering, buyer identity and lifecycle state out of browser authority",
+    "Vendor invitation accepts explicit Vendor UUIDs because the reviewed contract has no Vendor list or CRUD route",
+    "quotation entry plus local JSON line import calls only the reviewed quotation-recording API and sends no totals",
+    "side-by-side quotation comparison exposes stored facts only and adds no FX, scoring or ranking engine",
+    "quotation selection accepts optional rationale and explicitly creates no financial commitment"
+  ],
+  "intentionallyAbsent": [
+    "No Vendor list/create/update/contact UI is added because the reviewed API defines no Vendor-master endpoints.",
+    "No RFQ register/detail API or page is invented; a newly created RFQ remains active only for the current browser workflow.",
+    "No rfq_items table/read route is invented; quotation entry keeps the source-defined rfqItemId explicit.",
+    "No Purchase Order conversion, commitment write, Finance posting or payable action is added.",
+    "Exact Project-level Module-8 write permission lists are not exposed by /auth/me, so sensitive actions stay hidden unless the corresponding Company permission is visible."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFiles": 4,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 231 - Module 8 Playwright Procurement & RFQ workflow verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.204Z",
+      "finishedAt": "2026-08-24T12:43:54.204Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.204Z",
+      "finishedAt": "2026-08-24T12:43:57.892Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:57.892Z",
+      "finishedAt": "2026-08-24T12:43:58.073Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.073Z",
+      "finishedAt": "2026-08-24T12:43:58.091Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.091Z",
+      "finishedAt": "2026-08-24T12:43:58.110Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.110Z",
+      "finishedAt": "2026-08-24T12:43:58.152Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.152Z",
+      "finishedAt": "2026-08-24T12:43:58.201Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

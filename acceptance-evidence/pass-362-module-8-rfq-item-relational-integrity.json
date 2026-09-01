@@ -1,0 +1,103 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-362-module-8-rfq-item-relational-integrity",
+  "generatedAt": "2026-08-26T15:46:00.283Z",
+  "pass": 362,
+  "baselinePass": 361,
+  "status": "PASS_362_MODULE_8_RFQ_ITEM_RELATIONAL_INTEGRITY_ACCEPTED",
+  "repairContractItems": [
+    "M8-01"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 1,
+  "databaseTablesAdded": 1,
+  "publicRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "rfqItemSupportTableAdded": true,
+  "supplierQuotationItemForeignKeyActivated": true,
+  "historicalQuotationIdentityBackfillAdded": true,
+  "sameRfqDatabaseIntegrityAdded": true,
+  "separateRfqItemCrudAdded": false,
+  "vendorMasterRepairDeferredToPass363": true,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "b0dcd1e4e2e04ac1b920245ee77380ca760b1176e25a2cb8c0523f6204ff95a2",
+  "unchangedScopeSnapshotActual": "b0dcd1e4e2e04ac1b920245ee77380ca760b1176e25a2cb8c0523f6204ff95a2",
+  "unchangedScopeFileCount": 1179,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "This packaged acceptance run is dependency-free; live PostgreSQL/Prisma and Playwright execution remain available through the guarded Module-8 live gates when workspace dependencies and a disposable test database are configured.",
+  "nextReviewedPass": "Pass 363 - Module 8 Vendor master plus durable RFQ/Requisition readback and revision contract",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-361-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-361 scope remains byte-identical across 1179 files."
+    },
+    {
+      "name": "pass-362-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:45:39.020Z",
+      "finishedAt": "2026-08-26T15:45:39.357Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-acceptance",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:45:39.357Z",
+      "finishedAt": "2026-08-26T15:45:51.057Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:45:51.057Z",
+      "finishedAt": "2026-08-26T15:45:59.139Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:45:59.139Z",
+      "finishedAt": "2026-08-26T15:45:59.591Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:45:59.591Z",
+      "finishedAt": "2026-08-26T15:46:00.085Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:46:00.085Z",
+      "finishedAt": "2026-08-26T15:46:00.193Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:46:00.193Z",
+      "finishedAt": "2026-08-26T15:46:00.283Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

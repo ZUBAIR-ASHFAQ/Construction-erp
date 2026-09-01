@@ -1,0 +1,28 @@
+{
+  "pass": "B15.1",
+  "module": "Module 14 - Site Expense Management",
+  "scope": "non-destructive scope, dependency, and migration-readiness audit",
+  "productionSiteExpenseRuntimeChanged": false,
+  "databaseMigrationAdded": false,
+  "sourceRepair": {
+    "file": "packages/database/prisma/schema.prisma",
+    "change": "removed one duplicate Project.attendanceEntries relation declaration",
+    "dataShapeChanged": false
+  },
+  "baselineChecks": {
+    "workspace": "PASS",
+    "final21StaticTestsBeforeB15Audit": "176/176 PASS",
+    "legacyCleanupManifest": "PASS",
+    "installedDependencyGates": "NOT RUN - archive has no node_modules"
+  },
+  "dependencyReadiness": {
+    "projectManagement": "READY",
+    "projectStages": "READY",
+    "financeSourceJournalTransaction": "READY",
+    "projectBudgetCostActualSourceKey": "READY",
+    "siteExpenseCostCategory": "READY",
+    "documentsCore": "READY - site_expense link type intentionally deferred",
+    "foundationNumberingIdempotencyAuditOutbox": "READY"
+  },
+  "nextPass": "B15.2 - add expense_categories and site_expenses Prisma models plus one forward migration only"
+}

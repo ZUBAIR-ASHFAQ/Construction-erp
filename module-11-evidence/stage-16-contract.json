@@ -1,0 +1,191 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-contract-evidence",
+  "generatedAt": "2026-08-25T05:47:31.415Z",
+  "pass": 256,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_CONTRACT_FROZEN_STAGE_15_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage15LiveAccepted": false,
+  "ownedTables": [
+    "subcontractors",
+    "subcontracts",
+    "subcontract_items",
+    "subcontract_payment_applications",
+    "subcontract_payment_lines"
+  ],
+  "reviewedRouteCount": 8,
+  "reviewedRoutes": [
+    "GET /api/v1/subcontractors",
+    "POST /api/v1/subcontractors",
+    "POST /api/v1/subcontracts",
+    "PATCH /api/v1/subcontracts/:id",
+    "POST /api/v1/subcontracts/:id/execute",
+    "POST /api/v1/subcontracts/:id/payment-applications",
+    "POST /api/v1/subcontracts/:id/payment-applications/:appId/certify",
+    "POST /api/v1/subcontracts/:id/close"
+  ],
+  "reviewedPermissions": [
+    "subcontractors.read",
+    "subcontractors.manage",
+    "subcontracts.read",
+    "subcontracts.create",
+    "subcontracts.execute",
+    "subcontracts.certify",
+    "subcontracts.close"
+  ],
+  "reviewedErrors": [
+    "SUBCONTRACT_NOT_FOUND",
+    "SUBCONTRACT_NOT_APPROVED",
+    "PAYMENT_APPLICATION_INVALID",
+    "CERTIFIED_VALUE_EXCEEDS_CONTRACT",
+    "SUBCONTRACT_NOT_READY_TO_CLOSE"
+  ],
+  "reviewedEvents": [
+    "subcontract.executed",
+    "subcontract.revised",
+    "subcontract.payment_application_submitted",
+    "subcontract.payment_certified",
+    "subcontract.closed"
+  ],
+  "hardPrerequisites": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "8 - Procurement & RFQ supplier/vendor master",
+    "22 - Approval Workflows"
+  ],
+  "optionalPrerequisite": "4 - BOQ Management when BOQ linkage is used",
+  "projectScopeOwner": "24B - Project Scope Activation",
+  "vendorMasterOwner": "8 - Procurement & RFQ",
+  "subcontractorMasterOwner": "11 - Subcontractor Management",
+  "vendorLinkConvention": "nullable subcontractors.vendor_id -> vendors.id, same Company",
+  "commitmentOwner": "7 - Budgeting & Job Costing",
+  "approvalOwner": "22 - Approval Workflows",
+  "financeAdapterOwner": "15B - Finance Source Adapters",
+  "formalVariationOwner": "17 - Change Orders / Variations with Stage-27 integration completion",
+  "executionCreatesCommitmentAtomically": true,
+  "commitmentIdempotencyRequired": true,
+  "certificationSnapshotImmutable": true,
+  "certificationCorrectionByReversalRecertification": true,
+  "cumulativeCertificationBoundedByApprovedValue": true,
+  "certificationOverrideDefaultFailClosed": true,
+  "retentionServerOwned": true,
+  "apAdapterDeferredToStage26": true,
+  "genericApprovalRoutesInvented": false,
+  "duplicateVendorMasterInvented": false,
+  "subcontractReadbackApiGapRecorded": true,
+  "paymentApplicationReadbackApiGapRecorded": true,
+  "revisionApiGapRecorded": true,
+  "retentionReleaseGapRecorded": true,
+  "draftEditPermissionGapRecorded": true,
+  "closeoutProofGapRecorded": true,
+  "unresolvedSourceAmbiguities": [
+    "Part I requires an optional Vendor link but Appendix A omits the relationship column; Stage 16 freezes nullable vendor_id as the minimal explicit implementation convention.",
+    "The workflow requires submit/approval while the eight-route Module-11 API has no submit/approve/reject/return command.",
+    "The reviewed API has no subcontract list/detail GET despite required detail, commitment, application and retention UI.",
+    "The reviewed API has no payment-application read/update operation despite required application/certification UI.",
+    "subcontract.revised and approved variation/revision behavior are defined, but no revision route/table/permission is defined.",
+    "Module 17 owns later formal Change Orders; exact subcontract variation linkage remains deferred.",
+    "Retention is server-calculated, but exact formula, cap, rounding, release trigger and retention-release command are not defined.",
+    "Certification mentions deductions but no deduction field/table/route exists.",
+    "Subcontract/application numbering requires a concurrency-safe scope, but the exact scope is not stated.",
+    "Subcontractor/compliance/subcontract/application status token vocabularies are not enumerated.",
+    "PATCH draft edit exists while the permission list contains no explicit subcontracts.edit permission.",
+    "Certified cumulative value may exceed the contract only when authorized, but no override permission/configuration is defined; the default is fail closed.",
+    "The exact Module-7 commitment source_type, source-line identity and status tokens are not defined.",
+    "Certified payable flows to AP in Appendix A, but Part I defers the actual source adapter to Module 15B / Stage 26.",
+    "Closeout requires final-account/retention conditions, but exact persistence/readback fields for proving them are not defined.",
+    "contact_json has no exact object schema.",
+    "The source does not define amount formula/rounding or whether manual amount overrides are allowed.",
+    "No currency conversion/FX contract is defined."
+  ],
+  "productionFilesGenerated": false,
+  "databaseMigrationGenerated": false,
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 257 - Module 11 reviewed Prisma models, constraints, indexes and Stage-16 migration. Deployment remains blocked until the Stage-15 live handoff is genuine; vendor/approval/readback/revision/retention/AP gaps must remain explicit.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.331Z",
+      "finishedAt": "2026-08-25T05:47:30.462Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.462Z",
+      "finishedAt": "2026-08-25T05:47:30.608Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.608Z",
+      "finishedAt": "2026-08-25T05:47:30.775Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.775Z",
+      "finishedAt": "2026-08-25T05:47:30.931Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.931Z",
+      "finishedAt": "2026-08-25T05:47:31.045Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-scope-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.045Z",
+      "finishedAt": "2026-08-25T05:47:31.172Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.172Z",
+      "finishedAt": "2026-08-25T05:47:31.322Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.322Z",
+      "finishedAt": "2026-08-25T05:47:31.360Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.360Z",
+      "finishedAt": "2026-08-25T05:47:31.415Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

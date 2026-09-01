@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-integration-evidence",
+  "generatedAt": "2026-08-23T12:36:48.356Z",
+  "status": "STAGE_8_INTEGRATION_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 157,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "integrationFile": "tests/integration/module-24b-api.integration.test.mjs",
+  "workflow": [
+    "replace one Project membership set under trusted resolved Project context",
+    "persist project.members_changed audit plus project.member_changed outbox atomically",
+    "reject foreign-company membership Users and out-of-scope Projects",
+    "prove failed delete-before-create membership replacement rolls back completely",
+    "persist one PROJECT-scoped role assignment",
+    "block assignment outside actor Project scope",
+    "block Project-role permission escalation",
+    "prove the public membership route remains fail-closed while authentication still reports not-resolved Project scope"
+  ],
+  "persistenceEvidence": [
+    "project_members replacement rows",
+    "user_role_assignments PROJECT scope_id",
+    "audit_logs membership and role changes",
+    "outbox_events project.member_changed and user.roles_changed"
+  ],
+  "pass158Boundary": {
+    "authenticatedProjectScopeStillNotResolved": true,
+    "successfulPublicMembershipMutationDeferredUntilPass158": true,
+    "failClosedFastifyCoverageIncluded": true
+  },
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live integration gate after genuine Stage-7 acceptance; Pass 158 may be prepared but cannot claim live Stage-8 verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-http",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.950Z",
+      "finishedAt": "2026-08-23T12:36:48.107Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-integration-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.107Z",
+      "finishedAt": "2026-08-23T12:36:48.250Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.250Z",
+      "finishedAt": "2026-08-23T12:36:48.269Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.269Z",
+      "finishedAt": "2026-08-23T12:36:48.301Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.301Z",
+      "finishedAt": "2026-08-23T12:36:48.356Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

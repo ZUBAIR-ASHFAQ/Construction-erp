@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stages-0-3-static-regression-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-23T16:02:44.259Z",
+  "status": "STAGES_0_3_STATIC_REGRESSION_PASSED_LIVE_ACCEPTANCE_PENDING",
+  "coveredStages": [
+    "Foundation",
+    "Module 24A",
+    "Module 18",
+    "Module 22"
+  ],
+  "liveStagesAccepted": false,
+  "nextStage": "Complete the Stage 0-3 live acceptance sequence",
+  "checks": [
+    {
+      "name": "reproducible-baseline",
+      "script": "baseline:static",
+      "status": "passed",
+      "evidenceFile": null,
+      "evidenceStatus": null,
+      "evidenceGeneratedAt": null,
+      "error": null
+    },
+    {
+      "name": "foundation-stage-0",
+      "script": "foundation:gate",
+      "status": "passed",
+      "evidenceFile": "foundation-evidence/stage-0-static.json",
+      "evidenceStatus": "READY_FOR_STAGE_1_STATIC",
+      "evidenceGeneratedAt": "2026-08-23T16:02:35.252Z",
+      "error": null
+    },
+    {
+      "name": "module-24a-stage-1",
+      "script": "module-24a:gate",
+      "status": "passed",
+      "evidenceFile": "module-24a-evidence/stage-1-static.json",
+      "evidenceStatus": "STATIC_GATE_PASSED_LIVE_ACCEPTANCE_PENDING",
+      "evidenceGeneratedAt": "2026-08-23T16:02:37.228Z",
+      "error": null
+    },
+    {
+      "name": "module-18-stage-2",
+      "script": "module-18:gate",
+      "status": "passed",
+      "evidenceFile": "module-18-evidence/stage-2-static.json",
+      "evidenceStatus": "STAGE_2_STATIC_GATE_PASSED_STAGE_1_LIVE_ACCEPTANCE_PENDING",
+      "evidenceGeneratedAt": "2026-08-23T16:02:38.961Z",
+      "error": null
+    },
+    {
+      "name": "module-22-stage-3",
+      "script": "module-22:gate",
+      "status": "passed",
+      "evidenceFile": "module-22-evidence/stage-3-static.json",
+      "evidenceStatus": "STAGE_3_STATIC_GATE_PASSED_STAGE_2_LIVE_ACCEPTANCE_PENDING",
+      "evidenceGeneratedAt": "2026-08-23T16:02:44.248Z",
+      "error": null
+    }
+  ]
+}

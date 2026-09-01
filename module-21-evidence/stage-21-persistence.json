@@ -1,0 +1,123 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-persistence-evidence",
+  "generatedAt": "2026-08-26T02:16:13.739Z",
+  "pass": 323,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_PERSISTENCE_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "migration": "20260826000100_module_21_project_scheduling_core",
+  "ownedTables": [
+    "project_schedules",
+    "schedule_activities",
+    "schedule_dependencies",
+    "schedule_baselines",
+    "schedule_progress_updates"
+  ],
+  "oneCurrentSchedulePerProject": true,
+  "projectCompanyForeignKeyEnforced": true,
+  "activityCodeUniqueInsideSchedule": true,
+  "activityParentSameScheduleEnforced": true,
+  "optionalWbsSameProjectEnforced": true,
+  "activityPercentPrecision": "DECIMAL(7,4)",
+  "activityPercentRangeEnforced": true,
+  "actualFinishRequiresComplete": true,
+  "guaranteedDependencyTypes": [
+    "FS"
+  ],
+  "dependencyLagUsesWholeNonnegativeDays": true,
+  "dependencySameScheduleEnforced": true,
+  "dependencyCycleCheckPrepared": true,
+  "baselineNumberUniqueInsideSchedule": true,
+  "baselineSnapshotsImmutableAtDatabase": true,
+  "baselineCreatorSameCompanyEnforced": true,
+  "progressPercentPrecision": "DECIMAL(7,4)",
+  "progressActivitySameScheduleEnforced": true,
+  "progressUpdaterSameCompanyEnforced": true,
+  "progressHistoryImmutableAtDatabase": true,
+  "progressActivityDateUniquenessInvented": false,
+  "statusEnumsInvented": false,
+  "activityOwnerOrDurationInvented": false,
+  "advancedCpmOrP6PersistenceInvented": false,
+  "externalSchedulerPersistenceInvented": false,
+  "changeOrderIntegrationGeneratedEarly": false,
+  "dailyReportIntegrationGeneratedEarly": false,
+  "apiSchemaGenerated": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "publicRoutesGenerated": false,
+  "reactGenerated": false,
+  "productionRuntimeActivationAllowed": false,
+  "unresolvedSourceAmbiguities": [
+    "Project Schedule and Schedule Activity status vocabularies remain undefined.",
+    "Activity owner and persisted planned duration remain undefined.",
+    "Hierarchy depth and full parent-cycle policy remain undefined beyond same-Schedule and no-self-parent persistence checks.",
+    "Dependency types beyond FS and lead/fractional lag behavior remain undefined.",
+    "Canonical baseline snapshot_json key shape and baseline numbering start remain undefined.",
+    "Baseline reopen/revision lifecycle and exact SCHEDULE_BASELINE_LOCKED scope remain undefined.",
+    "Forecast start and complete revised-forecast persistence remain undefined.",
+    "Look-ahead query names/start-date semantics remain undefined.",
+    "Progress duplicate/replace and approval policies remain undefined.",
+    "schedule.milestone_changed emission condition remains undefined."
+  ],
+  "nextPass": "Pass 324 - Module 21 strict Zod/API schema boundary for the eight reviewed Scheduling operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:11.893Z",
+      "finishedAt": "2026-08-26T02:16:12.991Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.991Z",
+      "finishedAt": "2026-08-26T02:16:13.175Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-system-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.176Z",
+      "finishedAt": "2026-08-26T02:16:13.422Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "database-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.422Z",
+      "finishedAt": "2026-08-26T02:16:13.599Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.599Z",
+      "finishedAt": "2026-08-26T02:16:13.669Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:13.669Z",
+      "finishedAt": "2026-08-26T02:16:13.739Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

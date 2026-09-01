@@ -1,0 +1,96 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-23T16:02:45.121Z",
+  "status": "STAGE_6_STATIC_GATE_PASSED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "businessModule": "4 - BOQ Management",
+  "stage5LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_6_UNTIL_STAGE_5_LIVE_ACCEPTED",
+  "ownedTables": [
+    "boqs",
+    "boq_revisions",
+    "boq_items"
+  ],
+  "routeCount": 6,
+  "permissions": [
+    "boq.read",
+    "boq.create",
+    "boq.edit",
+    "boq.freeze",
+    "boq.export"
+  ],
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "nextStage": "Complete Module 3 live Stage-5 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-3-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:28.609Z",
+      "finishedAt": "2026-08-23T16:02:44.834Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:44.834Z",
+      "finishedAt": "2026-08-23T16:02:44.976Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:44.976Z",
+      "finishedAt": "2026-08-23T16:02:45.017Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:45.017Z",
+      "finishedAt": "2026-08-23T16:02:45.066Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:45.066Z",
+      "finishedAt": "2026-08-23T16:02:45.084Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:45.084Z",
+      "finishedAt": "2026-08-23T16:02:45.102Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:45.102Z",
+      "finishedAt": "2026-08-23T16:02:45.121Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

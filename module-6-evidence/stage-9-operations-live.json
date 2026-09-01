@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-operations-evidence",
+  "generatedAt": "2026-08-23T17:28:39.852Z",
+  "pass": 188,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "live",
+  "status": "BLOCKED",
+  "module6LiveHandoffAccepted": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_8_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-6:operations:gate:live before claiming operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

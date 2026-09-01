@@ -1,0 +1,75 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-finance-core-repository-evidence",
+  "generatedAt": "2026-08-24T06:16:42.928Z",
+  "pass": 204,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "status": "STAGE_11_MODULE_15A_REPOSITORY_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "repositoryGenerated": true,
+  "companyScopeEnforced": true,
+  "projectDimensionValidationPrepared": true,
+  "costStructureDimensionValidationPrepared": true,
+  "decimalSafeJournalPersistence": true,
+  "decimalSafeTrialBalanceAggregation": true,
+  "journalWriteLockPrepared": true,
+  "fiscalPeriodWriteLockPrepared": true,
+  "apArPaymentPersistenceGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 205 - Module 15A Finance Core service with manual journal creation, balanced posting, reversal, trial balance and period close rules.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-schema",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.998Z",
+      "finishedAt": "2026-08-24T06:16:42.139Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:42.139Z",
+      "finishedAt": "2026-08-24T06:16:42.310Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:42.310Z",
+      "finishedAt": "2026-08-24T06:16:42.808Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:42.808Z",
+      "finishedAt": "2026-08-24T06:16:42.857Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:42.857Z",
+      "finishedAt": "2026-08-24T06:16:42.928Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

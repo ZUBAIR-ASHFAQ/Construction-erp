@@ -1,0 +1,10 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-audit-repair-hold",
+  "generatedAt": "2026-08-23T14:40:17.041Z",
+  "status": "STAGE_8_REPAIR_HOLD_ACTIVE",
+  "openedByPass": 165,
+  "reason": "Cumulative audit found read-before-replace and downstream Stage-8 completion gaps that must be repaired before Module 6.",
+  "clearOnlyAfter": "Pass 175 final repair audit and genuine dependency-backed/live acceptance",
+  "module6Allowed": false
+}

@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-playwright-evidence",
+  "generatedAt": "2026-08-24T18:43:06.448Z",
+  "pass": 253,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage14LiveAccepted": false,
+  "reason": "STAGE_14_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-10:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

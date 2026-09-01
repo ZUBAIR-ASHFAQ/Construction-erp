@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-project-completion-repair",
+  "generatedAt": "2026-08-23T14:40:20.246Z",
+  "status": "MODULE_18_PROJECT_COMPLETION_PREPARED_REPAIR_HOLD_ACTIVE",
+  "pass": 170,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "completionCoverage": [
+    "existing upload-intent and folder-create bodies accept only a nullable Project target plus reviewed business fields",
+    "existing Document and folder list routes accept an exact Project filter without adding a new route",
+    "root folders and root Documents may be explicitly Project-scoped while child folders/uploads inherit trusted folder scope",
+    "Project filters are reauthorized against exact documents.project.read before repository access",
+    "Document detail returns server-derived version/archive capabilities for permission-aware React actions",
+    "React exposes Project target/filter controls using server-authorized Project IDs without sending company or actor authority",
+    "Playwright covers Project-A allow, Project-B isolation, Project target payloads, version/archive visibility and direct API denial",
+    "OpenAPI exposes projectId on the existing reviewed requests and list filters"
+  ],
+  "apiRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "migrationsAdded": 0,
+  "newBackendModuleFiles": 0,
+  "newReactProductionFiles": 0,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 171 - Existing-module UI completion repair.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-169-project-security",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.002Z",
+      "finishedAt": "2026-08-23T14:40:19.801Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.801Z",
+      "finishedAt": "2026-08-23T14:40:19.985Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.985Z",
+      "finishedAt": "2026-08-23T14:40:20.013Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.014Z",
+      "finishedAt": "2026-08-23T14:40:20.039Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.039Z",
+      "finishedAt": "2026-08-23T14:40:20.063Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-browser-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.063Z",
+      "finishedAt": "2026-08-23T14:40:20.084Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.084Z",
+      "finishedAt": "2026-08-23T14:40:20.103Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.103Z",
+      "finishedAt": "2026-08-23T14:40:20.124Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-playwright-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.124Z",
+      "finishedAt": "2026-08-23T14:40:20.143Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.143Z",
+      "finishedAt": "2026-08-23T14:40:20.164Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.164Z",
+      "finishedAt": "2026-08-23T14:40:20.198Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:20.198Z",
+      "finishedAt": "2026-08-23T14:40:20.246Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

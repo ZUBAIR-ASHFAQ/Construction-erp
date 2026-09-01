@@ -1,0 +1,149 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-playwright-evidence",
+  "generatedAt": "2026-08-24T15:56:25.168Z",
+  "pass": 242,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "static",
+  "status": "STAGE_14_MODULE_9_PLAYWRIGHT_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "browserFile": "tests/e2e/module-9-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open the permission-aware Purchase Orders workspace",
+    "select one authorized Project and create one quotation-backed server-numbered draft PO using an active Module-6 cost structure",
+    "verify server-calculated PO totals match the selected Module-8 quotation and browser requests never send numbering, lifecycle, totals or downstream consumption authority",
+    "submit the PO through the reviewed bodyless command and verify the existing Module-22 approval timeline appears",
+    "approve the same PO through the real Module-22 browser inbox rather than a fabricated PO approval endpoint",
+    "refresh the owning PO approval state through the replay-safe existing submit command, then issue the approved PO",
+    "verify issued PO state and read-only Module-7 commitment visibility from the existing job-cost ledger",
+    "create one safe controlled header revision and verify immutable revision history",
+    "cancel remaining commitment with a reason and verify historical issuance remains while Module-7 remaining commitment reaches zero",
+    "verify a read-only Purchase Order user receives no create/submit/issue/revise/cancel controls and receives HTTP 403 on direct create/cancel attempts"
+  ],
+  "repairedBrowserBlockers": [
+    "production startup now reads and passes PURCHASE_ORDER_APPROVAL_DEFINITION_CODE into the existing Purchase Orders service composition",
+    "PENDING_APPROVAL Purchase Orders expose a permission-aware Refresh approval status action that reuses the existing replay-safe submit command before issue",
+    "a pre-existing Module-24B OpenAPI description string with an unescaped apostrophe is corrected because production API startup compilation is required by the browser workflow"
+  ],
+  "intentionallyAbsent": [
+    "No new Purchase Order public API route is added.",
+    "No dedicated cancel permission is invented; cancellation continues to use purchase_orders.revise.",
+    "No direct-purchase browser path is enabled while its permission/persistence contract remains unresolved.",
+    "No Inventory receipt, supplier AP/invoice, Finance journal or direct Module-7 commitment mutation UI is added.",
+    "Project-scope and cross-Company security remain additionally covered by the Pass-240 PostgreSQL/Fastify integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 4,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 243 - Module 9 operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.824Z",
+      "finishedAt": "2026-08-24T15:56:18.824Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.824Z",
+      "finishedAt": "2026-08-24T15:56:23.640Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.640Z",
+      "finishedAt": "2026-08-24T15:56:23.802Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.802Z",
+      "finishedAt": "2026-08-24T15:56:23.827Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.828Z",
+      "finishedAt": "2026-08-24T15:56:23.852Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.852Z",
+      "finishedAt": "2026-08-24T15:56:24.508Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:24.508Z",
+      "finishedAt": "2026-08-24T15:56:24.651Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:24.651Z",
+      "finishedAt": "2026-08-24T15:56:24.809Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:24.809Z",
+      "finishedAt": "2026-08-24T15:56:24.919Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:24.919Z",
+      "finishedAt": "2026-08-24T15:56:25.045Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:25.045Z",
+      "finishedAt": "2026-08-24T15:56:25.092Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:25.092Z",
+      "finishedAt": "2026-08-24T15:56:25.168Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

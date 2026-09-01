@@ -1,0 +1,39 @@
+{
+  "pass": "B19.10",
+  "module": "Module 19 - Project Profitability",
+  "scope": "Final integration, Playwright harness and Module 19 freeze",
+  "moduleFrozen": true,
+  "databaseMigrationAdded": false,
+  "publicRouteCount": 4,
+  "writeRouteCount": 0,
+  "permissionCount": 3,
+  "stableErrorCount": 3,
+  "backendFileCount": 5,
+  "reactFeatureDirectoryCount": 4,
+  "liveIntegration": "tests/integration/final-21-project-profitability-api.integration.test.mjs",
+  "playwrightWorkflow": "tests/e2e/final-21-project-profitability-browser.spec.mjs",
+  "implemented": [
+    "live OpenAPI freeze for four bearer-secured read-only operations",
+    "guarded Project summary Stage trend and portfolio browser workflow",
+    "canonical Rs. 500,000 advance-only cash-not-profit browser proof",
+    "Stage plus Project-only reconciliation freeze",
+    "Modules 9 15 16 17 and 18 source-ownership regression",
+    "Company Project-scope and permission isolation regression",
+    "no profitability persistence or browser mutation"
+  ],
+  "nextPass": "B20.1 Cross-module Integration Completion alignment audit",
+  "verification": {
+    "b19_10Gate": "154/154 PASS",
+    "projectProfitabilityAlignment": "126/126 PASS",
+    "final21StaticSuite": "749/749 PASS",
+    "currentStaticSuite": "854/854 PASS",
+    "migrationPolicy": "89 migration(s) locked across 89 gate(s) PASS",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "newJavaScriptSyntax": "4/4 node --check PASS; package.json parse PASS",
+    "guardedIntegrationDiscovery": "9/9 discovered and correctly SKIPPED without RUN_FOUNDATION_DB_TESTS=1",
+    "dependencyBackedBuild": "Not claimed; supplied archive has no installed node_modules",
+    "livePostgreSQLIntegration": "Not run; guarded by RUN_FOUNDATION_DB_TESTS=1 and a disposable TEST_DATABASE_URL",
+    "livePlaywright": "Not run; guarded by RUN_FINAL_21_PROJECT_PROFITABILITY_E2E=1 plus PostgreSQL/browser dependencies"
+  }
+}

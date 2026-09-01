@@ -1,0 +1,44 @@
+{
+  "pass": "B19.2",
+  "module": "Module 19 Project Profitability",
+  "scope": "persistence and read-model decision before boundary/repository implementation",
+  "productionFilesChanged": false,
+  "databaseMigrationAdded": false,
+  "persistenceDecision": {
+    "authoritativeProfitabilityTable": false,
+    "snapshotCache": false,
+    "sqlOrMaterializedView": false,
+    "runtimeReadModel": true,
+    "futureCacheRequiresSeparateJustification": true
+  },
+  "sourceSemantics": {
+    "actualCost": "Module 9 CostActual; postingDate <= asOfDate; stageId null remains project-only",
+    "billed": "Module 15 issued/posted Client Invoice lines; invoiceDate <= asOfDate",
+    "recognizedRevenue": "Client Invoice Finance source plus compensating reversal history; net revenue effect through business posting date and postedAt cutoff",
+    "receivedCash": "Client Receipt Finance cash source plus controlled reversal history for historical as-of",
+    "allocatedReceipts": "Client Receipt allocation and allocation-reversal Finance history for historical as-of",
+    "advance": "received minus allocated; derived only",
+    "outstanding": "billed minus allocated; derived only",
+    "supplierPayable": "POSTED Supplier Invoices minus POSTED-payment allocations through the as-of cutoff",
+    "stageProgress": "APPROVED Stage progress only when displayed"
+  },
+  "criticalRules": [
+    "profit equals recognized Client Billing revenue minus source-derived actual cost",
+    "client cash received is not profit",
+    "billed recognized revenue received allocated advance outstanding payable cost and profit remain separate",
+    "historical receipt and allocation as-of uses durable Finance history because operational rows can later be reversed or removed",
+    "project-only source rows are never guessed into stages",
+    "no browser-created or editable profitability totals"
+  ],
+  "migrationCount": 88,
+  "nextPass": "B19.3 Project Profitability boundary contract",
+  "verification": {
+    "b19_2Gate": "47/47 PASS",
+    "postPassFinal21Static": "642/642 PASS",
+    "currentStaticSuite": "747/747 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "legacyCleanupManifest": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

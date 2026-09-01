@@ -1,0 +1,136 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-operations-evidence",
+  "generatedAt": "2026-08-24T15:56:27.219Z",
+  "pass": 243,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "static",
+  "status": "STAGE_14_MODULE_9_OPERATIONS_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent quotation-backed draft creation serializes on the Company-owned Project row while Foundation numbering allocates unique monotonic PO numbers",
+    "duplicate concurrent issue retries serialize through reviewed Project/PO locks and create one issued transition, one audit/outbox event and one Module-7 source-keyed commitment set",
+    "concurrent controlled header revisions serialize on the Purchase Order and allocate unique monotonic revision numbers without changing downstream line identities",
+    "duplicate concurrent cancellation retries preserve historical issuance and reduce every current Module-7 PO commitment remaining amount to zero exactly once",
+    "forced outbox failures after issue, revision and cancellation writes prove transaction rollback removes partial PO state, commitment, revision and audit mutations",
+    "reviewed Purchase Order register/vendor/detail-item/revision and Module-7 source-key read shapes have supporting Stage-14 indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 243 adds no migration because Pass 235 owns the complete reviewed Module-9 persistence change"
+  ],
+  "rollbackCoverage": [
+    "forced purchase_order.issued outbox failure rolls back owner status synchronization, issued state, Module-7 commitments and issue audit state",
+    "forced purchase_order.revised outbox failure rolls back edited commercial header, revision row and revision audit state",
+    "forced purchase_order.cancelled outbox failure rolls back cancellation status plus remaining-commitment reduction and cancellation audit state"
+  ],
+  "deploymentReadiness": [
+    "the complete dependency-free static regression remains green before live execution",
+    "Stage-13 acceptance plus Module-9 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financeWritesAdded": 0,
+  "inventoryWritesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-13, Pass-240 integration/security and Pass-242 browser handoffs; Pass 244 may be prepared statically but cannot claim live Stage-14 acceptance before that chain passes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.713Z",
+      "finishedAt": "2026-08-24T15:56:18.713Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.713Z",
+      "finishedAt": "2026-08-24T15:56:18.713Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.714Z",
+      "finishedAt": "2026-08-24T15:56:25.178Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:25.179Z",
+      "finishedAt": "2026-08-24T15:56:25.356Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:25.356Z",
+      "finishedAt": "2026-08-24T15:56:27.028Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:27.028Z",
+      "finishedAt": "2026-08-24T15:56:27.050Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:27.050Z",
+      "finishedAt": "2026-08-24T15:56:27.079Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:27.079Z",
+      "finishedAt": "2026-08-24T15:56:27.102Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:27.102Z",
+      "finishedAt": "2026-08-24T15:56:27.147Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:27.147Z",
+      "finishedAt": "2026-08-24T15:56:27.219Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

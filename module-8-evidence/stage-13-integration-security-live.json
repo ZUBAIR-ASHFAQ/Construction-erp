@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-integration-security-evidence",
+  "generatedAt": "2026-08-24T12:00:46.983Z",
+  "pass": 229,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage12LiveAccepted": false,
+  "reason": "STAGE_12_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite, then rerun module-8:integration-security:gate:live before claiming Stage-13 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

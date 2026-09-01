@@ -1,0 +1,57 @@
+{
+  "pass": "B16.7",
+  "module": "Module 17 - Supplier Payables",
+  "scope": "Exact Fastify route registration and OpenAPI metadata for invoices, payments, allocations and aging",
+  "productionFilesAdded": [
+    "apps/api/src/modules/supplier-payables/supplier-payables.routes.ts",
+    "apps/api/src/modules/supplier-payables/index.ts"
+  ],
+  "productionFilesUpdated": [
+    "apps/api/src/app.ts"
+  ],
+  "databaseMigrationAdded": false,
+  "routeCount": 8,
+  "routes": [
+    "GET /api/v1/supplier-payables/invoices",
+    "POST /api/v1/supplier-payables/invoices",
+    "GET /api/v1/supplier-payables/invoices/:id",
+    "POST /api/v1/supplier-payables/invoices/:id/post",
+    "GET /api/v1/supplier-payables/payments",
+    "POST /api/v1/supplier-payables/payments",
+    "POST /api/v1/supplier-payables/payments/:id/allocations",
+    "GET /api/v1/supplier-payables/aging"
+  ],
+  "idempotentWriteRoutes": 4,
+  "openApi": {
+    "tag": "Supplier Payables",
+    "operationIds": [
+      "listSupplierInvoices",
+      "createSupplierInvoice",
+      "getSupplierInvoice",
+      "postSupplierInvoice",
+      "listSupplierPayments",
+      "createSupplierPayment",
+      "allocateSupplierPayment",
+      "getSupplierAging"
+    ],
+    "bearerSecurityOnAllRoutes": true,
+    "requestAndResponseJsonSchemas": true
+  },
+  "unsupportedRoutesAdded": false,
+  "reactFeatureAdded": false,
+  "regressionMaintenance": [
+    "updated cumulative B16.1-B16.6 deferral assertions to allow the approved B16.7 HTTP layer"
+  ],
+  "nextPass": "B16.8 - Supplier Payables cross-module integration and Module 21 document/evidence authorization verification",
+  "verification": {
+    "b16FocusedTests": "78/78 PASS",
+    "final21StaticTests": "351/351 PASS",
+    "workspaceMigrationCleanupTests": "45/45 PASS",
+    "migrationPolicy": "83/83 migrations locked across 83 gates",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS and regenerated",
+    "typescriptSyntaxTranspile": "PASS for routes/index/app.ts",
+    "dependencyBackedBuildPostgresOpenApiRuntime": "NOT CLAIMED - archive has no installed node_modules/disposable PostgreSQL runtime",
+    "legacyUmbrellaStaticRunner": "NOT USED AS FINAL-21 GATE - includes superseded legacy stage tests that reference intentionally removed files"
+  }
+}

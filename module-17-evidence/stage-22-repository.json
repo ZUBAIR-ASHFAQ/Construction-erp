@@ -1,0 +1,165 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-repository-evidence",
+  "generatedAt": "2026-08-26T07:22:35.104Z",
+  "pass": 337,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_REPOSITORY_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/change-orders/change-orders.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityExplicit": true,
+  "transactionClientSupported": true,
+  "boundedPaginationOnly": true,
+  "aggregateListReadPrepared": true,
+  "requestAggregateReadPrepared": true,
+  "requestWriteLockPrepared": true,
+  "createRequestPrimitivePrepared": true,
+  "requesterCompanyLookupPrepared": true,
+  "lineCompleteReplacePrimitivePrepared": true,
+  "lineReadPreparedForServerTotals": true,
+  "optionalWbsSameProjectLookupPrepared": true,
+  "optionalCostCodeCompanyLookupPrepared": true,
+  "optionalCostTypeCompanyLookupPrepared": true,
+  "postingCostStructureLookupPrepared": true,
+  "optionalProjectBoqLookupPrepared": true,
+  "narrowRequestStatusUpdatePrepared": true,
+  "existingFormalOrderLookupPrepared": true,
+  "immutableFormalOrderCreatePrepared": true,
+  "formalOrderImpactReadPrepared": true,
+  "serverOwnedImpactEvidenceCreatePrepared": true,
+  "impactMutationAfterInsertPrepared": false,
+  "changeRequestDeletePrimitiveGenerated": false,
+  "changeOrderUpdateOrDeletePrimitiveGenerated": false,
+  "extraListFiltersInvented": false,
+  "changeNumberAuthorityInvented": false,
+  "lifecycleEnumsInvented": false,
+  "budgetAdapterDuplicated": false,
+  "approvalStorageDuplicated": false,
+  "scheduleAdapterGeneratedEarly": false,
+  "clientBillingAdapterGeneratedEarly": false,
+  "stage27TargetAdaptersGeneratedEarly": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "change_requests.change_no numbering authority and uniqueness scope remain service-owned and undefined.",
+    "Change Request and Change Order lifecycle vocabularies remain service-owned and string-backed.",
+    "Module-22 terminal approval linkage and latest submitted-state proof remain service concerns.",
+    "The source still defines no separate Change Request detail route or rejection payload.",
+    "changes.apply still has no standalone public route; service orchestration must enforce it during approved impact application.",
+    "Budget impact application belongs to the service transaction and must reuse Module 7 rather than duplicate its persistence.",
+    "approved_days Schedule mapping and Client/Subcontract/Schedule target adapters remain Stage-27-gated.",
+    "Reversal/adjustment policy remains required later but no public reversal command exists."
+  ],
+  "nextPass": "Pass 338 - Module 17 core Change Orders service lifecycle and Module-22 approval transactions; mandatory Budget/Forecast impact remains Pass 339.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-schema",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:30.773Z",
+      "finishedAt": "2026-08-26T07:22:33.550Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:33.550Z",
+      "finishedAt": "2026-08-26T07:22:33.698Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:33.698Z",
+      "finishedAt": "2026-08-26T07:22:34.045Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.045Z",
+      "finishedAt": "2026-08-26T07:22:34.187Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.187Z",
+      "finishedAt": "2026-08-26T07:22:34.318Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.318Z",
+      "finishedAt": "2026-08-26T07:22:34.477Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.477Z",
+      "finishedAt": "2026-08-26T07:22:34.562Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.562Z",
+      "finishedAt": "2026-08-26T07:22:34.676Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.676Z",
+      "finishedAt": "2026-08-26T07:22:34.850Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:34.850Z",
+      "finishedAt": "2026-08-26T07:22:35.006Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.006Z",
+      "finishedAt": "2026-08-26T07:22:35.052Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.052Z",
+      "finishedAt": "2026-08-26T07:22:35.103Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-integration-evidence",
+  "generatedAt": "2026-08-26T14:47:38.660Z",
+  "pass": 182,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "static",
+  "status": "STAGE_9_INTEGRATION_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "integrationFile": "tests/integration/module-6-api.integration.test.mjs",
+  "workflowCoverage": [
+    "read empty Project WBS",
+    "create root, child and grandchild WBS nodes",
+    "move a branch and preserve descendant hierarchy levels",
+    "create and list Company Cost Codes",
+    "replace and read back Project cost-code mappings",
+    "freeze the reviewed Project cost-structure command",
+    "verify audit and reviewed outbox events"
+  ],
+  "negativeCoverage": [
+    "duplicate sibling WBS code",
+    "WBS hierarchy cycle",
+    "cross-Project WBS mapping input",
+    "inactive Cost Type mapping input",
+    "replacement transaction rollback after database uniqueness failure",
+    "invalid UUID",
+    "client-owned authority fields",
+    "missing Project permission",
+    "foreign-company Project read hidden as not found"
+  ],
+  "deferredToPass183": [
+    "complete Module 6 permission matrix",
+    "all cross-company repository/service attacks",
+    "all cross-Project membership/resource-policy attacks",
+    "direct database constraint attack matrix"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 183 may be prepared next, but Pass 182 live verification remains blocked until the genuine Stage-8 live handoff is available.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.910Z",
+      "finishedAt": "2026-08-26T14:47:35.911Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-http",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:35.912Z",
+      "finishedAt": "2026-08-26T14:47:37.591Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-integration-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:37.591Z",
+      "finishedAt": "2026-08-26T14:47:38.157Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:38.157Z",
+      "finishedAt": "2026-08-26T14:47:38.275Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:38.275Z",
+      "finishedAt": "2026-08-26T14:47:38.467Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:38.467Z",
+      "finishedAt": "2026-08-26T14:47:38.660Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-integration-security-evidence",
+  "generatedAt": "2026-08-24T18:42:56.198Z",
+  "pass": 251,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "static",
+  "status": "STAGE_15_MODULE_10_INTEGRATION_SECURITY_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-10-api.integration.test.mjs",
+  "coverage": [
+    "Item master and Project-authorized balance reads run through real Fastify, service, repository and PostgreSQL boundaries",
+    "issued PO receipt updates Goods Receipt, append-only stock ledger, Inventory balance and PO received_qty atomically and replay-safely",
+    "transfer conserves quantity and issue creates exactly one Module-7 source-derived actual cost using server-owned valuation",
+    "supported Project issue return appends stock and a negative Module-7 actual correction without mutating history",
+    "controlled adjustment records a signed append-only movement and reasoned audit/outbox history",
+    "receipt quality split, unit compatibility, PO open quantity, available stock and closed Project state remain server-authoritative",
+    "missing authentication/permission, restricted Project scope, cross-Company resources and browser-owned fields are rejected",
+    "database constraints reject cross-Company balances and Project/warehouse mismatch while stock transactions remain append-only",
+    "late outbox failures roll back receipt/PO/balance/numbering and issue/balance/job-cost/audit state without partial commits",
+    "generated OpenAPI exposes exactly eight reviewed Inventory operations, bearer security and Idempotency-Key on five stock commands",
+    "Warehouse CRUD, ledger/count/low-stock/valuation routes and Finance posting remain absent"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "reviewedRouteCount": 8,
+  "reviewedPermissionCount": 6,
+  "reviewedEventCount": 5,
+  "stockCommandIdempotencyVerified": false,
+  "poReceiptAtomicityVerified": false,
+  "module7IssueAndReturnActualsVerified": false,
+  "negativeAuthorizationVerified": false,
+  "crossCompanyIsolationVerified": false,
+  "generatedOpenApiVerified": false,
+  "transactionRollbackVerified": false,
+  "appendOnlyLedgerDatabaseProtectionVerified": false,
+  "financePostingWritesAdded": 0,
+  "warehouseCrudRoutesAdded": 0,
+  "stockLedgerReadRoutesAdded": 0,
+  "stockCountRoutesAdded": 0,
+  "lowStockRoutesAdded": 0,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 252 - Module 10 React Inventory typed API client, TanStack Query hooks and the reviewed Item/balance/receipt/transfer/issue/adjustment UI preparation without inventing missing Warehouse/ledger/low-stock APIs.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.511Z",
+      "finishedAt": "2026-08-24T18:42:47.511Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.512Z",
+      "finishedAt": "2026-08-24T18:42:54.735Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.735Z",
+      "finishedAt": "2026-08-24T18:42:54.913Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.913Z",
+      "finishedAt": "2026-08-24T18:42:55.069Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.069Z",
+      "finishedAt": "2026-08-24T18:42:55.207Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.207Z",
+      "finishedAt": "2026-08-24T18:42:55.343Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.343Z",
+      "finishedAt": "2026-08-24T18:42:55.508Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.508Z",
+      "finishedAt": "2026-08-24T18:42:55.648Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.648Z",
+      "finishedAt": "2026-08-24T18:42:55.665Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:55.665Z",
+      "finishedAt": "2026-08-24T18:42:56.105Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:56.105Z",
+      "finishedAt": "2026-08-24T18:42:56.145Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:56.145Z",
+      "finishedAt": "2026-08-24T18:42:56.198Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

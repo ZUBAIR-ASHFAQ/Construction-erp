@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-2-stage-4-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T03:55:32.026Z",
+  "status": "BLOCKED",
+  "module": "2 - CRM & Client Management",
+  "stage3LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_4_UNTIL_STAGE_3_LIVE_ACCEPTED",
+  "ownedTables": [
+    "clients",
+    "client_contacts",
+    "opportunities",
+    "opportunity_notes"
+  ],
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "deferredRelationships": [
+    "tender",
+    "project",
+    "client-billing",
+    "finance"
+  ],
+  "nextStage": "Complete Module 22 live Stage-3 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-3-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-23T03:55:32.025Z",
+      "finishedAt": "2026-08-23T03:55:32.025Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_3_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

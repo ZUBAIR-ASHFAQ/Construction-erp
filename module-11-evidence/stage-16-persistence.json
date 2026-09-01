@@ -1,0 +1,102 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-persistence-evidence",
+  "generatedAt": "2026-08-25T05:47:31.832Z",
+  "pass": 257,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_PERSISTENCE_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "migration": "20260825000100_module_11_subcontractor_management_core",
+  "sourceOwnedTables": [
+    "subcontractors",
+    "subcontracts",
+    "subcontract_items",
+    "subcontract_payment_applications",
+    "subcontract_payment_lines"
+  ],
+  "inferredTablesAdded": [],
+  "vendorLinkNullable": true,
+  "vendorSameCompanyEnforced": true,
+  "vendorMasterDuplicated": false,
+  "subcontractNumberUniqueness": "company_id + project_id + subcontract_no",
+  "paymentApplicationNumberUniqueness": "subcontract_id + application_no",
+  "subcontractorCodeUniquenessInvented": false,
+  "quantityRateScale": 4,
+  "moneyScale": 2,
+  "retentionPercentScale": 4,
+  "retentionPercentRangeEnforced": true,
+  "companyProjectSubcontractorScopeEnforced": true,
+  "postingEnabledCostStructureEnforced": true,
+  "boqCompanyProjectScopeEnforced": true,
+  "paymentLineSameSubcontractEnforced": true,
+  "paymentLinePerItemUniquenessInvented": false,
+  "statusEnumsInvented": false,
+  "contactJsonSchemaInvented": false,
+  "amountFormulaInvented": false,
+  "approvalPersistenceInvented": false,
+  "commitmentPersistenceChanged": false,
+  "financePersistenceChanged": false,
+  "variationPersistenceInvented": false,
+  "revisionTableInvented": false,
+  "deductionTableInvented": false,
+  "retentionLedgerTableInvented": false,
+  "certificationStatusTokenInvented": false,
+  "publicRoutesGenerated": false,
+  "apiSchemaGenerated": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 258 - Module 11 strict Zod request/query/response schemas for exactly the eight reviewed public operations. Preserve approval, readback, revision, retention, numbering-token, deduction and Finance/AP gaps explicitly.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.220Z",
+      "finishedAt": "2026-08-25T05:47:31.425Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.425Z",
+      "finishedAt": "2026-08-25T05:47:31.581Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-system-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.581Z",
+      "finishedAt": "2026-08-25T05:47:31.739Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.739Z",
+      "finishedAt": "2026-08-25T05:47:31.779Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.779Z",
+      "finishedAt": "2026-08-25T05:47:31.832Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

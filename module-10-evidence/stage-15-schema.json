@@ -1,0 +1,151 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-schema-evidence",
+  "generatedAt": "2026-08-24T18:42:50.195Z",
+  "pass": 247,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "status": "STAGE_15_MODULE_10_SCHEMA_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/inventory/inventory.schema.ts",
+  "reviewedRouteCount": 8,
+  "reviewedPermissionCount": 6,
+  "reviewedErrorCount": 6,
+  "reviewedEventCount": 5,
+  "maxPageSize": 100,
+  "listFiltersInvented": false,
+  "listQueryDecision": "The source names Item and balance reads but supplies no business filter vocabulary, so Pass 247 accepts bounded pagination only.",
+  "createItemBrowserFields": [
+    "itemCode",
+    "name",
+    "category",
+    "baseUnit",
+    "valuationMethod"
+  ],
+  "itemStatusAcceptedFromBrowser": false,
+  "valuationMethodEnumInvented": false,
+  "receiptBrowserFields": [
+    "purchaseOrderId",
+    "warehouseId",
+    "items"
+  ],
+  "receiptLineBrowserFields": [
+    "poItemId",
+    "itemId",
+    "quantity",
+    "acceptedQty",
+    "rejectedQty"
+  ],
+  "receiptNumberAcceptedFromBrowser": false,
+  "receiptTimestampAcceptedFromBrowser": false,
+  "receiptActorAcceptedFromBrowser": false,
+  "receiptStatusAcceptedFromBrowser": false,
+  "receiptUnitCostAcceptedFromBrowser": false,
+  "receiptAcceptedRejectedEquationInvented": false,
+  "receiptToleranceFieldInvented": false,
+  "transferBrowserFields": [
+    "sourceWarehouseId",
+    "destinationWarehouseId",
+    "itemId",
+    "quantity"
+  ],
+  "transferHeaderInvented": false,
+  "transferDirectionEnumInvented": false,
+  "transferProjectOwnershipAcceptedFromBrowser": false,
+  "issueBrowserFields": [
+    "warehouseId",
+    "projectId",
+    "itemId",
+    "quantity",
+    "wbsNodeId",
+    "costCodeId",
+    "costTypeId"
+  ],
+  "issueCostAcceptedFromBrowser": false,
+  "module7ActualSourceTokenExposed": false,
+  "returnBrowserFields": [
+    "sourceTransactionId",
+    "quantity",
+    "reason"
+  ],
+  "returnReferenceConvention": "existing stock transaction",
+  "returnDirectionEnumInvented": false,
+  "returnPermissionInvented": false,
+  "adjustmentBrowserFields": [
+    "warehouseId",
+    "itemId",
+    "quantityDelta",
+    "reason"
+  ],
+  "adjustmentDirectionEnumInvented": false,
+  "stockCountSessionInvented": false,
+  "exactDecimalStringsUsed": true,
+  "decimalScale": 4,
+  "calculatedBalancesAcceptedFromBrowser": false,
+  "calculatedCostsAcceptedFromBrowser": false,
+  "poConsumptionAcceptedFromBrowser": false,
+  "stockSourceTokensExposedInResponse": false,
+  "unitConversionFactorAcceptedFromBrowser": false,
+  "unitConversionMasterInvented": false,
+  "stockPeriodFieldAcceptedFromBrowser": false,
+  "warehouseCrudInvented": false,
+  "stockLedgerReadRouteInvented": false,
+  "lowStockReadRouteInvented": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 248 - Module 10 Company/Project-scoped repository for Inventory items, balances, PO receipts and append-only stock movements, with transaction-client support for later atomic service workflows.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.935Z",
+      "finishedAt": "2026-08-24T18:42:49.490Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:49.490Z",
+      "finishedAt": "2026-08-24T18:42:49.662Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:49.662Z",
+      "finishedAt": "2026-08-24T18:42:50.075Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:50.075Z",
+      "finishedAt": "2026-08-24T18:42:50.133Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:50.133Z",
+      "finishedAt": "2026-08-24T18:42:50.195Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

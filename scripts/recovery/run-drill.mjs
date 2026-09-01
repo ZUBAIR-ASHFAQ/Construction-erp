@@ -1,0 +1,15 @@
+import process from 'node:process';
+import { LIVE_DRILL_CONFIRMATION, RESTORE_CONFIRMATION, requiredEnv, run } from './lib.mjs';
+if (process.env.RECOVERY_DRILL_CONFIRM !== LIVE_DRILL_CONFIRMATION) throw new Error(`Set RECOVERY_DRILL_CONFIRM=${LIVE_DRILL_CONFIRMATION} before the destructive recovery drill.`);
+requiredEnv('RESTORE_DATABASE_URL');
+requiredEnv('RESTORE_STORAGE_BUCKET');
+if (process.env.RESTORE_CONFIRM !== RESTORE_CONFIRMATION) throw new Error(`Set RESTORE_CONFIRM=${RESTORE_CONFIRMATION}.`);
+const postgresDir = requiredEnv('RECOVERY_POSTGRES_BACKUP_DIR');
+const storageDir = requiredEnv('RECOVERY_STORAGE_BACKUP_DIR');
+await run('node', ['scripts/recovery/verify-postgres-backup.mjs', postgresDir]);
+await run('node', ['scripts/recovery/verify-object-storage-backup.mjs', storageDir]);
+await run('node', ['scripts/recovery/restore-postgres.mjs', postgresDir]);
+await run('node', ['scripts/recovery/verify-restored-postgres.mjs']);
+await run('node', ['scripts/recovery/restore-object-storage.mjs', storageDir]);
+await run('node', ['scripts/recovery/verify-restored-object-storage.mjs', storageDir]);
+console.log('Foundation recovery drill completed successfully for PostgreSQL and object storage.');

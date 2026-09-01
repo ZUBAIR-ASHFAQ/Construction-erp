@@ -1,0 +1,32 @@
+{
+  "pass": "B15.5",
+  "module": "Final Module 14 - Site Expense Management",
+  "scope": "service business logic",
+  "productionFilesAdded": [
+    "apps/api/src/modules/site-expenses/site-expenses.service.ts"
+  ],
+  "productionFilesUpdated": [
+    "apps/api/src/modules/site-expenses/site-expenses.repository.ts",
+    "apps/api/src/modules/site-expenses/site-expenses.schema.ts"
+  ],
+  "databaseMigrationAdded": false,
+  "routesRegistered": false,
+  "reactFeatureAdded": false,
+  "numberSequenceKey": "site-expense",
+  "payableFinanceAccountConvention": "SITE-EXPENSE-PAYABLE",
+  "postSourceKey": "site_expense:<expenseId>",
+  "reversalSourceKey": "site_expense_reversal:<expenseId>",
+  "costCategory": "site_expense",
+  "postInvariant": "one transaction creates one Finance source effect and one Project/Stage actual-cost source before Site Expense becomes POSTED",
+  "reversalInvariant": "one transaction appends opposite Finance and negative Project-cost effects before Site Expense becomes REVERSED",
+  "nextPass": "B15.6 - exact Fastify routes, index registration and OpenAPI",
+  "verification": {
+    "siteExpenseFocusedTests": "39/39 PASS",
+    "final21StaticTests": "223/223 PASS",
+    "workspaceCheck": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "migrationPolicy": "81/81 migrations locked",
+    "typescriptSyntaxChecks": "PASS",
+    "dependencyBackedBuildPrismaValidation": "NOT RUN - archive has no node_modules"
+  }
+}

@@ -1,0 +1,69 @@
+{
+  "pass": "B18.1",
+  "module": "Module 16 Client Receipts / Payments",
+  "scope": "non-destructive alignment audit before the first Client Receipts production implementation",
+  "productionFilesChanged": false,
+  "databaseMigrationAdded": false,
+  "baseline": {
+    "backendModulePresent": false,
+    "reactFeaturePresent": false,
+    "clientReceiptPrismaModelsPresent": false,
+    "requiredRouteCount": 6,
+    "requiredDatabaseTables": [
+      "client_receipts",
+      "client_receipt_allocations"
+    ]
+  },
+  "readyPrerequisites": [
+    "Module 4 Client Management",
+    "Module 6 Project Management",
+    "Module 7 Project Stages / Progress",
+    "Module 15 Client Billing",
+    "Module 18 Finance & Accounting",
+    "Foundation numbering/idempotency/audit/outbox"
+  ],
+  "partialPrerequisites": [
+    "Module 21 Documents must add client_receipt resource authorization after persistence exists"
+  ],
+  "requiredPermissions": [
+    "client_receipts.read",
+    "client_receipts.create",
+    "client_receipts.allocate",
+    "client_receipts.reverse"
+  ],
+  "requiredErrors": [
+    "RECEIPT_NOT_FOUND",
+    "ALLOCATION_EXCEEDS_RECEIPT",
+    "ALLOCATION_EXCEEDS_INVOICE",
+    "RECEIPT_SCOPE_MISMATCH",
+    "RECEIPT_LOCKED"
+  ],
+  "requiredRoutes": [
+    "GET /api/v1/client-receipts",
+    "POST /api/v1/client-receipts",
+    "GET /api/v1/client-receipts/:id",
+    "POST /api/v1/client-receipts/:id/allocations",
+    "POST /api/v1/client-receipts/:id/unallocate",
+    "POST /api/v1/client-receipts/:id/reverse"
+  ],
+  "criticalRules": [
+    "advance/unallocated receipt may exist without an invoice",
+    "original posted receipt history is immutable",
+    "allocation cannot exceed receipt unallocated amount or invoice outstanding",
+    "received cash is not profit by itself",
+    "stage received must not double count direct stage attribution and invoice allocation",
+    "outstanding equals billed minus allocated receipts while advances remain separate",
+    "Finance owns cash/bank and accounting representation"
+  ],
+  "nextPass": "B18.2 Client Receipts persistence integrity",
+  "verification": {
+    "prePassFinal21Static": "507/507 PASS",
+    "prePassCurrentStatic": "611/611 PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules",
+    "b18_1Gate": "37/37 PASS",
+    "postPassFinal21Static": "517/517 PASS",
+    "postPassCurrentStatic": "621/621 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "87/87 migrations locked across 87 gates"
+  }
+}

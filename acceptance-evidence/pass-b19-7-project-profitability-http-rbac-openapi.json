@@ -1,0 +1,44 @@
+{
+  "pass": "B19.7",
+  "module": "Module 19 Project Profitability",
+  "scope": "HTTP registration, RBAC-safe boundary wiring and OpenAPI",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": true,
+  "routeCount": 4,
+  "writeRouteCount": 0,
+  "routes": [
+    "GET /api/v1/project-profitability/projects/:projectId",
+    "GET /api/v1/project-profitability/projects/:projectId/stages",
+    "GET /api/v1/project-profitability/projects/:projectId/trend",
+    "GET /api/v1/project-profitability/portfolio"
+  ],
+  "authentication": "Foundation bearer session on every route",
+  "serviceAuthorizationAuthoritative": true,
+  "permissions": [
+    "project_profitability.read",
+    "project_profitability.finance.read",
+    "project_profitability.portfolio.read"
+  ],
+  "stableErrors": [
+    "PROFITABILITY_SCOPE_FORBIDDEN",
+    "PROFITABILITY_SOURCE_INCOMPLETE",
+    "INVALID_PROFITABILITY_FILTER"
+  ],
+  "strictZodPreValidation": true,
+  "openApiRegistered": true,
+  "reactFeatureAdded": false,
+  "profitabilityPersistenceAdded": false,
+  "permissionOnlyMigration": "20260830000600_final21_project_profitability_permissions",
+  "nextPass": "B19.8 Project Profitability cross-module reconciliation and security",
+  "verification": {
+    "b19_7Gate": "116/116 PASS",
+    "projectProfitabilityAlignment": "88/88 PASS",
+    "postPassFinal21Static": "711/711 PASS",
+    "currentStaticSuite": "816/816 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "89/89 migrations locked across 89 gates",
+    "legacyCleanupManifest": "PASS",
+    "typescriptSyntaxTranspile": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

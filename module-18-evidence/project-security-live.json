@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-project-security-repair",
+  "generatedAt": "2026-08-23T14:23:28.548Z",
+  "status": "BLOCKED",
+  "pass": 169,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 170 - Module 18 HTTP, OpenAPI, React and E2E Project completion.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

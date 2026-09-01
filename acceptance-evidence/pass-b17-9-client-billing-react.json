@@ -1,0 +1,42 @@
+{
+  "pass": "B17.9",
+  "module": "Module 15 Client Billing",
+  "scope": "React completion for Stage-aware Claims, billing-basis visibility and Stage-preserving Client Invoice views",
+  "databaseMigrationAdded": false,
+  "backendRoutesChanged": false,
+  "backendRouteCount": 9,
+  "featureDirectories": [
+    "api",
+    "hooks",
+    "components",
+    "pages"
+  ],
+  "usesTanStackQuery": true,
+  "usesReactHookFormAndZod": true,
+  "sourceModuleReads": [
+    "Project Management",
+    "Project Stages / Progress"
+  ],
+  "implemented": [
+    "Project Stage selector replaces raw Stage UUID entry",
+    "Project billing model is shown as authoritative and read-only in billing settings",
+    "Fixed Price basis is explained without automatic physical-progress billing",
+    "Cost + Percentage basis is explained as server validation against posted actual cost plus Project percentage",
+    "Claim lines display Stage attribution",
+    "Client Invoice lines preserve and display Stage attribution",
+    "Client Invoice mutation refreshes Client Billing, Project Stage and Finance query state",
+    "Client Receipt, advance and outstanding values remain deferred to Module 16"
+  ],
+  "nextPass": "B17.10 Client Billing final integration, E2E and freeze",
+  "verification": {
+    "b17FocusedStatic": "11/11 PASS",
+    "b17CumulativeGate": "108/108 PASS",
+    "completeFinal21Static": "496/496 PASS",
+    "currentFullStatic": "600/600 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "87/87 migrations locked across 87 gates",
+    "functionPurposeComments": "PASS",
+    "typescriptSyntax": "PASS for all four changed Client Billing frontend files using TypeScript transpile diagnostics",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

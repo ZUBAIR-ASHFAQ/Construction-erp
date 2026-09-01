@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-310-compensation-authorization",
+  "generatedAt": "2026-08-25T17:35:25.773Z",
+  "pass": 310,
+  "stage": 20,
+  "module": "14B - Payroll Completion",
+  "status": "PASS_310_COMPENSATION_AUTHORIZATION_FROZEN_STAGE_20_CALCULATION_POLICY_PENDING",
+  "documentationAndVerificationOnly": true,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "publicApiRuntimeChanges": 0,
+  "newPermissions": 0,
+  "frozenAuthorization": {
+    "ordinaryEmployeeRead": "employees.read without compensation values",
+    "publicCompensationRead": "employees.manage",
+    "publicCompensationWrite": "employees.manage",
+    "payrollInternalCompensationLookup": "payroll.calculate",
+    "payrollReadIsGeneralSalaryRead": false,
+    "payslipSelfReadIsGeneralSalaryRead": false
+  },
+  "frozenRouteAmendments": [
+    "GET /api/v1/hr/employees/:id/compensation-periods",
+    "POST /api/v1/hr/employees/:id/compensation-periods"
+  ],
+  "maintenanceModel": "append one later effective period and atomically close the previous latest period",
+  "effectiveToBrowserOwned": false,
+  "idempotencyRequiredForWrite": true,
+  "genericAuditContainsRawSalaryAmounts": false,
+  "compensationOutboxEventInvented": false,
+  "legacyEmployeeCompensationIsPayrollHistoryAuthority": false,
+  "remainingStage20RuntimeBlockers": [
+    "salary-period proration behavior",
+    "earning and deduction item-code vocabulary and generation rules",
+    "overtime-rate behavior",
+    "calculation-exception reason vocabulary and stable error mapping",
+    "late-approved time and Timesheet Adjustment Payroll correction policy",
+    "Stage-20 versus Stage-26 Finance posting boundary",
+    "Payslip file_id Document versus Document-Version target before publication"
+  ],
+  "stage20RuntimeFullyAllowed": false,
+  "nextReviewedPass": "Pass 311 - Stage-20 Payroll calculation item, proration, overtime and blocking-exception vocabulary contract",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-310-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:35:22.783Z",
+      "finishedAt": "2026-08-25T17:35:22.887Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:35:22.887Z",
+      "finishedAt": "2026-08-25T17:35:24.877Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:35:24.877Z",
+      "finishedAt": "2026-08-25T17:35:25.116Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:35:25.130Z",
+      "finishedAt": "2026-08-25T17:35:25.773Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-3-stage-5-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T06:19:48.429Z",
+  "status": "BLOCKED",
+  "module": "3 - Tendering & Estimation",
+  "stage4LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_5_UNTIL_STAGE_4_LIVE_ACCEPTED",
+  "ownedTables": [
+    "tenders",
+    "estimate_versions",
+    "estimate_items",
+    "tender_submissions"
+  ],
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "deferredRelationships": [
+    "boq-project-mapping",
+    "project-award-conversion",
+    "budget-baseline",
+    "reports-dashboard"
+  ],
+  "nextStage": "Complete Module 2 live Stage-4 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-4-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-23T06:19:48.429Z",
+      "finishedAt": "2026-08-23T06:19:48.429Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_4_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

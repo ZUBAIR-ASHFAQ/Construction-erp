@@ -1,0 +1,67 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-react-workflow-evidence",
+  "generatedAt": "2026-08-23T12:36:49.585Z",
+  "status": "STAGE_8_REACT_WORKFLOW_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 161,
+  "stage7LiveAccepted": false,
+  "reactCoverage": [
+    "Project detail exposes complete-set member management through the reviewed PUT membership command",
+    "membership rows validate user, free-text Project role, status and date range before submission",
+    "member replacement requires explicit complete-set confirmation because no member-list read route is invented",
+    "user administration exposes one complete COMPANY/PROJECT role-scope assignment workflow",
+    "PROJECT role assignments require a Project UUID while COMPANY assignments keep scopeId null",
+    "duplicate role/scope and duplicate Project-member rows are rejected in the form",
+    "server-confirmed replacement results reset browser forms without client-owned authority fields"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFeatureFolders": 0,
+  "newReactProductionFiles": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 162 - Module 24B Playwright Project-scope workflow and isolation.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-react-register-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.499Z",
+      "finishedAt": "2026-08-23T12:36:49.368Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-react-workflow-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.368Z",
+      "finishedAt": "2026-08-23T12:36:49.502Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.502Z",
+      "finishedAt": "2026-08-23T12:36:49.539Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.539Z",
+      "finishedAt": "2026-08-23T12:36:49.584Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

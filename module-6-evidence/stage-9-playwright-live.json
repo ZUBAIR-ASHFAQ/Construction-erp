@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-playwright-evidence",
+  "generatedAt": "2026-08-23T17:22:17.921Z",
+  "pass": 187,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "live",
+  "status": "BLOCKED",
+  "module6LiveHandoffAccepted": false,
+  "reason": "STAGE_8_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-6:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

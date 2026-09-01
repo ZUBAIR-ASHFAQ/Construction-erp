@@ -1,0 +1,86 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-finance-core-http-evidence",
+  "generatedAt": "2026-08-24T06:16:45.351Z",
+  "pass": 206,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "status": "STAGE_11_MODULE_15A_HTTP_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "routesGenerated": true,
+  "indexGenerated": true,
+  "fastifyRegistrationPrepared": true,
+  "openApiOperationsPrepared": true,
+  "exactReviewedRouteCount": 6,
+  "authenticationRequiredForAllRoutes": true,
+  "companyRoutePermissionChecks": [
+    "finance.accounts.read",
+    "finance.periods.close"
+  ],
+  "projectAwareAuthorizationRemainsServiceAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "decimalResponseSerialization": true,
+  "apArPaymentsGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 207 - Module 15A PostgreSQL/Fastify integration, OpenAPI and security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-service",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.624Z",
+      "finishedAt": "2026-08-24T06:16:43.844Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:43.844Z",
+      "finishedAt": "2026-08-24T06:16:44.055Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:44.055Z",
+      "finishedAt": "2026-08-24T06:16:44.691Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "app-registration-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:44.692Z",
+      "finishedAt": "2026-08-24T06:16:45.218Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.218Z",
+      "finishedAt": "2026-08-24T06:16:45.277Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.277Z",
+      "finishedAt": "2026-08-24T06:16:45.351Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-operations-evidence",
+  "generatedAt": "2026-08-25T00:26:24.390Z",
+  "pass": 254,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "static",
+  "status": "STAGE_15_MODULE_10_OPERATIONS_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent receipts against one PO line serialize on reviewed PO/line locks so open quantity cannot be over-received",
+    "concurrent Project issues against one Warehouse/Item balance serialize on the stock-balance row so unavailable stock cannot become negative",
+    "opposing Warehouse transfers lock both balances in deterministic Warehouse-ID order and conserve total quantity without deadlock-prone lock inversion",
+    "receipt numbering stays rollback-safe because failed over-receipt transactions do not consume a Goods Receipt number",
+    "Inventory balance quantity reconciles to the append-only stock ledger for the exercised receipt, issue and transfer movements",
+    "Project issue actual cost remains source-keyed and one-to-one with the successful issue movement",
+    "reviewed Item, Warehouse, Goods Receipt and Stock Transaction read shapes have supporting Stage-15 indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 254 adds no migration because Pass 246 owns the complete reviewed Module-10 persistence change"
+  ],
+  "rollbackCoverage": [
+    "Pass 251 already proves late inventory.received outbox failure rolls back Goods Receipt, stock ledger, balance, PO received_qty, audit and numbering",
+    "Pass 251 already proves late inventory.issued outbox failure rolls back balance, stock ledger, Module-7 actual cost, audit and outbox state",
+    "Pass 254 reuses those verified rollback fixtures and adds concurrency/reconciliation coverage without changing runtime behavior"
+  ],
+  "deploymentReadiness": [
+    "the complete dependency-free static regression remains green before live execution",
+    "Stage-14 acceptance plus Module-10 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financeWritesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 255 - Module 10 final Stage-15 acceptance gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:25:58.101Z",
+      "finishedAt": "2026-08-25T00:25:58.101Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:25:58.101Z",
+      "finishedAt": "2026-08-25T00:25:58.101Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:25:58.101Z",
+      "finishedAt": "2026-08-25T00:26:21.547Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:21.547Z",
+      "finishedAt": "2026-08-25T00:26:21.755Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:21.755Z",
+      "finishedAt": "2026-08-25T00:26:24.158Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:24.158Z",
+      "finishedAt": "2026-08-25T00:26:24.180Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:24.180Z",
+      "finishedAt": "2026-08-25T00:26:24.199Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:24.199Z",
+      "finishedAt": "2026-08-25T00:26:24.222Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:24.222Z",
+      "finishedAt": "2026-08-25T00:26:24.273Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:26:24.273Z",
+      "finishedAt": "2026-08-25T00:26:24.390Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

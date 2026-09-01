@@ -1,0 +1,50 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T09:46:44.145Z",
+  "status": "BLOCKED",
+  "module": "5 - Project Management",
+  "pass": 150,
+  "stage6LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_7_UNTIL_STAGE_6_LIVE_ACCEPTED",
+  "ownedTables": [
+    "projects",
+    "project_status_history"
+  ],
+  "routeCount": 7,
+  "activePermissions": [
+    "projects.read",
+    "projects.create",
+    "projects.update",
+    "projects.activate",
+    "projects.close"
+  ],
+  "deferredToModule24B": [
+    "project_members",
+    "projects.manage_members",
+    "project.member_changed",
+    "validated project-scoped authorization"
+  ],
+  "productionRuntimeChanges": 0,
+  "nextStage": "Complete Module 4A live Stage-6 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-6-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-23T09:46:44.145Z",
+      "finishedAt": "2026-08-23T09:46:44.145Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_6_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

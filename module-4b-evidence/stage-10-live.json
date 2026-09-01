@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4b-stage-10-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-24T01:27:24.957Z",
+  "status": "BLOCKED",
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "pass": 200,
+  "stage": 10,
+  "stage9LiveAccepted": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_10_UNTIL_STAGE_9_LIVE_HANDOFF",
+  "extendedTables": [
+    "boqs",
+    "boq_items"
+  ],
+  "activatedRelationships": [
+    "boqs.project_id",
+    "boq_items.wbs_node_id",
+    "boq_items.cost_code_id"
+  ],
+  "routeCount": 6,
+  "activePermissions": [
+    "boq.read",
+    "boq.create",
+    "boq.edit",
+    "boq.freeze",
+    "boq.export"
+  ],
+  "activeEvents": [
+    "boq.created",
+    "boq.revision_created",
+    "boq.revision_frozen"
+  ],
+  "existingTenderBoqsRemainValid": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The source defines no dedicated command for attaching a Project to an already-existing tender-only BOQ.",
+    "The source defines nullable WBS and Cost Code mappings but no Cost Type relationship on BOQ items.",
+    "The source does not require the nullable WBS and Cost Code mapping fields to always be supplied together."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-9 live handoff before Stage-10 live acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-9-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-24T01:27:24.957Z",
+      "finishedAt": "2026-08-24T01:27:24.957Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_9_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "pass": "B16.3",
+  "module": "Module 17 - Supplier Payables",
+  "scope": "Zod boundaries, exact HTTP catalog, permission/error vocabulary, permission-only forward migration",
+  "routesFrozen": 8,
+  "permissions": [
+    "supplier_payables.read",
+    "supplier_invoices.create",
+    "supplier_invoices.post",
+    "supplier_payments.create",
+    "supplier_payments.allocate"
+  ],
+  "errors": [
+    "SUPPLIER_INVOICE_NOT_FOUND",
+    "DUPLICATE_SUPPLIER_INVOICE",
+    "PAYMENT_ALLOCATION_INVALID",
+    "SUPPLIER_SCOPE_MISMATCH"
+  ],
+  "migration": "20260829002200_final21_supplier_payables_contract",
+  "runtimeDeferred": true,
+  "nextPass": "B16.4 - Supplier Payables repository only",
+  "verification": {
+    "b16FocusedTests": "29/29 PASS",
+    "final21StaticTests": "302/302 PASS",
+    "workspaceTests": "31/31 PASS",
+    "migrationSystemTests": "8/8 PASS",
+    "migrationPolicy": "83/83 migrations locked",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS"
+  }
+}

@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-11-stage-16-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-25T06:55:13.753Z",
+  "status": "BLOCKED",
+  "module": "11 - Subcontractor Management",
+  "pass": 266,
+  "stage": 16,
+  "stage15LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_16_UNTIL_STAGE_15_LIVE_HANDOFF",
+  "ownedTables": [
+    "subcontractors",
+    "subcontracts",
+    "subcontract_items",
+    "subcontract_payment_applications",
+    "subcontract_payment_lines"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "subcontractors.read",
+    "subcontractors.manage",
+    "subcontracts.read",
+    "subcontracts.create",
+    "subcontracts.execute",
+    "subcontracts.certify",
+    "subcontracts.close"
+  ],
+  "activeEvents": [
+    "subcontract.executed",
+    "subcontract.revised",
+    "subcontract.payment_application_submitted",
+    "subcontract.payment_certified",
+    "subcontract.closed"
+  ],
+  "hardDependencies": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "8 - Procurement & RFQ supplier/vendor master",
+    "22 - Approval Workflows"
+  ],
+  "optionalDependencies": [
+    "4 - BOQ Management"
+  ],
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "supplierVendorAuthority": "Module 8 - Procurement & RFQ",
+  "approvalAuthority": "Module 22 - Approval Workflows",
+  "commitmentAuthority": "Module 7 - Budgeting & Job Costing",
+  "financeSourceAdapterDeferredToStage26": true,
+  "executionCreatesCommitmentAtomically": true,
+  "certificationSnapshotImmutable": true,
+  "retentionServerOwned": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The reviewed route table has no subcontract list/detail, payment-application history or retention-ledger readback route even though the React requirement names those views.",
+    "The source defines subcontract.revised and approved variation/revision behavior without a revision route, table or permission.",
+    "The source defines retention release behavior without a retention-release route, exact cap/release formula or permission.",
+    "The draft PATCH and payment-application creation operations have no dedicated edit/application permission; Stage 16 uses subcontracts.create as the narrowest reviewed authority.",
+    "Formal subcontract AP posting remains deferred to Module 15B / Stage 26."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-15/Stage-16 live chain and rerun module-11:acceptance:live before starting Stage 17 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-15-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-25T06:55:13.751Z",
+      "finishedAt": "2026-08-25T06:55:13.751Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_15_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

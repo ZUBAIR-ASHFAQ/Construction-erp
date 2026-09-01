@@ -1,0 +1,104 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-playwright-evidence",
+  "generatedAt": "2026-08-24T06:16:46.853Z",
+  "pass": 209,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "mode": "static",
+  "status": "STAGE_11_MODULE_15A_PLAYWRIGHT_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "browserFile": "tests/e2e/module-15a-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module 24A browser flow and open the permission-aware Finance Core workspace",
+    "read the Company Chart of Accounts through the reviewed bounded account route",
+    "create one exact-decimal balanced manual DRAFT journal while period, number, status and totals remain server-owned",
+    "post the journal through the reviewed bodyless command and verify the server readback",
+    "run the period-scoped trial balance and verify exact debit/credit values",
+    "reverse the posted journal through the reviewed bodyless command and preserve immutable accounting history",
+    "close the fiscal period through the reviewed bodyless command",
+    "verify Finance browser writes do not send Company, actor, permission, source, status or total authority",
+    "verify a read/report-only Finance user does not receive journal or period-close controls and receives HTTP 403 on a direct journal create attempt",
+    "verify the browser never calls deferred AP, AR or payment endpoints"
+  ],
+  "intentionallyAbsent": [
+    "No AP invoice, AR invoice, payment, allocation, aging or source-adapter browser workflow before Module 15B.",
+    "No account setup workflow because the reviewed Stage-11 API has no account create/update command.",
+    "No fiscal-period list/setup/reopen workflow because those operations are not defined.",
+    "No journal register/detail workflow because the reviewed API has no journal list/detail route.",
+    "Project-specific Finance authorization remains covered by the Pass-207 API integration/security suite; Pass 209 stays focused on browser behavior."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 210 - Module 15A operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:38.142Z",
+      "finishedAt": "2026-08-24T06:16:38.143Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:38.143Z",
+      "finishedAt": "2026-08-24T06:16:46.494Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.494Z",
+      "finishedAt": "2026-08-24T06:16:46.696Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.696Z",
+      "finishedAt": "2026-08-24T06:16:46.725Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.725Z",
+      "finishedAt": "2026-08-24T06:16:46.748Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.748Z",
+      "finishedAt": "2026-08-24T06:16:46.796Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.796Z",
+      "finishedAt": "2026-08-24T06:16:46.853Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

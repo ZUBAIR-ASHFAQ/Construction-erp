@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-playwright-evidence",
+  "generatedAt": "2026-08-24T15:40:30.720Z",
+  "pass": 242,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage13LiveAccepted": false,
+  "reason": "STAGE_13_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-9:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

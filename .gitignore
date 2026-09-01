@@ -1,0 +1,33 @@
+node_modules/
+dist/
+coverage/
+.vite/
+.env
+.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+*.log
+.DS_Store
+
+# Local environment/secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+!**/.env.example
+!**/.env.*.example
+
+# Prisma generated/runtime artifacts
+packages/database/prisma/*.db
+packages/database/prisma/*.db-journal
+
+# Disaster-recovery artifacts are sensitive and must never be committed.
+backups/
+recovery-artifacts/
+foundation-evidence/
+
+# Playwright local test artifacts
+playwright-report/
+test-results/

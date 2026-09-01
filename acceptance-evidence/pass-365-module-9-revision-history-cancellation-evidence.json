@@ -1,0 +1,126 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-365-module-9-revision-history-cancellation-evidence",
+  "generatedAt": "2026-08-26T17:21:58.830Z",
+  "pass": 365,
+  "baselinePass": 364,
+  "status": "PASS_365_MODULE_9_REVISION_HISTORY_CANCELLATION_EVIDENCE_ACCEPTED",
+  "repairContractItems": [
+    "M9-02",
+    "M9-03"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 1,
+  "databaseSupportTablesAdded": [
+    "purchase_order_revision_items"
+  ],
+  "databaseColumnsAdded": [
+    "purchase_orders.cancel_reason",
+    "purchase_orders.cancelled_at",
+    "purchase_orders.cancelled_by"
+  ],
+  "publicRoutesAdded": 0,
+  "sourceRoutesPreserved": 8,
+  "permissionsAdded": [],
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "exactRevisionLineHistoryPersisted": true,
+  "revisionSnapshotSides": [
+    "BEFORE",
+    "AFTER"
+  ],
+  "historicalRevisionAuditBackfill": true,
+  "revisionHistoryImmutable": true,
+  "cancellationEvidencePersisted": true,
+  "cancellationEvidenceHistoricalAuditBackfill": true,
+  "cancellationEvidenceImmutable": true,
+  "cancellationAuthority": "purchase_orders.revise",
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "m9TaxAndFxPolicyStillRequired": true,
+  "unchangedScopeSnapshotExpected": "c6a57b704b359f8360ed65511e52572655f2921b475f562870025529bc984f0f",
+  "unchangedScopeSnapshotActual": "c6a57b704b359f8360ed65511e52572655f2921b475f562870025529bc984f0f",
+  "unchangedScopeFileCount": 1188,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires the configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 366 - Module 5 controlled suspend/resume lifecycle",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-364-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-364 scope remains byte-identical across 1188 files."
+    },
+    {
+      "name": "pass-365-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.067Z",
+      "finishedAt": "2026-08-26T17:21:49.179Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-acceptance",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.179Z",
+      "finishedAt": "2026-08-26T17:21:53.536Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.536Z",
+      "finishedAt": "2026-08-26T17:21:57.992Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:57.992Z",
+      "finishedAt": "2026-08-26T17:21:58.145Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:58.145Z",
+      "finishedAt": "2026-08-26T17:21:58.340Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "typescript-source-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:58.340Z",
+      "finishedAt": "2026-08-26T17:21:58.789Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:58.789Z",
+      "finishedAt": "2026-08-26T17:21:58.809Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:58.809Z",
+      "finishedAt": "2026-08-26T17:21:58.829Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

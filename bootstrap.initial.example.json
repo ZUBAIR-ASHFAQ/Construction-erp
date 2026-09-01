@@ -1,0 +1,42 @@
+{
+  "bootstrapKey": "initial",
+  "company": {
+    "legalName": "Example Construction LLC",
+    "displayName": "Example Construction",
+    "status": "ACTIVE",
+    "baseCurrency": "USD",
+    "timeZone": "Asia/Dubai",
+    "locale": "en-AE",
+    "fiscalSettings": {
+      "fiscalYearStartMonth": 1
+    }
+  },
+  "configuration": {
+    "environmentLabel": "development"
+  },
+  "numberSequences": [
+    {
+      "sequenceKey": "foundation.bootstrap",
+      "prefix": "BOOT-",
+      "padWidth": 6,
+      "nextValue": "1",
+      "incrementBy": "1",
+      "status": "ACTIVE"
+    }
+  ],
+  "identity": {
+    "administrator": {
+      "email": "admin@example.com",
+      "name": "System Administrator",
+      "roleCodes": [
+        "system-admin"
+      ]
+    },
+    "systemRoles": [
+      {
+        "code": "system-admin",
+        "name": "System Administrator"
+      }
+    ]
+  }
+}

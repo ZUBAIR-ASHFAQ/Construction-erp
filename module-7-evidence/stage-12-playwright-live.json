@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-playwright-evidence",
+  "generatedAt": "2026-08-24T10:03:26.216Z",
+  "pass": 220,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage11LiveAccepted": false,
+  "reason": "STAGE_11_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-7:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

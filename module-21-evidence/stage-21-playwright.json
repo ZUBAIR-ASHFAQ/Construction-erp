@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-playwright-evidence",
+  "generatedAt": "2026-08-26T06:14:30.330Z",
+  "pass": 331,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "mode": "static",
+  "status": "STAGE_21_MODULE_21_PLAYWRIGHT_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "browserFile": "tests/e2e/module-21-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open Project Scheduling through the existing permission-aware admin shell",
+    "discover and select the Project through the maintained Module-5 Project register instead of inventing a Scheduling Project lookup",
+    "create the one current Project Schedule with server-owned lifecycle and a reviewed data date",
+    "create two Activities with planned dates, hierarchy and optional same-Project Module-6 WBS mapping",
+    "replace the complete dependency graph with the guaranteed FS dependency type and whole nonnegative lag",
+    "freeze one immutable baseline snapshot before later planning/progress changes",
+    "edit reviewed Activity planning fields after baseline and verify baseline dates remain historical while current dates change",
+    "append one exact-decimal progress update and verify current Activity progress plus append-only progress history",
+    "verify the lightweight Gantt-style planned-date view and queryless source-bounded two-week look-ahead without CPM/P6 behavior",
+    "inspect browser requests to prove all eight reviewed operations, Idempotency-Key on all six writes, bodyless baseline creation and no look-ahead query fields",
+    "verify the browser never authors Company, actor, Project authorization, lifecycle, baseline numbering/snapshot, audit identity, Activity progress-through-PATCH or advanced scheduling fields",
+    "verify Scheduling audit/outbox evidence and immutable baseline state against the disposable PostgreSQL database",
+    "verify a schedule.read-only user sees maintained Schedule read surfaces, no manage/baseline/progress controls and HTTP 403 for direct Activity, baseline and progress writes"
+  ],
+  "intentionallyAbsent": [
+    "No Schedule or Activity delete/reopen route, baseline revision command or unsupported dependency type is added for Playwright convenience.",
+    "No CPM, critical-path, float, resource-loading, resource-leveling, P6 parity or external scheduler synchronization behavior is introduced.",
+    "No Change Order or Daily Site Report integration is pulled forward into Stage 21.",
+    "Cross-Company, restricted cross-Project, invalid WBS, hierarchy cycle, dependency cycle and strict schema failures remain additionally covered by the Pass-328 PostgreSQL/Fastify integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newPermissions": 0,
+  "newBrowserFiles": 1,
+  "reviewedRouteCount": 8,
+  "reviewedWriteCount": 6,
+  "onlyGuaranteedDependencyType": "FS",
+  "baselineBodyless": true,
+  "lookaheadQueryFields": 0,
+  "advancedCpmAdded": false,
+  "externalSchedulerSyncAdded": false,
+  "changeOrderIntegrationAdded": false,
+  "dailyReportIntegrationAdded": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 332 - Module 21 PostgreSQL migration, concurrency, idempotency, audit/outbox and operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:23.055Z",
+      "finishedAt": "2026-08-26T06:14:23.055Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:23.055Z",
+      "finishedAt": "2026-08-26T06:14:27.423Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:27.423Z",
+      "finishedAt": "2026-08-26T06:14:27.580Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:27.580Z",
+      "finishedAt": "2026-08-26T06:14:27.597Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:27.597Z",
+      "finishedAt": "2026-08-26T06:14:27.615Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:27.615Z",
+      "finishedAt": "2026-08-26T06:14:28.460Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:28.460Z",
+      "finishedAt": "2026-08-26T06:14:29.850Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:29.850Z",
+      "finishedAt": "2026-08-26T06:14:29.997Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:29.997Z",
+      "finishedAt": "2026-08-26T06:14:30.123Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:30.123Z",
+      "finishedAt": "2026-08-26T06:14:30.240Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:30.240Z",
+      "finishedAt": "2026-08-26T06:14:30.284Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:14:30.284Z",
+      "finishedAt": "2026-08-26T06:14:30.330Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

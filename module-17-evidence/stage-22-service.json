@@ -1,0 +1,147 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-service-evidence",
+  "generatedAt": "2026-08-26T07:22:36.541Z",
+  "pass": 338,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_SERVICE_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/change-orders/change-orders.service.ts",
+  "companyAndProjectScopeRevalidated": true,
+  "serverOwnedChangeNumberingPrepared": true,
+  "changeNumberSequenceKey": "change-request",
+  "implementationPrivateLifecycleTokens": [
+    "DRAFT",
+    "SUBMITTED",
+    "APPROVED",
+    "REJECTED"
+  ],
+  "exactMoneySummationPrepared": true,
+  "draftLineReplacementPolicyEnforced": true,
+  "lineReferenceRevalidationPrepared": true,
+  "module22ApprovalSnapshotPrepared": true,
+  "approvalDecisionRemainsModule22Owned": true,
+  "submitAuditOutboxAtomic": true,
+  "immutableFormalApprovalSnapshotPrepared": true,
+  "rejectionHistoryPreserved": true,
+  "idempotentWriteCommandsPrepared": true,
+  "readOnlyImpactReadPrepared": true,
+  "budgetForecastImpactApplied": false,
+  "changesApplyPermissionIntegrated": false,
+  "impactAppliedEventEmitted": false,
+  "scheduleAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "runtimeDeploymentReason": "Pass 339 mandatory Budget/Forecast application and changes.apply authorization must complete before Pass 340 exposes approve.",
+  "remainingSourceAmbiguities": [
+    "No public Change Request/Change Order status enum is defined; Pass 338 uses only small implementation-private lifecycle tokens.",
+    "The source does not define a Change-number format; Pass 338 reuses a provisioned Foundation Company sequence without adding a new uniqueness claim.",
+    "Exact mandatory supporting-document policy remains undefined.",
+    "approved_days Schedule mapping remains undefined and Stage-27-gated.",
+    "Client/Subcontract/Schedule target adapters and reversal/adjustment policy remain Stage-27 completion work."
+  ],
+  "nextPass": "Pass 339 - Module 17 mandatory Module-7 Budget/Forecast impact application, changes.apply enforcement and conditional target-adapter boundaries.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-repository",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:30.659Z",
+      "finishedAt": "2026-08-26T07:22:35.115Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.115Z",
+      "finishedAt": "2026-08-26T07:22:35.267Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-service-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.267Z",
+      "finishedAt": "2026-08-26T07:22:35.708Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.708Z",
+      "finishedAt": "2026-08-26T07:22:35.840Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.840Z",
+      "finishedAt": "2026-08-26T07:22:35.956Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:35.956Z",
+      "finishedAt": "2026-08-26T07:22:36.086Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:36.086Z",
+      "finishedAt": "2026-08-26T07:22:36.168Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:36.168Z",
+      "finishedAt": "2026-08-26T07:22:36.283Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:36.283Z",
+      "finishedAt": "2026-08-26T07:22:36.456Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:36.456Z",
+      "finishedAt": "2026-08-26T07:22:36.499Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:36.499Z",
+      "finishedAt": "2026-08-26T07:22:36.541Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

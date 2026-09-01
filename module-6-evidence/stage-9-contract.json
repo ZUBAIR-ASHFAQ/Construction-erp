@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-9-module-6-contract-evidence",
+  "generatedAt": "2026-08-23T16:02:46.863Z",
+  "pass": 176,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "status": "STAGE_9_MODULE_6_CONTRACT_FROZEN_STAGE_8_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "module6LiveHandoffAccepted": false,
+  "ownedTables": [
+    "wbs_nodes",
+    "cost_codes",
+    "cost_types",
+    "project_cost_codes"
+  ],
+  "reviewedRouteCount": 7,
+  "reviewedPermissions": [
+    "wbs.read",
+    "wbs.manage",
+    "cost_codes.read",
+    "cost_codes.manage",
+    "wbs.freeze"
+  ],
+  "reviewedEvents": [
+    "wbs.node_created",
+    "wbs.updated",
+    "cost_code.created",
+    "project.cost_structure_frozen"
+  ],
+  "unresolvedSourceAmbiguities": [
+    "Cost Type master is required by workflow/React requirements but the reviewed API route table defines no Cost Type read/create route.",
+    "The workflow says unused codes may be archived but the reviewed API route table defines no archive command.",
+    "Frozen baseline rules mention controlled revision/authorized reopen but the reviewed API route table defines only freeze.",
+    "Public status/category values are not enumerated by the source.",
+    "The source persists WBS level but does not explicitly define whether it is client input or server-derived."
+  ],
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "module4bDeferred": true,
+  "nextPass": "Pass 177 - Module 6 Prisma models and migration. Runtime/deployment acceptance remains blocked until the Stage-8 live handoff is genuine.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-175-final-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:25.406Z",
+      "finishedAt": "2026-08-23T16:02:46.668Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.668Z",
+      "finishedAt": "2026-08-23T16:02:46.763Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.763Z",
+      "finishedAt": "2026-08-23T16:02:46.802Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.802Z",
+      "finishedAt": "2026-08-23T16:02:46.863Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

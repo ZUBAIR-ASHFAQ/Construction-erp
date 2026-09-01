@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-react-readback-repair-evidence",
+  "generatedAt": "2026-08-23T13:51:54.041Z",
+  "status": "BLOCKED",
+  "pass": 167,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 168 - Module 18 Project relationship persistence repair.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

@@ -1,0 +1,69 @@
+{
+  "pass": "B18.6",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "Concurrency-safe Invoice allocation, controlled unallocation and compensating Client Receipt reversal",
+  "productionFilesChanged": [
+    "apps/api/src/modules/client-receipts/client-receipts.repository.ts",
+    "apps/api/src/modules/client-receipts/client-receipts.service.ts"
+  ],
+  "allocationPolicy": {
+    "receiptLimit": "allocation <= posted receipt amount - active allocations",
+    "invoiceLimit": "allocation <= issued invoice total - active posted-receipt allocations",
+    "stageLimit": "stage-tagged receipt allocations cannot exceed matching invoice-line Stage billed value",
+    "financeDebit": "CLIENT-ADVANCE liability",
+    "financeCredit": "CLIENT-RECEIVABLE asset",
+    "cashMovementOnAllocation": false,
+    "sourceKey": "client_receipt_allocation:<allocationId>"
+  },
+  "unallocationPolicy": {
+    "originalReceiptMutated": false,
+    "originalAllocationJournalRequired": true,
+    "compensation": "exact opposite of original allocation Journal",
+    "activeAllocationRemovedAfterCompensation": true,
+    "sourceKey": "client_receipt_allocation_reversal:<allocationId>"
+  },
+  "receiptReversalPolicy": {
+    "activeAllocationsRequired": 0,
+    "originalReceiptJournalRequired": true,
+    "compensation": "exact opposite of original receipt Journal",
+    "receiptFieldsChanged": [
+      "status"
+    ],
+    "targetStatus": "REVERSED",
+    "sourceKey": "client_receipt_reversal:<receiptId>"
+  },
+  "events": [
+    "client_receipt.allocated",
+    "client_receipt.allocation_reversed",
+    "client_receipt.reversed"
+  ],
+  "migrationAdded": false,
+  "publicRouteCount": 0,
+  "nextPass": "B18.7 Client Receipts Fastify routes and OpenAPI",
+  "verification": {
+    "b18FocusedTests": "68/68 PASS",
+    "b18CumulativeGate": "96/96 PASS",
+    "final21StaticTests": "575/575 PASS",
+    "currentFullStaticSuite": "680/680 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "functionPurposeComments": "PASS",
+    "modifiedTypeScriptSyntax": "PASS",
+    "dependencyBackedBuild": "NOT CLAIMED - archive has no installed node_modules",
+    "liveMigrationVerification": "NOT RUN - MIGRATION_TEST_DATABASE_URL is not provided"
+  },
+  "implemented": [
+    "trusted Project visibility for allocate/reverse permissions",
+    "receipt and invoice FOR UPDATE serialization",
+    "receipt remaining-amount allocation ceiling",
+    "invoice outstanding allocation ceiling",
+    "Stage-tagged allocation billed-value ceiling",
+    "CLIENT-ADVANCE to CLIENT-RECEIVABLE Finance reclassification",
+    "controlled allocation reversal using opposite original Journal lines",
+    "receipt reversal blocked until active allocations are zero",
+    "receipt reversal using opposite original cash Journal lines",
+    "stable Finance source-key ownership and balanced-total verification",
+    "idempotent allocate/unallocate/reverse commands",
+    "required allocation/reversal audit and outbox events"
+  ]
+}

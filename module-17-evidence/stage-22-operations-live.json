@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-operations-evidence",
+  "generatedAt": "2026-08-26T09:32:15.228Z",
+  "pass": 345,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage21LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_21_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "nextStep": "Resolve the live prerequisite and rerun module-17:operations:gate:live before claiming Stage-22 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

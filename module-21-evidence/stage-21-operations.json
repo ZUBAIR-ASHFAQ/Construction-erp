@@ -1,0 +1,158 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-operations-evidence",
+  "generatedAt": "2026-08-26T06:23:23.030Z",
+  "pass": 332,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "mode": "static",
+  "status": "STAGE_21_MODULE_21_OPERATIONS_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent same-key Schedule creation leaves one current Schedule, one audit/outbox result and one completed idempotency record while replay returns the original response",
+    "different-key concurrent Schedule creation is serialized on the Project so exactly one current Schedule can commit",
+    "concurrent baseline commands serialize on the current Schedule and allocate unique increasing server-owned baseline numbers",
+    "concurrent same-key progress commands leave one append-only progress row, one current Activity update and one audit/outbox result",
+    "concurrent direct dependency inserts serialize on the Schedule so a two-edge cycle cannot commit below the service layer",
+    "Stage-21 PostgreSQL scope, dependency, percentage, actor and immutable-history constraints are exercised below the service layer",
+    "a forced schedule.progress_updated outbox failure rolls back Activity progress, progress history, audit/outbox and idempotency state together",
+    "Stage-21 Schedule, Activity, dependency, baseline and progress indexes are inspected directly without timing-based performance claims"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 332 adds no migration because Pass 323 owns the reviewed Stage-21 persistence change"
+  ],
+  "rollbackCoverage": [
+    "forced progress outbox failure proves current Activity state, append-only progress history, audit/outbox and idempotency share one rollback boundary",
+    "same-key concurrent Schedule and progress commands prove durable replay protection without duplicate business state",
+    "different-key Schedule creation and baseline commands prove Project/Schedule row locks remain the final race authority",
+    "database-level dependency locking prevents concurrent direct inserts from bypassing cycle protection"
+  ],
+  "deploymentReadiness": [
+    "dependency-independent static regression remains green before live execution",
+    "Stage-20 acceptance plus Module-21 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "newPermissionsAdded": 0,
+  "advancedCpmAdded": false,
+  "externalSchedulerSyncAdded": false,
+  "changeOrderIntegrationAdded": false,
+  "dailyReportIntegrationAdded": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 333 - Module 21 final Stage-21 acceptance and regression gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:13.170Z",
+      "finishedAt": "2026-08-26T06:23:13.170Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:13.170Z",
+      "finishedAt": "2026-08-26T06:23:13.170Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:13.170Z",
+      "finishedAt": "2026-08-26T06:23:19.790Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:19.790Z",
+      "finishedAt": "2026-08-26T06:23:19.950Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:19.950Z",
+      "finishedAt": "2026-08-26T06:23:22.012Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.012Z",
+      "finishedAt": "2026-08-26T06:23:22.029Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.029Z",
+      "finishedAt": "2026-08-26T06:23:22.423Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.423Z",
+      "finishedAt": "2026-08-26T06:23:22.544Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.544Z",
+      "finishedAt": "2026-08-26T06:23:22.669Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.669Z",
+      "finishedAt": "2026-08-26T06:23:22.926Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.926Z",
+      "finishedAt": "2026-08-26T06:23:22.985Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:23:22.985Z",
+      "finishedAt": "2026-08-26T06:23:23.030Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,152 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-playwright-evidence",
+  "generatedAt": "2026-08-24T18:42:59.225Z",
+  "pass": 253,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "static",
+  "status": "STAGE_15_MODULE_10_PLAYWRIGHT_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "browserFile": "tests/e2e/module-10-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open the permission-aware Inventory & Materials workspace",
+    "create one Company Item through the reviewed POST /inventory/items boundary while lifecycle and Company ownership remain server-owned",
+    "receive one issued PO line with accepted/rejected quantities and verify Goods Receipt, PO received quantity, stock balance and average cost persistence",
+    "transfer stock atomically between an authorized Project Warehouse and Company-wide Warehouse and verify two ledger sides",
+    "issue material to one Project/WBS/cost-code/cost-type combination and verify the append-only ISSUE plus one Module-7 actual-cost source",
+    "return part of the prior ISSUE and verify the append-only RETURN plus negative Module-7 actual-cost correction",
+    "post one reasoned signed Inventory-count adjustment and verify the resulting balance",
+    "verify all five reviewed Inventory outbox events and matching audit actions while Finance journals remain untouched",
+    "inspect browser requests to prove the exact eight-route contract, five Idempotency-Key headers and absence of server-owned state",
+    "verify a restricted Project reader sees only its authorized Warehouse balance, receives no mutation controls, and receives HTTP 403 for direct item/issue writes"
+  ],
+  "intentionallyAbsent": [
+    "No Warehouse CRUD, Warehouse lookup, stock-ledger read, low-stock read, stock-count session, valuation configuration or unit-conversion route is added.",
+    "No new return permission is invented; the UI continues to require the existing issue plus adjust convention.",
+    "No Finance/AP/GL mutation is added or exercised by the Inventory browser workflow.",
+    "Cross-Company database isolation, rollback and malformed-request cases remain additionally covered by the Pass-251 PostgreSQL/Fastify integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newBrowserFiles": 1,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 254 - Module 10 operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.277Z",
+      "finishedAt": "2026-08-24T18:42:47.277Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.278Z",
+      "finishedAt": "2026-08-24T18:42:57.472Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.472Z",
+      "finishedAt": "2026-08-24T18:42:57.671Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.671Z",
+      "finishedAt": "2026-08-24T18:42:57.688Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.688Z",
+      "finishedAt": "2026-08-24T18:42:57.704Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.704Z",
+      "finishedAt": "2026-08-24T18:42:58.459Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:58.459Z",
+      "finishedAt": "2026-08-24T18:42:58.594Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:58.594Z",
+      "finishedAt": "2026-08-24T18:42:58.728Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:58.728Z",
+      "finishedAt": "2026-08-24T18:42:58.865Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:58.865Z",
+      "finishedAt": "2026-08-24T18:42:59.021Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:59.021Z",
+      "finishedAt": "2026-08-24T18:42:59.142Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:59.142Z",
+      "finishedAt": "2026-08-24T18:42:59.179Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:59.179Z",
+      "finishedAt": "2026-08-24T18:42:59.225Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

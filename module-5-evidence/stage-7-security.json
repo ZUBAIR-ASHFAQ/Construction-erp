@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-security-evidence",
+  "generatedAt": "2026-08-23T09:41:01.652Z",
+  "status": "STAGE_7_SECURITY_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 144,
+  "mode": "static",
+  "stage6LiveAccepted": false,
+  "securityFile": "tests/integration/module-5-api.integration.test.mjs",
+  "coverage": [
+    "authentication on all seven Stage-7 Project routes",
+    "active Stage-7 permission matrix with projects.manage_members still deferred",
+    "cross-company Project list/detail/update/lifecycle isolation",
+    "same-company Client, Tender and Project Manager validation",
+    "direct repository company filtering",
+    "direct service permission and company-scope revalidation",
+    "strict rejection of client-owned company/actor/permission/scope/status authority",
+    "company-unique Project code constraint",
+    "same-company Client/Tender/Project Manager foreign-key constraints",
+    "date, currency and Project-status checks",
+    "append-only lifecycle-history status and actor constraints",
+    "reviewed Stage-7 index and constraint presence",
+    "safe public errors without SQL or Prisma leakage"
+  ],
+  "deferredToPass145": [
+    "exact generated OpenAPI operation inventory",
+    "request/response schema documentation proof",
+    "stable Project error-code documentation proof"
+  ],
+  "membershipDeferredToModule24B": true,
+  "productionRuntimeChanges": 0,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live security gate after genuine Stage-6 acceptance; Pass 145 may be prepared but cannot claim live Stage-7 security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-integration",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:48.810Z",
+      "finishedAt": "2026-08-23T09:41:01.425Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-security-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.425Z",
+      "finishedAt": "2026-08-23T09:41:01.564Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-security-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.564Z",
+      "finishedAt": "2026-08-23T09:41:01.582Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.582Z",
+      "finishedAt": "2026-08-23T09:41:01.611Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.611Z",
+      "finishedAt": "2026-08-23T09:41:01.651Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

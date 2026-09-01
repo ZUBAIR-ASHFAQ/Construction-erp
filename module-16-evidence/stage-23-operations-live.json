@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-operations-evidence",
+  "generatedAt": "2026-08-26T13:03:25.252Z",
+  "pass": 357,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage22LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_22_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "nextStep": "Resolve the live prerequisite and rerun module-16:operations:gate:live before claiming Stage-23 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

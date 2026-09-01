@@ -1,0 +1,44 @@
+{
+  "pass": "B15.3",
+  "module": "Final Module 14 - Site Expense Management",
+  "scope": "Zod boundary schemas, stable permission vocabulary, stable business-error vocabulary and permission-only forward migration",
+  "status": "PASS",
+  "productionFilesAdded": [
+    "apps/api/src/modules/site-expenses/site-expenses.schema.ts",
+    "packages/database/prisma/migrations/20260829002000_final21_site_expense_contract/migration.sql"
+  ],
+  "permissionCodes": [
+    "site_expenses.read",
+    "site_expenses.create",
+    "site_expenses.update",
+    "site_expenses.post",
+    "site_expenses.reverse"
+  ],
+  "errorCodes": [
+    "EXPENSE_NOT_FOUND",
+    "EXPENSE_LOCKED",
+    "INVALID_EXPENSE_ACCOUNT",
+    "INVALID_EXPENSE_STAGE"
+  ],
+  "routeContractCount": 6,
+  "runtimeDeferred": [
+    "repository",
+    "service",
+    "Fastify route registration",
+    "Finance posting",
+    "Project cost posting",
+    "reversal transaction",
+    "Document resource linking",
+    "React UI"
+  ],
+  "verification": {
+    "b15FocusedTests": "26/26 PASS",
+    "allFinal21StaticTests": "202/202 PASS",
+    "workspaceCheck": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "migrationPolicy": "81 migrations locked across 81 gates",
+    "historicalMigrationContentChanged": false,
+    "dependencyBackedTypeScriptPrismaZod": "NOT RUN - archive contains no node_modules"
+  },
+  "nextPass": "B15.4 - company/project-scoped Site Expense repository only"
+}

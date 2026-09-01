@@ -1,0 +1,83 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-operations-evidence",
+  "generatedAt": "2026-08-23T09:41:02.634Z",
+  "status": "STAGE_7_OPERATIONS_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 149,
+  "mode": "static",
+  "stage6LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent duplicate Project-code creation leaves one Project and one complete side-effect set",
+    "concurrent one-primary-Project Tender conversion allows only one Project link",
+    "concurrent activation retries create one lifecycle transition, audit record and outbox event",
+    "concurrent completion retries create one lifecycle transition, audit record and outbox event",
+    "concurrent close retries create one lifecycle transition, audit record and outbox event",
+    "Project register query plan uses projects_company_status_planned_end_idx",
+    "Project lifecycle-history query plan uses project_status_history_project_changed_idx"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema"
+  ],
+  "rollbackCoverage": [
+    "losing concurrent duplicate Project creation leaves no status-history, audit or outbox residue",
+    "losing concurrent Tender conversion leaves no partial Project state"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "membershipDeferredToModule24B": true,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the guarded live operational gate after Stage-6 and Pass-148 live verification; Pass 150 may be prepared but cannot claim Stage-7 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:48.429Z",
+      "finishedAt": "2026-08-23T09:41:02.404Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.404Z",
+      "finishedAt": "2026-08-23T09:41:02.540Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.540Z",
+      "finishedAt": "2026-08-23T09:41:02.564Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.565Z",
+      "finishedAt": "2026-08-23T09:41:02.595Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.595Z",
+      "finishedAt": "2026-08-23T09:41:02.634Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,128 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-schema-evidence",
+  "generatedAt": "2026-08-24T14:22:13.810Z",
+  "pass": 236,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_SCHEMA_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/purchase-orders/purchase-orders.schema.ts",
+  "reviewedRouteCount": 8,
+  "reviewedPermissionCount": 6,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "listFilters": [
+    "search",
+    "projectId",
+    "page",
+    "pageSize"
+  ],
+  "listFilterDecision": "search is retained because the reviewed GET route explicitly says list/search POs; projectId is the narrow Project-owned filter and is never an authorization source.",
+  "createBrowserFields": [
+    "projectId",
+    "vendorId",
+    "quotationId",
+    "orderDate",
+    "currency",
+    "deliveryAddress",
+    "terms",
+    "items"
+  ],
+  "itemBrowserFields": [
+    "itemId",
+    "description",
+    "quantity",
+    "unit",
+    "unitRate",
+    "taxRate",
+    "wbsNodeId",
+    "costCodeId",
+    "costTypeId"
+  ],
+  "quotationBackedCreateOnlyUntilDirectPurchaseContractResolved": true,
+  "nullableQuotationBypassAcceptedFromBrowser": false,
+  "directPurchasePermissionInvented": false,
+  "directPurchaseReasonFieldInvented": false,
+  "cancelPermissionInvented": false,
+  "cancelReasonAccepted": true,
+  "cancelReasonDecision": "The reviewed cancel route explicitly says cancel remaining commitment with reason; the reason is command input and later audit/outbox evidence, not a new Purchase Order persistence column.",
+  "draftPatchCanReplaceReviewedBusinessFields": true,
+  "revisionCanChangeProjectVendorOrQuotationIdentity": false,
+  "revisionCommercialFields": [
+    "orderDate",
+    "currency",
+    "deliveryAddress",
+    "terms",
+    "items"
+  ],
+  "revisionReasonRequired": true,
+  "submitBodyFields": [],
+  "issueBodyFields": [],
+  "serverOwnedTotalsAcceptedFromBrowser": false,
+  "serverOwnedConsumptionAcceptedFromBrowser": false,
+  "statusEnumInvented": false,
+  "taxPercentageRangeInvented": false,
+  "taxCalculationFormulaInvented": false,
+  "currencyMasterInvented": false,
+  "exactDecimalStringsUsed": true,
+  "inventoryItemForeignKeyAssumedBySchema": false,
+  "responseIncludesConsumptionProgress": true,
+  "responseIncludesRevisionHistory": true,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 237 - Module 9 Company/Project-scoped repository for Purchase Orders, items and controlled revisions, including Module-8 quotation/vendor reads and Module-7 commitment adapter primitives.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:11.601Z",
+      "finishedAt": "2026-08-24T14:22:13.135Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.135Z",
+      "finishedAt": "2026-08-24T14:22:13.281Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.281Z",
+      "finishedAt": "2026-08-24T14:22:13.684Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.684Z",
+      "finishedAt": "2026-08-24T14:22:13.740Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.740Z",
+      "finishedAt": "2026-08-24T14:22:13.810Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

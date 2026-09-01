@@ -1,0 +1,131 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-integration-security-evidence",
+  "generatedAt": "2026-08-24T06:44:35.970Z",
+  "pass": 196,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "mode": "static",
+  "status": "STAGE_10_MODULE_4B_INTEGRATION_SECURITY_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "integrationFile": "tests/integration/module-4b-api.integration.test.mjs",
+  "coverage": [
+    "tender-only, Project-only and combined BOQ creation",
+    "WBS and Cost Code mapping persistence and public readback",
+    "Project-scoped BOQ register visibility",
+    "Project membership without boq permission is rejected",
+    "cross-Project and cross-Company BOQ access is rejected",
+    "cross-Project WBS and foreign-Company Cost Code mappings are rejected atomically",
+    "database foreign keys and BOQ-item mapping trigger reject direct scope attacks",
+    "Stage-10 OpenAPI still exposes exactly the six reviewed Module-4 routes",
+    "Stage-6 Module-4A PostgreSQL workflow remains a live regression dependency"
+  ],
+  "intentionallyAbsent": [
+    "No new BOQ mapping route.",
+    "No Cost Type relationship on BOQ items.",
+    "No dedicated command for attaching a Project to an existing tender-only BOQ.",
+    "No React mapping workflow; that remains Pass 197."
+  ],
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 197 - Module 4B React Project/WBS/Cost Code mapping activation on the existing BOQ feature.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.540Z",
+      "finishedAt": "2026-08-24T06:44:34.540Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.541Z",
+      "finishedAt": "2026-08-24T06:44:35.256Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-integration-security-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.256Z",
+      "finishedAt": "2026-08-24T06:44:35.436Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.436Z",
+      "finishedAt": "2026-08-24T06:44:35.680Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.680Z",
+      "finishedAt": "2026-08-24T06:44:35.704Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-integration-regression-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.705Z",
+      "finishedAt": "2026-08-24T06:44:35.727Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "boq-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.727Z",
+      "finishedAt": "2026-08-24T06:44:35.749Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "boq-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.749Z",
+      "finishedAt": "2026-08-24T06:44:35.771Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "boq-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.771Z",
+      "finishedAt": "2026-08-24T06:44:35.791Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.791Z",
+      "finishedAt": "2026-08-24T06:44:35.877Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.877Z",
+      "finishedAt": "2026-08-24T06:44:35.970Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

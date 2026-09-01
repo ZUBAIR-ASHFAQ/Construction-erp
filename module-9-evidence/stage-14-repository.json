@@ -1,0 +1,124 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-repository-evidence",
+  "generatedAt": "2026-08-24T14:22:15.609Z",
+  "pass": 237,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_REPOSITORY_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/purchase-orders/purchase-orders.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityRequiredForProjectScopedReads": true,
+  "transactionClientSupported": true,
+  "purchaseOrderPaginationBounded": true,
+  "registerSearchLimitedToPoNumber": true,
+  "projectWriteLockPrepared": true,
+  "purchaseOrderWriteLockPrepared": true,
+  "postingCombinationValidationPrepared": true,
+  "module8VendorReadPrepared": true,
+  "module8VendorWriteMethodsGenerated": false,
+  "module8QuotationReadPrepared": true,
+  "quotationSelectionDecisionMadeInRepository": false,
+  "purchaseOrderTotalsCalculatedInRepository": false,
+  "purchaseOrderLifecycleDecidedInRepository": false,
+  "revisionNumberPrimitivePrepared": true,
+  "revisionBusinessRulesAppliedInRepository": false,
+  "module7CommitmentReadPrimitivePrepared": true,
+  "module7CommitmentUpsertPrimitivePrepared": true,
+  "commitmentSourceTypeInvented": false,
+  "commitmentStatusVocabularyInvented": false,
+  "commitmentTransactionOrchestrationDeferredToService": true,
+  "directPurchasePermissionInvented": false,
+  "cancelPermissionInvented": false,
+  "cancellationReasonColumnInvented": false,
+  "financeWriteMethodsGenerated": false,
+  "inventoryReceiptWriteMethodsGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 238 - Module 9 service/business rules: Project resource policy, quotation-backed draft creation, server totals, Approval Workflow submission, approved issue, atomic Module-7 commitment updates, controlled revision/cancel, audit and outbox.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-schema",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:11.480Z",
+      "finishedAt": "2026-08-24T14:22:13.822Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.822Z",
+      "finishedAt": "2026-08-24T14:22:14.064Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:14.064Z",
+      "finishedAt": "2026-08-24T14:22:14.567Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:14.567Z",
+      "finishedAt": "2026-08-24T14:22:14.863Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:14.863Z",
+      "finishedAt": "2026-08-24T14:22:15.075Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.075Z",
+      "finishedAt": "2026-08-24T14:22:15.242Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.242Z",
+      "finishedAt": "2026-08-24T14:22:15.425Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.425Z",
+      "finishedAt": "2026-08-24T14:22:15.503Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.503Z",
+      "finishedAt": "2026-08-24T14:22:15.609Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

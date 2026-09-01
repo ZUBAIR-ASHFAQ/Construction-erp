@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-playwright-evidence",
+  "generatedAt": "2026-08-23T12:27:26.452Z",
+  "status": "BLOCKED",
+  "module": "24B - Project Scope Activation",
+  "pass": 162,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-24b:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

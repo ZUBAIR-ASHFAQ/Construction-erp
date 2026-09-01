@@ -1,0 +1,235 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-11-stage-16-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-25T06:54:55.281Z",
+  "status": "STAGE_16_STATIC_GATE_PASSED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "module": "11 - Subcontractor Management",
+  "pass": 266,
+  "stage": 16,
+  "stage15LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_16_UNTIL_STAGE_15_LIVE_HANDOFF",
+  "ownedTables": [
+    "subcontractors",
+    "subcontracts",
+    "subcontract_items",
+    "subcontract_payment_applications",
+    "subcontract_payment_lines"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "subcontractors.read",
+    "subcontractors.manage",
+    "subcontracts.read",
+    "subcontracts.create",
+    "subcontracts.execute",
+    "subcontracts.certify",
+    "subcontracts.close"
+  ],
+  "activeEvents": [
+    "subcontract.executed",
+    "subcontract.revised",
+    "subcontract.payment_application_submitted",
+    "subcontract.payment_certified",
+    "subcontract.closed"
+  ],
+  "hardDependencies": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "8 - Procurement & RFQ supplier/vendor master",
+    "22 - Approval Workflows"
+  ],
+  "optionalDependencies": [
+    "4 - BOQ Management"
+  ],
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "supplierVendorAuthority": "Module 8 - Procurement & RFQ",
+  "approvalAuthority": "Module 22 - Approval Workflows",
+  "commitmentAuthority": "Module 7 - Budgeting & Job Costing",
+  "financeSourceAdapterDeferredToStage26": true,
+  "executionCreatesCommitmentAtomically": true,
+  "certificationSnapshotImmutable": true,
+  "retentionServerOwned": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The reviewed route table has no subcontract list/detail, payment-application history or retention-ledger readback route even though the React requirement names those views.",
+    "The source defines subcontract.revised and approved variation/revision behavior without a revision route, table or permission.",
+    "The source defines retention release behavior without a retention-release route, exact cap/release formula or permission.",
+    "The draft PATCH and payment-application creation operations have no dedicated edit/application permission; Stage 16 uses subcontracts.create as the narrowest reviewed authority.",
+    "Formal subcontract AP posting remains deferred to Module 15B / Stage 26."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-15/Stage-16 live chain and rerun module-11:acceptance:live before starting Stage 17 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:40.734Z",
+      "finishedAt": "2026-08-25T06:54:41.443Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:41.443Z",
+      "finishedAt": "2026-08-25T06:54:42.075Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:42.076Z",
+      "finishedAt": "2026-08-25T06:54:42.746Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:42.746Z",
+      "finishedAt": "2026-08-25T06:54:43.455Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:43.455Z",
+      "finishedAt": "2026-08-25T06:54:44.209Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:44.210Z",
+      "finishedAt": "2026-08-25T06:54:44.920Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:44.920Z",
+      "finishedAt": "2026-08-25T06:54:45.547Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:45.547Z",
+      "finishedAt": "2026-08-25T06:54:46.222Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:46.222Z",
+      "finishedAt": "2026-08-25T06:54:53.429Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:53.429Z",
+      "finishedAt": "2026-08-25T06:54:53.683Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:53.683Z",
+      "finishedAt": "2026-08-25T06:54:53.938Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:53.938Z",
+      "finishedAt": "2026-08-25T06:54:54.118Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.118Z",
+      "finishedAt": "2026-08-25T06:54:54.277Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.277Z",
+      "finishedAt": "2026-08-25T06:54:54.446Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "subcontracts-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.446Z",
+      "finishedAt": "2026-08-25T06:54:54.612Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "subcontracts-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.612Z",
+      "finishedAt": "2026-08-25T06:54:54.794Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "subcontracts-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.794Z",
+      "finishedAt": "2026-08-25T06:54:54.955Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "subcontracts-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:54.955Z",
+      "finishedAt": "2026-08-25T06:54:55.115Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T06:54:55.115Z",
+      "finishedAt": "2026-08-25T06:54:55.280Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

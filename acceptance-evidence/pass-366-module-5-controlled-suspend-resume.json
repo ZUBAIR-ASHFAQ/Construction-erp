@@ -1,0 +1,120 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-366-module-5-controlled-suspend-resume",
+  "generatedAt": "2026-08-26T17:42:18.115Z",
+  "pass": 366,
+  "baselinePass": 365,
+  "status": "PASS_366_MODULE_5_CONTROLLED_SUSPEND_RESUME_ACCEPTED",
+  "repairContractItems": [
+    "M5-01"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 0,
+  "databaseTablesAdded": [],
+  "prismaModelsAdded": [],
+  "repositoryFunctionsAdded": [],
+  "publicRepairRoutesAdded": [
+    "POST /api/v1/projects/:id/suspend",
+    "POST /api/v1/projects/:id/resume"
+  ],
+  "sourceRoutesPreserved": 7,
+  "module24bMembershipRoutePreserved": true,
+  "permissionsAdded": [],
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "suspensionAuthority": "projects.close",
+  "resumeAuthority": "projects.activate",
+  "suspensionTransition": "ACTIVE -> SUSPENDED",
+  "resumeTransition": "SUSPENDED -> ACTIVE",
+  "lifecycleHistoryPersisted": true,
+  "lifecycleAuditPersisted": true,
+  "suspendedResumeOutboxEventsInvented": false,
+  "suspendedDownstreamNormalWritesBlocked": true,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "46393cf875562a6d01950948a33200dccfeaf4fb716fbba9bf72bd41414f72f5",
+  "unchangedScopeSnapshotActual": "46393cf875562a6d01950948a33200dccfeaf4fb716fbba9bf72bd41414f72f5",
+  "unchangedScopeFileCount": 1204,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires the configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 367 - Module 4 BOQ durable revision-detail/history readback",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-365-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-365 scope remains byte-identical across 1204 files."
+    },
+    {
+      "name": "pass-366-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:14.635Z",
+      "finishedAt": "2026-08-26T17:42:14.726Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-cumulative-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:14.726Z",
+      "finishedAt": "2026-08-26T17:42:14.869Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:14.869Z",
+      "finishedAt": "2026-08-26T17:42:17.226Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:17.226Z",
+      "finishedAt": "2026-08-26T17:42:17.365Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:17.365Z",
+      "finishedAt": "2026-08-26T17:42:17.493Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "typescript-source-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:17.493Z",
+      "finishedAt": "2026-08-26T17:42:18.079Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:18.079Z",
+      "finishedAt": "2026-08-26T17:42:18.098Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:42:18.098Z",
+      "finishedAt": "2026-08-26T17:42:18.115Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

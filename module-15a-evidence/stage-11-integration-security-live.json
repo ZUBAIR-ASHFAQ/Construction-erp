@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-integration-security-evidence",
+  "generatedAt": "2026-08-24T05:51:45.612Z",
+  "pass": 207,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage10LiveAccepted": false,
+  "reason": "STAGE_10_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite, then rerun module-15a:integration-security:gate:live before claiming Stage-11 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

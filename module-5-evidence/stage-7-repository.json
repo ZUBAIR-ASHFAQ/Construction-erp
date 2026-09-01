@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-repository-evidence",
+  "generatedAt": "2026-08-23T09:41:00.644Z",
+  "status": "STAGE_7_REPOSITORY_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 140,
+  "stage6LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_7_UNTIL_STAGE_6_LIVE_ACCEPTED",
+  "repositoryFile": "apps/api/src/modules/projects/projects.repository.ts",
+  "companyScopeSource": "trusted request context through requireCompanyRepositoryScope()",
+  "projectScopeStatus": "deferred to Module 24B; Stage 7 repository enforces company ownership only",
+  "ownedTables": [
+    "projects",
+    "project_status_history"
+  ],
+  "deferredTable": "project_members",
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 141 may be prepared, but Stage 7 activation remains blocked until Module 4A live Stage-6 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-schema",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:49.252Z",
+      "finishedAt": "2026-08-23T09:41:00.430Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.430Z",
+      "finishedAt": "2026-08-23T09:41:00.553Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.553Z",
+      "finishedAt": "2026-08-23T09:41:00.593Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.593Z",
+      "finishedAt": "2026-08-23T09:41:00.644Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

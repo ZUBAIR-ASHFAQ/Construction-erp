@@ -1,0 +1,56 @@
+{
+  "pass": "B18.5",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "Idempotent Client Receipt creation with atomic Finance cash/unapplied-advance posting",
+  "productionFilesChanged": [
+    "apps/api/src/modules/client-receipts/client-receipts.repository.ts",
+    "apps/api/src/modules/client-receipts/client-receipts.service.ts",
+    "apps/api/src/modules/client-receipts/index.ts"
+  ],
+  "financePolicy": {
+    "cashBankDebit": "selected active Cash/Bank mapped ASSET GL",
+    "unallocatedCredit": "active LIABILITY GL with code CLIENT-ADVANCE",
+    "sourceKey": "client_receipt:<receiptId>",
+    "revenueOnReceipt": false,
+    "profitOnReceipt": false,
+    "arReductionOnReceipt": false
+  },
+  "implemented": [
+    "server-derived Company actor and Project scope",
+    "client_receipts.create permission enforcement",
+    "Client -> Project ownership validation",
+    "optional Stage -> Project ownership validation",
+    "active Cash/Bank payment-method and asset-GL validation",
+    "explicit CLIENT-ADVANCE liability configuration validation",
+    "Company-scoped client-receipt numbering",
+    "Foundation idempotency orchestration",
+    "POSTED receipt persistence",
+    "balanced atomic Finance source Journal",
+    "client_receipt.posted audit and outbox evidence",
+    "source-derived allocated/unallocated response totals"
+  ],
+  "deferred": [
+    "Invoice allocation",
+    "allocation limits and invoice outstanding calculation",
+    "Client Advance -> Client Receivable reclassification",
+    "controlled unallocation accounting",
+    "Client Receipt reversal",
+    "Fastify route publication",
+    "Module 21 client_receipt links",
+    "React Client Receipts feature"
+  ],
+  "migrationAdded": false,
+  "nextPass": "B18.6 Invoice allocation, unallocation and receipt reversal",
+  "verification": {
+    "b18FocusedTests": "56/56 PASS",
+    "b18CumulativeGate": "84/84 PASS",
+    "final21StaticTests": "563/563 PASS",
+    "currentFullStaticSuite": "668/668 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "functionPurposeComments": "PASS",
+    "dependencyBackedBuild": "NOT CLAIMED - archive has no installed node_modules",
+    "liveMigrationVerification": "NOT RUN - MIGRATION_TEST_DATABASE_URL is not provided",
+    "staticVerificationHygiene": "R3 source-contract test no longer depends on generated packages/contracts/dist output"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-integration-security-evidence",
+  "generatedAt": "2026-08-24T10:03:08.064Z",
+  "pass": 218,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "mode": "static",
+  "status": "STAGE_12_MODULE_7_INTEGRATION_SECURITY_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-7-api.integration.test.mjs",
+  "coverage": [
+    "current-budget read returns only the latest frozen Project budget",
+    "budget create, complete line replacement and freeze execute through the real Fastify/PostgreSQL chain",
+    "budget totals, commitment totals, actual totals, ETC, EAC, variance, revenue and margin preserve exact decimal strings",
+    "freeze retries are idempotent and budget.revised is emitted only when a later frozen version supersedes the previous current version",
+    "forecast replacement accepts only authorized assumptions, calculates final values server-side and rejects closed Finance periods",
+    "job-cost ledger exposes read-only source-derived commitments and actuals with bounded pagination",
+    "audit and outbox rows are written for reviewed Module-7 commands while job_cost.source_posted remains absent",
+    "Project-only permission, missing permission and cross-Company access are denied without trusting browser authority fields",
+    "locked budget versions and inactive or cross-Project cost structures are rejected",
+    "database triggers protect budget-line, source-cost and forecast Project scope",
+    "source-derived commitment keys remain idempotent at the database boundary",
+    "generated OpenAPI exposes exactly the seven reviewed Module-7 operations with bearer security and strict request shapes",
+    "manual commitment/actual/reconciliation and budget approval/reopen routes remain absent"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "sourceIngestionRoutesAdded": 0,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 219 - Module 7 React Budgeting & Job Costing API, hooks and workflow UI preparation.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.864Z",
+      "finishedAt": "2026-08-24T10:03:05.864Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.864Z",
+      "finishedAt": "2026-08-24T10:03:07.359Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.359Z",
+      "finishedAt": "2026-08-24T10:03:07.477Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.477Z",
+      "finishedAt": "2026-08-24T10:03:07.622Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.622Z",
+      "finishedAt": "2026-08-24T10:03:07.768Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.768Z",
+      "finishedAt": "2026-08-24T10:03:07.898Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.898Z",
+      "finishedAt": "2026-08-24T10:03:07.919Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.919Z",
+      "finishedAt": "2026-08-24T10:03:07.948Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.948Z",
+      "finishedAt": "2026-08-24T10:03:07.967Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.967Z",
+      "finishedAt": "2026-08-24T10:03:07.986Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:07.986Z",
+      "finishedAt": "2026-08-24T10:03:08.025Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.025Z",
+      "finishedAt": "2026-08-24T10:03:08.064Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,295 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-16-stage-23-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T13:03:05.102Z",
+  "status": "STAGE_23_STATIC_GATE_PASSED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "module": "16 - Client Billing",
+  "pass": 357,
+  "stage": 23,
+  "stage22LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_23_UNTIL_STAGE_22_LIVE_HANDOFF",
+  "sourceDefinedTables": [
+    "client_contracts",
+    "progress_claims",
+    "progress_claim_lines",
+    "client_invoices",
+    "retention_ledger"
+  ],
+  "reviewedRouteCount": 7,
+  "reviewedWriteRouteCount": 6,
+  "activePermissions": [
+    "client_billing.read",
+    "client_contracts.manage",
+    "client_claims.create",
+    "client_claims.certify",
+    "client_invoices.issue",
+    "client_retention.release"
+  ],
+  "stableErrors": [
+    "CLIENT_CONTRACT_NOT_FOUND",
+    "CLAIM_INVALID_CUMULATIVE_VALUE",
+    "CLAIM_NOT_CERTIFIED",
+    "CLIENT_INVOICE_ALREADY_CREATED",
+    "RETENTION_RELEASE_NOT_ALLOWED"
+  ],
+  "sourceDefinedEvents": [
+    "client_contract.created",
+    "progress_claim.submitted",
+    "progress_claim.certified",
+    "client_invoice.issued",
+    "client_retention.released"
+  ],
+  "hardDependencies": [
+    "5 - Project Management",
+    "2 - CRM & Client Management",
+    "15A - Finance Core"
+  ],
+  "configuredDependencies": [
+    "4B - BOQ Project Mapping when BOQ-backed Claim lines are used",
+    "17 - Change Orders / Variations when approved variation values are configured"
+  ],
+  "projectAuthorizationUsesModule24B": true,
+  "clientMasterUsesModule2": true,
+  "exactDecimalBoundaryVerified": true,
+  "cumulativeClaimProtectionVerified": true,
+  "certifiedClaimHistoryImmutable": true,
+  "clientInvoiceSourceHistoryImmutable": true,
+  "retentionReleaseForwardOnly": true,
+  "idempotentWriteBoundaryVerified": true,
+  "concurrencySafeNumberingVerifiedByOperationalSuite": true,
+  "financeArAdapterGenerated": false,
+  "approvedChangeContractAdapterGenerated": false,
+  "stage26FinanceAdapterStillRequired": true,
+  "stage27IntegrationProofStillRequired": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "Client Contract billing_method and status vocabularies are not enumerated by the source.",
+    "The workflow says Contract billing terms are maintained, but the reviewed API defines no Client Contract update command.",
+    "The source defines progress_claim.submitted but no explicit Claim submit endpoint or exact submission transition.",
+    "The source does not define whether Claim-line PUT is replace-all or merge; Stage 23 uses one complete DRAFT replacement without adding line CRUD routes.",
+    "Contract, Claim and Invoice numbering scopes/formats are not defined; Foundation numbering is used without inventing database uniqueness scope.",
+    "The source does not define tax calculation, payment-term derivation or due-date policy beyond the reviewed Invoice dates.",
+    "client_invoices.claim_id is nullable in persistence, but no standalone Client Invoice create command is reviewed.",
+    "The source does not define Retention source/direction/status vocabularies or partial-release request semantics; the reviewed bodyless command is implemented as full release.",
+    "The exact approved Change Order to Client Contract target mapping/source key is not defined and remains deferred to reviewed integration completion.",
+    "Client Invoice to AR posting/reconciliation remains owned by Stage-26 Module 15B and is not claimed complete in Stage 23.",
+    "The source describes payment status tracking but defines no Module-16 payment mutation/read API; no payment subsystem is invented."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextDependentStage": "24 - Module 19 RFI & Submittals",
+  "nextReviewedPass": "Pass 358 - Stage 24 / Module 19 RFI & Submittals contract freeze.",
+  "nextStage": "Stage-24 contract preparation may continue, but Stage-23 runtime acceptance/deployment remains blocked until the genuine Stage-22/Stage-23 live chain passes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-2-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.238Z",
+      "finishedAt": "2026-08-26T13:02:47.360Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.360Z",
+      "finishedAt": "2026-08-26T13:02:47.484Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.484Z",
+      "finishedAt": "2026-08-26T13:02:47.618Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.618Z",
+      "finishedAt": "2026-08-26T13:02:47.775Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.775Z",
+      "finishedAt": "2026-08-26T13:02:47.978Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:47.978Z",
+      "finishedAt": "2026-08-26T13:02:48.115Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:48.115Z",
+      "finishedAt": "2026-08-26T13:02:48.273Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-operations-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:48.273Z",
+      "finishedAt": "2026-08-26T13:03:01.760Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.760Z",
+      "finishedAt": "2026-08-26T13:03:04.156Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.156Z",
+      "finishedAt": "2026-08-26T13:03:04.201Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.201Z",
+      "finishedAt": "2026-08-26T13:03:04.249Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.249Z",
+      "finishedAt": "2026-08-26T13:03:04.268Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.268Z",
+      "finishedAt": "2026-08-26T13:03:04.287Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.287Z",
+      "finishedAt": "2026-08-26T13:03:04.303Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.303Z",
+      "finishedAt": "2026-08-26T13:03:04.320Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.320Z",
+      "finishedAt": "2026-08-26T13:03:04.339Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.339Z",
+      "finishedAt": "2026-08-26T13:03:04.358Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.358Z",
+      "finishedAt": "2026-08-26T13:03:04.381Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-index-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.381Z",
+      "finishedAt": "2026-08-26T13:03:04.399Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.399Z",
+      "finishedAt": "2026-08-26T13:03:04.418Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-main-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.418Z",
+      "finishedAt": "2026-08-26T13:03:04.435Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-browser-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.435Z",
+      "finishedAt": "2026-08-26T13:03:04.452Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.452Z",
+      "finishedAt": "2026-08-26T13:03:04.471Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "client-billing-react-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:04.471Z",
+      "finishedAt": "2026-08-26T13:03:05.102Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

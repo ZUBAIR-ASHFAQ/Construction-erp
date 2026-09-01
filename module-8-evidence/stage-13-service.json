@@ -1,0 +1,141 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-service-evidence",
+  "generatedAt": "2026-08-24T11:41:40.413Z",
+  "pass": 227,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_SERVICE_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/procurement/procurement.service.ts",
+  "repositoryExtendedOnlyForServiceNeeds": [
+    "findCompanyBaseCurrency",
+    "updateRfqVendorResponseStatus"
+  ],
+  "projectResourcePolicyRevalidated": true,
+  "requisitionSequenceKey": "procurement.pr",
+  "rfqSequenceKey": "procurement.rfq",
+  "lifecycleTokensInternalOnly": true,
+  "publicLifecycleEnumsAdded": false,
+  "requisitionApprovalUsesModule22": true,
+  "requisitionApprovalOptionalServerConfig": true,
+  "budgetBoundaryReadOnly": true,
+  "budgetGate": "requires one current FROZEN Module-7 budget before requisition submission/RFQ progression; no amount threshold or tolerance invented",
+  "module7CommitmentWritesGenerated": false,
+  "financeWritesGenerated": false,
+  "vendorEligibilityInternalTokens": [
+    "ACTIVE",
+    "QUALIFIED"
+  ],
+  "quotationTotalsCalculatedServerSide": true,
+  "quotationArithmetic": "quantity(4dp) * unitRate(4dp) -> half-up money(2dp); subtotal after discount; tax added; exact bigint arithmetic",
+  "comparisonCurrencyPolicy": "vendor currency must be null/base currency or equal Company base currency; no FX conversion invented",
+  "comparisonQuantityPolicy": "all compared quotations must share exact rfqItemId+quantity signatures; no unit-conversion engine invented",
+  "comparisonRankingFieldsAdded": false,
+  "nonLowestRationalePolicyConfigurable": true,
+  "selectionRationaleStoredInAuditOutboxOnly": true,
+  "selectionPersistenceColumnInvented": false,
+  "selectionCreatesFinancialCommitment": false,
+  "reviewedOutboxEventsPrepared": [
+    "purchase_requisition.submitted",
+    "rfq.issued",
+    "supplier_quotation.received",
+    "rfq.quotation_selected"
+  ],
+  "vendorMasterWriteApiGenerated": false,
+  "rfqItemForeignKeyAssumedByService": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 228 - Module 8 Fastify routes, module registration and OpenAPI metadata for exactly the eight reviewed procurement operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-repository",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:35.438Z",
+      "finishedAt": "2026-08-24T11:41:38.915Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.915Z",
+      "finishedAt": "2026-08-24T11:41:39.068Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-service-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:39.068Z",
+      "finishedAt": "2026-08-24T11:41:39.558Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:39.558Z",
+      "finishedAt": "2026-08-24T11:41:39.691Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:39.691Z",
+      "finishedAt": "2026-08-24T11:41:39.824Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:39.824Z",
+      "finishedAt": "2026-08-24T11:41:39.998Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:39.998Z",
+      "finishedAt": "2026-08-24T11:41:40.130Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:40.130Z",
+      "finishedAt": "2026-08-24T11:41:40.270Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:40.270Z",
+      "finishedAt": "2026-08-24T11:41:40.336Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:40.336Z",
+      "finishedAt": "2026-08-24T11:41:40.413Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

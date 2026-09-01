@@ -1,0 +1,37 @@
+{
+  "pass": "B15.9",
+  "module": "Final Module 14 - Site Expense Management",
+  "scope": "Backend/API integration verification and OpenAPI completeness",
+  "production_changes": [
+    "Completed Fastify/OpenAPI query, params, body, success and error schemas for the existing six Site Expense routes"
+  ],
+  "verification_assets": [
+    "tests/final-21-site-expenses-b15-9-integration.test.mjs",
+    "tests/integration/final-21-site-expenses-api.integration.test.mjs",
+    "docs/PASS-B15-9-FINAL21-SITE-EXPENSE-INTEGRATION.md"
+  ],
+  "live_scenarios": [
+    "post -> one Finance journal + one Project/Stage cost actual",
+    "post retry idempotency",
+    "reverse -> compensating Finance + Project Cost history",
+    "permission denial",
+    "Project-scope isolation",
+    "cross-company isolation",
+    "Finance failure transaction rollback",
+    "generated OpenAPI verification"
+  ],
+  "database_migrations_added": 0,
+  "site_expense_business_routes": 6,
+  "live_execution_in_handoff_environment": false,
+  "live_execution_reason": "Source archive has no installed dependencies/disposable PostgreSQL runtime in this handoff environment.",
+  "status": "STATIC_VERIFIED_LIVE_DB_GATE_PREPARED",
+  "static_verification": {
+    "b15_focused_tests": "87/87 PASS",
+    "complete_final21_static_tests": "263/263 PASS",
+    "migration_system_tests": "8/8 PASS",
+    "migration_policy": "81/81 migrations checksum-locked",
+    "workspace_check": "PASS",
+    "legacy_cleanup_manifest": "PASS",
+    "live_suite_parse_gate": "5 scenarios discovered; 5 skipped because RUN_FOUNDATION_DB_TESTS is not enabled"
+  }
+}

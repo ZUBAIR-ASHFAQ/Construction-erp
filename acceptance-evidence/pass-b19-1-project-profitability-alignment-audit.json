@@ -1,0 +1,68 @@
+{
+  "pass": "B19.1",
+  "module": "Module 19 Project Profitability",
+  "scope": "non-destructive alignment audit before the first Project Profitability production implementation",
+  "productionFilesChanged": false,
+  "databaseMigrationAdded": false,
+  "baseline": {
+    "backendModulePresent": false,
+    "reactFeaturePresent": false,
+    "authoritativeProfitabilityModelPresent": false,
+    "optionalSnapshotModelPresent": false,
+    "requiredRouteCount": 4,
+    "writeRouteCount": 0
+  },
+  "readyPrerequisites": [
+    "Module 7 Project Stages / Progress",
+    "Module 9 Project Budget & Cost Tracking",
+    "Module 15 Client Billing",
+    "Module 16 Client Receipts / Payments",
+    "Module 17 Supplier Payables",
+    "Module 18 Finance & Accounting",
+    "Module 2 Administration project scope"
+  ],
+  "requiredPermissions": [
+    "project_profitability.read",
+    "project_profitability.finance.read",
+    "project_profitability.portfolio.read"
+  ],
+  "requiredErrors": [
+    "PROFITABILITY_SCOPE_FORBIDDEN",
+    "PROFITABILITY_SOURCE_INCOMPLETE",
+    "INVALID_PROFITABILITY_FILTER"
+  ],
+  "requiredRoutes": [
+    "GET /api/v1/project-profitability/projects/:projectId",
+    "GET /api/v1/project-profitability/projects/:projectId/stages",
+    "GET /api/v1/project-profitability/projects/:projectId/trend",
+    "GET /api/v1/project-profitability/portfolio"
+  ],
+  "sourceOwnership": {
+    "actualCost": "Module 9 CostActual source ledger",
+    "billingRevenueBasis": "Module 15 Client Billing plus posted Finance representation",
+    "cashAndAdvance": "Module 16 Client Receipts / Payments",
+    "supplierPayable": "Module 17 Supplier Payables",
+    "accountingBasis": "Module 18 Finance & Accounting",
+    "stageDimensions": "Module 7 Project Stages / Progress"
+  },
+  "criticalRules": [
+    "profit equals recognized/approved revenue basis minus actual cost",
+    "client cash received is not profit by itself",
+    "billed received advance outstanding payable cost and profit remain separate",
+    "outstanding equals billed minus allocated receipts while advances remain separate",
+    "only approved or posted source states are included",
+    "stage and project totals reconcile without double counting",
+    "Project Profitability is read-only and stores no editable authoritative totals"
+  ],
+  "persistenceRecommendation": "Prefer no Project Profitability table or migration; optional snapshots are cache-only and require explicit justification.",
+  "nextPass": "B19.2 Project Profitability persistence / read-model decision",
+  "verification": {
+    "prePassFinal21Static": "623/623 PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules",
+    "b19_1Gate": "38/38 PASS",
+    "postPassFinal21Static": "633/633 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "legacyCleanupManifest": "PASS"
+  }
+}

@@ -1,0 +1,2159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// Foundation-owned tenant/company master.
+/// Every future ERP company_id foreign key must resolve to companies.id.
+model Company {
+  id             String     @id @default(uuid()) @db.Uuid
+  legalName      String     @map("legal_name") @db.VarChar(200)
+  displayName    String     @map("display_name") @db.VarChar(200)
+  status         String     @db.VarChar(32)
+  baseCurrency   String     @map("base_currency") @db.Char(3)
+  timeZone       String     @map("time_zone") @db.VarChar(100)
+  locale         String     @db.VarChar(35)
+  fiscalSettings Json       @map("fiscal_settings") @db.JsonB
+  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditLogs      AuditLog[]
+  outboxEvents   OutboxEvent[]
+  idempotencyRecords IdempotencyRecord[]
+  numberSequences NumberSequence[]
+  queueJobs QueueJob[]
+  configuration CompanyConfiguration?
+  initialBootstrapRuns InitialBootstrapRun[]
+  users          User[]
+  roles          Role[]
+  roleAssignments UserRole[]
+  userProjectScopes UserProjectScope[]
+  departments      Department[]
+  documents       Document[]
+  documentUploadIntents DocumentUploadIntent[]
+  documentLinks    DocumentLink[]
+  clients             Client[]
+  clientContacts      ClientContact[]
+  projects            Project[]
+  projectStages        ProjectStage[]
+  projectTeamAssignments ProjectTeamAssignment[]
+  glAccounts           GlAccount[]
+  fiscalPeriods        FiscalPeriod[]
+  journals             Journal[]
+  cashBankAccounts      CashBankAccount[]
+  projectBudgets       ProjectBudget[]
+  costCommitments      CostCommitment[]
+  costActuals          CostActual[]
+  vendors              Vendor[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseOrders       PurchaseOrder[]
+  materials            Material[]
+  warehouses           Warehouse[]
+  goodsReceipts        GoodsReceipt[]
+  stockLedger          StockLedger[]
+  materialIssues       MaterialIssue[]
+  subcontractors       Subcontractor[]
+  equipment             Equipment[]
+  employees                    Employee[]
+  attendanceEntries           AttendanceEntry[]
+  employeeCompensations       EmployeeCompensation[]
+  payrollRuns                  PayrollRun[]
+  expenseCategories            ExpenseCategory[]
+  siteExpenses                 SiteExpense[]
+  supplierInvoices             SupplierInvoice[]
+  supplierPayments             SupplierPayment[]
+  projectBillingSettings      ProjectBillingSetting[]
+  progressClaims               ProgressClaim[]
+  clientInvoices               ClientInvoice[]
+  clientReceipts               ClientReceipt[]
+  reportDefinitions            ReportDefinition[]
+  reportRuns                   ReportRun[]
+  savedReportFilters           SavedReportFilter[]
+  dashboardPreferences         DashboardPreference[]
+  dashboardSavedFilters        DashboardSavedFilter[]
+
+  @@index([status], map: "companies_status_idx")
+  @@map("companies")
+}
+
+/// Foundation-owned append-only audit history contract exposed by Module 21.
+/// Actor and Project ownership use enforced references; project_scope preserves the
+/// request-time authorization snapshot while project_id/stage_id support bounded search.
+model AuditLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  projectId     String?  @map("project_id") @db.Uuid
+  stageId       String?  @map("stage_id") @db.Uuid
+  projectScope  Json     @map("project_scope") @db.JsonB
+  entityType    String   @map("resource_type") @db.VarChar(100)
+  entityId      String   @map("resource_id") @db.VarChar(128)
+  action        String   @db.VarChar(100)
+  requestId     String   @map("request_id") @db.VarChar(128)
+  correlationId String   @map("correlation_id") @db.VarChar(128)
+  beforeValue   Json?    @map("before_json") @db.JsonB
+  afterValue    Json?    @map("after_json") @db.JsonB
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor   User?    @relation("AuditLogActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project? @relation("AuditLogProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, createdAt], map: "audit_logs_company_created_at_idx")
+  @@index([companyId, projectId, createdAt], map: "audit_logs_company_project_created_at_idx")
+  @@index([companyId, stageId, createdAt], map: "audit_logs_company_stage_created_at_idx")
+  @@index([companyId, entityType, entityId, createdAt], map: "audit_logs_company_resource_created_at_idx")
+  @@index([actorUserId, createdAt], map: "audit_logs_actor_created_at_idx")
+  @@index([requestId], map: "audit_logs_request_id_idx")
+  @@index([correlationId], map: "audit_logs_correlation_id_idx")
+  @@map("audit_logs")
+}
+
+
+/// Foundation-owned durable transactional outbox.
+/// actor_user_id is an enforced Administration user reference.
+/// project_scope is a trusted request-context snapshot until project tables exist.
+model OutboxEvent {
+  id            String   @id @default(uuid()) @db.Uuid
+  schemaVersion Int      @default(1) @map("schema_version")
+  companyId     String   @map("company_id") @db.Uuid
+  actorUserId   String?  @map("actor_user_id") @db.Uuid
+  projectScope  Json     @map("project_scope") @db.JsonB
+  eventType     String   @map("event_type") @db.VarChar(150)
+  resourceType  String   @map("resource_type") @db.VarChar(100)
+  resourceId    String   @map("resource_id") @db.VarChar(128)
+  requestId     String   @map("request_id") @db.VarChar(128)
+  correlationId String   @map("correlation_id") @db.VarChar(128)
+  payload       Json     @default("{}") @db.JsonB
+  status        String   @default("PENDING") @db.VarChar(20)
+  availableAt   DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
+  attemptCount  Int      @default(0) @map("attempt_count")
+  lockedAt      DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy      String?  @map("locked_by") @db.VarChar(128)
+  lastErrorCode String?  @map("last_error_code") @db.VarChar(100)
+  publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
+  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor   User?   @relation("OutboxEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([status, availableAt, occurredAt], map: "outbox_events_delivery_idx")
+  @@index([companyId, occurredAt], map: "outbox_events_company_occurred_at_idx")
+  @@index([resourceType, resourceId, occurredAt], map: "outbox_events_resource_idx")
+  @@index([requestId], map: "outbox_events_request_id_idx")
+  @@index([correlationId], map: "outbox_events_correlation_id_idx")
+  @@map("outbox_events")
+}
+
+/// Foundation-owned persisted idempotency records for retry-safe commands.
+/// The key is company + stable operation + idempotency key. Raw request input
+/// is never persisted; only a deterministic SHA-256 fingerprint is stored.
+model IdempotencyRecord {
+  id                 String    @id @default(uuid()) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  operation          String    @db.VarChar(100)
+  idempotencyKey     String    @map("idempotency_key") @db.VarChar(200)
+  requestFingerprint String    @map("request_fingerprint") @db.Char(64)
+  status             String    @default("IN_PROGRESS") @db.VarChar(20)
+  requestId          String    @map("request_id") @db.VarChar(128)
+  correlationId      String    @map("correlation_id") @db.VarChar(128)
+  responseStatus     Int?      @map("response_status")
+  responseBody       Json?     @map("response_body") @db.JsonB
+  completedAt        DateTime? @map("completed_at") @db.Timestamptz(6)
+  expiresAt          DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, operation, idempotencyKey], map: "idempotency_records_company_operation_key_uq")
+  @@index([status, expiresAt], map: "idempotency_records_status_expires_at_idx")
+  @@index([companyId, createdAt], map: "idempotency_records_company_created_at_idx")
+  @@index([requestId], map: "idempotency_records_request_id_idx")
+  @@index([correlationId], map: "idempotency_records_correlation_id_idx")
+  @@map("idempotency_records")
+}
+
+/// Foundation-owned company-scoped business number sequence.
+/// Runtime allocation is transaction-bound and derives company authority from
+/// trusted request context. Module/project-specific numbering policies are not
+/// invented at Foundation Stage 0.
+model NumberSequence {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  sequenceKey String   @map("sequence_key") @db.VarChar(100)
+  prefix      String   @default("") @db.VarChar(40)
+  suffix      String   @default("") @db.VarChar(40)
+  padWidth    Int      @default(6) @map("pad_width")
+  nextValue   BigInt   @default(1) @map("next_value")
+  incrementBy BigInt   @default(1) @map("increment_by")
+  status      String   @default("ACTIVE") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, sequenceKey], map: "number_sequences_company_key_uq")
+  @@index([companyId, status], map: "number_sequences_company_status_idx")
+  @@map("number_sequences")
+}
+
+
+/// Foundation-owned durable background queue. Jobs are company-scoped and
+/// transaction-bound at enqueue time. actor_user_id becomes an enforced
+/// Administration user reference; project_scope remains a request-time authorization snapshot.
+model QueueJob {
+  id               String    @id @default(uuid()) @db.Uuid
+  schemaVersion    Int       @default(1) @map("schema_version")
+  companyId        String    @map("company_id") @db.Uuid
+  actorUserId      String?   @map("actor_user_id") @db.Uuid
+  projectScope     Json      @map("project_scope") @db.JsonB
+  queueName        String    @map("queue_name") @db.VarChar(100)
+  jobType          String    @map("job_type") @db.VarChar(150)
+  requestId        String    @map("request_id") @db.VarChar(128)
+  correlationId    String    @map("correlation_id") @db.VarChar(128)
+  payload          Json      @default("{}") @db.JsonB
+  status           String    @default("PENDING") @db.VarChar(20)
+  availableAt      DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  attemptCount     Int       @default(0) @map("attempt_count")
+  maxAttempts      Int       @default(5) @map("max_attempts")
+  lockedAt         DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy         String?   @map("locked_by") @db.VarChar(128)
+  lastErrorCode    String?   @map("last_error_code") @db.VarChar(100)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  deadLetteredAt   DateTime? @map("dead_lettered_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor   User?   @relation("QueueJobActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([queueName, status, availableAt, createdAt], map: "queue_jobs_claim_idx")
+  @@index([status, lockedAt], map: "queue_jobs_lease_idx")
+  @@index([companyId, createdAt], map: "queue_jobs_company_created_at_idx")
+  @@index([requestId], map: "queue_jobs_request_id_idx")
+  @@index([correlationId], map: "queue_jobs_correlation_id_idx")
+  @@map("queue_jobs")
+}
+
+/// Foundation-owned non-secret required configuration created during initial
+/// provisioning. Secret material remains in environment/secret-manager
+/// infrastructure and is never stored in this JSON document.
+model CompanyConfiguration {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @unique(map: "company_configurations_company_uq") @map("company_id") @db.Uuid
+  settings  Json     @default("{}") @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@map("company_configurations")
+}
+
+/// Durable initial-installation orchestration state. This table deliberately
+/// stores the Administration identity *intent* and later completion proof, not a
+/// password/token/credential. Provisioning binds administrator_user_id to the
+/// Administration users table for all new/updated completion records.
+model InitialBootstrapRun {
+  id                     String    @id @default(uuid()) @db.Uuid
+  bootstrapKey           String    @unique(map: "initial_bootstrap_runs_key_uq") @map("bootstrap_key") @db.VarChar(100)
+  requestFingerprint     String    @map("request_fingerprint") @db.Char(64)
+  status                 String    @default("IDENTITY_PENDING") @db.VarChar(24)
+  companyId              String    @map("company_id") @db.Uuid
+  administratorEmail     String    @map("administrator_email") @db.VarChar(320)
+  administratorName      String    @map("administrator_name") @db.VarChar(200)
+  administratorRoleCodes Json      @map("administrator_role_codes") @db.JsonB
+  systemRoleDefinitions  Json      @map("system_role_definitions") @db.JsonB
+  administratorUserId    String?   @map("administrator_user_id") @db.Uuid
+  systemRoleIdsByCode    Json?     @map("system_role_ids_by_code") @db.JsonB
+  requestId              String    @map("request_id") @db.VarChar(128)
+  correlationId          String    @map("correlation_id") @db.VarChar(128)
+  completedAt            DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company       Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  administrator User?   @relation("InitialBootstrapAdministrator", fields: [administratorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, createdAt], map: "initial_bootstrap_runs_company_created_at_idx")
+  @@index([status, createdAt], map: "initial_bootstrap_runs_status_created_at_idx")
+  @@index([requestId], map: "initial_bootstrap_runs_request_id_idx")
+  @@index([correlationId], map: "initial_bootstrap_runs_correlation_id_idx")
+  @@map("initial_bootstrap_runs")
+}
+
+/// Final Module 2 company-owned user identity.
+/// Explicit project access is owned by UserProjectScope.
+model User {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  email       String    @db.VarChar(320)
+  phone       String?   @db.VarChar(50)
+  name        String    @db.VarChar(200)
+  status      String    @db.VarChar(32)
+  passwordHash        String?   @map("password_hash") @db.VarChar(255)
+  passwordChangedAt   DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  lastLoginAt         DateTime? @map("last_login_at") @db.Timestamptz(6)
+  authActionNonce     String?   @map("auth_action_nonce") @db.VarChar(64)
+  authActionPurpose   String?   @map("auth_action_purpose") @db.VarChar(32)
+  authActionExpiresAt DateTime? @map("auth_action_expires_at") @db.Timestamptz(6)
+  createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sessions             AuthSession[]
+  roleAssignments      UserRole[]
+  projectScopes         UserProjectScope[]
+  auditLogs             AuditLog[]               @relation("AuditLogActor")
+  outboxEvents          OutboxEvent[]             @relation("OutboxEventActor")
+  queueJobs             QueueJob[]                @relation("QueueJobActor")
+  initialBootstrapRuns  InitialBootstrapRun[]     @relation("InitialBootstrapAdministrator")
+  createdDocuments      Document[]                 @relation("DocumentCreator")
+  createdDocumentVersions DocumentVersion[]        @relation("DocumentVersionCreator")
+  documentUploadIntents    DocumentUploadIntent[]   @relation("DocumentUploadIntentActor")
+  createdDocumentLinks     DocumentLink[]           @relation("DocumentLinkCreator")
+  managedProjects               Project[]                 @relation("ProjectManager")
+  projectTeamHistoryChanges     ProjectTeamHistory[] @relation("ProjectTeamHistoryChangedBy")
+  projectStatusChanges          ProjectStatusHistory[]    @relation("ProjectStatusChangedBy")
+  createdJournals                Journal[]                 @relation("JournalCreatedBy")
+  createdBankReconciliations     BankReconciliation[]      @relation("BankReconciliationCreatedBy")
+  createdProjectBudgets          ProjectBudget[]           @relation("ProjectBudgetCreatedBy")
+  updatedForecastLines           ForecastLine[]             @relation("ForecastLineUpdatedBy")
+  enteredStageProgressUpdates   StageProgressUpdate[]      @relation("StageProgressEnteredBy")
+  approvedStageProgressUpdates  StageProgressUpdate[]      @relation("StageProgressApprovedBy")
+  frozenStageBaselines          StageProgressBaseline[]    @relation("StageProgressBaselineFrozenBy")
+  requestedPurchaseRequisitions  PurchaseRequisition[]      @relation("PurchaseRequisitionRequester")
+  cancelledPurchaseOrders          PurchaseOrder[]            @relation("PurchaseOrderCanceller")
+  receivedGoodsReceipts            GoodsReceipt[]              @relation("GoodsReceiptReceiver")
+  issuedMaterialIssues             MaterialIssue[]              @relation("MaterialIssueIssuedBy")
+  equipmentUsageEntries             EquipmentUsage[]              @relation("EquipmentUsageEnteredBy")
+  linkedEmployees                   Employee[]                  @relation("EmployeeLoginUser")
+  enteredAttendanceEntries          AttendanceEntry[]             @relation("AttendanceEnteredBy")
+  createdPayrollRuns                PayrollRun[]                  @relation("PayrollCreatedBy")
+  createdSiteExpenses               SiteExpense[]
+  createdClientReceipts              ClientReceipt[]           @relation("ClientReceiptCreator")
+  clientReceiptAllocations           ClientReceiptAllocation[] @relation("ClientReceiptAllocationActor")
+  requestedReportRuns                  ReportRun[]                 @relation("ReportRunRequester")
+  savedReportFilters                   SavedReportFilter[]         @relation("SavedReportFilterUser")
+  dashboardPreferences                 DashboardPreference[]       @relation("DashboardPreferenceUser")
+  dashboardSavedFilters                DashboardSavedFilter[]      @relation("DashboardSavedFilterUser")
+
+  @@unique([companyId, email], map: "users_company_email_uq")
+  @@unique([id, companyId], map: "users_id_company_uq")
+  @@index([companyId, status], map: "users_company_status_idx")
+  @@index([companyId, name], map: "users_company_name_idx")
+  @@map("users")
+}
+
+/// Administration session state. Access and refresh secrets are separate and only hashes are persisted.
+model AuthSession {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           String    @map("user_id") @db.Uuid
+  accessTokenHash  String    @unique(map: "auth_sessions_access_token_hash_uq") @map("access_token_hash") @db.VarChar(255)
+  accessExpiresAt  DateTime  @map("access_expires_at") @db.Timestamptz(6)
+  refreshTokenHash String    @unique(map: "auth_sessions_refresh_token_hash_uq") @map("refresh_token_hash") @db.VarChar(255)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt        DateTime? @map("revoked_at") @db.Timestamptz(6)
+  ip               String    @db.VarChar(64)
+  userAgent        String    @map("user_agent") @db.VarChar(1000)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([userId, accessExpiresAt], map: "auth_sessions_user_access_expires_at_idx")
+  @@index([userId, expiresAt], map: "auth_sessions_user_expires_at_idx")
+  @@index([userId, revokedAt], map: "auth_sessions_user_revoked_at_idx")
+  @@map("auth_sessions")
+}
+
+/// Final Module 2 role definition owned by one company.
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  code        String   @db.VarChar(100)
+  name        String   @db.VarChar(160)
+  description String?  @db.VarChar(500)
+  isSystem    Boolean  @default(false) @map("is_system")
+  status      String   @db.VarChar(32)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  rolePermissions RolePermission[]
+  userAssignments UserRole[]
+
+  @@unique([companyId, code], map: "roles_company_code_uq")
+  @@unique([id, companyId], map: "roles_id_company_uq")
+  @@index([companyId, status], map: "roles_company_status_idx")
+  @@map("roles")
+}
+
+/// Stable allow-listed Administration and business-module permission contract.
+/// Final Module 2 identifies permissions by code and stores a human-readable description.
+model Permission {
+  code        String @id @db.VarChar(150)
+  description String @db.VarChar(500)
+  domain      String @db.VarChar(100)
+
+  rolePermissions RolePermission[]
+
+  @@index([domain, code], map: "permissions_domain_code_idx")
+  @@map("permissions")
+}
+
+/// Many-to-many role/permission assignment owned by Administration.
+/// The Final-21 contract uses the stable permission code rather than an internal UUID.
+model RolePermission {
+  roleId         String @map("role_id") @db.Uuid
+  permissionCode String @map("permission_code") @db.VarChar(150)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  permission Permission @relation(fields: [permissionCode], references: [code], onDelete: Restrict, onUpdate: Cascade)
+
+  @@id([roleId, permissionCode], map: "role_permissions_pkey")
+  @@index([permissionCode], map: "role_permissions_permission_idx")
+  @@map("role_permissions")
+}
+
+/// Final Module 2 company-role assignment.
+model UserRole {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  status    String   @default("ACTIVE") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user    User    @relation(fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  role    Role    @relation(fields: [roleId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, userId, roleId], map: "user_roles_company_user_role_uq")
+  @@index([companyId, userId, status], map: "user_roles_company_user_status_idx")
+  @@index([companyId, roleId, status], map: "user_roles_company_role_status_idx")
+  @@map("user_roles")
+}
+
+/// Final Module 2 project-access scope assigned to one company user.
+/// Project membership and project-access scope stay separate responsibilities.
+model UserProjectScope {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @map("company_id") @db.Uuid
+  userId    String  @map("user_id") @db.Uuid
+  projectId String  @map("project_id") @db.Uuid
+  roleCode  String? @map("role_code") @db.VarChar(100)
+  status    String  @default("ACTIVE") @db.VarChar(32)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user    User    @relation(fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project Project @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, userId, projectId], map: "user_project_scopes_company_user_project_uq")
+  @@index([companyId, userId, status], map: "user_project_scopes_company_user_status_idx")
+  @@index([companyId, projectId, status], map: "user_project_scopes_company_project_status_idx")
+  @@map("user_project_scopes")
+}
+
+/// Final Module 2 company-owned department master.
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  name      String   @db.VarChar(160)
+  status    String   @default("ACTIVE") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, name], map: "departments_company_name_uq")
+  @@index([companyId, status, name], map: "departments_company_status_name_idx")
+  @@map("departments")
+}
+
+/// Final Module 21 company-scoped document metadata.
+/// Binary file content is never stored here; storage is referenced through
+/// immutable DocumentVersion.storageKey values.
+model Document {
+  id               String   @id @default(uuid()) @db.Uuid
+  companyId        String   @map("company_id") @db.Uuid
+  projectId        String?  @map("project_id") @db.Uuid
+  title            String   @db.VarChar(300)
+  documentNo       String?  @map("document_no") @db.VarChar(120)
+  category         String   @db.VarChar(100)
+  currentVersionId String?  @unique(map: "documents_current_version_uq") @map("current_version_id") @db.Uuid
+  status           String   @db.VarChar(32)
+  fileName         String   @map("file_name") @db.VarChar(500)
+  mimeType         String   @map("mime_type") @db.VarChar(255)
+  sizeBytes        BigInt   @map("size_bytes")
+  createdBy        String   @map("created_by") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company        Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project        Project?         @relation("DocumentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator        User             @relation("DocumentCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  currentVersion DocumentVersion? @relation("DocumentCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  versions       DocumentVersion[] @relation("DocumentVersions")
+  links          DocumentLink[]
+  uploadIntents  DocumentUploadIntent[]
+  stageProgressEvidence StageProgressUpdate[]
+  payslips              Payslip[]
+  siteExpenses          SiteExpense[]
+  reportRuns            ReportRun[]       @relation("ReportRunFile")
+
+  @@unique([id, companyId], map: "documents_id_company_uq")
+  @@index([companyId, status], map: "documents_company_status_idx")
+  @@index([companyId, projectId, status], map: "documents_company_project_status_idx")
+  @@index([companyId, category], map: "documents_company_category_idx")
+  @@index([companyId, documentNo], map: "documents_company_document_no_idx")
+  @@index([createdBy], map: "documents_created_by_idx")
+  @@map("documents")
+}
+
+/// Final Module 21 immutable file-version metadata. A unique (document, version)
+/// pair and unique storage key provide the persistence-side concurrency and
+/// no-overwrite protection required by the document contract.
+model DocumentVersion {
+  id           String   @id @default(uuid()) @db.Uuid
+  documentId   String   @map("document_id") @db.Uuid
+  versionNo    Int      @map("version_no")
+  storageKey   String   @unique(map: "document_versions_storage_key_uq") @map("storage_key") @db.VarChar(1024)
+  originalName String   @map("original_name") @db.VarChar(500)
+  mimeType     String   @map("mime_type") @db.VarChar(255)
+  sizeBytes    BigInt   @map("size_bytes")
+  checksum     String   @db.VarChar(128)
+  revisionCode String?  @map("revision_code") @db.VarChar(100)
+  createdBy    String   @map("created_by") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  document          Document  @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator           User      @relation("DocumentVersionCreator", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  currentForDocument Document? @relation("DocumentCurrentVersion")
+  links              DocumentLink[]
+
+  @@unique([documentId, versionNo], map: "document_versions_document_version_uq")
+  @@unique([documentId, id], map: "document_versions_document_id_id_uq")
+  @@index([documentId, createdAt], map: "document_versions_document_created_at_idx")
+  @@index([createdBy, createdAt], map: "document_versions_creator_created_at_idx")
+  @@map("document_versions")
+}
+
+/// Cross-cutting document/resource association. Company, version, creator and
+/// available Project ownership are enforced here; resource-specific targets are
+/// still validated by the Documents service until their final modules exist.
+model DocumentLink {
+  id                 String   @id @default(uuid()) @db.Uuid
+  companyId          String   @map("company_id") @db.Uuid
+  documentId         String   @map("document_id") @db.Uuid
+  versionId          String?  @map("version_id") @db.Uuid
+  linkedResourceType String   @map("resource_type") @db.VarChar(100)
+  linkedResourceId   String   @map("resource_id") @db.Uuid
+  projectId          String?  @map("project_id") @db.Uuid
+  stageId            String?  @map("stage_id") @db.Uuid
+  createdBy          String   @map("created_by") @db.Uuid
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  document Document         @relation(fields: [documentId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  version  DocumentVersion? @relation(fields: [documentId, versionId], references: [documentId, id], onDelete: Restrict, onUpdate: Restrict)
+  project  Project?         @relation("DocumentLinkProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator  User             @relation("DocumentLinkCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([documentId, linkedResourceType, linkedResourceId], name: "document_resource", map: "document_links_document_resource_uq")
+  @@index([companyId, documentId], map: "document_links_company_document_idx")
+  @@index([companyId, projectId], map: "document_links_company_project_idx")
+  @@index([linkedResourceType, linkedResourceId], map: "document_links_resource_idx")
+  @@map("document_links")
+}
+
+
+
+/// Module 21 short-lived server-owned upload session metadata.
+/// target_document_id is an opaque preallocated UUID, not a foreign key, because
+/// the first document row is created only after the object upload is verified.
+model DocumentUploadIntent {
+  id               String    @id @default(uuid()) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  projectId        String?   @map("project_id") @db.Uuid
+  actorUserId      String    @map("actor_user_id") @db.Uuid
+  targetDocumentId String    @map("target_document_id") @db.Uuid
+  documentId       String?   @map("document_id") @db.Uuid
+  versionId        String    @map("version_id") @db.Uuid
+  title            String    @db.VarChar(300)
+  documentNo       String?   @map("document_no") @db.VarChar(120)
+  category         String    @db.VarChar(100)
+  originalName     String    @map("original_name") @db.VarChar(500)
+  mimeType         String    @map("mime_type") @db.VarChar(255)
+  sizeBytes        BigInt    @map("size_bytes")
+  checksum         String    @db.VarChar(128)
+  revisionCode     String?   @map("revision_code") @db.VarChar(100)
+  storageKey       String    @unique(map: "document_upload_intents_storage_key_uq") @map("storage_key") @db.VarChar(1024)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamptz(6)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project?        @relation("DocumentUploadIntentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  actor    User            @relation("DocumentUploadIntentActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  document Document?       @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, expiresAt], map: "document_upload_intents_company_expires_at_idx")
+  @@index([companyId, projectId, expiresAt], map: "document_upload_intents_company_project_expires_at_idx")
+  @@index([actorUserId, createdAt], map: "document_upload_intents_actor_created_at_idx")
+  @@index([targetDocumentId], map: "document_upload_intents_target_document_idx")
+  @@index([documentId], map: "document_upload_intents_document_idx")
+  @@map("document_upload_intents")
+}
+
+/// Final Module 4 company-owned Client master used by Projects, Billing, Receipts and reporting.
+/// Financial balances remain owned by future Billing/Finance modules and are not stored here.
+model Client {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  code            String   @db.VarChar(100)
+  legalName       String   @map("legal_name") @db.VarChar(240)
+  displayName     String   @map("display_name") @db.VarChar(240)
+  taxNo           String?  @map("tax_no") @db.VarChar(100)
+  billingAddress  String   @map("billing_address") @db.VarChar(1000)
+  status          String   @default("ACTIVE") @db.VarChar(32)
+  creditTermsDays Int?     @map("credit_terms_days")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  contacts      ClientContact[]
+  projects      Project[]
+  progressClaims ProgressClaim[]
+  clientInvoices ClientInvoice[]
+  clientReceipts ClientReceipt[]
+
+  @@unique([companyId, code], map: "clients_company_code_uq")
+  @@unique([id, companyId], map: "clients_id_company_uq")
+  @@index([companyId, status], map: "clients_company_status_idx")
+  @@index([companyId, displayName], map: "clients_company_display_name_idx")
+  @@map("clients")
+}
+
+/// Final Module 4 company-scoped Contact belonging to one Client.
+/// Optional communication fields preserve incomplete but valid Client master data.
+model ClientContact {
+  id        String   @id @default(uuid()) @db.Uuid
+  companyId String   @map("company_id") @db.Uuid
+  clientId  String   @map("client_id") @db.Uuid
+  name      String   @db.VarChar(200)
+  title     String?  @db.VarChar(160)
+  email     String?  @db.VarChar(320)
+  phone     String?  @db.VarChar(50)
+  isPrimary Boolean  @default(false) @map("is_primary")
+  status    String   @default("ACTIVE") @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client  Client  @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, clientId, status], map: "client_contacts_company_client_status_idx")
+  @@index([clientId, isPrimary, status], map: "client_contacts_client_primary_status_idx")
+  @@map("client_contacts")
+}
+
+/// Final Module 6 Project master; Module 8 owns Employee Project/Stage assignments.
+model Project {
+  id                   String   @id @default(uuid()) @db.Uuid
+  companyId            String   @map("company_id") @db.Uuid
+  projectCode          String   @map("project_code") @db.VarChar(100)
+  name                 String   @db.VarChar(300)
+  clientId             String   @map("client_id") @db.Uuid
+  projectModel         String   @default("FIXED_PRICE") @map("project_model") @db.VarChar(32)
+  projectValue         Decimal  @default(0) @map("project_value") @db.Decimal(18, 2)
+  costPlusPercent      Decimal? @map("cost_plus_percent") @db.Decimal(7, 4)
+  status               String   @default("DRAFT") @db.VarChar(32)
+  currency             String   @db.Char(3)
+  startDate            DateTime @map("start_date") @db.Date
+  plannedEndDate       DateTime @map("planned_end_date") @db.Date
+  projectManagerUserId String?  @map("project_manager_user_id") @db.Uuid
+  location             String?  @db.VarChar(1000)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company        Company                @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client         Client                 @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  projectManager User?                  @relation("ProjectManager", fields: [projectManagerUserId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  statusHistory  ProjectStatusHistory[]
+  stages         ProjectStage[]
+  stageBaselines StageProgressBaseline[]
+  teamAssignments ProjectTeamAssignment[]
+  journalLines    JournalLine[]
+  userProjectScopes UserProjectScope[]
+  documents Document[] @relation("DocumentProject")
+  documentUploadIntents DocumentUploadIntent[] @relation("DocumentUploadIntentProject")
+  documentLinks        DocumentLink[] @relation("DocumentLinkProject")
+  auditLogs            AuditLog[] @relation("AuditLogProject")
+  projectBudgets ProjectBudget[]
+  costCommitments CostCommitment[]
+  costActuals CostActual[]
+  forecastLines ForecastLine[]
+  purchaseRequisitions PurchaseRequisition[]
+  purchaseOrders PurchaseOrder[]
+  warehouses Warehouse[]
+  goodsReceipts GoodsReceipt[]
+  stockLedger StockLedger[]
+  materialIssues MaterialIssue[]
+  equipmentAssignments EquipmentAssignment[]
+  attendanceEntries AttendanceEntry[]
+  projectBillingSettings ProjectBillingSetting[]
+  progressClaims ProgressClaim[]
+  clientInvoices ClientInvoice[]
+  siteExpenses  SiteExpense[]
+  supplierInvoices SupplierInvoice[]
+  supplierPayments SupplierPayment[]
+  clientReceipts ClientReceipt[]
+  dashboardDefaultPreferences DashboardPreference[] @relation("DashboardPreferenceDefaultProject")
+
+  @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
+  @@unique([id, companyId], map: "projects_id_company_uq")
+  @@unique([id, companyId, clientId], map: "projects_id_company_client_uq")
+  @@index([companyId, status, plannedEndDate], map: "projects_company_status_planned_end_idx")
+  @@index([companyId, clientId, status], map: "projects_company_client_status_idx")
+  @@index([companyId, projectManagerUserId, status], map: "projects_company_manager_status_idx")
+  @@map("projects")
+}
+
+/// Final Module 7 company/project-owned construction stage.
+/// Stage weight is the Project-value share; physical progress, cost and billing remain separate source concepts.
+model ProjectStage {
+  id               String    @id @default(uuid()) @db.Uuid
+  companyId        String    @map("company_id") @db.Uuid
+  projectId        String    @map("project_id") @db.Uuid
+  code             String    @db.VarChar(100)
+  name             String    @db.VarChar(300)
+  sequenceNo       Int       @map("sequence_no")
+  weightPercent    Decimal   @map("weight_percent") @db.Decimal(7, 4)
+  plannedAmount    Decimal?  @map("planned_amount") @db.Decimal(18, 2)
+  plannedStartDate DateTime? @map("planned_start_date") @db.Date
+  plannedEndDate   DateTime? @map("planned_end_date") @db.Date
+  actualStartDate  DateTime? @map("actual_start_date") @db.Date
+  actualEndDate    DateTime? @map("actual_end_date") @db.Date
+  status           String    @default("DRAFT") @db.VarChar(32)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project         Project               @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  progressUpdates StageProgressUpdate[]
+  teamAssignments ProjectTeamAssignment[]
+  budgetLines     BudgetLine[]
+  attendanceEntries  AttendanceEntry[]
+  costCommitments CostCommitment[]
+  costActuals     CostActual[]
+  forecastLines   ForecastLine[]
+  journalLines    JournalLine[]
+  purchaseRequisitions PurchaseRequisition[] @relation("PurchaseRequisitionStage")
+  purchaseRequisitionItems PurchaseRequisitionItem[] @relation("PurchaseRequisitionItemStage")
+  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItemStage")
+  goodsReceiptItems GoodsReceiptItem[] @relation("GoodsReceiptItemStage")
+  stockLedger       StockLedger[]
+  materialIssues    MaterialIssue[]
+  equipmentAssignments EquipmentAssignment[]
+  siteExpenses         SiteExpense[]
+  supplierInvoiceLines SupplierInvoiceLine[] @relation("SupplierInvoiceLineStage")
+  progressClaimLines    ProgressClaimLine[]   @relation("ProgressClaimLineStage")
+  clientInvoiceLines    ClientInvoiceLine[]   @relation("ClientInvoiceLineStage")
+  clientReceipts         ClientReceipt[]       @relation("ClientReceiptStage")
+
+  @@unique([companyId, projectId, code], map: "project_stages_company_project_code_uq")
+  @@unique([companyId, projectId, sequenceNo], map: "project_stages_company_project_sequence_uq")
+  @@unique([id, projectId], map: "project_stages_id_project_uq")
+  @@unique([id, companyId], map: "project_stages_id_company_uq")
+  @@index([companyId, projectId, status, sequenceNo], map: "project_stages_company_project_status_sequence_idx")
+  @@map("project_stages")
+}
+
+/// Final Module 7 append-only physical-progress history.
+/// Approval is explicit; approved rows are the only rows used for overall Project progress.
+model StageProgressUpdate {
+  id                 String    @id @default(uuid()) @db.Uuid
+  stageId            String    @map("stage_id") @db.Uuid
+  progressPercent    Decimal   @map("progress_percent") @db.Decimal(7, 4)
+  progressDate       DateTime  @map("progress_date") @db.Date
+  note               String?   @db.Text
+  evidenceDocumentId String?   @map("evidence_document_id") @db.Uuid
+  enteredBy          String    @map("entered_by") @db.Uuid
+  approvedBy         String?   @map("approved_by") @db.Uuid
+  approvedAt         DateTime? @map("approved_at") @db.Timestamptz(6)
+  status             String    @default("SUBMITTED") @db.VarChar(32)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  stage      ProjectStage @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  evidence   Document?    @relation(fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  enteredByUser  User     @relation("StageProgressEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  approvedByUser User?    @relation("StageProgressApprovedBy", fields: [approvedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([stageId, status, progressDate, createdAt], map: "stage_progress_updates_stage_status_date_idx")
+  @@index([evidenceDocumentId], map: "stage_progress_updates_evidence_idx")
+  @@index([enteredBy, createdAt], map: "stage_progress_updates_entered_by_idx")
+  @@index([approvedBy, approvedAt], map: "stage_progress_updates_approved_by_idx")
+  @@map("stage_progress_updates")
+}
+
+/// Final Module 7 frozen 100-percent stage baseline metadata.
+/// The stage rows are locked after freeze; this row preserves baseline version/freeze history.
+model StageProgressBaseline {
+  id                 String    @id @default(uuid()) @db.Uuid
+  projectId          String    @map("project_id") @db.Uuid
+  versionNo          Int       @map("version_no")
+  status             String    @db.VarChar(32)
+  totalWeightPercent Decimal   @map("total_weight_percent") @db.Decimal(7, 4)
+  frozenAt           DateTime? @map("frozen_at") @db.Timestamptz(6)
+  frozenBy           String?   @map("frozen_by") @db.Uuid
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  project      Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  frozenByUser User?   @relation("StageProgressBaselineFrozenBy", fields: [frozenBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([projectId, versionNo], map: "stage_progress_baselines_project_version_uq")
+  @@index([projectId, status, versionNo], map: "stage_progress_baselines_project_status_version_idx")
+  @@map("stage_progress_baselines")
+}
+
+/// Final Module 8 Employee-to-Project/Stage assignment.
+model ProjectTeamAssignment {
+  id                String    @id @default(uuid()) @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  employeeId        String    @map("employee_id") @db.Uuid
+  projectRole       String    @map("project_role") @db.VarChar(160)
+  allocationPercent Decimal   @map("allocation_percent") @db.Decimal(7, 4)
+  stageId           String?   @map("stage_id") @db.Uuid
+  fromDate          DateTime  @map("from_date") @db.Date
+  toDate            DateTime? @map("to_date") @db.Date
+  status            String    @default("ACTIVE") @db.VarChar(32)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company  Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project  Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  employee Employee      @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage    ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  history  ProjectTeamHistory[]
+
+  @@unique([id, companyId], map: "project_team_assignments_id_company_uq")
+  @@index([companyId, projectId, status], map: "project_team_assignments_company_project_status_idx")
+  @@index([companyId, employeeId, status], map: "project_team_assignments_company_employee_status_idx")
+  @@index([employeeId, fromDate, toDate], map: "project_team_assignments_employee_dates_idx")
+  @@index([stageId, status], map: "project_team_assignments_stage_status_idx")
+  @@map("project_team_assignments")
+}
+
+/// Final Module 8 append-only assignment lifecycle history.
+model ProjectTeamHistory {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  action       String   @db.VarChar(64)
+  changedBy    String   @map("changed_by") @db.Uuid
+  changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  note         String?  @db.Text
+
+  assignment ProjectTeamAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  changedByUser User @relation("ProjectTeamHistoryChangedBy", fields: [changedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([assignmentId, changedAt], map: "project_team_history_assignment_changed_idx")
+  @@index([changedBy, changedAt], map: "project_team_history_changed_by_idx")
+  @@map("project_team_history")
+}
+
+/// Module 5 append-only Project lifecycle history.
+/// Service transactions later write this row together with Project status, audit and outbox changes.
+model ProjectStatusHistory {
+  id         String   @id @default(uuid()) @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  fromStatus String?  @map("from_status") @db.VarChar(32)
+  toStatus   String   @map("to_status") @db.VarChar(32)
+  changedBy  String   @map("changed_by") @db.Uuid
+  reason     String?  @db.Text
+  changedAt  DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor   User    @relation("ProjectStatusChangedBy", fields: [changedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId, changedAt], map: "project_status_history_project_changed_idx")
+  @@index([changedBy, changedAt], map: "project_status_history_changed_by_changed_idx")
+  @@map("project_status_history")
+}
+
+/// Final Module 18 Company-owned General Ledger account.
+model GlAccount {
+  id          String  @id @default(uuid()) @db.Uuid
+  companyId   String  @map("company_id") @db.Uuid
+  accountCode String  @map("account_code") @db.VarChar(100)
+  name        String  @db.VarChar(300)
+  accountType String  @map("account_type") @db.VarChar(64)
+  parentId    String? @map("parent_id") @db.Uuid
+  status      String  @db.VarChar(32)
+
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  parent           GlAccount?        @relation("GlAccountParent", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  children         GlAccount[]       @relation("GlAccountParent")
+  journalLines     JournalLine[]
+  cashBankAccounts CashBankAccount[]
+  expenseCategories ExpenseCategory[]
+  supplierInvoiceLines SupplierInvoiceLine[] @relation("SupplierInvoiceLineAccount")
+  clientInvoiceLines   ClientInvoiceLine[]   @relation("ClientInvoiceLineRevenueAccount")
+
+  @@unique([companyId, accountCode], map: "gl_accounts_company_account_code_uq")
+  @@unique([id, companyId], map: "gl_accounts_id_company_uq")
+  @@index([companyId, status, accountType], map: "gl_accounts_company_status_type_idx")
+  @@index([parentId], map: "gl_accounts_parent_idx")
+  @@map("gl_accounts")
+}
+
+/// Final Module 18 Company fiscal period used to control posting dates.
+model FiscalPeriod {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  fiscalYear Int      @map("fiscal_year")
+  periodNo   Int      @map("period_no")
+  startDate  DateTime @map("start_date") @db.Date
+  endDate    DateTime @map("end_date") @db.Date
+  status     String   @db.VarChar(32)
+
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  journals Journal[]
+
+  @@unique([companyId, fiscalYear, periodNo], map: "fiscal_periods_company_year_period_uq")
+  @@unique([id, companyId], map: "fiscal_periods_id_company_uq")
+  @@index([companyId, status, startDate, endDate], map: "fiscal_periods_company_status_dates_idx")
+  @@map("fiscal_periods")
+}
+
+/// Final Module 18 journal header. Source keys make source-module posting idempotent.
+model Journal {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  journalNo   String    @map("journal_no") @db.VarChar(100)
+  postingDate DateTime  @map("posting_date") @db.Date
+  sourceType  String    @map("source_type") @db.VarChar(100)
+  sourceId    String?   @map("source_id") @db.VarChar(200)
+  sourceKey   String?   @map("source_key") @db.VarChar(700)
+  description String    @db.Text
+  status      String    @db.VarChar(32)
+  periodId    String    @map("period_id") @db.Uuid
+  createdBy   String?   @map("created_by") @db.Uuid
+  postedAt    DateTime? @map("posted_at") @db.Timestamptz(6)
+  totalDebit  Decimal   @default(0) @map("total_debit") @db.Decimal(18, 2)
+  totalCredit Decimal   @default(0) @map("total_credit") @db.Decimal(18, 2)
+
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  period  FiscalPeriod @relation(fields: [periodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator User?        @relation("JournalCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines   JournalLine[]
+
+  @@unique([companyId, journalNo], map: "journals_company_journal_no_uq")
+  @@unique([companyId, sourceKey], map: "journals_company_source_key_uq")
+  @@unique([id, companyId], map: "journals_id_company_uq")
+  @@index([companyId, postingDate, status], map: "journals_company_posting_status_idx")
+  @@index([companyId, periodId, status], map: "journals_company_period_status_idx")
+  @@index([companyId, sourceType, sourceId], map: "journals_company_source_idx")
+  @@index([createdBy, postingDate], map: "journals_created_by_posting_idx")
+  @@map("journals")
+}
+
+/// Final Module 18 journal line with optional Project and Project Stage dimensions.
+model JournalLine {
+  id          String  @id @default(uuid()) @db.Uuid
+  journalId   String  @map("journal_id") @db.Uuid
+  accountId   String  @map("account_id") @db.Uuid
+  projectId   String? @map("project_id") @db.Uuid
+  stageId     String? @map("stage_id") @db.Uuid
+  debit       Decimal @db.Decimal(18, 2)
+  credit      Decimal @db.Decimal(18, 2)
+  description String  @db.Text
+
+  journal Journal       @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  account GlAccount     @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project?      @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage   ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([journalId], map: "journal_lines_journal_idx")
+  @@index([accountId], map: "journal_lines_account_idx")
+  @@index([projectId], map: "journal_lines_project_idx")
+  @@index([stageId], map: "journal_lines_stage_idx")
+  @@map("journal_lines")
+}
+
+/// Final Module 18 cash/bank account mapped to one General Ledger account.
+model CashBankAccount {
+  id               String  @id @default(uuid()) @db.Uuid
+  companyId        String  @map("company_id") @db.Uuid
+  code             String  @db.VarChar(100)
+  name             String  @db.VarChar(300)
+  accountType      String  @map("account_type") @db.VarChar(32)
+  glAccountId      String  @map("gl_account_id") @db.Uuid
+  bankName         String? @map("bank_name") @db.VarChar(200)
+  accountReference String? @map("account_reference") @db.VarChar(200)
+  status           String  @db.VarChar(32)
+
+  company         Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  glAccount       GlAccount            @relation(fields: [glAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  reconciliations BankReconciliation[]
+  siteExpenses    SiteExpense[]
+  supplierPayments SupplierPayment[]
+  clientReceipts    ClientReceipt[]
+
+  @@unique([companyId, code], map: "cash_bank_accounts_company_code_uq")
+  @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
+  @@unique([id, companyId], map: "cash_bank_accounts_id_company_uq")
+  @@index([companyId, status, accountType], map: "cash_bank_accounts_company_status_type_idx")
+  @@map("cash_bank_accounts")
+}
+
+/// Final Module 18 bank/cash reconciliation snapshot with an audited server-derived balance.
+model BankReconciliation {
+  id                String   @id @default(uuid()) @db.Uuid
+  cashBankAccountId String   @map("cash_bank_account_id") @db.Uuid
+  statementDate     DateTime @map("statement_date") @db.Date
+  status            String   @db.VarChar(32)
+  reconciledBalance Decimal  @map("reconciled_balance") @db.Decimal(18, 2)
+  createdBy         String   @map("created_by") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator         User            @relation("BankReconciliationCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([cashBankAccountId, statementDate], map: "bank_reconciliations_account_statement_idx")
+  @@index([createdBy, createdAt], map: "bank_reconciliations_created_by_idx")
+  @@map("bank_reconciliations")
+}
+
+/// Final Module 9 Project budget version.
+/// Frozen versions are immutable; revisions create a new server-numbered version.
+model ProjectBudget {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  versionNo   Int       @map("version_no")
+  status      String    @db.VarChar(32)
+  currency    String    @db.Char(3)
+  totalAmount Decimal   @default(0) @map("total_amount") @db.Decimal(18, 2)
+  createdBy   String    @map("created_by") @db.Uuid
+  frozenAt    DateTime? @map("frozen_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator User    @relation("ProjectBudgetCreatedBy", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  lines   BudgetLine[]
+
+  @@unique([projectId, versionNo], map: "project_budgets_project_version_uq")
+  @@unique([id, projectId], map: "project_budgets_id_project_uq")
+  @@unique([id, companyId], map: "project_budgets_id_company_uq")
+  @@index([companyId, projectId, status, versionNo], map: "project_budgets_company_project_status_version_idx")
+  @@index([createdBy], map: "project_budgets_created_by_idx")
+  @@map("project_budgets")
+}
+
+/// Final Module 9 Project budget line using an optional Stage and simple cost category.
+model BudgetLine {
+  id            String  @id @default(uuid()) @db.Uuid
+  budgetId      String  @map("budget_id") @db.Uuid
+  stageId       String? @map("stage_id") @db.Uuid
+  category      String  @db.VarChar(32)
+  description   String  @db.VarChar(500)
+  plannedAmount Decimal @map("planned_amount") @db.Decimal(18, 2)
+
+  budget ProjectBudget @relation(fields: [budgetId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage  ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([id, budgetId], map: "budget_lines_id_budget_uq")
+  @@index([budgetId, stageId, category], map: "budget_lines_budget_stage_category_idx")
+  @@map("budget_lines")
+}
+
+/// Final Module 9 source-derived Project/Stage commitment.
+/// Operational source modules own writes; this table preserves an idempotent source key.
+model CostCommitment {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  projectId  String   @map("project_id") @db.Uuid
+  stageId    String?  @map("stage_id") @db.Uuid
+  category   String   @db.VarChar(32)
+  sourceType String   @map("source_type") @db.VarChar(100)
+  sourceId   String   @map("source_id") @db.VarChar(200)
+  sourceKey  String   @map("source_key") @db.VarChar(700)
+  amount     Decimal  @db.Decimal(18, 2)
+  status     String   @db.VarChar(32)
+  postedAt   DateTime @default(now()) @map("posted_at") @db.Timestamptz(6)
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage   ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, sourceKey], map: "cost_commitments_company_source_key_uq")
+  @@index([projectId, stageId, category, status], map: "cost_commitments_project_stage_category_status_idx")
+  @@map("cost_commitments")
+}
+
+/// Final Module 9 append-only source-derived Project/Stage actual cost.
+/// Corrections use later source adjustments/reversals instead of editing posted history.
+model CostActual {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  stageId     String?  @map("stage_id") @db.Uuid
+  category    String   @db.VarChar(32)
+  sourceType  String   @map("source_type") @db.VarChar(100)
+  sourceId    String   @map("source_id") @db.VarChar(200)
+  sourceKey   String   @map("source_key") @db.VarChar(700)
+  amount      Decimal  @db.Decimal(18, 2)
+  postingDate DateTime @map("posting_date") @db.Date
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage   ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, sourceKey], map: "cost_actuals_company_source_key_uq")
+  @@index([projectId, stageId, category, postingDate], map: "cost_actuals_project_stage_category_date_idx")
+  @@map("cost_actuals")
+}
+
+/// Final Module 9 current Project/Stage/category forecast.
+/// Forecasts are planning values and never overwrite posted actual cost history.
+model ForecastLine {
+  id             String   @id @default(uuid()) @db.Uuid
+  projectId      String   @map("project_id") @db.Uuid
+  stageId        String?  @map("stage_id") @db.Uuid
+  category       String   @db.VarChar(32)
+  forecastAmount Decimal  @map("forecast_amount") @db.Decimal(18, 2)
+  updatedBy      String   @map("updated_by") @db.Uuid
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage         ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  updatedByUser User          @relation("ForecastLineUpdatedBy", fields: [updatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([projectId, stageId, category], map: "forecast_lines_project_stage_category_idx")
+  @@index([updatedBy, updatedAt], map: "forecast_lines_updated_by_at_idx")
+  @@map("forecast_lines")
+}
+
+/// Final Module 5 company-owned supplier/vendor master used by Procurement and future Supplier Payables.
+model Vendor {
+  id                  String  @id @default(uuid()) @db.Uuid
+  companyId           String  @map("company_id") @db.Uuid
+  code                String  @db.VarChar(100)
+  legalName           String  @map("legal_name") @db.VarChar(300)
+  displayName         String  @map("display_name") @db.VarChar(300)
+  taxNo               String? @map("tax_no") @db.VarChar(100)
+  paymentTermsDays    Int?    @map("payment_terms_days")
+  currency            String? @db.Char(3)
+  status              String  @db.VarChar(32)
+  qualificationStatus String? @map("qualification_status") @db.VarChar(32)
+
+  company        Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  contacts       VendorContact[]
+  purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
+  subcontractors Subcontractor[]
+  supplierInvoices SupplierInvoice[]
+  supplierPayments SupplierPayment[]
+
+  @@unique([id, companyId], map: "vendors_id_company_uq")
+  @@unique([companyId, code], map: "vendors_company_code_uq")
+  @@index([companyId, status, qualificationStatus], map: "vendors_company_status_qualification_idx")
+  @@map("vendors")
+}
+
+/// Contact owned through one supplier/vendor master row.
+model VendorContact {
+  id       String  @id @default(uuid()) @db.Uuid
+  vendorId String  @map("vendor_id") @db.Uuid
+  name     String  @db.VarChar(200)
+  email    String? @db.VarChar(320)
+  phone    String? @db.VarChar(50)
+  role     String? @db.VarChar(120)
+  status   String  @db.VarChar(32)
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([vendorId, status], map: "vendor_contacts_vendor_status_idx")
+  @@index([vendorId, email], map: "vendor_contacts_vendor_email_idx")
+  @@map("vendor_contacts")
+}
+
+/// Final-21 Company/Project-scoped material requirement header.
+/// Request number and lifecycle state remain server-owned.
+model PurchaseRequisition {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  stageId       String?  @map("stage_id") @db.Uuid
+  prNo          String   @map("pr_no") @db.VarChar(100)
+  requestedBy   String   @map("requested_by") @db.Uuid
+  requiredDate  DateTime @map("required_date") @db.Date
+  status        String   @db.VarChar(32)
+  purpose       String   @db.Text
+
+  company   Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project   Project                   @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage     ProjectStage?              @relation("PurchaseRequisitionStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requester User                      @relation("PurchaseRequisitionRequester", fields: [requestedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  items          PurchaseRequisitionItem[]
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([companyId, prNo], map: "purchase_requisitions_company_pr_no_uq")
+  @@unique([id, companyId, projectId], map: "purchase_requisitions_id_company_project_uq")
+  @@index([companyId, projectId, status, requiredDate], map: "purchase_requisitions_company_project_status_required_idx")
+  @@index([stageId], map: "purchase_requisitions_stage_idx")
+  @@index([requestedBy, requiredDate], map: "purchase_requisitions_requester_required_idx")
+  @@map("purchase_requisitions")
+}
+
+/// Final-21 material requirement line with material and optional stage attribution.
+/// item_id remains nullable only for legacy-row compatibility; active API creation requires a material.
+model PurchaseRequisitionItem {
+  id            String   @id @default(uuid()) @db.Uuid
+  requisitionId String   @map("requisition_id") @db.Uuid
+  itemId        String?  @map("item_id") @db.Uuid
+  stageId       String?  @map("stage_id") @db.Uuid
+  description   String   @db.Text
+  quantity      Decimal  @db.Decimal(18, 4)
+  unit          String   @db.VarChar(64)
+  estimatedRate Decimal? @map("estimated_rate") @db.Decimal(18, 4)
+
+  requisition        PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inventoryItem      Material?      @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage              ProjectStage?       @relation("PurchaseRequisitionItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  purchaseOrderItems PurchaseOrderItem[]
+
+  @@index([requisitionId, stageId], map: "purchase_requisition_items_requisition_stage_idx")
+  @@index([itemId], map: "purchase_requisition_items_future_item_idx")
+  @@map("purchase_requisition_items")
+}
+
+/// Final-21 Company/Project-scoped Purchase Order created from an approved material requirement.
+model PurchaseOrder {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  poNo            String   @map("po_no") @db.VarChar(100)
+  vendorId        String   @map("vendor_id") @db.Uuid
+  requisitionId   String?  @map("requisition_id") @db.Uuid
+  cancelReason     String?  @map("cancel_reason") @db.Text
+  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy      String?  @map("cancelled_by") @db.Uuid
+  orderDate       DateTime @map("order_date") @db.Date
+  currency        String   @db.Char(3)
+  status          String   @db.VarChar(32)
+  subtotal        Decimal  @db.Decimal(18, 2)
+  tax             Decimal  @db.Decimal(18, 2)
+  total           Decimal  @db.Decimal(18, 2)
+  deliveryAddress String   @map("delivery_address") @db.Text
+  terms           String   @db.Text
+
+  company   Company            @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project   Project            @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  vendor    Vendor             @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  requisition PurchaseRequisition? @relation(fields: [requisitionId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
+  items     PurchaseOrderItem[]
+  canceller  User?                   @relation("PurchaseOrderCanceller", fields: [cancelledBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  goodsReceipts GoodsReceipt[]
+  supplierInvoices SupplierInvoice[]
+
+  @@unique([companyId, poNo], map: "purchase_orders_company_po_no_uq")
+  @@unique([id, companyId, projectId], map: "purchase_orders_id_company_project_uq")
+  @@unique([id, companyId, projectId, vendorId], map: "purchase_orders_id_company_project_vendor_uq")
+  @@index([companyId, projectId, status, orderDate], map: "purchase_orders_company_project_status_order_idx")
+  @@index([companyId, vendorId, status], map: "purchase_orders_company_vendor_status_idx")
+  @@index([requisitionId], map: "purchase_orders_requisition_idx")
+  @@map("purchase_orders")
+}
+
+/// Final-21 decimal-safe Purchase Order line linked to its approved requirement line.
+/// Material/stage attribution is copied from the requirement; received quantity remains server-owned.
+model PurchaseOrderItem {
+  id                String  @id @default(uuid()) @db.Uuid
+  purchaseOrderId   String  @map("purchase_order_id") @db.Uuid
+  requisitionItemId String? @map("requisition_item_id") @db.Uuid
+  itemId            String? @map("item_id") @db.Uuid
+  stageId           String? @map("stage_id") @db.Uuid
+  description       String  @db.Text
+  quantity          Decimal @db.Decimal(18, 4)
+  unit              String  @db.VarChar(64)
+  unitRate          Decimal @map("unit_rate") @db.Decimal(18, 4)
+  taxRate           Decimal @map("tax_rate") @db.Decimal(18, 4)
+  lineTotal         Decimal @map("line_total") @db.Decimal(18, 2)
+  receivedQty       Decimal @default(0) @map("received_qty") @db.Decimal(18, 4)
+  invoicedAmount    Decimal @default(0) @map("invoiced_amount") @db.Decimal(18, 2)
+
+  purchaseOrder   PurchaseOrder            @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requisitionItem PurchaseRequisitionItem? @relation(fields: [requisitionItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inventoryItem   Material?           @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage           ProjectStage?            @relation("PurchaseOrderItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  goodsReceiptItems GoodsReceiptItem[]
+
+  @@index([purchaseOrderId, stageId], map: "purchase_order_items_po_stage_idx")
+  @@index([requisitionItemId], map: "purchase_order_items_requisition_item_idx")
+  @@index([itemId], map: "purchase_order_items_future_item_idx")
+  @@map("purchase_order_items")
+}
+
+/// Final Module 11 Company-owned material master.
+model Material {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @map("company_id") @db.Uuid
+  code      String  @db.VarChar(100)
+  name      String  @db.VarChar(300)
+  unit      String  @db.VarChar(64)
+  category  String? @db.VarChar(120)
+  status    String  @db.VarChar(32)
+
+  company                  Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  goodsReceiptItems        GoodsReceiptItem[]
+  purchaseRequisitionItems PurchaseRequisitionItem[]
+  purchaseOrderItems       PurchaseOrderItem[]
+  stockLedger              StockLedger[]
+  materialIssueItems       MaterialIssueItem[]
+
+  @@unique([companyId, code], map: "materials_company_code_uq")
+  @@unique([id, companyId], map: "materials_id_company_uq")
+  @@index([companyId, status, category], map: "materials_company_status_category_idx")
+  @@map("materials")
+}
+
+/// Final Module 11 Company or Project warehouse/site-store master.
+model Warehouse {
+  id        String  @id @default(uuid()) @db.Uuid
+  companyId String  @map("company_id") @db.Uuid
+  projectId String? @map("project_id") @db.Uuid
+  code      String  @db.VarChar(100)
+  name      String  @db.VarChar(300)
+  location  String? @db.Text
+  status    String  @db.VarChar(32)
+
+  company       Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project       Project?        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  goodsReceipts GoodsReceipt[]
+  stockLedger   StockLedger[]
+  materialIssues MaterialIssue[]
+
+  @@unique([companyId, code], map: "warehouses_company_code_uq")
+  @@unique([id, companyId], map: "warehouses_id_company_uq")
+  @@index([companyId, projectId, status], map: "warehouses_company_project_status_idx")
+  @@map("warehouses")
+}
+
+/// Procurement-owned Goods Receipt consumed by Final Module 11 stock posting.
+/// Company/Project, Purchase Order, warehouse and receiver identity are persistence-scoped; lifecycle tokens remain service-owned.
+model GoodsReceipt {
+  id              String   @id @default(uuid()) @db.Uuid
+  companyId       String   @map("company_id") @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  vendorId        String   @map("vendor_id") @db.Uuid
+  warehouseId     String   @map("warehouse_id") @db.Uuid
+  receiptNo       String   @map("receipt_no") @db.VarChar(100)
+  purchaseOrderId String   @map("purchase_order_id") @db.Uuid
+  receivedAt      DateTime @map("received_at") @db.Timestamptz(6)
+  status          String   @db.VarChar(32)
+  receivedBy      String   @map("received_by") @db.Uuid
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  vendor        Vendor        @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  warehouse     Warehouse     @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
+  receiver      User          @relation("GoodsReceiptReceiver", fields: [receivedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  items         GoodsReceiptItem[]
+  supplierInvoices SupplierInvoice[]
+
+  @@unique([companyId, receiptNo], map: "goods_receipts_company_receipt_no_uq")
+  @@unique([id, companyId, projectId, vendorId], map: "goods_receipts_id_company_project_vendor_uq")
+  @@index([companyId, projectId, receivedAt], map: "goods_receipts_company_project_received_idx")
+  @@index([purchaseOrderId, status], map: "goods_receipts_po_status_idx")
+  @@index([warehouseId, receivedAt], map: "goods_receipts_warehouse_received_idx")
+  @@index([receivedBy, receivedAt], map: "goods_receipts_receiver_received_idx")
+  @@map("goods_receipts")
+}
+
+/// Procurement-owned Goods Receipt line linked to the Final Module 11 Material master.
+/// The migration additionally checks that po_item_id belongs to the header Purchase Order and item_id belongs to the receipt Company.
+model GoodsReceiptItem {
+  id                String  @id @default(uuid()) @db.Uuid
+  goodsReceiptId    String  @map("goods_receipt_id") @db.Uuid
+  poItemId          String  @map("po_item_id") @db.Uuid
+  itemId            String  @map("item_id") @db.Uuid
+  stageId           String? @map("stage_id") @db.Uuid
+  quantity          Decimal @db.Decimal(18, 4)
+  sourceUnit        String  @map("source_unit") @db.VarChar(64)
+  conversionFactor  Decimal @map("conversion_factor") @db.Decimal(18, 4)
+  sourceUnitCost    Decimal @map("source_unit_cost") @db.Decimal(18, 4)
+  unitCost          Decimal @map("unit_cost") @db.Decimal(18, 4)
+  acceptedQty       Decimal @map("accepted_qty") @db.Decimal(18, 4)
+  rejectedQty       Decimal @map("rejected_qty") @db.Decimal(18, 4)
+  batchNo           String? @map("batch_no") @db.VarChar(120)
+  baseQuantity      Decimal @map("base_quantity") @db.Decimal(18, 4)
+  acceptedBaseQty   Decimal @map("accepted_base_qty") @db.Decimal(18, 4)
+  rejectedBaseQty   Decimal @map("rejected_base_qty") @db.Decimal(18, 4)
+
+  goodsReceipt      GoodsReceipt      @relation(fields: [goodsReceiptId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  purchaseOrderItem PurchaseOrderItem @relation(fields: [poItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  item              Material          @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage             ProjectStage?      @relation("GoodsReceiptItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([goodsReceiptId, poItemId], map: "goods_receipt_items_receipt_po_item_idx")
+  @@index([itemId], map: "goods_receipt_items_item_idx")
+  @@map("goods_receipt_items")
+}
+
+/// Final Module 11 append-only stock ledger. Balances are derived from posted movements.
+model StockLedger {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  materialId   String   @map("material_id") @db.Uuid
+  warehouseId  String   @map("warehouse_id") @db.Uuid
+  projectId    String?  @map("project_id") @db.Uuid
+  stageId      String?  @map("stage_id") @db.Uuid
+  movementType String   @map("movement_type") @db.VarChar(64)
+  quantity     Decimal  @db.Decimal(18, 4)
+  unitCost     Decimal  @map("unit_cost") @db.Decimal(18, 4)
+  sourceType   String   @map("source_type") @db.VarChar(100)
+  sourceId     String   @map("source_id") @db.VarChar(200)
+  occurredAt   DateTime @map("occurred_at") @db.Timestamptz(6)
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  material  Material      @relation(fields: [materialId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  warehouse Warehouse     @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project   Project?      @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage     ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, warehouseId, materialId, occurredAt], map: "stock_ledger_company_warehouse_material_at_idx")
+  @@index([companyId, projectId, stageId, occurredAt], map: "stock_ledger_company_project_stage_at_idx")
+  @@index([companyId, sourceType, sourceId], map: "stock_ledger_company_source_idx")
+  @@map("stock_ledger")
+}
+
+/// Final Module 11 material issue header.
+model MaterialIssue {
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  projectId   String   @map("project_id") @db.Uuid
+  stageId     String?  @map("stage_id") @db.Uuid
+  warehouseId String   @map("warehouse_id") @db.Uuid
+  issueNo     String   @map("issue_no") @db.VarChar(100)
+  issueDate   DateTime @map("issue_date") @db.Date
+  description String?  @db.VarChar(1000)
+  issuedBy    String   @map("issued_by") @db.Uuid
+  status      String   @db.VarChar(32)
+
+  company   Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project   Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage     ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  warehouse Warehouse     @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  issuer    User          @relation("MaterialIssueIssuedBy", fields: [issuedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  items     MaterialIssueItem[]
+
+  @@unique([companyId, issueNo], map: "material_issues_company_issue_no_uq")
+  @@unique([id, companyId], map: "material_issues_id_company_uq")
+  @@index([companyId, projectId, stageId, issueDate], map: "material_issues_project_stage_date_idx")
+  @@map("material_issues")
+}
+
+/// Final Module 11 material issue line with source-derived cost.
+model MaterialIssueItem {
+  id         String  @id @default(uuid()) @db.Uuid
+  issueId    String  @map("issue_id") @db.Uuid
+  materialId String  @map("material_id") @db.Uuid
+  quantity   Decimal @db.Decimal(18, 4)
+  unitCost   Decimal @map("unit_cost") @db.Decimal(18, 4)
+  lineCost   Decimal @map("line_cost") @db.Decimal(18, 2)
+
+  issue    MaterialIssue @relation(fields: [issueId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  material Material      @relation(fields: [materialId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([issueId, materialId], map: "material_issue_items_issue_material_idx")
+  @@map("material_issue_items")
+}
+
+/// Final Module 5 company-owned subcontractor master.
+/// Operational subcontract contracts/payment applications are outside the final 21-module scope.
+model Subcontractor {
+  id           String  @id @default(uuid()) @db.Uuid
+  companyId    String  @map("company_id") @db.Uuid
+  vendorId     String? @map("vendor_id") @db.Uuid
+  code         String  @db.VarChar(100)
+  specialty    String  @db.VarChar(200)
+  status       String  @db.VarChar(32)
+  defaultTerms String? @map("default_terms") @db.Text
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor  Vendor? @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([id, companyId], map: "subcontractors_id_company_uq")
+  @@index([companyId, code], map: "subcontractors_company_code_idx")
+  @@index([companyId, vendorId], map: "subcontractors_company_vendor_idx")
+  @@index([companyId, status, specialty], map: "subcontractors_company_status_specialty_idx")
+  @@map("subcontractors")
+}
+
+/// Final Module 12 Company-owned Equipment master.
+model Equipment {
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  code          String   @db.VarChar(100)
+  name          String   @db.VarChar(300)
+  equipmentType String   @map("equipment_type") @db.VarChar(120)
+  ownershipType String   @map("ownership_type") @db.VarChar(64)
+  defaultRate   Decimal? @map("default_rate") @db.Decimal(18, 4)
+  rateUnit      String?  @map("rate_unit") @db.VarChar(32)
+  status        String   @db.VarChar(32)
+
+  company     Company                @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignments EquipmentAssignment[]
+  maintenance EquipmentMaintenance[]
+
+  @@unique([companyId, code], map: "equipment_company_code_uq")
+  @@index([companyId, status], map: "equipment_company_status_idx")
+  @@index([companyId, equipmentType, status], map: "equipment_company_type_status_idx")
+  @@map("equipment")
+}
+
+/// Final Module 12 effective Project/Stage assignment for one Equipment item.
+model EquipmentAssignment {
+  id          String    @id @default(uuid()) @db.Uuid
+  equipmentId String    @map("equipment_id") @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  stageId     String?   @map("stage_id") @db.Uuid
+  fromDate    DateTime  @map("from_date") @db.Date
+  toDate      DateTime? @map("to_date") @db.Date
+  status      String    @db.VarChar(32)
+
+  equipment Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage     ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  usage     EquipmentUsage[]
+
+  @@index([equipmentId, fromDate, toDate], map: "equipment_assignments_equipment_dates_idx")
+  @@index([projectId, stageId, fromDate, toDate], map: "equipment_assignments_project_stage_dates_idx")
+  @@map("equipment_assignments")
+}
+
+/// Final Module 12 usage/rental history. Amount is source-derived and posts to Project Budget & Cost.
+model EquipmentUsage {
+  id           String   @id @default(uuid()) @db.Uuid
+  assignmentId String   @map("assignment_id") @db.Uuid
+  usageDate    DateTime @map("usage_date") @db.Date
+  quantity     Decimal  @db.Decimal(18, 4)
+  rate         Decimal  @db.Decimal(18, 4)
+  amount       Decimal  @db.Decimal(18, 2)
+  enteredBy    String   @map("entered_by") @db.Uuid
+  status       String   @db.VarChar(32)
+
+  assignment EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  enteredByUser User               @relation("EquipmentUsageEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([assignmentId, usageDate], map: "equipment_usage_assignment_date_idx")
+  @@index([enteredBy, usageDate], map: "equipment_usage_entered_by_date_idx")
+  @@map("equipment_usage")
+}
+
+/// Final Module 12 Equipment maintenance history without a separate work-order subsystem.
+model EquipmentMaintenance {
+  id              String   @id @default(uuid()) @db.Uuid
+  equipmentId     String   @map("equipment_id") @db.Uuid
+  maintenanceDate DateTime @map("maintenance_date") @db.Date
+  type            String   @db.VarChar(120)
+  cost            Decimal  @db.Decimal(18, 2)
+  note            String?  @db.Text
+  status          String   @db.VarChar(32)
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([equipmentId, maintenanceDate], map: "equipment_maintenance_equipment_date_idx")
+  @@index([equipmentId, status, maintenanceDate], map: "equipment_maintenance_equipment_status_date_idx")
+  @@map("equipment_maintenance")
+}
+
+/// Final Module 3 Company-owned Employee master used by Project Team and Payroll.
+/// Effective-dated salary/wage/rate history is owned only by EmployeeCompensation.
+model Employee {
+  id             String    @id @default(uuid()) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  employeeNo     String    @map("employee_no") @db.VarChar(100)
+  userId         String?   @map("user_id") @db.Uuid
+  name           String    @db.VarChar(200)
+  cnicOrId       String?   @map("cnic_or_id") @db.VarChar(100)
+  phone          String?   @db.VarChar(50)
+  email          String?   @db.VarChar(320)
+  department     String    @db.VarChar(160)
+  jobTitle       String    @map("job_title") @db.VarChar(160)
+  employmentType String    @map("employee_type") @db.VarChar(64)
+  joinDate       DateTime  @map("joining_date") @db.Date
+  status         String    @db.VarChar(32)
+
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  loginUser     User?          @relation("EmployeeLoginUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  projectTeamAssignments        ProjectTeamAssignment[]
+  attendanceEntries             AttendanceEntry[]
+  compensations                 EmployeeCompensation[]
+  employmentHistory             EmployeeEmploymentHistory[]
+  payrollLines                  PayrollLine[]
+
+  @@unique([companyId, employeeNo], map: "employees_company_employee_no_uq")
+  @@unique([id, companyId], map: "employees_id_company_uq")
+  @@unique([companyId, cnicOrId], map: "employees_company_cnic_or_id_uq")
+  @@index([companyId, status], map: "employees_company_status_idx")
+  @@index([companyId, name], map: "employees_company_name_idx")
+  @@index([userId], map: "employees_user_idx")
+  @@map("employees")
+}
+
+/// Final Module 13 daily attendance/work record.
+/// Company, Project, optional Stage and actor scope are enforced by relations plus the Final-21 migration trigger.
+model AttendanceEntry {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  employeeId    String    @map("employee_id") @db.Uuid
+  projectId     String    @map("project_id") @db.Uuid
+  stageId       String?   @map("stage_id") @db.Uuid
+  workDate      DateTime  @map("work_date") @db.Date
+  status        String    @db.VarChar(32)
+  hours         Decimal?  @db.Decimal(18, 4)
+  overtimeHours Decimal?  @map("overtime_hours") @db.Decimal(18, 4)
+  enteredBy     String    @map("entered_by") @db.Uuid
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee      Employee      @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage         ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  enteredByUser User           @relation("AttendanceEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, employeeId, projectId, workDate], map: "attendance_entries_company_employee_project_date_uq")
+  @@index([companyId, projectId, workDate], map: "attendance_entries_company_project_date_idx")
+  @@index([companyId, employeeId, workDate], map: "attendance_entries_company_employee_date_idx")
+  @@index([stageId, workDate], map: "attendance_entries_stage_date_idx")
+  @@index([enteredBy], map: "attendance_entries_entered_by_idx")
+  @@map("attendance_entries")
+}
+
+/// Final Module 3 append-only Employee employment history.
+model EmployeeEmploymentHistory {
+  id            String   @id @default(uuid()) @db.Uuid
+  employeeId    String   @map("employee_id") @db.Uuid
+  eventType     String   @map("event_type") @db.VarChar(64)
+  effectiveDate DateTime @map("effective_date") @db.Date
+  notes         String?  @db.Text
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([employeeId, effectiveDate], map: "employee_employment_history_employee_date_idx")
+  @@map("employee_employment_history")
+}
+
+/// Final Module 3 effective-dated compensation authority used by Payroll calculation.
+model EmployeeCompensation {
+  id            String    @id @default(uuid()) @db.Uuid
+  companyId     String    @map("company_id") @db.Uuid
+  employeeId    String    @map("employee_id") @db.Uuid
+  payType       String    @map("pay_type") @db.VarChar(16)
+  baseSalary    Decimal?  @map("base_salary_or_wage") @db.Decimal(18, 2)
+  hourlyRate    Decimal?  @map("hourly_rate") @db.Decimal(18, 4)
+  effectiveFrom DateTime  @map("effective_from") @db.Date
+  effectiveTo   DateTime? @map("effective_to") @db.Date
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company  Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, employeeId, effectiveFrom], map: "employee_compensation_company_employee_from_idx")
+  @@index([employeeId, effectiveFrom, effectiveTo], map: "employee_compensation_employee_dates_idx")
+  @@map("employee_compensation")
+}
+
+/// Final Module 13 Payroll Run header.
+/// Calculation lines are replaceable until finalization; finalized history is immutable.
+model PayrollRun {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  periodStart DateTime  @map("period_start") @db.Date
+  periodEnd   DateTime  @map("period_end") @db.Date
+  status      String    @db.VarChar(32)
+  createdBy   String    @map("created_by") @db.Uuid
+  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator User          @relation("PayrollCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines   PayrollLine[]
+
+  @@index([companyId, periodStart, periodEnd], map: "payroll_runs_company_period_idx")
+  @@index([companyId, status, periodStart], map: "payroll_runs_company_status_period_idx")
+  @@index([createdBy], map: "payroll_runs_created_by_idx")
+  @@map("payroll_runs")
+}
+
+/// Final Module 13 server-calculated Employee Payroll line.
+model PayrollLine {
+  id                    String  @id @default(uuid()) @db.Uuid
+  payrollRunId          String  @map("payroll_run_id") @db.Uuid
+  employeeId            String  @map("employee_id") @db.Uuid
+  grossAmount           Decimal @map("gross_amount") @db.Decimal(18, 2)
+  deductions            Decimal @db.Decimal(18, 2)
+  netAmount             Decimal @map("net_amount") @db.Decimal(18, 2)
+  projectAllocationJson Json    @map("project_allocation_json") @db.JsonB
+
+  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payslip    Payslip?
+
+  @@unique([payrollRunId, employeeId], map: "payroll_lines_run_employee_uq")
+  @@index([employeeId, payrollRunId], map: "payroll_lines_employee_run_idx")
+  @@map("payroll_lines")
+}
+
+/// Final Module 13 Payslip metadata linked to one calculated Employee Payroll line.
+model Payslip {
+  id            String    @id @default(uuid()) @db.Uuid
+  payrollLineId String    @unique(map: "payslips_payroll_line_uq") @map("payroll_line_id") @db.Uuid
+  documentId    String?   @map("document_id") @db.Uuid
+  generatedAt   DateTime? @map("generated_at") @db.Timestamptz(6)
+
+  payrollLine PayrollLine @relation(fields: [payrollLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  document    Document?   @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([documentId], map: "payslips_document_idx")
+  @@map("payslips")
+}
+
+/// Final Module 14 Company-owned Site Expense category.
+/// The optional default GL account is only a posting default; Finance remains the account owner.
+model ExpenseCategory {
+  id                 String  @id @default(uuid()) @db.Uuid
+  companyId          String  @map("company_id") @db.Uuid
+  code               String  @db.VarChar(100)
+  name               String  @db.VarChar(200)
+  defaultGlAccountId String? @map("default_gl_account_id") @db.Uuid
+  status             String  @db.VarChar(32)
+
+  company          Company      @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  defaultGlAccount GlAccount?   @relation(fields: [defaultGlAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  siteExpenses     SiteExpense[]
+
+  @@unique([companyId, code], map: "expense_categories_company_code_uq")
+  @@unique([id, companyId], map: "expense_categories_id_company_uq")
+  @@index([companyId, status, name], map: "expense_categories_company_status_name_idx")
+  @@index([defaultGlAccountId], map: "expense_categories_default_gl_account_idx")
+  @@map("expense_categories")
+}
+
+/// Final Module 14 Site Expense draft/posted record.
+/// Project/Stage, Finance account, evidence and creator ownership are enforced by composite relations.
+model SiteExpense {
+  id                String    @id @default(uuid()) @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  stageId           String?   @map("stage_id") @db.Uuid
+  expenseNo         String    @map("expense_no") @db.VarChar(100)
+  expenseDate       DateTime  @map("expense_date") @db.Date
+  categoryId        String    @map("category_id") @db.Uuid
+  description       String    @db.Text
+  amount            Decimal   @db.Decimal(18, 2)
+  paymentMode       String    @map("payment_mode") @db.VarChar(32)
+  cashBankAccountId String?   @map("cash_bank_account_id") @db.Uuid
+  status            String    @default("DRAFT") @db.VarChar(32)
+  documentId        String?   @map("document_id") @db.Uuid
+  createdBy         String    @map("created_by") @db.Uuid
+  postedAt          DateTime? @map("posted_at") @db.Timestamptz(6)
+
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project         Project          @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage           ProjectStage?    @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  category        ExpenseCategory  @relation(fields: [categoryId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount? @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  document        Document?        @relation(fields: [documentId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator         User             @relation(fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, expenseNo], map: "site_expenses_company_expense_no_uq")
+  @@unique([id, companyId], map: "site_expenses_id_company_uq")
+  @@index([companyId, projectId, status, expenseDate], map: "site_expenses_company_project_status_date_idx")
+  @@index([projectId, stageId, expenseDate], map: "site_expenses_project_stage_date_idx")
+  @@index([companyId, categoryId, expenseDate], map: "site_expenses_company_category_date_idx")
+  @@index([cashBankAccountId, expenseDate], map: "site_expenses_cash_bank_date_idx")
+  @@index([documentId], map: "site_expenses_document_idx")
+  @@index([createdBy, expenseDate], map: "site_expenses_created_by_date_idx")
+  @@map("site_expenses")
+}
+
+/// Final Module 17 Supplier Invoice header.
+/// Vendor/Project ownership and optional Procurement references are company-scoped; posting logic is deferred.
+model SupplierInvoice {
+  id              String    @id @default(uuid()) @db.Uuid
+  companyId       String    @map("company_id") @db.Uuid
+  vendorId        String    @map("vendor_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  invoiceNo       String    @map("invoice_no") @db.VarChar(150)
+  invoiceDate     DateTime  @map("invoice_date") @db.Date
+  dueDate         DateTime? @map("due_date") @db.Date
+  purchaseOrderId String?   @map("purchase_order_id") @db.Uuid
+  goodsReceiptId  String?   @map("goods_receipt_id") @db.Uuid
+  status          String    @default("DRAFT") @db.VarChar(32)
+  subtotal        Decimal   @db.Decimal(18, 2)
+  taxAmount       Decimal   @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount     Decimal   @map("total_amount") @db.Decimal(18, 2)
+
+  company       Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor        Vendor         @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project       Project        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
+  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
+  lines         SupplierInvoiceLine[]
+  allocations   SupplierPaymentAllocation[]
+
+  @@unique([companyId, vendorId, invoiceNo], map: "supplier_invoices_company_vendor_invoice_no_uq")
+  @@unique([id, companyId], map: "supplier_invoices_id_company_uq")
+  @@index([companyId, projectId, status, invoiceDate], map: "supplier_invoices_company_project_status_date_idx")
+  @@index([companyId, vendorId, status, dueDate], map: "supplier_invoices_company_vendor_status_due_idx")
+  @@index([purchaseOrderId], map: "supplier_invoices_purchase_order_idx")
+  @@index([goodsReceiptId], map: "supplier_invoices_goods_receipt_idx")
+  @@map("supplier_invoices")
+}
+
+/// Final Module 17 Supplier Invoice line.
+/// Stage and expense/inventory account are optional dimensions validated against the invoice scope by the service layer.
+model SupplierInvoiceLine {
+  id                          String  @id @default(uuid()) @db.Uuid
+  supplierInvoiceId           String  @map("supplier_invoice_id") @db.Uuid
+  stageId                     String? @map("stage_id") @db.Uuid
+  description                 String  @db.Text
+  amount                      Decimal @db.Decimal(18, 2)
+  expenseOrInventoryAccountId String? @map("expense_or_inventory_account_id") @db.Uuid
+
+  supplierInvoice           SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage                     ProjectStage?    @relation("SupplierInvoiceLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  expenseOrInventoryAccount GlAccount?       @relation("SupplierInvoiceLineAccount", fields: [expenseOrInventoryAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([supplierInvoiceId, stageId], map: "supplier_invoice_lines_invoice_stage_idx")
+  @@index([expenseOrInventoryAccountId], map: "supplier_invoice_lines_account_idx")
+  @@map("supplier_invoice_lines")
+}
+
+/// Final Module 17 Supplier Payment header.
+/// Payment numbering, posting, immutability and cash/bank validation are implemented by later service passes.
+model SupplierPayment {
+  id                String   @id @default(uuid()) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  vendorId          String   @map("vendor_id") @db.Uuid
+  projectId         String?  @map("project_id") @db.Uuid
+  paymentNo         String   @map("payment_no") @db.VarChar(100)
+  paymentDate       DateTime @map("payment_date") @db.Date
+  amount            Decimal  @db.Decimal(18, 2)
+  cashBankAccountId String   @map("cash_bank_account_id") @db.Uuid
+  reference         String?  @db.VarChar(200)
+  status            String   @default("DRAFT") @db.VarChar(32)
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor          Vendor          @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project         Project?        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  allocations     SupplierPaymentAllocation[]
+
+  @@unique([companyId, paymentNo], map: "supplier_payments_company_payment_no_uq")
+  @@unique([id, companyId], map: "supplier_payments_id_company_uq")
+  @@index([companyId, vendorId, status, paymentDate], map: "supplier_payments_company_vendor_status_date_idx")
+  @@index([companyId, projectId, paymentDate], map: "supplier_payments_company_project_date_idx")
+  @@index([cashBankAccountId, paymentDate], map: "supplier_payments_cash_bank_date_idx")
+  @@map("supplier_payments")
+}
+
+/// Final Module 17 append-oriented Supplier Payment allocation history.
+/// Outstanding and remaining-payment balances are derived later from posted invoices/payments and these rows.
+model SupplierPaymentAllocation {
+  id                String   @id @default(uuid()) @db.Uuid
+  supplierPaymentId String   @map("supplier_payment_id") @db.Uuid
+  supplierInvoiceId String   @map("supplier_invoice_id") @db.Uuid
+  amount            Decimal  @db.Decimal(18, 2)
+  allocatedAt       DateTime @map("allocated_at") @db.Timestamptz(6)
+
+  supplierPayment SupplierPayment @relation(fields: [supplierPaymentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  supplierInvoice SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([supplierPaymentId, allocatedAt], map: "supplier_payment_allocations_payment_at_idx")
+  @@index([supplierInvoiceId, allocatedAt], map: "supplier_payment_allocations_invoice_at_idx")
+  @@map("supplier_payment_allocations")
+}
+
+/// Module 16 Project/Client billing contract.
+/// Numbering, billing-method and status vocabularies remain string-backed because the reviewed source does not enumerate them.
+model ProjectBillingSetting {
+  id                     String   @id @default(uuid()) @db.Uuid
+  companyId              String   @map("company_id") @db.Uuid
+  projectId              String   @map("project_id") @db.Uuid
+  billingMethod          String   @map("billing_method") @db.VarChar(64)
+  retentionPercent       Decimal? @map("retention_percent") @db.Decimal(7, 4)
+  billingCycle           String?  @map("billing_cycle") @db.VarChar(64)
+  advanceRecoveryEnabled Boolean  @default(false) @map("advance_recovery_enabled")
+  status                 String   @default("ACTIVE") @db.VarChar(32)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, projectId], map: "project_billing_settings_company_project_uq")
+  @@index([companyId, status], map: "project_billing_settings_company_status_idx")
+  @@map("project_billing_settings")
+}
+
+/// Final Module 15 claim owned by one Company Project and that Project's Client.
+/// B17.8 also protects the Client -> Project owner chain for direct database writes.
+model ProgressClaim {
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  clientId     String   @map("client_id") @db.Uuid
+  claimNo      String   @map("claim_no") @db.VarChar(100)
+  periodEnd    DateTime @map("period_end") @db.Date
+  status       String   @db.VarChar(32)
+  grossValue   Decimal  @map("gross_value") @db.Decimal(18, 2)
+  deductions   Decimal  @map("deduction_amount") @db.Decimal(18, 2)
+  retention    Decimal  @map("retention_amount") @db.Decimal(18, 2)
+  netCertified Decimal  @map("certified_value") @db.Decimal(18, 2)
+  createdBy    String?  @map("created_by") @db.Uuid
+
+  company Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project             @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  client  Client              @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  lines   ProgressClaimLine[]
+  invoice ClientInvoice?
+
+  @@index([companyId, claimNo], map: "progress_claims_company_claim_no_idx")
+  @@index([projectId, status, periodEnd], map: "progress_claims_project_status_period_idx")
+  @@map("progress_claims")
+}
+
+/// Final Module 15 progress-claim line.
+/// Stage existence is relationally enforced; same-Project/Company ownership is protected by the B17.2 persistence trigger and service validation.
+model ProgressClaimLine {
+  id                     String   @id @default(uuid()) @db.Uuid
+  claimId                String   @map("claim_id") @db.Uuid
+  stageId                String?  @map("stage_id") @db.Uuid
+  description            String   @db.Text
+  billingProgressPercent Decimal? @map("billing_progress_percent") @db.Decimal(7, 4)
+  amount                 Decimal  @map("current_value") @db.Decimal(18, 2)
+
+  claim ProgressClaim  @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage ProjectStage?  @relation("ProgressClaimLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([claimId, stageId], map: "progress_claim_lines_claim_stage_idx")
+  @@index([stageId], map: "progress_claim_lines_stage_idx")
+  @@map("progress_claim_lines")
+}
+
+/// Final Module 15 invoice owned by one Company Project/Client and, when present, the same finalized Claim chain.
+/// B17.8 protects cross-module ownership while Finance keeps accounting representation under its stable source key.
+model ClientInvoice {
+  id          String    @id @default(uuid()) @db.Uuid
+  companyId   String    @map("company_id") @db.Uuid
+  projectId   String    @map("project_id") @db.Uuid
+  clientId    String    @map("client_id") @db.Uuid
+  claimId     String?   @unique(map: "client_invoices_claim_uq") @map("claim_id") @db.Uuid
+  invoiceNo   String    @map("invoice_no") @db.VarChar(100)
+  invoiceDate DateTime  @map("invoice_date") @db.Date
+  dueDate     DateTime? @map("due_date") @db.Date
+  status      String    @db.VarChar(32)
+  subtotal    Decimal   @map("gross_amount") @db.Decimal(18, 2)
+  taxAmount   Decimal   @map("tax_amount") @db.Decimal(18, 2)
+  totalAmount Decimal   @map("total_receivable") @db.Decimal(18, 2)
+
+  company Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project             @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  client  Client              @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  claim   ProgressClaim?      @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines   ClientInvoiceLine[]
+  receiptAllocations ClientReceiptAllocation[]
+
+  @@index([companyId, invoiceNo], map: "client_invoices_company_invoice_no_idx")
+  @@index([projectId, status, invoiceDate], map: "client_invoices_project_status_date_idx")
+  @@map("client_invoices")
+}
+
+/// Final Module 15 Client Invoice line used by Stage billed views and later Finance / AR posting.
+/// Stage and revenue-account existence are relationally enforced; Project/Company ownership is protected by the B17.2 persistence trigger and service validation.
+model ClientInvoiceLine {
+  id               String  @id @default(uuid()) @db.Uuid
+  clientInvoiceId  String  @map("client_invoice_id") @db.Uuid
+  stageId          String? @map("stage_id") @db.Uuid
+  description      String  @db.Text
+  amount           Decimal @db.Decimal(18, 2)
+  revenueAccountId String? @map("revenue_account_id") @db.Uuid
+
+  invoice        ClientInvoice @relation(fields: [clientInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage          ProjectStage? @relation("ClientInvoiceLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  revenueAccount GlAccount?    @relation("ClientInvoiceLineRevenueAccount", fields: [revenueAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([clientInvoiceId, stageId], map: "client_invoice_lines_invoice_stage_idx")
+  @@index([stageId], map: "client_invoice_lines_stage_idx")
+  @@index([revenueAccountId], map: "client_invoice_lines_revenue_account_idx")
+  @@map("client_invoice_lines")
+}
+
+/// Final Module 16 posted Client Receipt.
+/// Client/Project/Stage, Cash/Bank and creator ownership are enforced without storing duplicate financial balances.
+model ClientReceipt {
+  id                String    @id @default(uuid()) @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  clientId          String    @map("client_id") @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  stageId           String?   @map("stage_id") @db.Uuid
+  receiptNo         String    @map("receipt_no") @db.VarChar(100)
+  receiptDate       DateTime  @map("receipt_date") @db.Date
+  amount            Decimal   @db.Decimal(18, 2)
+  paymentMethod     String    @map("payment_method") @db.VarChar(64)
+  cashBankAccountId String    @map("cash_bank_account_id") @db.Uuid
+  reference         String?   @db.VarChar(200)
+  receiptType       String    @map("receipt_type") @db.VarChar(32)
+  status            String    @default("POSTED") @db.VarChar(32)
+  createdBy         String    @map("created_by") @db.Uuid
+  postedAt          DateTime? @map("posted_at") @db.Timestamptz(6)
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client          Client          @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project         Project         @relation(fields: [projectId, companyId, clientId], references: [id, companyId, clientId], onDelete: Restrict, onUpdate: Restrict)
+  stage           ProjectStage?   @relation("ClientReceiptStage", fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator         User            @relation("ClientReceiptCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  allocations     ClientReceiptAllocation[]
+
+  @@unique([companyId, receiptNo], map: "client_receipts_company_receipt_no_uq")
+  @@unique([id, companyId], map: "client_receipts_id_company_uq")
+  @@index([companyId, projectId, status, receiptDate], map: "client_receipts_company_project_status_date_idx")
+  @@index([companyId, clientId, status, receiptDate], map: "client_receipts_company_client_status_date_idx")
+  @@index([projectId, stageId, receiptDate], map: "client_receipts_project_stage_date_idx")
+  @@index([cashBankAccountId, receiptDate], map: "client_receipts_cash_bank_date_idx")
+  @@index([createdBy, receiptDate], map: "client_receipts_created_by_date_idx")
+  @@map("client_receipts")
+}
+
+/// Final Module 16 allocation record linking posted Client cash to one Client Invoice.
+/// Company/Client/Project and allocating-actor scope is enforced by a database trigger without duplicating owner columns.
+model ClientReceiptAllocation {
+  id              String   @id @default(uuid()) @db.Uuid
+  receiptId       String   @map("receipt_id") @db.Uuid
+  clientInvoiceId String   @map("client_invoice_id") @db.Uuid
+  amount          Decimal  @db.Decimal(18, 2)
+  allocatedAt     DateTime @default(now()) @map("allocated_at") @db.Timestamptz(6)
+  allocatedBy     String   @map("allocated_by") @db.Uuid
+
+  receipt    ClientReceipt @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  invoice    ClientInvoice @relation(fields: [clientInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor      User          @relation("ClientReceiptAllocationActor", fields: [allocatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([receiptId, allocatedAt], map: "client_receipt_allocations_receipt_at_idx")
+  @@index([clientInvoiceId, allocatedAt], map: "client_receipt_allocations_invoice_at_idx")
+  @@index([allocatedBy, allocatedAt], map: "client_receipt_allocations_actor_at_idx")
+  @@map("client_receipt_allocations")
+}
+
+/// Final Module 20 report catalog definition.
+/// company_id is nullable so the catalog can contain shared definitions or company-specific overrides.
+model ReportDefinition {
+  id                  String  @id @default(uuid()) @db.Uuid
+  companyId           String? @map("company_id") @db.Uuid
+  code                String  @db.VarChar(120)
+  name                String  @db.VarChar(200)
+  domain              String  @db.VarChar(100)
+  requiredPermissions Json    @map("required_permissions") @db.JsonB
+  filterSchemaJson    Json    @map("filter_schema_json") @db.JsonB
+  outputFormats       Json    @map("output_formats") @db.JsonB
+  status              String  @db.VarChar(32)
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@index([companyId, code], map: "report_definitions_company_code_idx")
+  @@index([companyId, status, domain], map: "report_definitions_company_status_domain_idx")
+  @@index([code, status], map: "report_definitions_code_status_idx")
+  @@map("report_definitions")
+}
+
+/// Final Module 20 asynchronous report/export run.
+/// Generated export files remain owned by Module 21 Documents.
+model ReportRun {
+  id           String    @id @default(uuid()) @db.Uuid
+  companyId    String    @map("company_id") @db.Uuid
+  reportCode   String    @map("report_code") @db.VarChar(120)
+  requestedBy  String    @map("requested_by") @db.Uuid
+  filtersJson  Json      @map("filters_json") @db.JsonB
+  outputFormat String    @map("output_format") @db.VarChar(20)
+  status       String    @db.VarChar(32)
+  fileId       String?   @map("file_id") @db.Uuid
+  startedAt    DateTime? @map("started_at") @db.Timestamptz(6)
+  finishedAt   DateTime? @map("finished_at") @db.Timestamptz(6)
+  errorCode    String?   @map("error_code") @db.VarChar(100)
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requester User      @relation("ReportRunRequester", fields: [requestedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  file      Document? @relation("ReportRunFile", fields: [fileId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, requestedBy, status], map: "report_runs_company_requester_status_idx")
+  @@index([companyId, reportCode], map: "report_runs_company_report_code_idx")
+  @@map("report_runs")
+}
+
+/// Final Module 20 user-owned saved report filters.
+model SavedReportFilter {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  reportCode String   @map("report_code") @db.VarChar(120)
+  name       String   @db.VarChar(200)
+  filtersJson Json    @map("filters_json") @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user    User    @relation("SavedReportFilterUser", fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, userId, reportCode], map: "saved_report_filters_company_user_report_idx")
+  @@map("saved_report_filters")
+}
+
+/// Final Module 1 user-owned Dashboard layout and default-project preference.
+/// Operational KPI values stay in their source modules and are never persisted here.
+model DashboardPreference {
+  id               String   @id @default(uuid()) @db.Uuid
+  companyId        String   @map("company_id") @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  layoutJson       Json     @map("layout_json") @db.JsonB
+  defaultProjectId String?  @map("default_project_id") @db.Uuid
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user           User     @relation("DashboardPreferenceUser", fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  defaultProject Project? @relation("DashboardPreferenceDefaultProject", fields: [defaultProjectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, userId], map: "dashboard_preferences_company_user_uq")
+  @@index([companyId, defaultProjectId], map: "dashboard_preferences_company_default_project_idx")
+  @@map("dashboard_preferences")
+}
+
+/// Final Module 1 user-owned saved Dashboard filter.
+/// Filter JSON stores presentation choices only, not calculated business values.
+model DashboardSavedFilter {
+  id         String   @id @default(uuid()) @db.Uuid
+  companyId  String   @map("company_id") @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  name       String   @db.VarChar(200)
+  filterJson Json     @map("filter_json") @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  user    User    @relation("DashboardSavedFilterUser", fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([companyId, userId, createdAt], map: "dashboard_saved_filters_company_user_created_idx")
+  @@map("dashboard_saved_filters")
+}
+
+
+

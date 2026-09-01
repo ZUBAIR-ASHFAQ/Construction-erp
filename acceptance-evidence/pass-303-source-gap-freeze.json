@@ -1,0 +1,59 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-303-cross-module-source-gap-freeze",
+  "generatedAt": "2026-08-25T16:40:55.172Z",
+  "pass": 303,
+  "status": "PASS_303_SOURCE_GAP_FREEZE_VERIFIED_STAGE_20_RUNTIME_BLOCKED",
+  "documentationAndVerificationOnly": true,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "categoryAStage20BlockersFrozen": 10,
+  "categoryBStage26Stage27DeferralsFrozen": 8,
+  "categoryCExistingModuleGapGroupsFrozen": 9,
+  "stage20RuntimeAllowed": false,
+  "nextReviewedPass": "Pass 304 - Compensation and labor-rate authority contract",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-303-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:40:53.129Z",
+      "finishedAt": "2026-08-25T16:40:53.226Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:40:53.226Z",
+      "finishedAt": "2026-08-25T16:40:54.933Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:40:54.933Z",
+      "finishedAt": "2026-08-25T16:40:55.050Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:40:55.050Z",
+      "finishedAt": "2026-08-25T16:40:55.172Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

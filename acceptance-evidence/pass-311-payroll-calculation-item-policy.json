@@ -1,0 +1,88 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-311-payroll-calculation-item-policy",
+  "generatedAt": "2026-08-25T17:42:48.632Z",
+  "pass": 311,
+  "stage": 20,
+  "module": "14B - Payroll Completion",
+  "status": "PASS_311_PAYROLL_CALCULATION_ITEM_POLICY_FROZEN_STAGE_20_SCHEMA_PENDING",
+  "documentationAndVerificationOnly": true,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "publicApiRuntimeChanges": 0,
+  "newPermissions": 0,
+  "firstExecutableCalculationProfile": {
+    "activeGeneratedItemCodes": [
+      "REGULAR_HOURS"
+    ],
+    "payType": "HOURLY",
+    "regularHoursFormula": "approved regular hours multiplied by effective-dated hourly rate",
+    "itemMoneyRounding": "HALF_UP to 2 decimals",
+    "automaticDeductions": false,
+    "salaryCalculationEnabled": false,
+    "overtimeCalculationEnabled": false,
+    "timesheetAdjustmentsConsumed": false
+  },
+  "blockingReasonKeys": [
+    "MISSING_COMPENSATION_PERIOD",
+    "SALARY_PERIOD_POLICY_REQUIRED",
+    "OVERTIME_RATE_POLICY_REQUIRED",
+    "SOURCE_ALREADY_CONSUMED",
+    "SOURCE_INTEGRITY_CONFLICT"
+  ],
+  "publicBlockingError": "PAYROLL_HAS_BLOCKING_ERRORS",
+  "partialEmployeePayslipWithBlockingExceptionAllowed": false,
+  "browserMoneyOverrideAllowed": false,
+  "remainingStage20Gaps": [
+    "salary amount basis/frequency and proration policy",
+    "overtime multiplier or alternate rate policy",
+    "statutory/tax/benefit/manual deduction generation",
+    "late-approved time and Timesheet Adjustment Payroll allocation policy",
+    "Stage-20 versus Stage-26 Finance posting boundary",
+    "Payslip file_id Document versus Document-Version target",
+    "Stage-20 public request and response schemas"
+  ],
+  "nextReviewedPass": "Pass 312 - Stage-20 HR/Payroll strict Zod/API schema contract for compensation maintenance and Payroll commands",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-311-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:42:46.221Z",
+      "finishedAt": "2026-08-25T17:42:46.311Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:42:46.311Z",
+      "finishedAt": "2026-08-25T17:42:48.369Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:42:48.369Z",
+      "finishedAt": "2026-08-25T17:42:48.498Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T17:42:48.498Z",
+      "finishedAt": "2026-08-25T17:42:48.631Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

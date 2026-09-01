@@ -1,0 +1,180 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-9-stage-14-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T17:21:53.424Z",
+  "status": "STAGE_14_STATIC_GATE_PASSED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "module": "9 - Purchase Orders",
+  "pass": 244,
+  "stage": 14,
+  "stage13LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_14_UNTIL_STAGE_13_LIVE_HANDOFF",
+  "ownedTables": [
+    "purchase_orders",
+    "purchase_order_items",
+    "purchase_order_revisions"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "purchase_orders.read",
+    "purchase_orders.create",
+    "purchase_orders.edit",
+    "purchase_orders.submit",
+    "purchase_orders.issue",
+    "purchase_orders.revise"
+  ],
+  "activeEvents": [
+    "purchase_order.created",
+    "purchase_order.submitted",
+    "purchase_order.issued",
+    "purchase_order.revised",
+    "purchase_order.cancelled"
+  ],
+  "vendorAndQuotationAuthority": "Module 8 - Procurement & RFQ",
+  "costCommitmentAuthority": "Module 7 - Budgeting & Job Costing",
+  "approvalAuthority": "Module 22 - Approval Workflows",
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "inventoryReceiptWritesDeferredToStage15": true,
+  "financeSourceAdapterDeferredToStage26": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The source allows a direct-purchase exception but defines no public bypass route, body field, reason field or dedicated permission, so the normal Stage-14 create flow remains quotation-backed.",
+    "The source defines a cancellation command with reason but no dedicated cancel permission or persistent cancellation-reason column; Stage 14 uses purchase_orders.revise and preserves the reason in audit/outbox evidence.",
+    "The source does not define an exact PO tax/rounding formula; Stage 14 records its percentage and half-up money convention explicitly rather than presenting it as source text.",
+    "The source defines nullable purchase_order_items.item_id before Module 10 owns inventory_items; the Inventory foreign key remains deferred until Stage 15.",
+    "The source does not define an issued-PO FX/repricing contract, so issued currency changes remain blocked rather than silently revalued."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-13/Stage-14 live chain and rerun module-9:acceptance:live before starting Stage 15 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.324Z",
+      "finishedAt": "2026-08-26T17:21:49.462Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.462Z",
+      "finishedAt": "2026-08-26T17:21:49.602Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.602Z",
+      "finishedAt": "2026-08-26T17:21:49.753Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.753Z",
+      "finishedAt": "2026-08-26T17:21:49.843Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.843Z",
+      "finishedAt": "2026-08-26T17:21:49.980Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:49.980Z",
+      "finishedAt": "2026-08-26T17:21:50.147Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:50.147Z",
+      "finishedAt": "2026-08-26T17:21:52.981Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:52.981Z",
+      "finishedAt": "2026-08-26T17:21:53.136Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.136Z",
+      "finishedAt": "2026-08-26T17:21:53.209Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.209Z",
+      "finishedAt": "2026-08-26T17:21:53.228Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.228Z",
+      "finishedAt": "2026-08-26T17:21:53.247Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.247Z",
+      "finishedAt": "2026-08-26T17:21:53.264Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "purchase-orders-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.264Z",
+      "finishedAt": "2026-08-26T17:21:53.335Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "purchase-orders-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:21:53.335Z",
+      "finishedAt": "2026-08-26T17:21:53.422Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-23T16:02:46.545Z",
+  "status": "STAGE_8_STATIC_GATE_PASSED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "businessModule": "24 - Users, Roles & Permissions",
+  "pass": 164,
+  "stage7LiveAccepted": false,
+  "operationsLiveVerified": false,
+  "repairHoldActive": true,
+  "pass174LiveVerified": false,
+  "pass175FinalHandoffAuthorized": false,
+  "activation": "COMPLETE_STAGE_8_AUDIT_REPAIR_CHAIN_BEFORE_DEPLOYMENT",
+  "ownedTables": [
+    "project_members"
+  ],
+  "extendedTables": [
+    "user_role_assignments"
+  ],
+  "newRouteCount": 1,
+  "activatedMembershipRoute": "PUT /api/v1/projects/:id/members",
+  "extendedRoleScopeRoute": "PUT /api/v1/users/:id/roles",
+  "activePermissions": [
+    "projects.manage_members"
+  ],
+  "activeEvents": [
+    "project.member_changed",
+    "user.roles_changed"
+  ],
+  "projectScopeShapes": [
+    "all",
+    "restricted"
+  ],
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "module6Generated": false,
+  "productionRuntimeChanges": 0,
+  "nextStage": "Complete Pass 165-175 Stage-8 audit repair chain",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:28.346Z",
+      "finishedAt": "2026-08-23T16:02:46.228Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.228Z",
+      "finishedAt": "2026-08-23T16:02:46.389Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.389Z",
+      "finishedAt": "2026-08-23T16:02:46.423Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.423Z",
+      "finishedAt": "2026-08-23T16:02:46.481Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.481Z",
+      "finishedAt": "2026-08-23T16:02:46.499Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.499Z",
+      "finishedAt": "2026-08-23T16:02:46.519Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.519Z",
+      "finishedAt": "2026-08-23T16:02:46.545Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-22-stage-3-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-22T19:09:24.562Z",
+  "status": "BLOCKED",
+  "module": "22 - Approval Workflows",
+  "stage2LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_3_UNTIL_STAGE_2_LIVE_ACCEPTED",
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "publicApprovalRequestCreationAdded": false,
+  "nextStage": "Complete Module 18 live Stage-2 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": true,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-2-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-22T19:09:24.562Z",
+      "finishedAt": "2026-08-22T19:09:24.562Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_2_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

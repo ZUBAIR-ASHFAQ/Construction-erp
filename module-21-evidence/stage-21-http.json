@@ -1,0 +1,139 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-http-evidence",
+  "generatedAt": "2026-08-26T02:16:18.558Z",
+  "pass": 327,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_HTTP_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "routeFile": "apps/api/src/modules/scheduling/scheduling.routes.ts",
+  "indexFile": "apps/api/src/modules/scheduling/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "exactReviewedRouteCount": 8,
+  "routes": [
+    "GET /api/v1/projects/:projectId/schedule",
+    "POST /api/v1/projects/:projectId/schedule",
+    "POST /api/v1/projects/:projectId/schedule/activities",
+    "PATCH /api/v1/projects/:projectId/schedule/activities/:id",
+    "PUT /api/v1/projects/:projectId/schedule/dependencies",
+    "POST /api/v1/projects/:projectId/schedule/baseline",
+    "POST /api/v1/projects/:projectId/schedule/progress",
+    "GET /api/v1/projects/:projectId/schedule/lookahead"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "serviceProjectResourcePolicyRemainsAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "idempotentCommandRouteCount": 6,
+  "bodylessCommandCount": 1,
+  "emptyLookaheadQueryContractRetained": true,
+  "reviewedPermissionCount": 4,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 4,
+  "onlyGuaranteedDependencyTypeExposed": "FS",
+  "serverOwnedRequestAuthorityExposed": false,
+  "appRegistrationPrepared": true,
+  "openApiOperationsPrepared": true,
+  "genericCrudRoutesAdded": 0,
+  "baselineReopenRoutesAdded": 0,
+  "advancedCpmRoutesAdded": 0,
+  "externalSchedulerRoutesAdded": 0,
+  "changeOrderIntegrationRoutesAdded": 0,
+  "dailyReportIntegrationRoutesAdded": 0,
+  "newDatabaseMigrationAdded": false,
+  "integrationTestsGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 328 - Module 21 PostgreSQL/Fastify integration, generated OpenAPI, Company/Project isolation, RBAC, Schedule, Activity, dependency, baseline and progress security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-service",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:11.449Z",
+      "finishedAt": "2026-08-26T02:16:17.049Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:17.049Z",
+      "finishedAt": "2026-08-26T02:16:17.199Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:17.199Z",
+      "finishedAt": "2026-08-26T02:16:17.602Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "runtime-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:17.602Z",
+      "finishedAt": "2026-08-26T02:16:17.923Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:17.923Z",
+      "finishedAt": "2026-08-26T02:16:18.068Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:18.068Z",
+      "finishedAt": "2026-08-26T02:16:18.185Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:18.185Z",
+      "finishedAt": "2026-08-26T02:16:18.310Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-14b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:18.310Z",
+      "finishedAt": "2026-08-26T02:16:18.465Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:18.465Z",
+      "finishedAt": "2026-08-26T02:16:18.511Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:18.511Z",
+      "finishedAt": "2026-08-26T02:16:18.557Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

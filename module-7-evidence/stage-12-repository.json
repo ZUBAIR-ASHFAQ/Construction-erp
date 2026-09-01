@@ -1,0 +1,96 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-budgeting-job-costing-repository-evidence",
+  "generatedAt": "2026-08-24T10:02:57.693Z",
+  "pass": 215,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "status": "STAGE_12_MODULE_7_REPOSITORY_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/budgets-job-cost/budgets-job-cost.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "exactProjectChildScopingPrepared": true,
+  "transactionClientSupported": true,
+  "projectBudgetWriteLockPrepared": true,
+  "budgetVersionProjectLockPrepared": true,
+  "postingCombinationValidationPrepared": true,
+  "budgetTotalsServerWritePrepared": true,
+  "forecastProjectOwnershipValidationPrepared": true,
+  "sourceHistoryReadOnly": true,
+  "commitmentActualWriteMethodsGenerated": false,
+  "ledgerPaginationBounded": true,
+  "eacVarianceMarginCalculatedInRepository": false,
+  "currentApprovedStatusVocabularyInvented": false,
+  "financeLockedPeriodBoundaryInvented": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 216 - Module 7 service/business rules, Project resource policy, atomic budget/forecast transactions, audit/outbox and job-cost calculations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-schema",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:55.311Z",
+      "finishedAt": "2026-08-24T10:02:56.820Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:56.820Z",
+      "finishedAt": "2026-08-24T10:02:56.948Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:56.948Z",
+      "finishedAt": "2026-08-24T10:02:57.340Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:57.340Z",
+      "finishedAt": "2026-08-24T10:02:57.464Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:57.464Z",
+      "finishedAt": "2026-08-24T10:02:57.612Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:57.612Z",
+      "finishedAt": "2026-08-24T10:02:57.645Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:02:57.646Z",
+      "finishedAt": "2026-08-24T10:02:57.693Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

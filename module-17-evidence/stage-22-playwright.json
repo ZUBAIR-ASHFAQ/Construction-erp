@@ -1,0 +1,182 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-playwright-evidence",
+  "generatedAt": "2026-08-26T09:18:25.961Z",
+  "pass": 344,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "mode": "static",
+  "status": "STAGE_22_MODULE_17_PLAYWRIGHT_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "browserFile": "tests/e2e/module-17-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through Module 24A and open Change Orders / Variations through the existing permission-aware admin shell",
+    "create a Project-scoped Change Request through the reviewed browser business fields while server numbering and lifecycle stay authoritative",
+    "replace one complete DRAFT estimate with exact cost/revenue strings and a valid Module-6 WBS, Cost Code and Cost Type combination",
+    "submit the Change Request through the bodyless reviewed command and verify the Module-22 approval request is pending",
+    "approve the pending request through the real Approval Workflows UI before synchronizing the Module-17 terminal decision",
+    "approve and apply one formal immutable Change Order with mandatory Module-7 Budget and Forecast impact in the same server transaction",
+    "verify the formal approved cost/revenue snapshot, four applied impact rows, revised frozen Budget totals, Forecast values, audit and outbox evidence",
+    "create a second Change Request, reject it through Module 22 and synchronize the bodyless Module-17 rejection without creating a Change Order or another Budget revision",
+    "capture browser traffic and prove the workflow uses all seven reviewed Module-17 operations with Idempotency-Key on all five writes",
+    "prove browser request bodies never author Company, actor, numbering, lifecycle, approved totals, target identity, target deltas or applied state",
+    "verify bounded Change register pagination remains page/pageSize only and the impact read remains queryless",
+    "verify a changes.read-only Project-scoped user sees the authorized register/read surfaces, no write controls and HTTP 403 for direct create, estimate and approve attempts"
+  ],
+  "intentionallyAbsent": [
+    "No detail GET, generic PATCH, DELETE, withdraw, standalone apply or reopen route is added for Playwright convenience.",
+    "No browser-owned Company, actor, approval, numbering, status, approved-total or impact-target authority is introduced.",
+    "No Schedule-day impact is exercised because the reviewed Schedule target adapter remains deferred to Stage 27.",
+    "No Client Billing or Subcontract target adapter is pulled forward into Stage 22.",
+    "Cross-Company, cross-Project, closed-target, invalid cost-structure, rollback and replay cases remain additionally covered by the Pass-341 PostgreSQL/Fastify integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 0,
+  "testInfrastructureFilesChanged": 1,
+  "testInfrastructureChangeReason": "Shared Playwright selector only; Module-17 application runtime behavior is unchanged.",
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newPermissions": 0,
+  "newBrowserFiles": 1,
+  "reviewedRouteCount": 7,
+  "reviewedWriteCount": 5,
+  "approvalPathUsesModule22Ui": true,
+  "rejectionPathVerified": true,
+  "mandatoryBudgetForecastImpactVerified": true,
+  "scheduleAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 345 - Module 17 operational verification and final Stage-22 acceptance/regression gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-react-workspace-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:17.077Z",
+      "finishedAt": "2026-08-26T09:18:17.077Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-react-workspace-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:17.077Z",
+      "finishedAt": "2026-08-26T09:18:22.141Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:22.141Z",
+      "finishedAt": "2026-08-26T09:18:22.308Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:22.308Z",
+      "finishedAt": "2026-08-26T09:18:22.326Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:22.326Z",
+      "finishedAt": "2026-08-26T09:18:22.352Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:22.352Z",
+      "finishedAt": "2026-08-26T09:18:23.278Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:23.278Z",
+      "finishedAt": "2026-08-26T09:18:25.033Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.033Z",
+      "finishedAt": "2026-08-26T09:18:25.185Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.185Z",
+      "finishedAt": "2026-08-26T09:18:25.332Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.332Z",
+      "finishedAt": "2026-08-26T09:18:25.496Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.496Z",
+      "finishedAt": "2026-08-26T09:18:25.589Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.589Z",
+      "finishedAt": "2026-08-26T09:18:25.700Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.700Z",
+      "finishedAt": "2026-08-26T09:18:25.875Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.875Z",
+      "finishedAt": "2026-08-26T09:18:25.920Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T09:18:25.920Z",
+      "finishedAt": "2026-08-26T09:18:25.961Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

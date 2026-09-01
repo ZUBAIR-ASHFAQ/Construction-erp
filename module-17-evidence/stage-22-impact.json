@@ -1,0 +1,120 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-impact-evidence",
+  "generatedAt": "2026-08-26T07:39:00.326Z",
+  "pass": 339,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_IMPACT_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "mandatoryModule7BudgetRevisionIntegrated": true,
+  "mandatoryForecastCarryForwardIntegrated": true,
+  "changesApplyPermissionIntegrated": true,
+  "approvalAndImpactShareOneTransaction": true,
+  "impactAppliedEventEmitted": true,
+  "internalBudgetImpactTypes": [
+    "PROJECT_BUDGET_COST",
+    "PROJECT_BUDGET_REVENUE",
+    "PROJECT_FORECAST_COST",
+    "PROJECT_FORECAST_REVENUE"
+  ],
+  "approvedDaysFailClosedUntilReviewedScheduleAdapter": true,
+  "scheduleAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "stage27CompletionClaimed": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "httpGenerationAllowed": true,
+  "runtimeDeploymentAllowed": false,
+  "runtimeDeploymentReason": "Pass 340 must still add the reviewed seven-route authenticated HTTP/OpenAPI surface, and Stage-21 live handoff is independently required for runtime acceptance.",
+  "remainingSourceAmbiguities": [
+    "approved_days Schedule mapping remains undefined; Pass 339 fails closed rather than silently ignoring it.",
+    "Client/Subcontract/Schedule target adapters and reversal/adjustment policy remain Stage-27 completion work.",
+    "No standalone changes.apply route exists; apply authority is enforced inside the reviewed approval orchestration."
+  ],
+  "nextPass": "Pass 340 - Module 17 Fastify routes, index registration, authentication/RBAC and OpenAPI for exactly seven reviewed routes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-service",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:53.171Z",
+      "finishedAt": "2026-08-26T07:38:59.132Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-impact-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:59.132Z",
+      "finishedAt": "2026-08-26T07:38:59.261Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-impact-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:59.261Z",
+      "finishedAt": "2026-08-26T07:38:59.722Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:59.722Z",
+      "finishedAt": "2026-08-26T07:38:59.857Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:59.857Z",
+      "finishedAt": "2026-08-26T07:38:59.942Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:38:59.942Z",
+      "finishedAt": "2026-08-26T07:39:00.060Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:39:00.060Z",
+      "finishedAt": "2026-08-26T07:39:00.206Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:39:00.206Z",
+      "finishedAt": "2026-08-26T07:39:00.246Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:39:00.246Z",
+      "finishedAt": "2026-08-26T07:39:00.325Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

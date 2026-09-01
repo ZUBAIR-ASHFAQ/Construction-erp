@@ -1,0 +1,171 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-operations-evidence",
+  "generatedAt": "2026-08-26T13:03:01.750Z",
+  "pass": 357,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "mode": "static",
+  "status": "STAGE_23_MODULE_16_OPERATIONS_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent same-key Client Contract creation leaves one Contract, one audit/outbox result, one number allocation and one completed idempotency record",
+    "concurrent different Client Contract creates across two Projects allocate distinct Foundation Contract numbers without collision",
+    "concurrent different Invoice keys for one certified Claim leave exactly one immutable Client Invoice and one Retention Ledger source",
+    "concurrent full Retention releases with different keys converge on one released balance and one release audit/outbox event",
+    "direct PostgreSQL writes cannot bypass BOQ Project scope, Invoice Claim-to-Contract scope, issued-Invoice immutability or Retention history guards",
+    "a forced client_retention.released outbox failure rolls back released amount, lifecycle status, audit and idempotency state together",
+    "all reviewed Stage-23 Client Contract, Claim, Claim-line, Invoice and Retention indexes are inspected directly without timing-based performance claims"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 357 adds no migration because Pass 347 owns the reviewed Stage-23 persistence change"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "reviewedRouteCount": 7,
+  "reviewedWriteCount": 6,
+  "reviewedPermissionCount": 6,
+  "financeArAdapterGenerated": false,
+  "approvedChangeContractAdapterGenerated": false,
+  "stage26FinanceAdapterStillRequired": true,
+  "stage27IntegrationProofStillRequired": true,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStep": "Run the final Stage-23 acceptance gate in static mode now; run live mode only after the full Stage-22/Stage-23 live prerequisite chain is verified.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:48.376Z",
+      "finishedAt": "2026-08-26T13:02:48.376Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:48.376Z",
+      "finishedAt": "2026-08-26T13:02:48.376Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:48.377Z",
+      "finishedAt": "2026-08-26T13:02:57.787Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:57.787Z",
+      "finishedAt": "2026-08-26T13:02:57.961Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:02:57.961Z",
+      "finishedAt": "2026-08-26T13:03:00.251Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:00.251Z",
+      "finishedAt": "2026-08-26T13:03:00.280Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:00.280Z",
+      "finishedAt": "2026-08-26T13:03:00.817Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:00.817Z",
+      "finishedAt": "2026-08-26T13:03:00.929Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:00.929Z",
+      "finishedAt": "2026-08-26T13:03:01.049Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.049Z",
+      "finishedAt": "2026-08-26T13:03:01.194Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.194Z",
+      "finishedAt": "2026-08-26T13:03:01.341Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.341Z",
+      "finishedAt": "2026-08-26T13:03:01.525Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.525Z",
+      "finishedAt": "2026-08-26T13:03:01.657Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.657Z",
+      "finishedAt": "2026-08-26T13:03:01.704Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T13:03:01.704Z",
+      "finishedAt": "2026-08-26T13:03:01.750Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

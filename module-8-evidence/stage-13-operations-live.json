@@ -1,0 +1,29 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-operations-evidence",
+  "generatedAt": "2026-08-24T12:44:12.440Z",
+  "pass": 232,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage12LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_12_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-8:operations:gate:live before claiming Stage-13 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

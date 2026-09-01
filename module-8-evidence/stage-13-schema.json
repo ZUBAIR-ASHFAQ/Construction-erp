@@ -1,0 +1,136 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-schema-evidence",
+  "generatedAt": "2026-08-24T11:41:37.611Z",
+  "pass": 225,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_SCHEMA_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/procurement/procurement.schema.ts",
+  "reviewedRouteCount": 8,
+  "publicVendorMasterRouteCount": 0,
+  "requisitionListFilters": [
+    "projectId",
+    "page",
+    "pageSize"
+  ],
+  "requisitionListFilterDecision": "projectId is the only business filter added because the reviewed route is not Project-scoped in its path while the workflow is Project-owned; it is a requested filter only and never an authorization source.",
+  "createRequisitionBrowserFields": [
+    "projectId",
+    "requiredDate",
+    "purpose",
+    "items"
+  ],
+  "requisitionItemBrowserFields": [
+    "itemId",
+    "description",
+    "quantity",
+    "unit",
+    "estimatedRate",
+    "wbsNodeId",
+    "costCodeId",
+    "costTypeId"
+  ],
+  "submitRequisitionBodyFields": [],
+  "createRfqBrowserFields": [
+    "projectId",
+    "requisitionId",
+    "issueDate",
+    "dueDate"
+  ],
+  "issueRfqBrowserFields": [
+    "vendorIds"
+  ],
+  "recordQuotationBrowserFields": [
+    "vendorId",
+    "quoteNo",
+    "quoteDate",
+    "validUntil",
+    "leadTimeDays",
+    "items"
+  ],
+  "quotationItemBrowserFields": [
+    "rfqItemId",
+    "quantity",
+    "unitRate",
+    "discount",
+    "tax"
+  ],
+  "quotationHeaderTotalsBrowserOwned": false,
+  "quotationLineTotalBrowserOwned": false,
+  "comparisonBusinessFilters": 0,
+  "comparisonRankingFieldsInvented": false,
+  "comparisonExchangeRateFieldsInvented": false,
+  "selectQuotationBrowserFields": [
+    "quotationId",
+    "rationale"
+  ],
+  "selectionRationaleDecision": "Use one optional rationale field for both general selection rationale and any policy-required non-lowest exception reason. The later service must require it only when the configured source-backed policy requires an exception.",
+  "selectionCreatesFinancialCommitment": false,
+  "rfqItemRelationshipGapRecorded": true,
+  "rfqItemForeignKeyAssumedBySchema": false,
+  "vendorMasterPublicApiGapRecorded": true,
+  "vendorMasterSchemasGenerated": false,
+  "statusEnumsInvented": false,
+  "vendorStatusEnumsInvented": false,
+  "exactDecimalStringsUsed": true,
+  "rfqDateOrderingRuleInvented": false,
+  "quotationValidityOrderingRuleInvented": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 226 - Module 8 Company/Project-scoped repository for requisitions, RFQs, invitations, quotations and comparison reads while preserving the vendor API and rfq_item_id source gaps.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:35.637Z",
+      "finishedAt": "2026-08-24T11:41:36.895Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:36.895Z",
+      "finishedAt": "2026-08-24T11:41:37.031Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:37.031Z",
+      "finishedAt": "2026-08-24T11:41:37.507Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:37.507Z",
+      "finishedAt": "2026-08-24T11:41:37.542Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:37.542Z",
+      "finishedAt": "2026-08-24T11:41:37.611Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

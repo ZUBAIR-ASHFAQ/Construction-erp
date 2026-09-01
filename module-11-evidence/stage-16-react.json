@@ -1,0 +1,144 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-react-evidence",
+  "generatedAt": "2026-08-25T05:47:47.696Z",
+  "pass": 263,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_REACT_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API maps exactly to the eight reviewed Module-11 operations and sends Idempotency-Key on all seven writes",
+    "TanStack Query owns the subcontractor register, Module-22 approval read, Module-7 commitment read and command mutation server state",
+    "React Hook Form plus Zod validates subcontractor, draft subcontract, scope/BOQ-cost lines, progress application and certification inputs using exact decimal strings",
+    "subcontractor register supports optional existing Module-8 Vendor UUID linkage without inventing a Vendor-list or Vendor-write endpoint",
+    "draft create/edit keeps Project identity, numbering, status, original/revised header values and approval authority server-owned",
+    "execution UI reuses existing Module-22 approval state and Module-7 commitment ledger rather than adding Module-11 approval/commitment routes",
+    "progress/certification UI sends only reviewed line inputs while cumulative limits, header totals and retention remain server-authoritative",
+    "subcontract detail, application and retention sections use latest command readback and explicitly preserve missing public GET/readback APIs across reloads",
+    "permission-aware admin shell exposes Module 11 only for reviewed Module-11 permissions or existing restricted Project scope"
+  ],
+  "intentionallyAbsent": [
+    "No subcontract list/detail GET, payment-application history GET, retention-ledger GET, revision command or retention-release route is added.",
+    "No Vendor lookup/list endpoint is invented; optional Vendor linkage uses an explicit existing Vendor UUID.",
+    "No Finance/AP/GL write is added; certified payment source posting remains deferred to Module 15B / Stage 26.",
+    "No Change Order variation adapter is added; executed-subcontract revision remains deferred to the later reviewed integration stage.",
+    "No client-owned subcontract number, application number, status, original/revised total, claimed/certified total, retention amount, approval state or commitment source key is sent."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "newReactFiles": 4,
+  "adminShellIntegrationChanged": true,
+  "styleSheetChanged": true,
+  "publicRoutesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 264 - Module 11 Playwright browser workflow verification for subcontractor/vendor linkage, approval/execution, commitment, application/certification and permission-negative cases.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.635Z",
+      "finishedAt": "2026-08-25T05:47:29.635Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.635Z",
+      "finishedAt": "2026-08-25T05:47:46.278Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:46.278Z",
+      "finishedAt": "2026-08-25T05:47:46.411Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-react-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:46.411Z",
+      "finishedAt": "2026-08-25T05:47:46.903Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:46.903Z",
+      "finishedAt": "2026-08-25T05:47:47.017Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.017Z",
+      "finishedAt": "2026-08-25T05:47:47.130Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.130Z",
+      "finishedAt": "2026-08-25T05:47:47.258Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.258Z",
+      "finishedAt": "2026-08-25T05:47:47.402Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.402Z",
+      "finishedAt": "2026-08-25T05:47:47.486Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.486Z",
+      "finishedAt": "2026-08-25T05:47:47.617Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.617Z",
+      "finishedAt": "2026-08-25T05:47:47.656Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:47.656Z",
+      "finishedAt": "2026-08-25T05:47:47.696Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

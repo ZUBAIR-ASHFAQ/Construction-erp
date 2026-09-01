@@ -1,0 +1,120 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-react-evidence",
+  "generatedAt": "2026-08-24T15:56:23.631Z",
+  "pass": 241,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_REACT_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API for exactly the eight reviewed Purchase Order operations",
+    "TanStack Query owns the PO register/detail plus direct read-only Module-22 approval and Module-7 commitment integrations",
+    "React Hook Form plus Zod validates quotation-backed draft create/edit, controlled header revision and cancellation reason inputs",
+    "Project selector reuses the existing Project register while Project authorization stays server-authoritative",
+    "PO lines reuse posting-enabled Module-6 cost structures without creating a new lookup route",
+    "approval timeline reuses the existing current-user Module-22 inbox and never invents a PO-specific approval lookup endpoint",
+    "printable PO preview uses browser print over server readback and adds no document-generation API",
+    "receipt/invoice progress is read-only from server-owned PO line consumption fields",
+    "commitment status is read-only from existing Module-7 job-cost ledger rows sourced by purchase_order",
+    "issue, revision and cancellation controls never send Company, status, totals, consumption or commitment authority from the browser"
+  ],
+  "intentionallyAbsent": [
+    "No Vendor or quotation list/CRUD API is added; the draft editor accepts the selected Module-8 Vendor and quotation UUIDs explicitly.",
+    "No direct-purchase browser path is enabled because the source still lacks its dedicated permission and persistence contract.",
+    "No dedicated cancel permission is invented; cancellation visibility follows the existing purchase_orders.revise implementation authority.",
+    "No receipt, supplier invoice/AP, stock, Finance journal or direct commitment mutation control is added.",
+    "No issued-currency-change UI is added while the approved currency/FX contract remains unresolved.",
+    "No consumed-line replacement UI is added because Stage 14 has no stable line-remapping contract for downstream consumption."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "newReactFiles": 4,
+  "publicRoutesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 242 - Module 9 Playwright Purchase Order workflow verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.972Z",
+      "finishedAt": "2026-08-24T15:56:18.972Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:18.972Z",
+      "finishedAt": "2026-08-24T15:56:22.444Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:22.444Z",
+      "finishedAt": "2026-08-24T15:56:22.613Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-react-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:22.613Z",
+      "finishedAt": "2026-08-24T15:56:23.125Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.125Z",
+      "finishedAt": "2026-08-24T15:56:23.267Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.267Z",
+      "finishedAt": "2026-08-24T15:56:23.422Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.422Z",
+      "finishedAt": "2026-08-24T15:56:23.523Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.523Z",
+      "finishedAt": "2026-08-24T15:56:23.587Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T15:56:23.587Z",
+      "finishedAt": "2026-08-24T15:56:23.631Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

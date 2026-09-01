@@ -1,0 +1,102 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-359-module-6-durable-wbs-freeze-reopen",
+  "generatedAt": "2026-08-26T14:24:04.888Z",
+  "pass": 359,
+  "baselinePass": 358,
+  "status": "PASS_359_MODULE_6_DURABLE_WBS_FREEZE_REOPEN_ACCEPTED",
+  "repairContractItem": "M6-01",
+  "businessModulesAdded": 0,
+  "migrationsAdded": 1,
+  "databaseTablesAdded": 1,
+  "publicRoutesAdded": 1,
+  "permissionsAdded": 0,
+  "stableErrorsAdded": [
+    "WBS_COST_STRUCTURE_FROZEN"
+  ],
+  "domainEventsAdded": [
+    "project.cost_structure_reopened"
+  ],
+  "durableFreezeState": true,
+  "controlledReopen": true,
+  "databaseWriteGuard": true,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "6e347c7d26e00af5584ae0d4acb380d14643c503a2aa773e146616e448a6cbae",
+  "unchangedScopeSnapshotActual": "6e347c7d26e00af5584ae0d4acb380d14643c503a2aa773e146616e448a6cbae",
+  "unchangedScopeFileCount": 1167,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "This packaged acceptance run is dependency-free; live PostgreSQL/Prisma verification remains available through the guarded Module-6 live gate when a configured test database and workspace dependencies are present.",
+  "nextReviewedPass": "Pass 360 - Module 6 Cost Type master and archive lifecycle completion",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-358-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-358 scope remains byte-identical across 1167 files."
+    },
+    {
+      "name": "pass-359-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:23:32.384Z",
+      "finishedAt": "2026-08-26T14:23:32.703Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-acceptance",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:23:32.703Z",
+      "finishedAt": "2026-08-26T14:23:55.812Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:23:55.812Z",
+      "finishedAt": "2026-08-26T14:24:03.717Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:24:03.717Z",
+      "finishedAt": "2026-08-26T14:24:04.193Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:24:04.193Z",
+      "finishedAt": "2026-08-26T14:24:04.690Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:24:04.690Z",
+      "finishedAt": "2026-08-26T14:24:04.791Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:24:04.791Z",
+      "finishedAt": "2026-08-26T14:24:04.887Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

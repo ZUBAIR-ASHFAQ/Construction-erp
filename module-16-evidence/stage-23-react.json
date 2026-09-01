@@ -1,0 +1,138 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-react-workspace-evidence",
+  "generatedAt": "2026-08-26T12:23:30.136Z",
+  "pass": 355,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "status": "STAGE_23_MODULE_16_REACT_WORKSPACE_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "reactDataPrepared": true,
+  "workspaceCoverage": [
+    "permission-aware Client Billing navigation and Stage-23 workspace",
+    "bounded Client Contract register with no invented Project, Client, status, billing-method or search filters",
+    "Project and Client backed Contract create form using only reviewed business fields while Contract number, revised value and lifecycle remain server-owned",
+    "Progress Claim creation plus complete DRAFT line worksheet replacement with optional BOQ Item UUID and exact decimal-string inputs",
+    "server-owned cumulative valuation summary showing previous, current, gross, retention, deductions and certified values",
+    "certification command accepts certifiedValue only while cumulative totals and Contract retention remain server-calculated",
+    "Client Invoice issue uses only invoiceDate and dueDate and displays the immutable server-created receivable source snapshot",
+    "Retention Ledger status and bodyless full-release command are shown without inventing partial release or payment mutations",
+    "Stage-26 payment/AR state and Stage-27 approved-Change Contract target integration remain visibly deferred"
+  ],
+  "intentionallyAbsent": [
+    "No backend route, service, repository, Prisma model or migration is changed.",
+    "No Contract detail/update/delete, Claim submit/detail, standalone Invoice, payment or generic CRUD browser operation is generated.",
+    "No BOQ Item lookup endpoint is invented; the existing BOQ browser contract does not expose item-detail reads.",
+    "No partial Retention release amount, Client payment state or AR settlement control is invented.",
+    "No approved Change -> Client Contract target adapter is generated.",
+    "No Stage-26 Client Invoice -> AR adapter is generated.",
+    "No browser-owned Company, actor, Project authorization, numbering, revised Contract value, Claim header totals, retention/deduction totals, Invoice totals or finance posting state is introduced."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newReactFiles": 2,
+  "reactComponentsAdded": 1,
+  "reactPagesAdded": 1,
+  "navigationIntegrated": true,
+  "permissionAwareCommands": true,
+  "paymentMutationInvented": false,
+  "partialRetentionReleaseInvented": false,
+  "boqItemLookupInvented": false,
+  "financeArAdapterGenerated": false,
+  "approvedChangeContractAdapterGenerated": false,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 356 - Module 16 Playwright main Client Billing workflow and permission-negative browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-react-data-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:14.861Z",
+      "finishedAt": "2026-08-26T12:23:14.861Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-react-data-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:14.863Z",
+      "finishedAt": "2026-08-26T12:23:26.256Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-react-workspace-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:26.256Z",
+      "finishedAt": "2026-08-26T12:23:27.251Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-react-workspace-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:27.251Z",
+      "finishedAt": "2026-08-26T12:23:29.039Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:29.039Z",
+      "finishedAt": "2026-08-26T12:23:29.352Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:29.352Z",
+      "finishedAt": "2026-08-26T12:23:29.588Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:29.588Z",
+      "finishedAt": "2026-08-26T12:23:29.819Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:29.819Z",
+      "finishedAt": "2026-08-26T12:23:29.982Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:29.982Z",
+      "finishedAt": "2026-08-26T12:23:30.039Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:23:30.039Z",
+      "finishedAt": "2026-08-26T12:23:30.136Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

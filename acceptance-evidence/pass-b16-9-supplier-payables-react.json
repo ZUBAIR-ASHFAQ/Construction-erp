@@ -1,0 +1,18 @@
+{
+  "pass": "B16.9",
+  "module": "Module 17 Supplier Payables",
+  "scope": "React frontend integration",
+  "featureDirectories": ["api", "hooks", "components", "pages"],
+  "backendRouteCount": 8,
+  "databaseMigrationAdded": false,
+  "usesTanStackQuery": true,
+  "usesReactHookFormAndZod": true,
+  "workflows": [
+    "supplier invoice register/detail/create/post",
+    "supplier payment register/create-post",
+    "supplier payment allocation",
+    "supplier outstanding and aging",
+    "project and stage payable traceability"
+  ],
+  "nextPass": "B16.10 final integration, E2E and freeze"
+}

@@ -1,0 +1,32 @@
+{
+  "pass": "B17.4",
+  "module": "Module 15 Client Billing",
+  "scope": "repository completion for Stage ownership, cost basis reads, invoice-line preservation support and Finance account lookup",
+  "databaseMigrationAdded": false,
+  "publicRoutesChanged": false,
+  "businessCalculationChanged": false,
+  "repositoryAdditions": [
+    "findProjectStagesByIds",
+    "sumProjectCostActuals",
+    "sumStageCostActuals",
+    "findGlAccountById",
+    "findGlAccountByCode",
+    "Stage-aware ClientInvoiceLineWrite persistence"
+  ],
+  "deferred": [
+    "same-Project Stage service rejection",
+    "Cost + Percentage claim calculation",
+    "Stage-preserving runtime invoice creation",
+    "Client Invoice Finance/AR posting"
+  ],
+  "nextPass": "B17.5 Claim / billing-basis service alignment",
+  "verification": {
+    "b17FocusedStatic": "41/41 PASS",
+    "b17CumulativeGate": "57/57 PASS",
+    "completeFinal21Static": "445/445 PASS",
+    "currentFullStatic": "549/549 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "PASS (no migration added)",
+    "functionPurposeComments": "PASS"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "pass": "B19.9",
+  "module": "Module 19 - Project Profitability",
+  "scope": "Read-only React feature for Project summary, Stage reconciliation, trend and portfolio",
+  "databaseMigrationAdded": false,
+  "backendRoutesChanged": false,
+  "backendRouteCount": 4,
+  "featureDirectories": [
+    "api",
+    "hooks",
+    "components",
+    "pages"
+  ],
+  "usesTanStackQuery": true,
+  "usesReactHookFormAndZodForReadFilters": true,
+  "readOnlyFeature": true,
+  "implemented": [
+    "typed Project profitability summary client and query",
+    "Stage profitability table with Project-only reconciliation",
+    "recognized revenue actual cost and profit trend",
+    "permission-scoped portfolio comparison",
+    "per-Project currency display without cross-currency totals",
+    "Project selector using existing Project register and portfolio rows",
+    "all nine source-derived financial values",
+    "permission-aware shell navigation"
+  ],
+  "browserProfitFormulaAdded": false,
+  "browserOutstandingFormulaAdded": false,
+  "browserAdvanceFormulaAdded": false,
+  "cashTreatedAsProfit": false,
+  "nextPass": "B19.10 Project Profitability final integration, Playwright and freeze",
+  "verification": {
+    "b19_9Gate": "142/142 PASS",
+    "projectProfitabilityAlignment": "114/114 PASS",
+    "final21StaticSuite": "737/737 PASS",
+    "currentStaticSuite": "842/842 PASS",
+    "migrationPolicy": "89 migration(s) locked across 89 gate(s) PASS",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "changedFrontendTypeScriptSyntax": "5/5 PASS",
+    "dependencyBackedBuild": "Not claimed; supplied archive has no installed node_modules"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-7-stage-12-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-24T10:32:08.286Z",
+  "status": "BLOCKED",
+  "module": "7 - Budgeting & Job Costing",
+  "pass": 222,
+  "stage": 12,
+  "stage11LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_12_UNTIL_STAGE_11_LIVE_HANDOFF",
+  "ownedTables": [
+    "project_budgets",
+    "budget_lines",
+    "cost_commitments",
+    "cost_actuals",
+    "forecast_lines"
+  ],
+  "routeCount": 7,
+  "activePermissions": [
+    "budgets.read",
+    "budgets.create",
+    "budgets.edit",
+    "budgets.freeze",
+    "job_cost.read",
+    "forecast.update"
+  ],
+  "activeEvents": [
+    "budget.created",
+    "budget.frozen",
+    "budget.revised",
+    "forecast.updated"
+  ],
+  "sourceDerivedEventDeferred": "job_cost.source_posted",
+  "sourceAdaptersDeferred": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The reviewed public API defines no budget-list or DRAFT-budget-detail endpoint, so an unfinished DRAFT cannot be recovered after its creating browser session is lost.",
+    "The reviewed public API defines no explicit Module-7 submit/approve/reopen command even though approval is described as conditional in the broader workflow.",
+    "The source names cost_commitments.cost_structure_id and cost_actuals.cost_structure_id without explicitly naming the foreign-key target; Stage 12 preserves the reviewed Module-6 Project cost-structure interpretation."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-11/Stage-12 live chain and rerun module-7:acceptance:live before starting Stage 13 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-11-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-24T10:32:08.286Z",
+      "finishedAt": "2026-08-24T10:32:08.286Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_11_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "pass": "B17.1",
+  "module": "Module 15 Client Billing",
+  "scope": "non-destructive alignment audit of the existing Client Billing implementation",
+  "productionFilesChanged": false,
+  "databaseMigrationAdded": false,
+  "existingRouteCount": 9,
+  "existingDatabaseModels": [
+    "ProjectBillingSetting",
+    "ProgressClaim",
+    "ProgressClaimLine",
+    "ClientInvoice",
+    "ClientInvoiceLine"
+  ],
+  "aligned": [
+    "five-file backend exists",
+    "React api/hooks/components/pages exists",
+    "exact nine-route Final-21 surface exists",
+    "seven Final-21 permissions exist",
+    "five stable Final-21 errors exist",
+    "standalone Contract and RetentionLedger active models are removed",
+    "company and Project scoped repository/service foundations exist",
+    "idempotency audit outbox and Foundation numbering are reused",
+    "Module 21 already supports client_invoice links"
+  ],
+  "repairGaps": [
+    "claim/invoice Stage ownership not enforced",
+    "invoice creation discards Stage attribution",
+    "Cost + Percentage approved-cost basis not implemented",
+    "Client Invoice Finance/AR posting deferred",
+    "advance recovery and deductions not operational beyond source-supported retention",
+    "OpenAPI route metadata incomplete",
+    "React uses raw Stage UUID and lacks Cost + Percentage basis visibility"
+  ],
+  "nextPass": "B17.2 Client Billing persistence integrity alignment",
+  "verification": {
+    "b17FocusedStatic": "17/17 PASS",
+    "completeFinal21Static": "397/397 PASS",
+    "supportingWorkspaceMigrationCleanupTests": "45/45 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "83/83 migrations locked across 83 gates",
+    "legacyCleanupManifest": "PASS/current",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

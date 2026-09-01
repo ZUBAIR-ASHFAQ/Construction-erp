@@ -1,0 +1,116 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-finance-core-contract-evidence",
+  "generatedAt": "2026-08-24T06:16:40.903Z",
+  "pass": 201,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "status": "STAGE_11_MODULE_15A_CONTRACT_FROZEN_STAGE_10_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage10LiveAccepted": false,
+  "ownedTables": [
+    "gl_accounts",
+    "fiscal_periods",
+    "journals",
+    "journal_lines"
+  ],
+  "deferred15BTables": [
+    "ap_invoices",
+    "ar_invoices",
+    "payments",
+    "payment_allocations"
+  ],
+  "reviewedCoreRouteCount": 6,
+  "deferred15BRouteCount": 4,
+  "reviewedCoreRoutes": [
+    "GET /api/v1/finance/accounts",
+    "POST /api/v1/finance/journals",
+    "POST /api/v1/finance/journals/:id/post",
+    "POST /api/v1/finance/journals/:id/reverse",
+    "GET /api/v1/finance/trial-balance",
+    "POST /api/v1/finance/periods/:id/close"
+  ],
+  "reviewedCorePermissions": [
+    "finance.accounts.read",
+    "finance.journals.read",
+    "finance.journals.create",
+    "finance.journals.post",
+    "finance.periods.close",
+    "finance.reports.read"
+  ],
+  "deferred15BPermissions": [
+    "finance.ap.manage",
+    "finance.ar.manage",
+    "finance.payments.manage"
+  ],
+  "reviewedCoreEvents": [
+    "journal.posted",
+    "journal.reversed",
+    "accounting_period.closed"
+  ],
+  "deferred15BEvents": [
+    "ap_invoice.posted",
+    "ar_invoice.posted",
+    "payment.posted"
+  ],
+  "reusesFoundationNumbering": true,
+  "reusesFoundationIdempotency": true,
+  "reusesFoundationFinancialPostingContract": true,
+  "unresolvedSourceAmbiguities": [
+    "Chart-of-Accounts configuration is required by the workflow, but the reviewed route table defines only GET /finance/accounts.",
+    "Fiscal-period configuration is required by the workflow, but the reviewed route table defines only period close and no list/create/open/reopen operation.",
+    "finance.journals.read and journal/ledger UI are defined, but the reviewed route table has no journal list/detail operation.",
+    "Period-close rules mention reopen/adjustment, but no reopen/adjustment route or exact workflow is defined.",
+    "Finance account types, status values, journal source types and lifecycle tokens are not enumerated.",
+    "The source does not state whether journals.period_id is browser-supplied or derived from posting_date.",
+    "journal_lines.cost_structure_id has no explicit foreign-key target and does not exactly match the existing Foundation posting command dimensions.",
+    "Reversal is required, but the source tables do not define an explicit reversal linkage field.",
+    "Source posting requires idempotency, but Finance defines no separate idempotency persistence and must reuse Foundation."
+  ],
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 202 - Module 15A reviewed Finance Core Prisma models and migration. Deployment remains blocked until the Stage-10 live handoff is genuine.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.427Z",
+      "finishedAt": "2026-08-24T06:16:40.585Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.586Z",
+      "finishedAt": "2026-08-24T06:16:40.774Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.774Z",
+      "finishedAt": "2026-08-24T06:16:40.820Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.820Z",
+      "finishedAt": "2026-08-24T06:16:40.903Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

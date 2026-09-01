@@ -1,0 +1,143 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-http-evidence",
+  "generatedAt": "2026-08-24T18:42:54.720Z",
+  "pass": 250,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "status": "STAGE_15_MODULE_10_HTTP_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "routeFile": "apps/api/src/modules/inventory/inventory.routes.ts",
+  "indexFile": "apps/api/src/modules/inventory/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "exactReviewedRouteCount": 8,
+  "routes": [
+    "GET /api/v1/inventory/items",
+    "POST /api/v1/inventory/items",
+    "GET /api/v1/inventory/balances",
+    "POST /api/v1/inventory/receipts",
+    "POST /api/v1/inventory/transfers",
+    "POST /api/v1/inventory/issues",
+    "POST /api/v1/inventory/returns",
+    "POST /api/v1/inventory/adjustments"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "serviceResourcePolicyRemainsAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "exactDecimalOpenApiSerialization": true,
+  "idempotentCommandRouteCount": 5,
+  "reviewedPermissionCount": 6,
+  "reviewedErrorCount": 6,
+  "reviewedEventCount": 5,
+  "serverOwnedRequestAuthorityExposed": false,
+  "appRegistrationPrepared": true,
+  "openApiOperationsPrepared": true,
+  "warehouseCrudRoutesAdded": 0,
+  "stockLedgerReadRoutesAdded": 0,
+  "stockCountRoutesAdded": 0,
+  "lowStockRoutesAdded": 0,
+  "financeRoutesAdded": 0,
+  "newDatabaseMigrationAdded": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 251 - Module 10 PostgreSQL/Fastify integration, generated OpenAPI and security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-service",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.615Z",
+      "finishedAt": "2026-08-24T18:42:53.036Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:53.036Z",
+      "finishedAt": "2026-08-24T18:42:53.182Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:53.182Z",
+      "finishedAt": "2026-08-24T18:42:53.602Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "app-registration-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:53.602Z",
+      "finishedAt": "2026-08-24T18:42:53.936Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:53.937Z",
+      "finishedAt": "2026-08-24T18:42:54.075Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.075Z",
+      "finishedAt": "2026-08-24T18:42:54.203Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.203Z",
+      "finishedAt": "2026-08-24T18:42:54.343Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.343Z",
+      "finishedAt": "2026-08-24T18:42:54.509Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.509Z",
+      "finishedAt": "2026-08-24T18:42:54.628Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.629Z",
+      "finishedAt": "2026-08-24T18:42:54.670Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:54.670Z",
+      "finishedAt": "2026-08-24T18:42:54.720Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

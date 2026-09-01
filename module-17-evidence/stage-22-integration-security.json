@@ -1,0 +1,156 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-integration-security-evidence",
+  "generatedAt": "2026-08-26T08:20:54.591Z",
+  "pass": 341,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "mode": "static",
+  "status": "STAGE_22_MODULE_17_INTEGRATION_SECURITY_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-17-api.integration.test.mjs",
+  "coverage": [
+    "live suite covers the seven reviewed Change Orders operations through real Fastify, service, repository and PostgreSQL boundaries",
+    "live suite verifies DRAFT estimate replacement, Module-22 submission, terminal approval, immutable formal Change Order creation and mandatory Module-7 Budget/Forecast application",
+    "live suite verifies rejected changes remain historical and do not create formal Change Orders or revised Budget state",
+    "live suite verifies authentication, six reviewed changes.* permissions, Module-24B Project scope and cross-Company fail-closed behavior",
+    "live suite verifies strict server-owned field rejection, same-Project cost references, closed-Project protection and bounded Change-register queries",
+    "live suite verifies same-key idempotent replay leaves one Change Request, one formal Change Order and one mandatory impact set",
+    "live suite forces change_order.impact_applied outbox failure and verifies Change Order, Budget, Forecast, audit, outbox and idempotency rollback together",
+    "live suite verifies generated OpenAPI exposes exactly seven Module-17 operations, bearer security, five idempotent writes and no generic Change CRUD routes",
+    "live suite verifies approvedDays remains fail-closed until the reviewed Stage-27 Schedule adapter exists"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "reviewedRouteCount": 7,
+  "reviewedWriteCount": 5,
+  "reviewedPermissionCount": 6,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "workflowVerified": false,
+  "module22ApprovalVerified": false,
+  "mandatoryBudgetImpactVerified": false,
+  "rejectionHistoryVerified": false,
+  "idempotencyVerified": false,
+  "transactionRollbackVerified": false,
+  "negativeAuthorizationVerified": false,
+  "crossProjectIsolationVerified": false,
+  "crossCompanyIsolationVerified": false,
+  "generatedOpenApiVerified": false,
+  "scheduleAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 342 - Module 17 React typed API client and TanStack Query hooks for exactly the seven reviewed Change Orders operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:51.090Z",
+      "finishedAt": "2026-08-26T08:20:51.090Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:51.091Z",
+      "finishedAt": "2026-08-26T08:20:51.242Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:51.242Z",
+      "finishedAt": "2026-08-26T08:20:51.259Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:51.259Z",
+      "finishedAt": "2026-08-26T08:20:52.252Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:52.252Z",
+      "finishedAt": "2026-08-26T08:20:52.674Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:52.674Z",
+      "finishedAt": "2026-08-26T08:20:53.055Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:53.055Z",
+      "finishedAt": "2026-08-26T08:20:53.330Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:53.330Z",
+      "finishedAt": "2026-08-26T08:20:53.503Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:53.505Z",
+      "finishedAt": "2026-08-26T08:20:53.745Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:53.745Z",
+      "finishedAt": "2026-08-26T08:20:54.125Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:54.125Z",
+      "finishedAt": "2026-08-26T08:20:54.231Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T08:20:54.231Z",
+      "finishedAt": "2026-08-26T08:20:54.591Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

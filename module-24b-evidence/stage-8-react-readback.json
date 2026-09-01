@@ -1,0 +1,108 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-react-readback-repair-evidence",
+  "generatedAt": "2026-08-23T14:40:19.060Z",
+  "status": "STAGE_8_REACT_READBACK_PREPARED_REPAIR_HOLD_ACTIVE",
+  "pass": 167,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "reactCoverage": [
+    "Project detail initializes the whole-set member editor from data.members returned by the existing GET Project detail route",
+    "Project member replacement preserves current rows unless the administrator intentionally edits or removes them",
+    "User access editor initializes COMPANY and PROJECT assignments from safe server readback",
+    "roleAssignmentsComplete=false disables whole-set role replacement instead of risking deletion of hidden assignments",
+    "whole-set confirmation remains explicit after the current server set is loaded",
+    "no new membership, assignment or read endpoint is added"
+  ],
+  "browserCoverage": [
+    "pre-existing Project member is loaded before adding a second member",
+    "reload initializes both Project members from PostgreSQL-backed Project detail readback",
+    "editing one membership preserves the unrelated existing membership",
+    "pre-existing COMPANY role assignment is loaded before adding a PROJECT assignment",
+    "reload initializes both role assignments from safe User readback",
+    "replacement payloads remain free of client-owned company, actor, permission and effective scope authority"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "migrationsAdded": 0,
+  "routesAdded": 0,
+  "newReactProductionFiles": 0,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 168 - Module 18 Project relationship persistence repair.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-166-readback-backend-openapi",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.409Z",
+      "finishedAt": "2026-08-23T14:40:18.744Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.744Z",
+      "finishedAt": "2026-08-23T14:40:18.897Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-admin-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.897Z",
+      "finishedAt": "2026-08-23T14:40:18.916Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-projects-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.916Z",
+      "finishedAt": "2026-08-23T14:40:18.935Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-read-before-replace-playwright-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.935Z",
+      "finishedAt": "2026-08-23T14:40:18.953Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.953Z",
+      "finishedAt": "2026-08-23T14:40:18.971Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.971Z",
+      "finishedAt": "2026-08-23T14:40:19.005Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.005Z",
+      "finishedAt": "2026-08-23T14:40:19.060Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

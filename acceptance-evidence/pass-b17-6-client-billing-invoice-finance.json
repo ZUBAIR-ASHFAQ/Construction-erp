@@ -1,0 +1,38 @@
+{
+  "pass": "B17.6",
+  "module": "Module 15 Client Billing",
+  "scope": "Stage-preserving Client Invoice creation and atomic Finance / AR source posting",
+  "databaseMigrationAdded": false,
+  "publicRoutesChanged": false,
+  "serviceChanges": [
+    "finalized claim Stage attribution is preserved in Client Invoice lines",
+    "certified net value is allocated deterministically across invoice lines after retention",
+    "active CLIENT-RECEIVABLE asset and CLIENT-REVENUE revenue accounts are required",
+    "new invoice lines persist their resolved revenue account",
+    "claim and invoice totals are reconciled before accounting",
+    "Client Invoice posts to Module 18 Finance / AR in the same idempotent transaction",
+    "Finance source key is client_invoice:<invoiceId>",
+    "AR debit is Project-level and revenue credits preserve optional Stage dimensions",
+    "conflicting Finance source ownership is rejected",
+    "historical unposted invoices can complete the missing Finance posting without duplicating a matching Journal",
+    "client_invoice.created and client_invoice.posted evidence includes the Finance source key",
+    "financePostingDeferred runtime marker removed"
+  ],
+  "deferred": [
+    "Client Billing OpenAPI completion",
+    "Client Billing React Stage selector and Cost + Percentage basis display",
+    "Client Receipts / allocation behavior"
+  ],
+  "nextPass": "B17.7 Client Billing HTTP / OpenAPI completion",
+  "verification": {
+    "b17FocusedStatic": "11/11 PASS",
+    "b17CumulativeGate": "78/78 PASS",
+    "completeFinal21Static": "466/466 PASS",
+    "currentFullStatic": "570/570 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "86/86 migrations locked across 86 gates",
+    "functionPurposeComments": "1/1 focused PASS; included in full static gate",
+    "typescriptSyntax": "PASS for modified Client Billing TypeScript files using Node type stripping",
+    "dependencyBackedTypecheck": "not claimed; archive has no installed node_modules"
+  }
+}

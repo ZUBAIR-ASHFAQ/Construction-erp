@@ -1,0 +1,82 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-operations-evidence",
+  "generatedAt": "2026-08-23T07:48:33.949Z",
+  "status": "STAGE_6_OPERATIONS_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 135,
+  "mode": "static",
+  "stage5LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent revision creation keeps unique sequential revision numbers",
+    "concurrent complete item replacement never leaves a mixed partial item set",
+    "concurrent freeze retries create one audit record and one outbox event",
+    "BOQ register query plan uses boqs_company_tender_created_idx",
+    "revision lookup query plan uses boq_revisions_boq_status_revision_idx",
+    "failed overflowing item replacement rolls back without partial writes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the guarded live operational gate after Stage-5 and Pass-134 live verification; Pass 136 may be prepared but cannot claim Stage-6 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4a-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:48:32.457Z",
+      "finishedAt": "2026-08-23T07:48:33.742Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:48:33.742Z",
+      "finishedAt": "2026-08-23T07:48:33.865Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:48:33.865Z",
+      "finishedAt": "2026-08-23T07:48:33.882Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:48:33.882Z",
+      "finishedAt": "2026-08-23T07:48:33.910Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:48:33.910Z",
+      "finishedAt": "2026-08-23T07:48:33.949Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

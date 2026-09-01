@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-operations-evidence",
+  "generatedAt": "2026-08-23T12:37:01.549Z",
+  "status": "BLOCKED",
+  "module": "24B - Project Scope Activation",
+  "pass": 163,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-24b:operations:gate:live before Pass 164 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

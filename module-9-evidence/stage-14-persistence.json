@@ -1,0 +1,84 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-persistence-evidence",
+  "generatedAt": "2026-08-24T14:22:13.102Z",
+  "pass": 235,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_PERSISTENCE_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "migration": "20260824000400_module_9_purchase_orders_core",
+  "sourceOwnedTables": [
+    "purchase_orders",
+    "purchase_order_items",
+    "purchase_order_revisions"
+  ],
+  "inferredTablesAdded": [],
+  "companyProjectScopeEnforced": true,
+  "vendorMasterForeignKeyEnforced": true,
+  "quotationForeignKeyEnforced": true,
+  "quotationVendorCompanyProjectScopeEnforced": true,
+  "selectedQuotationStateDuplicated": false,
+  "purchaseOrderCostStructurePostingCombinationEnforced": true,
+  "revisionCreatorCompanyScopeEnforced": true,
+  "revisionNumberScopedUniquenessEnforced": true,
+  "inventoryItemForeignKeyDeferredUntilModule10": true,
+  "receivedAndInvoicedConsumptionServerOwned": true,
+  "receivedAndInvoicedConsumptionInitializedToZero": true,
+  "statusEnumsInvented": false,
+  "taxFormulaInvented": false,
+  "directPurchaseFieldsInvented": false,
+  "cancellationReasonColumnInvented": false,
+  "revisionLineHistoryTableInvented": false,
+  "commitmentPersistenceChanged": false,
+  "financePersistenceChanged": false,
+  "publicRoutesGenerated": false,
+  "apiGenerated": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 236 - Module 9 Zod request/response boundary for exactly the eight reviewed Purchase Order operations; preserve permission, status, tax/currency and direct-purchase gaps explicitly.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:11.721Z",
+      "finishedAt": "2026-08-24T14:22:12.713Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.713Z",
+      "finishedAt": "2026-08-24T14:22:12.958Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:12.958Z",
+      "finishedAt": "2026-08-24T14:22:13.032Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:13.032Z",
+      "finishedAt": "2026-08-24T14:22:13.102Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,183 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-playwright-evidence",
+  "generatedAt": "2026-08-26T12:44:57.222Z",
+  "pass": 356,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "mode": "static",
+  "status": "STAGE_23_MODULE_16_PLAYWRIGHT_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "browserFile": "tests/e2e/module-16-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through Module 24A and open Client Billing through the existing permission-aware admin shell",
+    "create one Project/Client-scoped Contract through reviewed browser fields while Contract numbering, revised value and lifecycle stay server-owned",
+    "create one Progress Claim and replace its complete DRAFT worksheet with one Project BOQ-backed exact-decimal line",
+    "certify the Claim using certifiedValue only and verify previous/current/gross, retention, deductions and certified totals are server-calculated",
+    "issue one Client Invoice using invoiceDate/dueDate only and verify immutable gross, retention, tax and total-receivable readback",
+    "verify one HELD Retention Ledger row and release its complete balance through the reviewed bodyless command",
+    "verify Client Billing audit/outbox workflow evidence plus the stable client-invoice:<id> Stage-26 AR source key",
+    "capture browser traffic and prove all seven reviewed Module-16 operations are used with Idempotency-Key on all six writes",
+    "prove browser request bodies never author Company, actor, numbering, revised value, lifecycle, Claim totals, Invoice totals, release totals or Finance posting authority",
+    "verify the Contract register remains page/pageSize-only and no browser-only filter/query surface is introduced",
+    "verify a Project-scoped client_billing.read-only user sees authorized billing history, no mutation controls and HTTP 403 for all six reviewed write commands"
+  ],
+  "intentionallyAbsent": [
+    "No Contract detail/update/delete, Claim submit/detail, standalone Invoice, payment, AR or generic CRUD route is added for Playwright convenience.",
+    "No browser-owned Company, actor, Project authorization, numbering, revised Contract value, cumulative Claim totals, retention/deduction totals, Invoice totals or Finance posting state is introduced.",
+    "No partial Retention release payload is introduced; the reviewed command remains bodyless full release.",
+    "No BOQ Item lookup endpoint is invented; the workflow uses one already-known Project BOQ Item UUID from the seeded reviewed source.",
+    "No Stage-26 Client Invoice to AR adapter is generated.",
+    "No approved Change to Client Contract target adapter is generated before its reviewed integration completion proof.",
+    "Cross-Company, cross-Project, cumulative-history, duplicate-Invoice, rollback and direct-PostgreSQL mutation cases remain additionally covered by the Pass-353 integration-security suite."
+  ],
+  "productionRuntimeFilesChanged": 0,
+  "testInfrastructureFilesChanged": 1,
+  "testInfrastructureChangeReason": "Shared Playwright selector only; Module-16 application runtime behavior is unchanged.",
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "newPermissions": 0,
+  "newBrowserFiles": 1,
+  "reviewedRouteCount": 7,
+  "reviewedWriteCount": 6,
+  "mainWorkflowIncludesRetentionRelease": true,
+  "negativePermissionWritesVerified": 6,
+  "paymentMutationInvented": false,
+  "partialRetentionReleaseInvented": false,
+  "financeArAdapterGenerated": false,
+  "approvedChangeContractAdapterGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 357 - Module 16 operational verification and final Stage-23 acceptance/regression gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-react-workspace-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:48.627Z",
+      "finishedAt": "2026-08-26T12:44:48.627Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-react-workspace-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:48.627Z",
+      "finishedAt": "2026-08-26T12:44:53.387Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:53.388Z",
+      "finishedAt": "2026-08-26T12:44:53.538Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:53.538Z",
+      "finishedAt": "2026-08-26T12:44:53.556Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:53.556Z",
+      "finishedAt": "2026-08-26T12:44:53.573Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-browser-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:53.573Z",
+      "finishedAt": "2026-08-26T12:44:54.524Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:54.525Z",
+      "finishedAt": "2026-08-26T12:44:56.222Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.222Z",
+      "finishedAt": "2026-08-26T12:44:56.345Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.345Z",
+      "finishedAt": "2026-08-26T12:44:56.469Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.469Z",
+      "finishedAt": "2026-08-26T12:44:56.647Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.647Z",
+      "finishedAt": "2026-08-26T12:44:56.809Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.809Z",
+      "finishedAt": "2026-08-26T12:44:56.976Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:56.976Z",
+      "finishedAt": "2026-08-26T12:44:57.126Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:57.126Z",
+      "finishedAt": "2026-08-26T12:44:57.174Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T12:44:57.174Z",
+      "finishedAt": "2026-08-26T12:44:57.221Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

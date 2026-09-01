@@ -1,0 +1,83 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-175-final-repair-audit-and-stage-8-handoff",
+  "generatedAt": "2026-08-23T16:02:46.658Z",
+  "pass": 175,
+  "mode": "static",
+  "status": "PASS_175_FINAL_REPAIR_AUDIT_STATIC_PASSED_PASS_174_LIVE_ACCEPTANCE_REQUIRED",
+  "blockReason": null,
+  "finalRepairAuditPassed": true,
+  "pass174LiveVerified": false,
+  "stage8RepairHoldStatus": "STAGE_8_REPAIR_HOLD_ACTIVE",
+  "repairHoldCleared": false,
+  "runtimeVerificationComplete": false,
+  "module6Allowed": false,
+  "auditedThroughPass": 174,
+  "verifiedRepairAreas": [
+    "Project member read-before-replace and safe React round-trip",
+    "User COMPANY/PROJECT role assignment read-before-replace and completeness protection",
+    "Module 18 nullable Project relationships and same-company foreign keys",
+    "Module 18 exact Project repository/service/API/browser isolation",
+    "CRM Client links to existing Tender and Project registers",
+    "BOQ CSV import through the reviewed whole-set item replacement command",
+    "junior-readable service orchestration and function-purpose comments",
+    "required Fastify/TypeScript/Prisma/PostgreSQL and React/Vite workspace structure",
+    "migration inventory and final Module 24B Stage-8 acceptance boundary"
+  ],
+  "unresolvedContractDecisionsNotSilentlyInvented": [
+    "Project suspend/resume command remains source-contract reconciliation work because the workflow names suspension but the reviewed route table defines no command.",
+    "Persistent cross-session BOQ revision reading remains source-contract reconciliation work because the reviewed route table defines no revision-read endpoint.",
+    "Further Approval Project-context integration remains deferred to its explicit later source-module integration gate."
+  ],
+  "nextStage": "Complete Pass 174 dependency-backed/live acceptance first; Module 6 remains blocked.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-175-focused-final-audit",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:25.527Z",
+      "finishedAt": "2026-08-23T16:02:25.686Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "pass-173-consolidated-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:25.686Z",
+      "finishedAt": "2026-08-23T16:02:28.209Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-final-static-gate",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:28.209Z",
+      "finishedAt": "2026-08-23T16:02:46.555Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-required-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.555Z",
+      "finishedAt": "2026-08-23T16:02:46.605Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.605Z",
+      "finishedAt": "2026-08-23T16:02:46.657Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

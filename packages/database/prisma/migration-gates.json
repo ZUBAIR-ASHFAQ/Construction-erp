@@ -1,0 +1,750 @@
+{
+  "formatVersion": 1,
+  "provider": "postgresql",
+  "gates": [
+    {
+      "stage": 0,
+      "gate": "foundation-company-master",
+      "description": "Foundation-owned canonical companies table introduced in Pass 04.",
+      "migrations": [
+        "20260822000100_foundation_company_master"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-audit-infrastructure",
+      "description": "Foundation persistent audit history introduced in Pass 10 after company ownership exists.",
+      "migrations": [
+        "20260822000200_foundation_audit_infrastructure"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-transactional-outbox",
+      "description": "Foundation durable transactional outbox and retry-safe publisher state introduced in Pass 11.",
+      "migrations": [
+        "20260822000300_foundation_transactional_outbox"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-idempotency-infrastructure",
+      "description": "Foundation persisted command idempotency, request fingerprints, concurrent duplicate protection and completed-result replay introduced in Pass 12.",
+      "migrations": [
+        "20260822000400_foundation_idempotency_infrastructure"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-number-sequence-infrastructure",
+      "description": "Foundation reusable company-scoped, transaction-bound business number sequences introduced in Pass 13.",
+      "migrations": [
+        "20260822000500_foundation_number_sequence_infrastructure"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-queue-infrastructure",
+      "description": "Foundation durable PostgreSQL-backed background queue with leases, retries, dead-letter handling and diagnostics introduced in Pass 15.",
+      "migrations": [
+        "20260822000600_foundation_queue_infrastructure"
+      ]
+    },
+    {
+      "stage": 0,
+      "gate": "foundation-initial-provisioning",
+      "description": "Foundation controlled/idempotent initial company provisioning, non-secret company configuration, reviewed sequence provisioning and Module 24A identity handoff introduced in Pass 17.",
+      "migrations": [
+        "20260822000700_foundation_initial_provisioning"
+      ]
+    },
+    {
+      "stage": 1,
+      "gate": "module-24a-users-rbac-core-persistence",
+      "description": "Creates Module 24A users, credentials, sessions, roles, permissions and company-only user-role assignments, then activates deferred Users/RBAC foreign keys without project persistence.",
+      "migrations": [
+        "20260822000800_module_24a_users_rbac_core"
+      ]
+    },
+    {
+      "stage": 1,
+      "gate": "module-24a-access-session-security",
+      "description": "Separates short-lived opaque Bearer access tokens from longer-lived refresh tokens and expires legacy combined-token sessions.",
+      "migrations": [
+        "20260822000900_module_24a_access_session_security"
+      ]
+    },
+    {
+      "stage": 1,
+      "gate": "module-24a-invitation-recovery",
+      "description": "Adds signed one-time invitation/password-reset state without storing raw action tokens.",
+      "migrations": [
+        "20260822001000_module_24a_invitation_recovery"
+      ]
+    },
+    {
+      "stage": 2,
+      "gate": "module-18-document-management-core-persistence",
+      "description": "Creates Module 18 company-scoped document folders, documents, immutable versions and generic document links while deferring project relationships until Project Management and Module 24B exist.",
+      "migrations": [
+        "20260822001100_module_18_document_management_core"
+      ]
+    },
+    {
+      "stage": 2,
+      "gate": "module-18-upload-intent-persistence",
+      "description": "Adds short-lived company/user-scoped Module 18 upload-intent metadata used before a verified document version is created.",
+      "migrations": [
+        "20260822001200_module_18_upload_intents"
+      ]
+    },
+    {
+      "stage": 2,
+      "gate": "module-18-existing-document-version-intents",
+      "description": "Adds a real existing-document FK and optional revision code to Module 18 upload intents so later immutable document versions can be created safely.",
+      "migrations": [
+        "20260822001300_module_18_existing_document_version_intents"
+      ]
+    },
+    {
+      "stage": 2,
+      "gate": "module-18-folder-link-completion",
+      "description": "Completes the Module 18 folder browser integration and makes generic document/resource links retry-safe without introducing Project Management or Module 24B relationships.",
+      "migrations": [
+        "20260822001350_module_18_document_link_uniqueness"
+      ]
+    },
+    {
+      "stage": 2,
+      "gate": "module-18-relationship-integrity",
+      "description": "Hardens Module 18 same-company folder/owner/upload-intent relationships and guarantees that current_version_id belongs to the same document without introducing Project Management or Module 24B references.",
+      "migrations": [
+        "20260822001360_module_18_relationship_integrity"
+      ]
+    },
+    {
+      "stage": 3,
+      "gate": "module-22-approval-workflows-core-persistence",
+      "description": "Creates Module 22 company-scoped approval definitions, ordered steps, approval requests, append-only actions and delegations while keeping business resource references generic and project scope deferred.",
+      "migrations": [
+        "20260822001400_module_22_approval_workflows_core"
+      ]
+    },
+    {
+      "stage": 3,
+      "gate": "module-22-delegated-approver-identity",
+      "description": "Records the represented approval authority for direct/delegated actions and prevents the same approval seat from being counted twice.",
+      "migrations": [
+        "20260822001410_module_22_delegated_approver_identity"
+      ]
+    },
+    {
+      "stage": 3,
+      "gate": "module-22-approval-request-source-keys",
+      "description": "Adds a stable company-scoped owning-module source key so approval-request creation can join the owner transaction and safely replay retries without duplicate requests.",
+      "migrations": [
+        "20260822001420_module_22_approval_request_source_keys"
+      ]
+    },
+    {
+      "stage": 3,
+      "gate": "module-22-approval-timing-policy",
+      "description": "Adds optional reminder/escalation/expiry timers to approval steps and supports durable asynchronous timing jobs without changing approver authority.",
+      "migrations": [
+        "20260822001430_module_22_approval_timing_policy"
+      ]
+    },
+    {
+      "stage": 3,
+      "gate": "module-22-definition-activation-integrity",
+      "description": "Validates resolvable active approvers before definition activation and hardens Module 22 controlled values, JSON shapes, definition/version/current-step integrity, and same-company request/delegation relationships.",
+      "migrations": [
+        "20260822001440_module_22_definition_activation_integrity"
+      ]
+    },
+    {
+      "stage": 4,
+      "gate": "module-2-crm-client-management-core-persistence",
+      "description": "Creates Module 2 company-scoped clients, contacts, opportunities and opportunity notes with same-company client/owner integrity while deferring Tender, Project, Billing and Finance relationships.",
+      "migrations": [
+        "20260823000100_module_2_crm_client_management_core"
+      ]
+    },
+    {
+      "stage": 5,
+      "gate": "module-3-tendering-estimation-core-persistence",
+      "description": "Creates Module 3 company-scoped tenders, versioned commercial estimates, estimate items and immutable tender submissions while keeping Project, WBS, BOQ project mapping, Budget and Finance relationships deferred.",
+      "migrations": [
+        "20260823000200_module_3_tendering_estimation_core"
+      ]
+    },
+    {
+      "stage": 6,
+      "gate": "module-4a-boq-commercial-core-persistence",
+      "description": "Creates Module 4A company-scoped tender-linked BOQs, versioned revisions and hierarchical decimal-safe BOQ items while deferring Project, WBS and cost-code relationships to Module 4B.",
+      "migrations": [
+        "20260823000300_module_4a_boq_commercial_core"
+      ]
+    },
+    {
+      "stage": 7,
+      "gate": "module-5-project-management-core-persistence",
+      "description": "Creates Module 5 company-scoped Project master and lifecycle history with same-company Client/Tender/manager integrity while deferring project_members and project-scoped authorization to Module 24B.",
+      "migrations": [
+        "20260823000400_module_5_project_management_core"
+      ]
+    },
+    {
+      "stage": 8,
+      "gate": "module-24b-project-scope-persistence",
+      "description": "Creates Module 24B company-scoped project_members and activates same-company PROJECT-scoped user-role assignments after the Project master exists.",
+      "migrations": [
+        "20260823000500_module_24b_project_scope_activation"
+      ]
+    },
+    {
+      "stage": 8,
+      "gate": "module-18-project-relationship-activation",
+      "description": "Activates the deferred nullable Module 18 Project relationships after Module 5 and Module 24B, including same-company Project foreign keys and folder/document/upload-intent Project consistency.",
+      "migrations": [
+        "20260823000600_module_18_project_relationship_activation"
+      ]
+    },
+    {
+      "stage": 9,
+      "gate": "module-6-wbs-cost-codes-core-persistence",
+      "description": "Creates the four source-owned Module 6 WBS/cost-classification tables with same-company Project ownership, sibling uniqueness, hierarchy-cycle protection and Project mapping integrity while leaving unresolved freeze/status/API ambiguities explicit.",
+      "migrations": [
+        "20260823000700_module_6_wbs_cost_codes_core"
+      ]
+    },
+    {
+      "stage": 10,
+      "gate": "module-4b-boq-project-mapping-persistence",
+      "description": "Activates Module 4B nullable BOQ Project and item WBS/Cost Code relationships after Modules 5 and 6, preserving existing tender BOQs and enforcing same-company/project mapping integrity.",
+      "migrations": [
+        "20260823000800_module_4b_boq_project_mapping"
+      ]
+    },
+    {
+      "stage": 11,
+      "gate": "module-15a-finance-core-persistence",
+      "description": "Creates the four Module 15A Finance Core tables for Company-owned accounts, fiscal periods, journals and decimal-safe journal lines, reusing existing Project/ProjectCostCode dimensions while AP/AR/payments/source adapters remain deferred to Module 15B.",
+      "migrations": [
+        "20260824000100_module_15a_finance_core"
+      ]
+    },
+    {
+      "stage": 12,
+      "gate": "module-7-budgeting-job-costing-core-persistence",
+      "description": "Creates the five reviewed Module 7 budget/job-cost tables, validates budget posting combinations against Module 6, scopes source-derived costs to ProjectCostCode, and locks source-key idempotency without inventing source adapters or current-budget/status fields.",
+      "migrations": [
+        "20260824000200_module_7_budgets_job_costing_core"
+      ]
+    },
+    {
+      "stage": 13,
+      "gate": "module-8-procurement-rfq-core-persistence",
+      "description": "Creates the eight reviewed Module 8 supplier/vendor, requisition, RFQ and quotation tables with Company/Project/cost-structure integrity, defers the nullable Module-10 item FK, and preserves the unresolved rfq_item_id target explicitly without inventing an rfq_items table.",
+      "migrations": [
+        "20260824000300_module_8_procurement_rfq_core"
+      ]
+    },
+    {
+      "stage": 14,
+      "gate": "module-9-purchase-orders-core-persistence",
+      "description": "Creates exactly the three reviewed Module 9 Purchase Order tables with Company/Project/Vendor/quotation scope, Module-6 cost-structure integrity, deferred Module-10 item reference and controlled revision persistence without inventing Finance, direct-purchase, cancellation-reason or revision-line tables.",
+      "migrations": [
+        "20260824000400_module_9_purchase_orders_core"
+      ]
+    },
+    {
+      "stage": 15,
+      "gate": "module-10-inventory-materials-core-persistence",
+      "description": "Creates exactly the six reviewed Module 10 Inventory tables, enforces Company/Project/warehouse/item/cost-structure integrity and append-only stock ledger persistence, and activates the deferred nullable Procurement/Purchase Order item relationships only after explicit historical-value preflight.",
+      "migrations": [
+        "20260824000500_module_10_inventory_materials_core"
+      ]
+    },
+    {
+      "stage": 16,
+      "gate": "module-11-subcontractor-management-core-persistence",
+      "description": "Creates exactly the five reviewed Module 11 subcontractor, subcontract, scope-line and payment-application tables, implements the corrected nullable same-Company Vendor link, enforces Project/BOQ/cost-structure/application scope, and leaves approval, commitment runtime, revision/retention extensions and Finance/AP adapters to their owning stages.",
+      "migrations": [
+        "20260825000100_module_11_subcontractor_management_core"
+      ]
+    },
+    {
+      "stage": 17,
+      "gate": "module-12-equipment-management-core-persistence",
+      "description": "Creates exactly the four reviewed Module 12 Equipment tables, enforces Company/Project/assignment-actor scope and fail-closed assignment overlap, resolves nullable usage cost_structure_id to the existing Module-6 ProjectCostCode identity, and leaves usage approval, cost posting, transfer/archive, maintenance work orders and history readback to later reviewed passes.",
+      "migrations": [
+        "20260825000200_module_12_equipment_management_core"
+      ]
+    },
+    {
+      "stage": 18,
+      "gate": "module-14a-employee-master-core-persistence",
+      "description": "Creates exactly the two reviewed Module 14A Employee/leave-request tables, enforces Company ownership and same-Company optional User/approver links, preserves decimal compensation/leave values, and defers payroll, payslips, compensation-history and unresolved leave-approval policy to later reviewed gates.",
+      "migrations": [
+        "20260825000300_module_14a_employee_master_core"
+      ]
+    },
+    {
+      "stage": 19,
+      "gate": "module-13-workforce-timesheets-core-persistence",
+      "description": "Creates exactly the four reviewed Module 13 Workforce/Timesheet tables, adds direct Module-14A Employee and current Project/WBS/Cost relationships, enforces Company/date/cost-structure/reference integrity, and leaves undefined status tokens, shift/hour-limit policy, Payroll locks and downstream posting keys to later reviewed contracts.",
+      "migrations": [
+        "20260825000400_module_13_workforce_timesheets_core"
+      ]
+    },
+    {
+      "stage": 20,
+      "gate": "module-14b-payroll-persistence-core",
+      "description": "Creates the source-defined Module 14B Payroll Run/Payslip tables plus the three Pass-308 reviewed support tables for effective-dated compensation, blocking calculation evidence and direct Timesheet Entry source consumption, with Company/range/source integrity and no Payroll formula, Finance adapter or Job-Cost posting runtime.",
+      "migrations": [
+        "20260825000500_module_14b_payroll_persistence_core"
+      ]
+    },
+    {
+      "stage": 21,
+      "gate": "module-21-project-scheduling-core-persistence",
+      "description": "Creates exactly the five reviewed Module 21 Project Scheduling tables, enforces one current Schedule per Project, same-Project WBS and same-Schedule activity/dependency/progress scope, cycle-free first-scope FS dependencies, immutable baseline snapshots and bounded progress integrity without inventing advanced CPM/P6, scheduler sync, Change Order or Daily Report integrations.",
+      "migrations": [
+        "20260826000100_module_21_project_scheduling_core"
+      ]
+    },
+    {
+      "stage": 22,
+      "gate": "module-17-change-orders-core-persistence",
+      "description": "Creates exactly the four reviewed Module 17 Change Order tables, enforces Company/Project/requester scope, optional Project cost-structure and Project-mapped BOQ integrity, one immutable formal Change Order snapshot per approved request, and forward-only impact evidence without inventing target adapters, Client Billing integration, status vocabularies or Stage-27 reversal commands.",
+      "migrations": [
+        "20260826000200_module_17_change_orders_core"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "module-16-client-billing-core-persistence",
+      "description": "Creates exactly the five reviewed Module 16 Client Billing tables with Company/Project/Client scope, optional Project-mapped BOQ line integrity, exact decimal billing values, one Invoice per Claim, stable Invoice source history and monotonic retention-release persistence while leaving numbering scope, lifecycle vocabularies, valuation policy, payment writes and the Stage-26 AR adapter to later reviewed passes.",
+      "migrations": [
+        "20260826000300_module_16_client_billing_core"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-6-durable-cost-structure-state-repair",
+      "description": "Pass 359 repair gate adds one Module-6-owned durable Project cost-structure state table, backfills previously accepted freeze commands from audit history, and blocks WBS/mapping mutation while frozen without creating a new business module or pulling Stage-26/27 integrations forward.",
+      "migrations": [
+        "20260826000400_module_6_durable_cost_structure_state"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-8-rfq-item-relational-integrity-repair",
+      "description": "Pass 362 repair gate adds the smallest Module-8-owned RFQ line snapshot table, safely maps historical quotation item identifiers, activates the real supplier_quotation_items.rfq_item_id foreign key, and enforces same-RFQ/source-requisition scope without adding a new business module or public route.",
+      "migrations": [
+        "20260826000500_module_8_rfq_item_relational_integrity"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-9-direct-purchase-exception-repair",
+      "description": "Pass 364 repair gate persists the source-required direct-purchase reason, enforces exactly one quotation/direct-purchase source path, and registers one explicit direct-purchase permission without adding a public route, business module, role grant or Stage-26/27 integration.",
+      "migrations": [
+        "20260826000600_module_9_direct_purchase_exception"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-9-revision-history-cancellation-evidence-repair",
+      "description": "Pass 365 repair gate adds immutable before/after Purchase Order revision line snapshots and durable cancellation reason/actor/time evidence, including audit-backed legacy recovery, without adding a public route, permission, business module or Stage-26/27 integration.",
+      "migrations": [
+        "20260826000700_module_9_revision_history_cancellation_evidence"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-10-warehouse-ledger-low-stock-repair",
+      "description": "Pass 368 repair gate adds only a nullable non-negative per-Warehouse/Item minimum-stock threshold to existing Inventory balances; Warehouse management and stock-ledger/low-stock reads reuse existing source-owned tables and remain outside Stage-26/27 Finance integrations.",
+      "migrations": [
+        "20260826000800_module_10_warehouse_ledger_low_stock_repair"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-10-uom-count-stock-period-repair",
+      "description": "Pass 369 repair gate adds per-Item approved unit conversions, immutable Goods Receipt conversion snapshots, durable physical-count/reconciliation evidence and Inventory-owned OPEN/LOCKED stock periods without adding a new permission, Finance adapter or unrelated Inventory behavior.",
+      "migrations": [
+        "20260827000100_module_10_uom_count_stock_period_repair"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-11-readback-revision-retention-repair",
+      "description": "Pass 370 repair gate adds bounded Module-11 readback support, immutable approved Subcontract revision evidence, certified-at history and append-only retention-release evidence without adding a permission, stable error, Finance/AP adapter or Change Order target integration.",
+      "migrations": [
+        "20260827000200_module_11_readback_revision_retention_repair"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-12-usage-approval-job-cost-repair",
+      "description": "Pass 371 repair gate adds server-owned Equipment usage approval/posting state so recorded usage can reuse Module-22 approval and append one idempotent Module-7 Project actual cost by stable usage source identity without adding a new permission, event, business module or Stage-26 Finance adapter.",
+      "migrations": [
+        "20260827000300_module_12_usage_approval_job_cost_repair"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-21-activity-owner-baseline-reopen-repair",
+      "description": "Pass 376 repair gate adds authorized Schedule Activity owner references and controlled baseline reopen while deriving planned duration from dates, preserving immutable baseline snapshots, and avoiding advanced CPM/P6 or Stage-27 Change/Daily Report integrations.",
+      "migrations": [
+        "20260827000400_module_21_activity_owner_baseline_reopen_repair"
+      ]
+    },
+    {
+      "stage": 23,
+      "gate": "post-stage-23-module-17-withdraw-history-repair",
+      "description": "Pass 377 repair gate adds required reason plus server-owned actor/time withdrawal evidence to existing Change Requests and PostgreSQL immutability after WITHDRAWN, without adding a new permission, stable error, event, target adapter or business table.",
+      "migrations": [
+        "20260827000500_module_17_withdraw_history_repair"
+      ]
+    },
+    {
+      "stage": 24,
+      "gate": "stage-24-module-19-submittal-persistence-repository",
+      "description": "Pass 390 begins the Module-19 Submittal persistence/repository layer on the accepted Stage-0-23 baseline, adding only the three source-owned Submittal tables, boundary schemas and Company/Project-scoped repository methods while service/routes/RFI/React remain deferred.",
+      "migrations": [
+        "20260827000600_module_19_submittal_persistence_repository"
+      ]
+    },
+    {
+      "stage": 24,
+      "gate": "stage-24-module-19-rfi-persistence",
+      "description": "Pass 395 adds the source-owned RFI and append-only RFI response persistence required before the Stage-24 RFI service and HTTP workflow.",
+      "migrations": [
+        "20260827000700_module_19_rfi_persistence"
+      ]
+    },
+    {
+      "stage": 25,
+      "gate": "refactor-stage-2-pass-2-2-foundation-company-ownership",
+      "description": "Final 21-module refactor Foundation repair adds the missing direct companies.id foreign key for inventory_count_lines so every explicit company_id in the Prisma schema resolves to the canonical Company master. Historical module migrations remain unchanged.",
+      "migrations": [
+        "20260828000100_foundation_company_ownership_repair"
+      ]
+    },
+    {
+      "stage": 25,
+      "gate": "refactor-stage-2-pass-2-6-foundation-audit-security",
+      "description": "Final 21-module refactor Foundation hardening makes audit_logs database-enforced append-only while keeping audit writes transaction-bound and secret-safe. Historical migrations remain unchanged.",
+      "migrations": [
+        "20260828000200_foundation_audit_security_hardening"
+      ]
+    },
+    {
+      "stage": 26,
+      "gate": "refactor-stage-3-pass-3-3-administration-role-permissions",
+      "description": "Final 21-module refactor Administration alignment adds stable admin user/role permission aliases and maps existing legacy Administration role grants forward without removing legacy permissions or changing business data.",
+      "migrations": [
+        "20260828000300_administration_permission_aliases"
+      ]
+    },
+    {
+      "stage": 26,
+      "gate": "refactor-stage-3-pass-3-4-administration-project-scopes",
+      "description": "Final 21-module refactor Administration alignment adds dedicated same-company user_project_scopes, backfills currently active legacy Project access, and introduces admin.project_scopes.manage without removing legacy Project membership or role-assignment data.",
+      "migrations": [
+        "20260828000400_administration_user_project_scopes"
+      ]
+    },
+    {
+      "stage": 26,
+      "gate": "refactor-stage-3-pass-3-5-administration-departments",
+      "description": "Final 21-module refactor Administration alignment adds the company-owned departments master, bounded GET/POST Administration routes, and admin.departments.manage while keeping Finance-owned accounts outside Administration.",
+      "migrations": [
+        "20260828000500_administration_departments"
+      ]
+    },
+    {
+      "stage": 26,
+      "gate": "refactor-stage-3-pass-3-6-documents-immutable-versions",
+      "description": "Final 21-module refactor Documents alignment adds final signed-upload route aliases, verifies uploaded object checksum metadata, and makes document_versions database-enforced immutable without removing legacy document routes.",
+      "migrations": [
+        "20260828000600_documents_immutable_versions"
+      ]
+    },
+    {
+      "stage": 26,
+      "gate": "refactor-stage-3-pass-3-7-documents-secure-links",
+      "description": "Final 21-module refactor Documents alignment adds company/version/project/creator ownership to document_links, documents.link permission, and controlled same-company resource link/unlink APIs while preserving historical generic links.",
+      "migrations": [
+        "20260828000700_documents_secure_links"
+      ]
+    },
+    {
+      "stage": 27,
+      "gate": "final-21-pass-a7-project-commercial-model",
+      "description": "Final 21-module cleanup Pass A7 removes Tender/Estimate dependency from active Project Management, adds Project-owned Fixed Price / Cost + Percentage commercial fields, and makes Project Manager/location optional without editing historical migrations.",
+      "migrations": [
+        "20260829000100_final21_project_commercial_model"
+      ]
+    },
+    {
+      "stage": 28,
+      "gate": "final-21-pass-a8-simple-cost-categories",
+      "description": "Final 21-module cleanup Pass A8 removes active BOQ/WBS/Cost Code dependencies from Project Budget and Client Billing claim lines, replaces Project cost dimensions with optional stage plus simple cost categories, and keeps source-derived costs idempotent through company-scoped source keys without editing historical migrations.",
+      "migrations": [
+        "20260829000200_final21_simple_cost_categories"
+      ]
+    },
+    {
+      "stage": 29,
+      "gate": "final-21-pass-a9-procurement-without-rfq",
+      "description": "Final 21-module cleanup Pass A9 removes active RFQ/quotation and standalone Purchase Order ownership, consolidates Material Requirement -> Purchase Order -> Goods Receipt under Procurement, adds requirement/stage/supplier trace fields, and maps legacy permissions forward without editing historical migrations.",
+      "migrations": [
+        "20260829000300_final21_procurement_without_rfq"
+      ]
+    },
+    {
+      "stage": 30,
+      "gate": "final-21-pass-a10-client-billing-without-contract",
+      "description": "Final 21-module cleanup Pass A10 removes standalone Client Contract ownership from active Client Billing, introduces project billing settings, moves claims/invoices to direct project/client ownership, creates invoice lines, and maps legacy billing permissions forward without editing historical migrations.",
+      "migrations": [
+        "20260829000400_final21_client_billing_without_contract"
+      ]
+    },
+    {
+      "stage": 31,
+      "gate": "final-21-pass-a11-safe-legacy-database-cleanup",
+      "description": "Final 21-module cleanup Pass A11 removes database owners already disconnected by A2-A10, drops Tender/quotation/Contract-era columns from retained records, rebuilds Client Invoice immutability around final fields, and deliberately defers BOQ/WBS/Cost Code tables until their remaining active consumers are migrated.",
+      "migrations": [
+        "20260829000500_final21_safe_legacy_database_cleanup"
+      ]
+    },
+    {
+      "stage": 32,
+      "gate": "final-21-pass-b1-administration-alignment",
+      "description": "Final 21-module Pass B1 aligns Administration persistence and runtime with the final Module 2 contract: user-owned password hashes, company-owned roles, simple user_roles, explicit project scopes, Department uniqueness, and final permission vocabulary without editing historical migrations.",
+      "migrations": [
+        "20260829000600_final21_administration_alignment"
+      ]
+    },
+    {
+      "stage": 33,
+      "gate": "final-21-pass-b2-documents-audit-alignment",
+      "description": "Final 21-module Pass B2 completes Module 21 Documents & Audit Log with permission-safe audit search, exact Project/Stage audit dimensions, final document-link resource columns, and final document/audit permission vocabulary without editing historical migrations.",
+      "migrations": [
+        "20260829000700_final21_documents_audit_alignment"
+      ]
+    },
+    {
+      "stage": 34,
+      "gate": "final-21-pass-b3-client-management-alignment",
+      "description": "Final 21-module Pass B3 completes Module 4 Client Management with nullable credit/contact fields, same-company Contact ownership, exact Client/Contact API routes, source-derived Project/billing summaries, and non-destructive Client status changes without editing historical migrations.",
+      "migrations": [
+        "20260829000800_final21_client_management_alignment"
+      ]
+    },
+    {
+      "stage": 35,
+      "gate": "final-21-role-permission-legacy-compatibility-bridge",
+      "description": "Forward-only compatibility bridge preserves immutable B4/B5 migration files by temporarily resolving their legacy permission_code role-permission statements onto final permission_id ownership; B7 removes the bridge after those migrations run.",
+      "migrations": [
+        "20260829000850_final21_role_permission_legacy_bridge"
+      ]
+    },
+    {
+      "stage": 35,
+      "gate": "final-21-pass-b4-vendors-subcontractors-alignment",
+      "description": "Final 21-module Pass B4 makes Supplier & Subcontractor Management the single Module 5 master-data owner, aligns Vendor/Contact/Subcontractor persistence and permissions, moves Vendor CRUD out of Procurement, and retires active operational Subcontract workflow code without editing historical migrations.",
+      "migrations": [
+        "20260829000900_final21_vendors_subcontractors_alignment"
+      ]
+    },
+    {
+      "stage": 36,
+      "gate": "final-21-pass-b5-employee-salary-foundation",
+      "description": "Final-21 Pass B5.2 separates Module 3 Employee master and effective-dated compensation/salary history from later attendance/payroll processing while preserving historical workforce/payroll data.",
+      "migrations": [
+        "20260829001000_final21_employee_salary_foundation"
+      ]
+    },
+    {
+      "stage": 37,
+      "gate": "final-21-pass-b7-project-stages-progress",
+      "description": "Final-21 Pass B7 introduces Module 7 Project Stages / Progress with an exact 100% frozen baseline, append-only physical progress approvals, Stage lifecycle dates, evidence linkage, final permissions and source-derived Stage financial hooks.",
+      "migrations": [
+        "20260829001100_final21_project_stages_progress"
+      ]
+    },
+    {
+      "stage": 38,
+      "gate": "final-21-pass-b8-project-team-assignment",
+      "description": "Final-21 Pass B8 makes Module 8 the single Employee Project/Stage assignment owner, migrates useful legacy workforce/member data, adds allocation/history/permission integrity, and retires old ProjectMember/WorkforceAssignment persistence without editing historical migrations.",
+      "migrations": [
+        "20260829001200_final21_project_team_assignment"
+      ]
+    },
+    {
+      "stage": 39,
+      "gate": "final-21-pass-b9-finance-core-alignment",
+      "description": "Final-21 Pass B9 aligns Module 18 Finance & Accounting with Project/Stage journal dimensions, stable source-key posting, balanced immutable journals, Cash/Bank accounts, reconciliation, final permissions and the exact Finance HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001300_final21_finance_core_alignment"
+      ]
+    },
+    {
+      "stage": 40,
+      "gate": "final-21-pass-b10-budget-job-cost-hardening",
+      "description": "Final-21 Pass B10 aligns Module 9 Project Budget & Cost Tracking with Project/Stage simple cost categories, frozen versioned budgets, source-keyed commitments/actuals, current forecasts and the exact seven-route HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001400_final21_budget_job_cost_hardening"
+      ]
+    },
+    {
+      "stage": 41,
+      "gate": "final-21-pass-b11-procurement-hardening",
+      "description": "Final-21 Pass B11 hardens Module 10 Procurement/Purchase with real Project Stage integrity, qualified supplier validation, mandatory Goods Receipt supplier identity, batch trace, idempotent write commands and the exact ten-route HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001500_final21_procurement_hardening"
+      ]
+    },
+    {
+      "stage": 42,
+      "gate": "final-21-pass-b12-inventory-material-management",
+      "description": "Final-21 Pass B12 aligns Module 11 Inventory / Material Management with a Company material master, derived append-only stock ledger, Project/Stage material issues, controlled transfers/adjustments, Procurement receipt integration, final permissions and the exact seven-route HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001600_final21_inventory_material_management"
+      ]
+    },
+    {
+      "stage": 43,
+      "gate": "final-21-pass-b13-equipment-management",
+      "description": "Final-21 Pass B13 aligns Module 12 Equipment Management with Project/Stage assignments, assignment-based usage, stable source-key Equipment actual cost, maintenance history, final permissions and the exact six-route HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001700_final21_equipment_alignment"
+      ]
+    },
+    {
+      "stage": 44,
+      "gate": "final-21-pass-b14-labour-attendance-payroll",
+      "description": "Final-21 Pass B14 replaces legacy HR payroll/timesheet runtime with Module 13 Labour / Attendance & Payroll: assignment-scoped attendance, effective compensation salary calculation, immutable finalized payroll, idempotent Project/Stage labour actuals, Finance posting, payslips and the exact eight-route HTTP contract without editing historical migrations.",
+      "migrations": [
+        "20260829001800_final21_labour_attendance_payroll"
+      ]
+    },
+    {
+      "stage": 45,
+      "gate": "final-21-pass-b15-2-site-expense-persistence",
+      "description": "Final-21 Pass B15.2 adds only Module 14 Site Expense persistence: company-scoped expense categories and Site Expense records with same-company Project, Stage, Finance account, Document and creator integrity, precise positive amounts, numbering uniqueness and required indexes. Runtime/API/UI remains deferred.",
+      "migrations": [
+        "20260829001900_final21_site_expenses"
+      ]
+    },
+    {
+      "stage": 46,
+      "gate": "final-21-pass-b15-3-site-expense-contract",
+      "description": "Final-21 Pass B15.3 adds only Module 14 Site Expense Zod request/response boundaries, exact route catalog, stable permission/error vocabulary and a permission-only forward migration. Repository/service/routes/UI and posting/reversal business logic remain deferred.",
+      "migrations": [
+        "20260829002000_final21_site_expense_contract"
+      ]
+    },
+    {
+      "stage": 47,
+      "gate": "final-21-pass-b16-2-supplier-payables-persistence",
+      "description": "Final-21 Pass B16.2 adds only Module 17 Supplier Payables persistence: company/vendor/project-scoped Supplier Invoices, invoice lines, Supplier Payments and append-oriented payment allocations with precise money, Procurement/Finance ownership constraints, Vendor invoice uniqueness and bounded-read indexes. Runtime/API/UI remains deferred.",
+      "migrations": [
+        "20260829002100_final21_supplier_payables"
+      ]
+    },
+    {
+      "stage": 48,
+      "gate": "final-21-pass-b16-3-supplier-payables-contract",
+      "description": "Final-21 Pass B16.3 adds only Module 17 Supplier Payables Zod request/response boundaries, exact eight-route catalog, stable permission/error vocabulary and a permission-only forward migration. Repository/service/routes/UI and posting/allocation business logic remain deferred.",
+      "migrations": [
+        "20260829002200_final21_supplier_payables_contract"
+      ]
+    },
+    {
+      "stage": 49,
+      "gate": "final-21-repair-r3-remove-excluded-legacy-scope",
+      "description": "Removes excluded BOQ/WBS/Cost Code/Leave and legacy operational Subcontract persistence after a fail-closed data preflight, drops duplicate Employee salary columns, and keeps Employee Compensation as the salary authority.",
+      "migrations": [
+        "20260830000100_final21_remove_excluded_legacy_scope"
+      ]
+    },
+    {
+      "stage": 50,
+      "gate": "final-21-repair-r6-route-document-contract",
+      "description": "Aligns Module 21 required document/version metadata, removes unsupported document-folder routes and persistence through a forward migration, preserves the bounded Document Browser read, and makes Administration support authentication commands explicit rather than silent route drift.",
+      "migrations": [
+        "20260830000200_final21_r6_route_document_contract"
+      ]
+    },
+    {
+      "stage": 51,
+      "gate": "final-21-pass-b17-2-client-billing-persistence-integrity",
+      "description": "Final-21 Pass B17.2 adds forward-only Client Billing Stage and revenue-account persistence integrity, fail-closed legacy-data preflight, Stage/Finance foreign keys, bounded Stage/account indexes and cross-row same-Project/Company scope triggers without changing runtime billing calculations.",
+      "migrations": [
+        "20260830000300_final21_client_billing_persistence_integrity"
+      ]
+    },
+    {
+      "stage": 52,
+      "gate": "final-21-pass-b17-8-client-billing-cross-module-reconciliation",
+      "description": "Final-21 Pass B17.8 hardens Client -> Project -> Claim -> Invoice ownership with fail-closed preflight and forward-only scope triggers, while preserving Stage billed reads, Module 21 Client Invoice document links and Finance source-key idempotency as single-owner cross-module seams.",
+      "migrations": [
+        "20260830000400_final21_client_billing_cross_module_reconciliation"
+      ]
+    },
+    {
+      "stage": 53,
+      "gate": "final-21-pass-b18-2-client-receipts-persistence-integrity",
+      "description": "Final-21 Pass B18.2 adds only Module 16 Client Receipts persistence: Company/Client/Project/optional Stage/Cash-Bank/creator-scoped posted receipts, Invoice allocations, allocation owner-scope trigger, stable permissions and bounded indexes without adding runtime routes or rewriting historical migrations.",
+      "migrations": [
+        "20260830000500_final21_client_receipts_persistence_integrity"
+      ]
+    },
+    {
+      "stage": 54,
+      "gate": "final-21-pass-b19-7-project-profitability-http-rbac-openapi",
+      "description": "Final-21 Pass B19.7 exposes the exact four read-only Project Profitability GET routes, wires bearer authentication and service-level Project RBAC, documents bounded OpenAPI contracts, and seeds the three Module 19 permission codes without adding profitability business persistence.",
+      "migrations": [
+        "20260830000600_final21_project_profitability_permissions"
+      ]
+    },
+    {
+      "stage": 55,
+      "gate": "final-21-repair-r9-permission-contract-alignment",
+      "description": "Final-21 Repair R9 aligns Permission and RolePermission persistence to the controlling Module 2 contract by preserving descriptions, making permission code the stable identifier and converting role grants to permission_code through one forward-only migration.",
+      "migrations": [
+        "20260831000100_final21_permission_contract_alignment"
+      ]
+    },
+    {
+      "stage": 56,
+      "gate": "final-21-pass-b20-2-reports-persistence",
+      "description": "Final-21 Pass B20.2 adds only Module 20 Reports & Analytics persistence: shared/company report definitions, company/user-scoped export runs linked to Module 21 Documents, and saved report filters with bounded indexes. Report source data and runtime report logic remain owned by later passes and existing source modules.",
+      "migrations": [
+        "20260831000200_final21_reports_persistence"
+      ]
+    },
+    {
+      "stage": 57,
+      "gate": "final-21-pass-b1-2-dashboard-persistence",
+      "description": "Final-21 Pass B1.2 adds only Module 1 Dashboard persistence: one company/user-owned layout/default-project preference and user-owned saved filters with same-company Project integrity and bounded indexes. KPI, progress, cost, billing, receipt, payable, cash and profitability values remain source-derived.",
+      "migrations": [
+        "20260831000300_final21_dashboard_persistence"
+      ]
+    },
+    {
+      "stage": 58,
+      "gate": "final-21-pass-b1-10-final-permission-acceptance",
+      "description": "Final-21 Pass B1.10 registers the completed Reports and Dashboard permission vocabulary on the post-R9 stable permission-code schema and grants those permissions to existing active system-admin roles without changing any business source data.",
+      "migrations": [
+        "20260831000400_final21_reports_dashboard_permissions"
+      ]
+    }
+  ]
+}

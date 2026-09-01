@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-schema-evidence",
+  "generatedAt": "2026-08-23T12:36:47.296Z",
+  "status": "STAGE_8_SCHEMA_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 153,
+  "stage7LiveAccepted": false,
+  "membershipBoundary": {
+    "request": [
+      "userId",
+      "projectRole",
+      "status",
+      "fromDate",
+      "toDate"
+    ],
+    "response": [
+      "id",
+      "projectId",
+      "userId",
+      "projectRole",
+      "status",
+      "fromDate",
+      "toDate",
+      "createdAt",
+      "updatedAt"
+    ],
+    "duplicateUserRowsRejected": true,
+    "dateRangeValidated": true
+  },
+  "roleScopeBoundary": {
+    "companyScopeRequiresNullProject": true,
+    "projectScopeRequiresProjectId": true,
+    "duplicateSameRoleAndScopeRejected": true,
+    "sameRoleAcrossDifferentProjectsAllowed": true
+  },
+  "preparedResolvedProjectScope": [
+    "all",
+    "restricted"
+  ],
+  "stillDeferred": [
+    "membership repository/service transaction",
+    "PUT /api/v1/projects/:id/members runtime route",
+    "trusted request projectScope activation",
+    "project.member_changed runtime event",
+    "React membership workflow"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 154 may be prepared, but Stage 8 activation remains blocked until Module 5 live Stage-7 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:33.403Z",
+      "finishedAt": "2026-08-23T12:36:47.077Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.077Z",
+      "finishedAt": "2026-08-23T12:36:47.205Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.205Z",
+      "finishedAt": "2026-08-23T12:36:47.239Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.239Z",
+      "finishedAt": "2026-08-23T12:36:47.296Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

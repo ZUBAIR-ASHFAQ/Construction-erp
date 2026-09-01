@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-http-evidence",
+  "generatedAt": "2026-08-23T12:36:48.097Z",
+  "status": "STAGE_8_HTTP_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 156,
+  "stage7LiveAccepted": false,
+  "httpFiles": [
+    "apps/api/src/modules/projects/projects.schema.ts",
+    "apps/api/src/modules/projects/projects.routes.ts",
+    "apps/api/src/modules/projects/index.ts"
+  ],
+  "membershipHttp": {
+    "method": "PUT",
+    "route": "/api/v1/projects/:id/members",
+    "permission": "projects.manage_members",
+    "strictPathAndBodyValidation": true,
+    "serviceDelegation": "ProjectsService.replaceProjectMembers",
+    "genericMembershipCrudAdded": false
+  },
+  "registration": {
+    "existingProjectsModuleRegistrationReused": true,
+    "separateStage8BusinessModuleCreated": false
+  },
+  "stillDeferred": [
+    "PostgreSQL/Fastify Stage-8 integration workflow",
+    "authentication projectScope activation and cross-Project regression",
+    "Stage-8 OpenAPI/API-contract verification",
+    "React membership and Project-role workflow",
+    "Playwright allowed/denied Project workflow"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 157 may be prepared, but Stage 8 activation remains blocked until Module 5 live Stage-7 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-service",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:33.072Z",
+      "finishedAt": "2026-08-23T12:36:47.807Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.807Z",
+      "finishedAt": "2026-08-23T12:36:47.954Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.954Z",
+      "finishedAt": "2026-08-23T12:36:47.973Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.973Z",
+      "finishedAt": "2026-08-23T12:36:47.991Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-index-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.991Z",
+      "finishedAt": "2026-08-23T12:36:48.010Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.010Z",
+      "finishedAt": "2026-08-23T12:36:48.046Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.046Z",
+      "finishedAt": "2026-08-23T12:36:48.097Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

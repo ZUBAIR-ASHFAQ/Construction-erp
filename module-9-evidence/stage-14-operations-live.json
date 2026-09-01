@@ -1,0 +1,30 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-operations-evidence",
+  "generatedAt": "2026-08-24T15:56:39.814Z",
+  "pass": 243,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage13LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_13_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-9:operations:gate:live before claiming Stage-14 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

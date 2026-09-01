@@ -1,0 +1,142 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-service-evidence",
+  "generatedAt": "2026-08-24T18:42:53.024Z",
+  "pass": 249,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "status": "STAGE_15_MODULE_10_SERVICE_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/inventory/inventory.service.ts",
+  "reviewedServiceOperations": 8,
+  "companyAndProjectPolicyRevalidated": true,
+  "companyWideWarehouseRequiresCompanyAuthority": true,
+  "closedProjectWritesFailClosed": true,
+  "idempotentStockCommands": 5,
+  "receiptPoBalanceLedgerAtomic": true,
+  "receiptIssuedPoRequired": true,
+  "receiptOverageDefaultFailClosed": true,
+  "receiptUnitConversionDefaultFailClosed": true,
+  "receiptQualityConvention": "quantity = acceptedQty + rejectedQty; acceptedQty alone enters stock and PO received_qty",
+  "receiptTolerancePolicyInvented": false,
+  "valuationPublicEnumInvented": false,
+  "valuationImplementationConvention": "inventory_balances.average_cost weighted by accepted server-costed inflows",
+  "valuationMethodBranchingInvented": false,
+  "transferQuantityConserved": true,
+  "transferHeaderPersistenceInvented": false,
+  "negativeStockDefaultFailClosed": true,
+  "reservedStockProtectedFromIssueTransferAdjustment": true,
+  "issueJobCostAtomic": true,
+  "module7ActualAppendOnly": true,
+  "module7ActualUpdateDeleteGenerated": false,
+  "module7IssueSourceConvention": "inventory_issue keyed by the created ISSUE stock transaction id",
+  "returnPermissionInvented": false,
+  "returnImplementationConvention": "prior Project ISSUE reversal requiring both inventory.issue and inventory.adjust",
+  "returnOtherDirectionsFailClosed": true,
+  "returnJobCostReversalAppendOnly": true,
+  "adjustmentSignedDeltaOnly": true,
+  "stockCountPersistenceInvented": false,
+  "inventoryApprovalWorkflowInvented": false,
+  "reviewedOutboxEventCount": 5,
+  "auditWrittenWithBusinessTransactions": true,
+  "stockPeriodPolicyInvented": false,
+  "stockPeriodLockedEmittedByService": false,
+  "financeWriteGenerated": false,
+  "warehouseCrudGenerated": false,
+  "unitConversionPersistenceInvented": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 250 - Module 10 Fastify routes, authentication/RBAC, OpenAPI and module registration for exactly the eight reviewed Inventory operations; preserve service conventions and unresolved Warehouse/ledger/low-stock/stock-period gaps without adding APIs.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-repository",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.722Z",
+      "finishedAt": "2026-08-24T18:42:51.652Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:51.652Z",
+      "finishedAt": "2026-08-24T18:42:51.824Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-service-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:51.824Z",
+      "finishedAt": "2026-08-24T18:42:52.236Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.236Z",
+      "finishedAt": "2026-08-24T18:42:52.379Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.379Z",
+      "finishedAt": "2026-08-24T18:42:52.518Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.518Z",
+      "finishedAt": "2026-08-24T18:42:52.654Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.654Z",
+      "finishedAt": "2026-08-24T18:42:52.809Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.809Z",
+      "finishedAt": "2026-08-24T18:42:52.938Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.938Z",
+      "finishedAt": "2026-08-24T18:42:52.979Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:52.979Z",
+      "finishedAt": "2026-08-24T18:42:53.024Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

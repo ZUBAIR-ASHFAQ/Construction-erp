@@ -1,0 +1,47 @@
+{
+  "pass": "B15.4",
+  "module": "Final Module 14 - Site Expense Management",
+  "scope": "Company/project-scoped repository, dependency lookup helpers, draft persistence and narrow lifecycle state persistence",
+  "status": "PASS",
+  "productionFilesAdded": [
+    "apps/api/src/modules/site-expenses/site-expenses.repository.ts"
+  ],
+  "repositoryCapabilities": [
+    "bounded register read",
+    "company/project-scoped detail read",
+    "project validation",
+    "stage validation",
+    "expense category plus default GL lookup",
+    "cash/bank plus mapped GL lookup",
+    "project evidence document lookup",
+    "server-numbered DRAFT create",
+    "DRAFT-only update",
+    "state-sensitive row lock",
+    "DRAFT to POSTED persistence",
+    "POSTED to REVERSED persistence"
+  ],
+  "runtimeDeferred": [
+    "service business logic",
+    "permission orchestration",
+    "numbering orchestration",
+    "Finance journal posting",
+    "Project cost actual posting",
+    "idempotency orchestration",
+    "audit/outbox events",
+    "compensating reversal transaction",
+    "Fastify route registration",
+    "Document site_expense resource linking",
+    "React UI"
+  ],
+  "verification": {
+    "b15FocusedTests": "35/35 PASS",
+    "allFinal21StaticTests": "211/211 PASS",
+    "workspaceCheck": "PASS",
+    "legacyCleanupManifest": "PASS",
+    "migrationPolicy": "81 migrations locked across 81 gates",
+    "newMigrationAdded": false,
+    "historicalMigrationContentChanged": false,
+    "dependencyBackedTypeScriptPrisma": "NOT RUN - archive contains no node_modules"
+  },
+  "nextPass": "B15.5 - Site Expense service business logic with atomic Finance + Project Cost posting and compensating reversal"
+}

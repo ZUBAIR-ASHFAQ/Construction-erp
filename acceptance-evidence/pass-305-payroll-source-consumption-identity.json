@@ -1,0 +1,75 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-305-payroll-source-consumption-identity",
+  "generatedAt": "2026-08-25T16:58:25.995Z",
+  "pass": 305,
+  "status": "PASS_305_PAYROLL_SOURCE_IDENTITY_FROZEN_STAGE_20_RUNTIME_BLOCKED",
+  "documentationAndVerificationOnly": true,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "resolvedIdentitySemantics": [
+    "Timesheet Entry UUID is the original worked-time source-line identity",
+    "Timesheet Adjustment UUID is a distinct correction source-line identity",
+    "source kind must distinguish entries from adjustments",
+    "original entries require approved Timesheet state and Payroll-period work-date eligibility",
+    "finalized consumption requires durable Company + source kind + source-line uniqueness",
+    "command idempotency alone is insufficient for cross-run source uniqueness"
+  ],
+  "stillBlockingStage20Runtime": [
+    "physical Payroll source-consumption persistence and uniqueness enforcement",
+    "Payroll Run group/overlap identity",
+    "Payroll approval lifecycle and Module-22 mapping",
+    "effective-dated compensation persistence and pay type",
+    "earnings/deductions/net calculation and rounding",
+    "adjustment approval and late-correction period allocation",
+    "Shift/hour-limit completion",
+    "leave effect policy",
+    "Stage-20 versus Stage-26 Finance boundary"
+  ],
+  "stage20RuntimeAllowed": false,
+  "nextReviewedPass": "Pass 306 - Payroll Run identity, period-lock and approval-lifecycle contract",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-305-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:58:22.696Z",
+      "finishedAt": "2026-08-25T16:58:22.803Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:58:22.803Z",
+      "finishedAt": "2026-08-25T16:58:25.634Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:58:25.634Z",
+      "finishedAt": "2026-08-25T16:58:25.807Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T16:58:25.807Z",
+      "finishedAt": "2026-08-25T16:58:25.995Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

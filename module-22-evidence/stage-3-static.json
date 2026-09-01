@@ -1,0 +1,79 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-22-stage-3-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-23T16:02:44.248Z",
+  "status": "STAGE_3_STATIC_GATE_PASSED_STAGE_2_LIVE_ACCEPTANCE_PENDING",
+  "module": "22 - Approval Workflows",
+  "stage2LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_3_UNTIL_STAGE_2_LIVE_ACCEPTED",
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "publicApprovalRequestCreationAdded": false,
+  "nextStage": "Complete Module 18 live Stage-2 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-22-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:39.089Z",
+      "finishedAt": "2026-08-23T16:02:40.360Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:40.360Z",
+      "finishedAt": "2026-08-23T16:02:40.409Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:40.409Z",
+      "finishedAt": "2026-08-23T16:02:42.301Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:42.301Z",
+      "finishedAt": "2026-08-23T16:02:44.180Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:44.180Z",
+      "finishedAt": "2026-08-23T16:02:44.206Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:44.206Z",
+      "finishedAt": "2026-08-23T16:02:44.229Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:44.229Z",
+      "finishedAt": "2026-08-23T16:02:44.248Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

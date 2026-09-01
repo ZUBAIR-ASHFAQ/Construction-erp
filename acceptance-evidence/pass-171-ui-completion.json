@@ -1,0 +1,105 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-171-existing-module-ui-completion",
+  "generatedAt": "2026-08-23T14:51:20.676Z",
+  "pass": 171,
+  "status": "PASS_171_EXISTING_MODULE_UI_COMPLETION_PREPARED_REPAIR_HOLD_ACTIVE",
+  "crmCompletion": [
+    "Client detail reads related Tenders through the existing clientId list filter",
+    "Client detail reads related Projects through the existing clientId list filter",
+    "CRM links open the existing Tender/Project workspaces already filtered to the selected Client",
+    "target module permissions and server authorization remain authoritative"
+  ],
+  "boqCompletion": [
+    "CSV import uses item_code,parent_item_code,description,unit,quantity,rate",
+    "the complete file is parsed and Zod-validated before the worksheet changes",
+    "parent item codes resolve to transient row keys only in browser form state",
+    "saving still uses the existing PUT revision item-set command",
+    "no backend import route, table, repository method or service method is added",
+    "the maintained Module 4A Playwright scenario prepares CSV hierarchy coverage"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "migrationsAdded": 0,
+  "apiRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "newReactProductionFiles": 0,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 172 - Junior-readable service refactor.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-2-crm-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:18.897Z",
+      "finishedAt": "2026-08-23T14:51:19.040Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-3-tender-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:19.040Z",
+      "finishedAt": "2026-08-23T14:51:19.192Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-boq-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:19.192Z",
+      "finishedAt": "2026-08-23T14:51:19.336Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-project-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:19.336Z",
+      "finishedAt": "2026-08-23T14:51:19.479Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-playwright-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:19.479Z",
+      "finishedAt": "2026-08-23T14:51:19.503Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "complete-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:19.503Z",
+      "finishedAt": "2026-08-23T14:51:20.577Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:20.577Z",
+      "finishedAt": "2026-08-23T14:51:20.620Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:51:20.620Z",
+      "finishedAt": "2026-08-23T14:51:20.676Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

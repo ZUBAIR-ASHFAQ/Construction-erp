@@ -1,0 +1,158 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-service-evidence",
+  "generatedAt": "2026-08-24T14:22:17.420Z",
+  "pass": 238,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "status": "STAGE_14_MODULE_9_SERVICE_PREPARED_STAGE_13_LIVE_HANDOFF_PENDING",
+  "stage13LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/purchase-orders/purchase-orders.service.ts",
+  "repositoryExtendedOnlyForServiceNeeds": [
+    "updatePurchaseOrderCommercialHeader"
+  ],
+  "projectResourcePolicyRevalidated": true,
+  "purchaseOrderSequenceKey": "purchase-order",
+  "lifecycleTokensInternalOnly": true,
+  "publicLifecycleEnumsAdded": false,
+  "normalCreatePathQuotationBackedOnly": true,
+  "directPurchasePathStillBlocked": true,
+  "directPurchasePermissionInvented": false,
+  "selectedQuotationProof": "Module-8 quotation SELECTED + RFQ SELECTED + same Vendor/Project/Company repository chain",
+  "vendorEligibilityInternalTokens": [
+    "ACTIVE",
+    "QUALIFIED"
+  ],
+  "selectedQuotationTotalMustMatchDraftPoTotal": true,
+  "quotationCurrencyComparisonAvailable": false,
+  "approvedCurrencyProtectedByImmutableSubmittedSnapshot": true,
+  "purchaseOrderApprovalUsesModule22": true,
+  "purchaseOrderApprovalConfigurationRequired": true,
+  "freshRevisionApprovalWorkflowInvented": false,
+  "revisionAuthorizationConvention": "purchase_orders.revise authorizes the controlled revision because the source defines no separate revision-approval command",
+  "revisionApprovedAtUsesAuthorizedCommandTime": true,
+  "cancelPermissionInvented": false,
+  "cancelPermissionMapping": "purchase_orders.revise",
+  "cancellationReasonStoredInAuditOutboxOnly": true,
+  "taxCalculationInferenceExplicit": true,
+  "taxRateMeaning": "percentage",
+  "taxArithmetic": "quantity(4dp) * unitRate(4dp) and taxRate(4dp percentage), half-up to 2dp per line using exact bigint arithmetic",
+  "lineTotalIncludesTax": true,
+  "budgetBoundaryReadOnly": true,
+  "budgetGate": "requires a current FROZEN Module-7 budget; no amount threshold/tolerance invented",
+  "commitmentSourceTypeInternal": "purchase_order",
+  "commitmentSourceLineKey": "purchase_order_items.id",
+  "commitmentStatusTokensInternal": [
+    "ACTIVE",
+    "CANCELLED"
+  ],
+  "commitmentAmountConvention": "server-calculated line_total including tax",
+  "issueCommitmentsAtomicWithPoIssue": true,
+  "revisionCommitmentsAtomicWithRevision": true,
+  "cancelCommitmentsAtomicWithCancellation": true,
+  "consumedLineReplacementPolicy": "line replacement is blocked once received_qty or invoiced_amount is non-zero because Stage 14 has no stable browser line identity for consumed revisions",
+  "issuedCurrencyRevisionBlockedUntilApprovedFxContract": true,
+  "financeWritesGenerated": false,
+  "inventoryReceiptWritesGenerated": false,
+  "reviewedOutboxEventsPrepared": [
+    "purchase_order.created",
+    "purchase_order.submitted",
+    "purchase_order.issued",
+    "purchase_order.revised",
+    "purchase_order.cancelled"
+  ],
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 239 - Module 9 Fastify routes, module registration and OpenAPI metadata for exactly the eight reviewed Purchase Order operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-9-repository",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:11.350Z",
+      "finishedAt": "2026-08-24T14:22:15.631Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.631Z",
+      "finishedAt": "2026-08-24T14:22:15.827Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-service-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:15.827Z",
+      "finishedAt": "2026-08-24T14:22:16.348Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:16.348Z",
+      "finishedAt": "2026-08-24T14:22:16.478Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:16.478Z",
+      "finishedAt": "2026-08-24T14:22:16.645Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:16.645Z",
+      "finishedAt": "2026-08-24T14:22:16.909Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:16.909Z",
+      "finishedAt": "2026-08-24T14:22:17.085Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:17.085Z",
+      "finishedAt": "2026-08-24T14:22:17.269Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:17.269Z",
+      "finishedAt": "2026-08-24T14:22:17.327Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T14:22:17.327Z",
+      "finishedAt": "2026-08-24T14:22:17.420Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

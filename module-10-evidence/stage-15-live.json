@@ -1,0 +1,89 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-10-stage-15-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-25T00:35:08.675Z",
+  "status": "BLOCKED",
+  "module": "10 - Inventory & Material Management",
+  "pass": 255,
+  "stage": 15,
+  "stage14LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_15_UNTIL_STAGE_14_LIVE_HANDOFF",
+  "ownedTables": [
+    "inventory_items",
+    "warehouses",
+    "inventory_balances",
+    "goods_receipts",
+    "goods_receipt_items",
+    "stock_transactions"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "inventory.read",
+    "inventory.item.manage",
+    "inventory.receive",
+    "inventory.transfer",
+    "inventory.issue",
+    "inventory.adjust"
+  ],
+  "activeEvents": [
+    "inventory.received",
+    "inventory.transferred",
+    "inventory.issued",
+    "inventory.returned",
+    "inventory.adjusted"
+  ],
+  "hardDependencies": [
+    "9 - Purchase Orders",
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing"
+  ],
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "purchaseOrderAuthority": "Module 9 - Purchase Orders",
+  "projectActualCostAuthority": "Module 7 - Budgeting & Job Costing",
+  "stockLedgerAppendOnly": true,
+  "inventoryBalanceMaintainedTransactionally": true,
+  "receiptUpdatesPoConsumptionAtomically": true,
+  "issueCreatesProjectActualIdempotently": true,
+  "financeSourceAdapterDeferredToStage26": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The source requires Warehouse/site-store management but defines no Warehouse management public API; Stage 15 therefore does not invent Warehouse CRUD.",
+    "The source requires stock-ledger and low-stock UI views but defines no dedicated stock-ledger read route, reorder threshold fields or low-stock API.",
+    "The source defines valuation_method and approved unit conversion rules without an exact valuation algorithm, UOM master, conversion table or conversion API.",
+    "The source defines a return command without a dedicated inventory.return permission; Stage 15 preserves the frozen issue-plus-adjust authorization convention.",
+    "The source defines STOCK_PERIOD_LOCKED without assigning Inventory a stock-period model; Stage 15 does not borrow Module-15 fiscal-period authority.",
+    "Formal Inventory accounting/source adapters remain deferred to Module 15B / Stage 26."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-14/Stage-15 live chain and rerun module-10:acceptance:live before starting Stage 16 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-14-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-25T00:35:08.675Z",
+      "finishedAt": "2026-08-25T00:35:08.675Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_14_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-playwright-evidence",
+  "generatedAt": "2026-08-23T09:41:02.391Z",
+  "status": "STAGE_7_PLAYWRIGHT_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 148,
+  "mode": "static",
+  "stage6LiveAccepted": false,
+  "browserFile": "tests/e2e/module-5-browser.spec.mjs",
+  "browserCoverage": [
+    "create Tender-linked DRAFT Project",
+    "read Client and Tender source summary only with existing permissions",
+    "update only editable Project master fields",
+    "activate DRAFT Project through bodyless command",
+    "complete ACTIVE Project through bodyless command",
+    "close COMPLETED Project with optional reason",
+    "verify durable lifecycle history, audit and outbox records",
+    "permission-aware read, create, update, activate and close controls",
+    "direct API denial proves hidden controls are not the security boundary",
+    "no projects.read means no Project navigation and no Project API request",
+    "browser never sends company, actor, Project-scope or lifecycle authority",
+    "Project membership UI and /members API remain absent before Module 24B"
+  ],
+  "productionRuntimeChanges": 0,
+  "membershipDeferredToModule24B": true,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live Playwright gate after genuine Stage-6 acceptance; Pass 149 may be prepared but cannot claim live Stage-7 verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-react-workflow",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:48.526Z",
+      "finishedAt": "2026-08-23T09:41:02.163Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.164Z",
+      "finishedAt": "2026-08-23T09:41:02.283Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-playwright-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.283Z",
+      "finishedAt": "2026-08-23T09:41:02.300Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.300Z",
+      "finishedAt": "2026-08-23T09:41:02.317Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.317Z",
+      "finishedAt": "2026-08-23T09:41:02.346Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:02.346Z",
+      "finishedAt": "2026-08-23T09:41:02.390Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

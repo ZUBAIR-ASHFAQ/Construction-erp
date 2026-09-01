@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-operations-evidence",
+  "generatedAt": "2026-08-25T05:59:02.798Z",
+  "pass": 265,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "mode": "static",
+  "status": "STAGE_16_MODULE_11_OPERATIONS_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent subcontract creation serializes on the Project and Foundation number sequence so unique monotonic subcontract numbers are allocated without duplicate Company/Project numbers",
+    "concurrent duplicate execution retries serialize on the Project/subcontract locks and leave one EXECUTED transition, one audit/outbox event and one Module-7 commitment per subcontract source line",
+    "failed progress-application outbox persistence rolls back the payment application, audit and company number allocation so the next successful application reuses the unconsumed number",
+    "concurrent progress applications allocate unique application numbers and concurrent certifications serialize before cumulative validation",
+    "two certifications that would cumulatively exceed the approved subcontract cannot both commit; one remains SUBMITTED and no Finance/AP or Module-7 actual-cost posting is created",
+    "executed subcontract commitments reconcile to the server-owned revised subcontract value for the exercised source lines",
+    "reviewed subcontractor, subcontract, payment-application, payment-line and Module-7 commitment read shapes have supporting Stage-16/Module-7 indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 265 adds no migration because Pass 257 owns the complete reviewed Module-11 persistence change"
+  ],
+  "rollbackCoverage": [
+    "Pass 262 already proves late subcontract.executed outbox failure rolls back lifecycle, Module-7 commitment and audit state",
+    "Pass 262 already proves late subcontract.payment_certified outbox failure rolls back the certification snapshot and audit state",
+    "Pass 265 additionally proves failed payment-application submission rolls back the application row, audit and Foundation number allocation"
+  ],
+  "deploymentReadiness": [
+    "the complete dependency-free static regression remains green before live execution",
+    "Stage-15 acceptance plus Module-11 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financeApWritesAdded": 0,
+  "changeOrderWritesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 266 - Module 11 final Stage-16 acceptance gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:58:45.573Z",
+      "finishedAt": "2026-08-25T05:58:45.573Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:58:45.573Z",
+      "finishedAt": "2026-08-25T05:58:45.573Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:58:45.574Z",
+      "finishedAt": "2026-08-25T05:59:00.978Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:00.978Z",
+      "finishedAt": "2026-08-25T05:59:01.129Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:01.129Z",
+      "finishedAt": "2026-08-25T05:59:02.658Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:02.659Z",
+      "finishedAt": "2026-08-25T05:59:02.676Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:02.676Z",
+      "finishedAt": "2026-08-25T05:59:02.693Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:02.693Z",
+      "finishedAt": "2026-08-25T05:59:02.713Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:02.713Z",
+      "finishedAt": "2026-08-25T05:59:02.750Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:59:02.751Z",
+      "finishedAt": "2026-08-25T05:59:02.798Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

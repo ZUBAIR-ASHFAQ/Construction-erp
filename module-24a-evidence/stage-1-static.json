@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24a-stage-1-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-28T12:28:27.650Z",
+  "status": "STATIC_GATE_PASSED_LIVE_ACCEPTANCE_PENDING",
+  "module": "24A - Users/RBAC Core",
+  "nextStage": "Complete the live Stage-1 gate",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false,
+    "lockfilePresent": false,
+    "auditSecurityGuardsEnabled": false,
+    "playwrightEnabled": false
+  },
+  "checks": [
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:20.686Z",
+      "finishedAt": "2026-08-28T12:28:20.942Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:20.942Z",
+      "finishedAt": "2026-08-28T12:28:21.065Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "foundation-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:21.065Z",
+      "finishedAt": "2026-08-28T12:28:27.046Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24a-static-tests",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:27.046Z",
+      "finishedAt": "2026-08-28T12:28:27.649Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-readback-backend-openapi-evidence",
+  "generatedAt": "2026-08-23T14:40:18.733Z",
+  "status": "STAGE_8_READBACK_BACKEND_OPENAPI_PREPARED_REPAIR_HOLD_ACTIVE",
+  "pass": 166,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "businessModulesChanged": 0,
+  "routesAdded": 0,
+  "tablesAdded": 0,
+  "migrationsAdded": 0,
+  "permissionsAdded": 0,
+  "repositoryMethodsAdded": 0,
+  "backendReadbackImplemented": true,
+  "openApiReadbackImplemented": true,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "coverage": [
+    "GET /api/v1/projects/:id returns current safe members[] through existing Project detail",
+    "Project detail reuses ProjectsRepository.listProjectMembers(projectId)",
+    "GET /api/v1/users returns manageable roleAssignments[] plus roleAssignmentsComplete",
+    "User assignment readback omits companyId and duplicate userId ownership fields",
+    "role-assignment readback dates use YYYY-MM-DD",
+    "Project assignments outside actor scope are hidden and force incomplete readback",
+    "roles that cannot be safely resubmitted under actor authority force incomplete readback",
+    "generated OpenAPI documents both readback fields without adding routes"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 167 - Stage-8 safe React editor initialization and Playwright read-before-replace regression.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-165-readback-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.528Z",
+      "finishedAt": "2026-08-23T14:40:17.054Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:17.054Z",
+      "finishedAt": "2026-08-23T14:40:17.304Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "dependency-free-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:17.304Z",
+      "finishedAt": "2026-08-23T14:40:18.496Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.496Z",
+      "finishedAt": "2026-08-23T14:40:18.517Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.517Z",
+      "finishedAt": "2026-08-23T14:40:18.538Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.538Z",
+      "finishedAt": "2026-08-23T14:40:18.559Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.559Z",
+      "finishedAt": "2026-08-23T14:40:18.578Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.578Z",
+      "finishedAt": "2026-08-23T14:40:18.596Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.596Z",
+      "finishedAt": "2026-08-23T14:40:18.614Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.614Z",
+      "finishedAt": "2026-08-23T14:40:18.633Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.633Z",
+      "finishedAt": "2026-08-23T14:40:18.668Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:18.668Z",
+      "finishedAt": "2026-08-23T14:40:18.733Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

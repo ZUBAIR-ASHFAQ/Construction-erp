@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-service-evidence",
+  "generatedAt": "2026-08-24T00:41:46.393Z",
+  "pass": 194,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "status": "STAGE_10_MODULE_4B_SERVICE_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/boq/boq.service.ts",
+  "serviceBoundary": {
+    "tenderOnlyBoqsRemainCompanyScoped": true,
+    "projectLinkedBoqsUseExactModule24bPermission": true,
+    "registerFiltersProjectLinkedRowsByAuthorizedProjectIds": true,
+    "projectOnlyBoqCreationSupported": true,
+    "sameCompanyTenderAndProjectValidated": true,
+    "wbsAndCostCodeMappingsPreservedByService": true,
+    "invalidMappingScopeUsesBoqScopeConflict": true,
+    "projectAndMappingIdsIncludedInAuditSnapshots": true,
+    "reviewedEventNamesUnchanged": true
+  },
+  "intentionallyAbsent": [
+    "New BOQ mapping routes.",
+    "Cost Type relationship on BOQ items.",
+    "Dedicated command for attaching a Project to an existing tender-only BOQ.",
+    "HTTP/OpenAPI relationship activation, which belongs to Pass 195."
+  ],
+  "routesChanged": false,
+  "openApiChanged": false,
+  "reactRelationshipUiGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 195 - Module 4B HTTP/OpenAPI relationship activation on the existing six BOQ routes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-repository",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:44.823Z",
+      "finishedAt": "2026-08-24T00:41:46.111Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:46.111Z",
+      "finishedAt": "2026-08-24T00:41:46.204Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:46.204Z",
+      "finishedAt": "2026-08-24T00:41:46.311Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:46.311Z",
+      "finishedAt": "2026-08-24T00:41:46.328Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:46.328Z",
+      "finishedAt": "2026-08-24T00:41:46.357Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:41:46.357Z",
+      "finishedAt": "2026-08-24T00:41:46.393Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

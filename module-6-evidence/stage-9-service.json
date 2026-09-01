@@ -1,0 +1,100 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-service-evidence",
+  "generatedAt": "2026-08-23T16:17:06.629Z",
+  "pass": 180,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "status": "STAGE_9_SERVICE_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "serviceFile": "apps/api/src/modules/wbs-cost-codes/wbs-cost-codes.service.ts",
+  "serviceBoundary": {
+    "exactProjectPermissionRevalidation": true,
+    "serverDerivedHierarchyLevel": true,
+    "hierarchyCyclePrecheck": true,
+    "descendantLevelsRemainConsistent": true,
+    "wholeSetMappingReplacementIsTransactional": true,
+    "activePostingReferencesRequired": true,
+    "auditAndOutboxShareBusinessTransactions": true
+  },
+  "reviewedEvents": [
+    "wbs.node_created",
+    "wbs.updated",
+    "cost_code.created",
+    "project.cost_structure_frozen"
+  ],
+  "intentionallyAbsent": [
+    "Cost Type CRUD because the reviewed Stage-9 HTTP table defines no Cost Type operations.",
+    "Archive/reopen service commands because the reviewed API table defines none.",
+    "A mapping-changed outbox event because the source event list does not define one.",
+    "Durable freeze state or mutation blocking after freeze because the source defines no storage/reopen contract."
+  ],
+  "unresolvedSourceAmbiguities": [
+    "Cost Type master has no reviewed list/create HTTP operation.",
+    "Unused-code/node archive has no reviewed command.",
+    "The freeze command has no durable freeze-state model or reviewed reopen/revision command.",
+    "Public status/category vocabularies remain unenumerated."
+  ],
+  "routesGenerated": false,
+  "reactRuntimeGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 181 - Module 6 Fastify routes, module index and app registration using the seven reviewed operations only.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-repository-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:05.744Z",
+      "finishedAt": "2026-08-23T16:17:05.745Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:05.745Z",
+      "finishedAt": "2026-08-23T16:17:06.122Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:06.122Z",
+      "finishedAt": "2026-08-23T16:17:06.226Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:06.226Z",
+      "finishedAt": "2026-08-23T16:17:06.319Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:06.319Z",
+      "finishedAt": "2026-08-23T16:17:06.458Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:17:06.458Z",
+      "finishedAt": "2026-08-23T16:17:06.629Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

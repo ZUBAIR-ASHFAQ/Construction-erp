@@ -1,0 +1,78 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-react-workflow-evidence",
+  "generatedAt": "2026-08-23T07:30:40.172Z",
+  "status": "STAGE_6_REACT_WORKFLOW_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 133,
+  "stage5LiveAccepted": false,
+  "reactCoverage": [
+    "hierarchical draft BOQ item grid using transient rowKey and parentRowKey",
+    "server-calculated item amounts and revision total review",
+    "session-available revision comparison without inventing a revision-history API",
+    "explicit boq.freeze bodyless freeze command",
+    "explicit boq.export CSV action",
+    "permission-aware edit, freeze and export controls",
+    "no Project/WBS/cost-code controls before Module 4B"
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "nextPass": "Pass 134 - Module 4A Playwright BOQ browser workflow and permission verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "full-dependency-free-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:30:39.306Z",
+      "finishedAt": "2026-08-23T07:30:40.067Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:30:40.067Z",
+      "finishedAt": "2026-08-23T07:30:40.084Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:30:40.084Z",
+      "finishedAt": "2026-08-23T07:30:40.101Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:30:40.101Z",
+      "finishedAt": "2026-08-23T07:30:40.131Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:30:40.131Z",
+      "finishedAt": "2026-08-23T07:30:40.172Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

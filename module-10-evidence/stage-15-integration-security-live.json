@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-integration-security-evidence",
+  "generatedAt": "2026-08-24T17:56:33.412Z",
+  "pass": 251,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage14LiveAccepted": false,
+  "reason": "STAGE_14_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the Stage-14 live prerequisite, then rerun module-10:integration-security:gate:live before claiming Stage-15 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

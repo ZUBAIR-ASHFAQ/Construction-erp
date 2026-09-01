@@ -1,0 +1,163 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-contract-evidence",
+  "generatedAt": "2026-08-26T02:16:12.976Z",
+  "pass": 322,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_CONTRACT_FROZEN_STAGE_20_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage20LiveAccepted": false,
+  "hardPrerequisites": [
+    "5 - Project Management"
+  ],
+  "optionalPrerequisites": [
+    "6 - WBS & Cost Codes for optional activity mapping"
+  ],
+  "projectScopeReusesModule24B": true,
+  "ownedTables": [
+    "project_schedules",
+    "schedule_activities",
+    "schedule_dependencies",
+    "schedule_baselines",
+    "schedule_progress_updates"
+  ],
+  "reviewedRouteCount": 8,
+  "reviewedRoutes": [
+    "GET /api/v1/projects/:projectId/schedule",
+    "POST /api/v1/projects/:projectId/schedule",
+    "POST /api/v1/projects/:projectId/schedule/activities",
+    "PATCH /api/v1/projects/:projectId/schedule/activities/:id",
+    "PUT /api/v1/projects/:projectId/schedule/dependencies",
+    "POST /api/v1/projects/:projectId/schedule/baseline",
+    "POST /api/v1/projects/:projectId/schedule/progress",
+    "GET /api/v1/projects/:projectId/schedule/lookahead"
+  ],
+  "reviewedPermissions": [
+    "schedule.read",
+    "schedule.manage",
+    "schedule.baseline",
+    "schedule.progress"
+  ],
+  "reviewedErrors": [
+    "SCHEDULE_NOT_FOUND",
+    "DUPLICATE_ACTIVITY_CODE",
+    "SCHEDULE_DEPENDENCY_CYCLE",
+    "SCHEDULE_BASELINE_LOCKED",
+    "INVALID_PROGRESS_UPDATE"
+  ],
+  "reviewedEvents": [
+    "schedule.created",
+    "schedule.baselined",
+    "schedule.progress_updated",
+    "schedule.milestone_changed"
+  ],
+  "oneCurrentSchedulePerProject": true,
+  "activityCodeUniqueInsideSchedule": true,
+  "optionalWbsMapping": true,
+  "dependencyGraphCycleFree": true,
+  "guaranteedDependencyTypes": [
+    "FS"
+  ],
+  "baselineSnapshotImmutable": true,
+  "baselineNumberUniqueInsideSchedule": true,
+  "fullCpmP6ParityClaimed": false,
+  "externalSchedulerIntegrationGenerated": false,
+  "changeOrderIntegrationGeneratedEarly": false,
+  "dailyReportIntegrationGeneratedEarly": false,
+  "extraPermissionsInvented": false,
+  "extraRoutesInvented": false,
+  "productionFilesGenerated": false,
+  "databaseMigrationGenerated": false,
+  "unresolvedSourceAmbiguities": [
+    "Project Schedule status vocabulary is not enumerated.",
+    "Schedule Activity status vocabulary is not enumerated.",
+    "The workflow requires an activity owner, but no owner field is defined.",
+    "The workflow mentions planned duration, but no duration field is defined.",
+    "Activity hierarchy depth and parent-change/cycle rules are not defined.",
+    "Dependency types other than guaranteed finish-start are not enumerated.",
+    "Negative lead and fractional lag-day semantics are not defined.",
+    "The canonical baseline snapshot_json shape is not defined.",
+    "The baseline numbering start value is not defined.",
+    "The baseline reopen/revision lifecycle and exact SCHEDULE_BASELINE_LOCKED scope are not defined.",
+    "The exact post-baseline Activity fields that remain editable are not enumerated.",
+    "Forecast start and complete revised-forecast persistence are not defined.",
+    "Look-ahead query parameter names and start-date semantics are not defined.",
+    "Progress duplicate/replace behavior for one Activity/data_date is not defined.",
+    "Progress approval is not defined.",
+    "The schedule.milestone_changed emission condition is not defined.",
+    "Optional baseline-approval notification has no Scheduling approval route or dependency.",
+    "Approved Change Order schedule impact is deferred to Module 17 and Stage 27 integration.",
+    "External scheduler import/sync contracts are intentionally absent.",
+    "Advanced CPM/P6 calculations, calendars and resources are outside medium scope."
+  ],
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 323 - Module 21 Project Scheduling Prisma models, constraints, indexes and Stage-21 migration. Deployment remains blocked until the Stage-20 live handoff is genuine.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-project-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.016Z",
+      "finishedAt": "2026-08-26T02:16:12.174Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-optional-wbs-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.174Z",
+      "finishedAt": "2026-08-26T02:16:12.372Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-project-scope-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.373Z",
+      "finishedAt": "2026-08-26T02:16:12.541Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-14b-stage-20-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.541Z",
+      "finishedAt": "2026-08-26T02:16:12.715Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.715Z",
+      "finishedAt": "2026-08-26T02:16:12.871Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.871Z",
+      "finishedAt": "2026-08-26T02:16:12.919Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:12.919Z",
+      "finishedAt": "2026-08-26T02:16:12.976Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

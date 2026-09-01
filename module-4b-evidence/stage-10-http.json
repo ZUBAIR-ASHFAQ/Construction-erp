@@ -1,0 +1,116 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-http-openapi-evidence",
+  "generatedAt": "2026-08-24T06:44:35.242Z",
+  "pass": 195,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "status": "STAGE_10_MODULE_4B_HTTP_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "routeFile": "apps/api/src/modules/boq/boq.routes.ts",
+  "schemaFile": "apps/api/src/modules/boq/boq.schema.ts",
+  "operationCount": 6,
+  "routes": [
+    "GET /api/v1/boqs",
+    "POST /api/v1/boqs",
+    "POST /api/v1/boqs/:id/revisions",
+    "PUT /api/v1/boqs/:id/revisions/:revId/items",
+    "POST /api/v1/boqs/:id/revisions/:revId/freeze",
+    "GET /api/v1/boqs/:id/revisions/:revId/export"
+  ],
+  "httpOpenApiBoundary": {
+    "tenderProjectOrCombinedCreateDocumented": true,
+    "projectIdReturnedAsNullableRelationship": true,
+    "wbsNodeIdAndCostCodeIdAcceptedOnExistingItemCommand": true,
+    "wbsNodeIdAndCostCodeIdReturnedOnItems": true,
+    "exactProjectPermissionRemainsServiceAuthoritative": true,
+    "everyRouteAuthenticated": true,
+    "operationIdsRetainedForCompatibility": true,
+    "newRoutesAdded": false,
+    "projectListFilterInvented": false,
+    "costTypeRelationshipInvented": false
+  },
+  "intentionallyDeferred": [
+    "Stage-10 PostgreSQL/Fastify integration and security verification remain deferred to Pass 196.",
+    "React BOQ Project/WBS/Cost Code mapping activation remains deferred until backend integration/security proof.",
+    "No dedicated Project-attachment command is invented for an already-existing tender-only BOQ.",
+    "No Cost Type relationship is added to BOQ items."
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 196 - Module 4B PostgreSQL/Fastify integration and security verification for Project/WBS/Cost Code mappings.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-service-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.705Z",
+      "finishedAt": "2026-08-24T06:44:34.705Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.705Z",
+      "finishedAt": "2026-08-24T06:44:34.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.874Z",
+      "finishedAt": "2026-08-24T06:44:35.048Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.048Z",
+      "finishedAt": "2026-08-24T06:44:35.071Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.071Z",
+      "finishedAt": "2026-08-24T06:44:35.097Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-registration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.098Z",
+      "finishedAt": "2026-08-24T06:44:35.120Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.120Z",
+      "finishedAt": "2026-08-24T06:44:35.178Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.178Z",
+      "finishedAt": "2026-08-24T06:44:35.242Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

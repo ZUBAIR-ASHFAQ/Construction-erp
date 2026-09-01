@@ -1,0 +1,37 @@
+{
+  "pass": "B18.10",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "Final integration, E2E harness and Module 16 freeze",
+  "moduleFrozen": true,
+  "databaseMigrationAdded": false,
+  "publicRouteCount": 6,
+  "idempotentWriteCount": 4,
+  "backendFileCount": 5,
+  "reactFeatureDirectoryCount": 4,
+  "liveIntegration": "tests/integration/final-21-client-receipts-api.integration.test.mjs",
+  "playwrightWorkflow": "tests/e2e/final-21-client-receipts-browser.spec.mjs",
+  "implemented": [
+    "invoice payment idempotency and reconciliation coverage",
+    "random advance without Invoice or profit shortcut",
+    "over-allocation and scope isolation coverage",
+    "concurrent allocation row-lock coverage",
+    "compensating unallocation and Receipt reversal coverage",
+    "closed-period atomic rollback coverage",
+    "OpenAPI and Idempotency-Key freeze coverage",
+    "Playwright create/allocate/unallocate/reverse workflow"
+  ],
+  "nextPass": "B19.1 Module 19 Project Profitability alignment audit",
+  "verification": {
+    "b18_10Gate": "144/144 PASS",
+    "final21Tests": "623/623 PASS",
+    "fullCurrentStaticSuite": "728/728 PASS (623 Final-21 + 99 Foundation/current + 6 DB-cleanup)",
+    "workspaceRequiredStack": "PASS",
+    "migrationPolicy": "88/88 PASS",
+    "newFileSyntax": "4/4 PASS; package.json parse PASS",
+    "guardedIntegrationDiscovery": "7/7 discovered and correctly SKIPPED without RUN_FOUNDATION_DB_TESTS=1",
+    "dependencyBackedPrismaTypeScriptViteBuild": "NOT RUN - source archive has no installed project dependencies",
+    "livePostgreSQLIntegration": "NOT RUN - disposable PostgreSQL environment not provided",
+    "livePlaywright": "NOT RUN - dependency-installed PostgreSQL/browser environment not provided",
+    "legacyCleanupManifest": "PASS"
+  }
+}

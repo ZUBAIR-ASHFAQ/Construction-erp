@@ -1,0 +1,110 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-operations-evidence",
+  "generatedAt": "2026-08-23T12:36:51.206Z",
+  "status": "STAGE_8_OPERATIONS_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 163,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent Project membership replacement serializes on the Project row and never leaves a mixed whole-set result",
+    "concurrent user role replacement serializes on the User row and never unions two complete assignment payloads",
+    "each successful concurrent replacement keeps its audit and outbox side effects inside the same committed transaction",
+    "membership-by-user query plan uses project_members_user_status_idx",
+    "membership-by-Project query plan uses project_members_project_status_idx",
+    "PROJECT role-scope lookup query plan uses user_role_assignments_scope_lookup_idx"
+  ],
+  "regressionCoverage": [
+    "complete dependency-free static regression suite",
+    "historical Module 24A identity/RBAC static contracts",
+    "historical Module 5 Project Management static contracts",
+    "Stage-8 browser, API, security, service and persistence contract chain"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema"
+  ],
+  "operationalHardening": [
+    "lock the same-company User row before complete user_role_assignments replacement"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeFilesChanged": 2,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-7 and Pass-162 live verification; Pass 164 may be prepared but cannot claim Stage-8 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.278Z",
+      "finishedAt": "2026-08-23T12:36:49.863Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.863Z",
+      "finishedAt": "2026-08-23T12:36:50.003Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:50.003Z",
+      "finishedAt": "2026-08-23T12:36:51.065Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:51.065Z",
+      "finishedAt": "2026-08-23T12:36:51.084Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:51.085Z",
+      "finishedAt": "2026-08-23T12:36:51.102Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:51.102Z",
+      "finishedAt": "2026-08-23T12:36:51.121Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:51.121Z",
+      "finishedAt": "2026-08-23T12:36:51.155Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:51.155Z",
+      "finishedAt": "2026-08-23T12:36:51.206Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

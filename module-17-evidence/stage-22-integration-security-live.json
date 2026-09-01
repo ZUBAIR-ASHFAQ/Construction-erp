@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-integration-security-evidence",
+  "generatedAt": "2026-08-26T08:09:49.222Z",
+  "pass": 341,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage21LiveAccepted": false,
+  "reason": "STAGE_21_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the Stage-21 live prerequisite, then rerun module-17:integration-security:gate:live before claiming Stage-22 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

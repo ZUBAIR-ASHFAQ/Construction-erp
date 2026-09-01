@@ -1,0 +1,179 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-8-stage-13-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T16:29:35.403Z",
+  "status": "STAGE_13_STATIC_GATE_PASSED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "module": "8 - Procurement & RFQ",
+  "pass": 233,
+  "stage": 13,
+  "stage12LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_13_UNTIL_STAGE_12_LIVE_HANDOFF",
+  "ownedTables": [
+    "vendors",
+    "vendor_contacts",
+    "purchase_requisitions",
+    "purchase_requisition_items",
+    "rfqs",
+    "rfq_vendors",
+    "supplier_quotations",
+    "supplier_quotation_items"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "procurement.pr.read",
+    "procurement.pr.create",
+    "procurement.rfq.manage",
+    "procurement.quotation.record",
+    "procurement.quotation.select"
+  ],
+  "activeEvents": [
+    "purchase_requisition.submitted",
+    "rfq.issued",
+    "supplier_quotation.received",
+    "rfq.quotation_selected"
+  ],
+  "vendorMasterOwner": true,
+  "quotationSelectionCreatesFinancialCommitment": false,
+  "purchaseOrderCommitmentDeferredToStage14": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "pass362RfqItemIntegrityRepair": true,
+  "unresolvedSourceContract": [
+    "Part I requires Module 8 to own vendors and vendor_contacts, but Appendix A defines no Vendor-master public management API.",
+    "Submitted/approved requisitions are described as revision/return-to-draft controlled, but the reviewed route table defines no revision or return-to-draft command.",
+    "RFQ comparison requires normalized quantity/currency/tax assumptions, but the source does not define an FX or evaluation-scoring contract."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-12/Stage-13 live chain and rerun module-8:acceptance:live before starting Stage 14 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:23.552Z",
+      "finishedAt": "2026-08-26T16:29:24.006Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:24.006Z",
+      "finishedAt": "2026-08-26T16:29:24.430Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:24.430Z",
+      "finishedAt": "2026-08-26T16:29:24.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:24.874Z",
+      "finishedAt": "2026-08-26T16:29:25.231Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:25.231Z",
+      "finishedAt": "2026-08-26T16:29:25.639Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:25.639Z",
+      "finishedAt": "2026-08-26T16:29:26.134Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:26.134Z",
+      "finishedAt": "2026-08-26T16:29:34.565Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:34.565Z",
+      "finishedAt": "2026-08-26T16:29:34.752Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:34.752Z",
+      "finishedAt": "2026-08-26T16:29:34.934Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:34.934Z",
+      "finishedAt": "2026-08-26T16:29:35.032Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:35.032Z",
+      "finishedAt": "2026-08-26T16:29:35.131Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:35.131Z",
+      "finishedAt": "2026-08-26T16:29:35.218Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "procurement-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:35.218Z",
+      "finishedAt": "2026-08-26T16:29:35.312Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "procurement-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:35.312Z",
+      "finishedAt": "2026-08-26T16:29:35.402Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

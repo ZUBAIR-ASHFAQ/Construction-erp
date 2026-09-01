@@ -1,0 +1,64 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-8-read-before-replace-contract-evidence",
+  "generatedAt": "2026-08-23T14:40:17.041Z",
+  "status": "STAGE_8_READBACK_CONTRACT_FROZEN_REPAIR_REQUIRED",
+  "pass": 165,
+  "businessModulesChanged": 0,
+  "routesAdded": 0,
+  "tablesAdded": 0,
+  "migrationsAdded": 0,
+  "permissionsAdded": 0,
+  "stage7LiveAccepted": false,
+  "frozenReadRepairs": [
+    "GET /api/v1/projects/:id will include current safe members[]",
+    "GET /api/v1/users will include manageable roleAssignments[] and roleAssignmentsComplete",
+    "role-assignment readback dates use YYYY-MM-DD for safe form initialization",
+    "whole-set writes remain PUT /api/v1/projects/:id/members and PUT /api/v1/users/:id/roles",
+    "no new generic membership or role-assignment CRUD route is allowed"
+  ],
+  "implementationDeferredTo": "Pass 166 - Stage-8 readback backend + OpenAPI implementation",
+  "module6BlockedByAuditRepair": true,
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "dependency-free-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.643Z",
+      "finishedAt": "2026-08-23T14:40:16.914Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:16.914Z",
+      "finishedAt": "2026-08-23T14:40:16.975Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:16.975Z",
+      "finishedAt": "2026-08-23T14:40:17.022Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "final-stage-8-gate-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:17.022Z",
+      "finishedAt": "2026-08-23T14:40:17.041Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

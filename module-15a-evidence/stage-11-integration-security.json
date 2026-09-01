@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-integration-security-evidence",
+  "generatedAt": "2026-08-24T06:16:46.026Z",
+  "pass": 207,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "mode": "static",
+  "status": "STAGE_11_MODULE_15A_INTEGRATION_SECURITY_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "integrationFile": "tests/integration/module-15a-api.integration.test.mjs",
+  "coverage": [
+    "authenticated Chart of Accounts listing remains Company isolated",
+    "manual journals derive number and open period server-side and preserve decimal strings",
+    "unbalanced drafts are allowed but cannot be posted",
+    "posting is idempotent and emits journal.posted once",
+    "reversal creates one opposite journal and keeps the original posted accounting history reportable",
+    "trial balance includes POSTED and REVERSED source journals while respecting Project visibility",
+    "period close is idempotent and blocks later normal posting through that period",
+    "Project membership without Finance permission is rejected",
+    "Company-wide journal lines require Company Finance authority",
+    "foreign Company accounts, Projects, periods and cost structures cannot cross tenant boundaries",
+    "inactive or cross-Project Module-6 posting mappings are rejected",
+    "database triggers reject direct cross-Company and cross-Project Finance writes",
+    "generated OpenAPI exposes only the six reviewed Stage-11 Finance Core operations",
+    "browser authority fields and undocumented AP/AR/payment routes remain absent"
+  ],
+  "runtimeFixes": [
+    "Trial balance now includes REVERSED source journals together with POSTED journals so an immutable original posting and its reversal both remain in accounting history."
+  ],
+  "intentionallyAbsent": [
+    "No AP invoice routes or persistence.",
+    "No AR invoice routes or persistence.",
+    "No payment or payment-allocation workflow.",
+    "No Finance source-module adapters.",
+    "No account CRUD or period setup/reopen API.",
+    "No React Finance UI; that remains a later pass."
+  ],
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 208 - Module 15A React Finance Core API, hooks and workflow UI preparation.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.279Z",
+      "finishedAt": "2026-08-24T06:16:39.279Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.279Z",
+      "finishedAt": "2026-08-24T06:16:45.373Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.373Z",
+      "finishedAt": "2026-08-24T06:16:45.617Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.617Z",
+      "finishedAt": "2026-08-24T06:16:45.809Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.809Z",
+      "finishedAt": "2026-08-24T06:16:45.839Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.839Z",
+      "finishedAt": "2026-08-24T06:16:45.861Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.861Z",
+      "finishedAt": "2026-08-24T06:16:45.886Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.886Z",
+      "finishedAt": "2026-08-24T06:16:45.913Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.913Z",
+      "finishedAt": "2026-08-24T06:16:45.968Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:45.968Z",
+      "finishedAt": "2026-08-24T06:16:46.026Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

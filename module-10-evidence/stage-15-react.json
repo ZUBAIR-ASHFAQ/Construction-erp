@@ -1,0 +1,119 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-react-evidence",
+  "generatedAt": "2026-08-24T18:42:57.462Z",
+  "pass": 252,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "status": "STAGE_15_MODULE_10_REACT_PREPARED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "stage14LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API for exactly the eight reviewed Inventory operations",
+    "TanStack Query owns Item and authorized Warehouse-balance server state and invalidates Purchase Order/Module-7 reads after directly related stock commands",
+    "React Hook Form plus Zod validates Item, PO receipt, transfer, Project issue, return and signed adjustment command fields using exact decimal strings",
+    "five retry-sensitive stock commands send browser-generated Idempotency-Key headers while Company, actor, status, valuation and cost remain server-owned",
+    "permission-aware Item master, Warehouse balances, PO receipt, transfer, Project issue, return and Inventory-count adjustment controls are registered in the existing admin shell",
+    "receipt UI preserves the reviewed accepted plus rejected equals quantity convention and sends no unit-cost or PO-consumption authority",
+    "return UI follows the frozen prior-Project-ISSUE reversal convention without inventing a return direction or permission token",
+    "stock-ledger and low-stock sections explicitly expose the frozen API gap instead of inventing persistence, thresholds or read routes"
+  ],
+  "intentionallyAbsent": [
+    "No Warehouse CRUD or Warehouse lookup endpoint is added; Warehouse identifiers remain explicit where the reviewed API requires them.",
+    "No stock-ledger read endpoint is added, so the React feature does not claim durable ledger-history rendering.",
+    "No reorder threshold or low-stock API is invented; the UI does not classify balances using guessed thresholds.",
+    "No unit-conversion master, valuation-policy editor, stock-count session, Inventory approval route or Finance/AP/GL mutation is added.",
+    "No new Project, WBS, Purchase Order or cost-code lookup endpoint is added solely for Inventory forms."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "newReactFiles": 4,
+  "adminShellIntegrationChanged": true,
+  "styleSheetChanged": true,
+  "publicRoutesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 253 - Module 10 Playwright browser workflow verification for the reviewed Inventory UI and permission-negative cases.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-10-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.402Z",
+      "finishedAt": "2026-08-24T18:42:47.402Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:47.403Z",
+      "finishedAt": "2026-08-24T18:42:56.211Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:56.212Z",
+      "finishedAt": "2026-08-24T18:42:56.382Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-react-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:56.382Z",
+      "finishedAt": "2026-08-24T18:42:56.944Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:56.944Z",
+      "finishedAt": "2026-08-24T18:42:57.091Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.091Z",
+      "finishedAt": "2026-08-24T18:42:57.247Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.247Z",
+      "finishedAt": "2026-08-24T18:42:57.385Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.385Z",
+      "finishedAt": "2026-08-24T18:42:57.420Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T18:42:57.420Z",
+      "finishedAt": "2026-08-24T18:42:57.462Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

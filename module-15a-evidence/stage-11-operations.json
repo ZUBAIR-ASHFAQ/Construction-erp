@@ -1,0 +1,126 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-operations-evidence",
+  "generatedAt": "2026-08-24T06:26:29.112Z",
+  "pass": 210,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "mode": "static",
+  "status": "STAGE_11_MODULE_15A_OPERATIONS_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent manual-journal creation serializes on the Foundation number sequence and produces unique Company journal numbers",
+    "concurrent posting of one DRAFT journal produces one durable POSTED transition and one audit/outbox side-effect set",
+    "concurrent reversal of one POSTED journal produces one opposite journal and one journal.reversed audit/outbox side-effect set",
+    "period close and journal posting serialize through the fiscal-period row lock so posting either commits before close or fails without partial posting state",
+    "a journal failure after number allocation rolls back the journal, line set and Foundation sequence allocation together",
+    "Chart of Accounts, journal period/status, reversal-source and journal-line lookups can use reviewed Finance Core indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 210 adds no migration because Pass 202 already owns the complete reviewed Finance Core persistence change"
+  ],
+  "rollbackCoverage": [
+    "duplicate journal-number failure after Foundation number allocation leaves no partial journal or journal lines",
+    "the failed transaction restores number_sequences.next_value because numbering and journal persistence share one database transaction",
+    "a post losing the period-close race leaves no journal.posted audit or outbox row"
+  ],
+  "deploymentReadiness": [
+    "full dependency-free regression remains green before live execution",
+    "Stage-11 integration/security and Playwright live verification must already be genuine before operational live execution",
+    "migration policy remains valid before clean and previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-10, Pass-207 integration/security and Pass-209 browser handoffs; Pass 211 may be prepared but cannot claim Stage-11 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:19.079Z",
+      "finishedAt": "2026-08-24T06:26:19.079Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:19.080Z",
+      "finishedAt": "2026-08-24T06:26:26.840Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:26.840Z",
+      "finishedAt": "2026-08-24T06:26:27.090Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:27.090Z",
+      "finishedAt": "2026-08-24T06:26:28.822Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:28.822Z",
+      "finishedAt": "2026-08-24T06:26:28.870Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:28.870Z",
+      "finishedAt": "2026-08-24T06:26:28.893Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:28.893Z",
+      "finishedAt": "2026-08-24T06:26:28.919Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:28.919Z",
+      "finishedAt": "2026-08-24T06:26:28.992Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:26:28.992Z",
+      "finishedAt": "2026-08-24T06:26:29.111Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

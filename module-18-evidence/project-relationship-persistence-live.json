@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-project-relationship-persistence-repair",
+  "generatedAt": "2026-08-23T14:09:10.359Z",
+  "status": "BLOCKED",
+  "pass": 168,
+  "mode": "live",
+  "stage7LiveAccepted": false,
+  "reason": "STAGE_7_LIVE_ACCEPTANCE_REQUIRED",
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 169 - Module 18 Project repository and service security repair.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

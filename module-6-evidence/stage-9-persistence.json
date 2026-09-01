@@ -1,0 +1,69 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-persistence-evidence",
+  "generatedAt": "2026-08-23T16:02:47.087Z",
+  "pass": 177,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "status": "STAGE_9_PERSISTENCE_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "ownedTables": [
+    "wbs_nodes",
+    "cost_codes",
+    "cost_types",
+    "project_cost_codes"
+  ],
+  "migration": "20260823000700_module_6_wbs_cost_codes_core",
+  "runtimeDeploymentAllowed": false,
+  "apiRuntimeGenerated": false,
+  "reactRuntimeGenerated": false,
+  "unresolvedPersistenceContract": [
+    "The source defines Project cost-structure freeze but no durable Project-level freeze field/table.",
+    "Public status/category values remain unenumerated.",
+    "WBS level API ownership remains unresolved.",
+    "Cost Type master still has no reviewed HTTP route."
+  ],
+  "nextPass": "Pass 178 - Module 6 Zod boundary. Keep unresolved source ambiguities explicit and do not activate runtime while the Stage-8 live handoff is pending.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:25.293Z",
+      "finishedAt": "2026-08-23T16:02:46.876Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.876Z",
+      "finishedAt": "2026-08-23T16:02:46.987Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:46.987Z",
+      "finishedAt": "2026-08-23T16:02:47.026Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:47.026Z",
+      "finishedAt": "2026-08-23T16:02:47.087Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

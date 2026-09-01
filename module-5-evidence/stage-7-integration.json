@@ -1,0 +1,86 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-integration-evidence",
+  "generatedAt": "2026-08-23T09:41:01.415Z",
+  "status": "STAGE_7_INTEGRATION_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 143,
+  "mode": "static",
+  "stage6LiveAccepted": false,
+  "integrationFile": "tests/integration/module-5-api.integration.test.mjs",
+  "workflow": [
+    "create Project from active Client and won Tender",
+    "list and get Project with initial lifecycle history",
+    "update editable Project master data",
+    "activate DRAFT Project",
+    "complete ACTIVE Project",
+    "close COMPLETED Project with reason",
+    "prove lifecycle retries do not duplicate history/audit/outbox",
+    "prove closed Project rejects normal master update",
+    "prove one won Tender cannot create a second primary Project"
+  ],
+  "persistenceEvidence": [
+    "projects row",
+    "append-only project_status_history rows",
+    "Project audit rows",
+    "exactly four approved Stage-7 Project outbox events"
+  ],
+  "deferredToPass144": [
+    "negative permission matrix",
+    "cross-company HTTP/repository/service isolation",
+    "direct PostgreSQL foreign-key/check/index attack tests"
+  ],
+  "membershipDeferredToModule24B": true,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live integration gate after genuine Stage-6 acceptance; Pass 144 may be prepared but cannot claim live Stage-7 verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-http",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:48.933Z",
+      "finishedAt": "2026-08-23T09:41:01.184Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-integration-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.184Z",
+      "finishedAt": "2026-08-23T09:41:01.300Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.300Z",
+      "finishedAt": "2026-08-23T09:41:01.318Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.318Z",
+      "finishedAt": "2026-08-23T09:41:01.355Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.355Z",
+      "finishedAt": "2026-08-23T09:41:01.415Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

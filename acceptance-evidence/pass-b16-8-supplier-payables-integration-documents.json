@@ -1,0 +1,44 @@
+{
+  "pass": "B16.8",
+  "module": "Module 17 - Supplier Payables",
+  "scope": "Cross-module integration verification and Module 21 Supplier Invoice document/evidence authorization",
+  "productionFilesAdded": [],
+  "productionFilesUpdated": [
+    "apps/api/src/modules/documents-audit/documents-audit.schema.ts",
+    "apps/api/src/modules/documents-audit/documents-audit.repository.ts",
+    "apps/api/src/modules/documents-audit/documents-audit.service.ts"
+  ],
+  "databaseMigrationAdded": false,
+  "supplierPayablesRouteCount": 8,
+  "documentIntegration": {
+    "resourceType": "supplier_invoice",
+    "sameCompanyResolution": true,
+    "projectDerivedFromSupplierInvoice": true,
+    "requiredBusinessPermission": "supplier_payables.read",
+    "documentsLinkPermissionStillRequired": true,
+    "crossProjectLinksRejected": true,
+    "duplicateFileStorageAdded": false
+  },
+  "crossModuleVerification": {
+    "vendorProjectPoGoodsReceiptScope": true,
+    "financeApSourceKey": true,
+    "procurementOwnedMaterialCostNotDuplicated": true,
+    "supplierPaymentCashBankPosting": true,
+    "allocationDoesNotDoublePostFinance": true,
+    "outstandingAndAgingRemainDerived": true
+  },
+  "reactFeatureAdded": false,
+  "nextPass": "B16.9 - Supplier Payables React API/hooks/components/pages and ERP navigation integration",
+  "verification": {
+    "b16FocusedTests": "89/89 PASS",
+    "final21StaticTests": "362/362 PASS",
+    "workspaceTests": "31/31 PASS",
+    "migrationSystemTests": "8/8 PASS",
+    "databaseCleanupTests": "6/6 PASS",
+    "migrationPolicy": "83/83 migrations locked across 83 gates",
+    "workspaceStructure": "PASS",
+    "legacyCleanupManifest": "PASS - current",
+    "typescriptSyntaxTranspile": "PASS for the three changed Documents & Audit TypeScript files",
+    "dependencyBackedBuildPostgresRuntime": "NOT CLAIMED - archive has no installed node_modules/disposable PostgreSQL runtime"
+  }
+}

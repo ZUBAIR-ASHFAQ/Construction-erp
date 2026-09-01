@@ -1,0 +1,62 @@
+{
+  "pass": "B19.8",
+  "module": "Module 19 Project Profitability",
+  "scope": "Cross-module reconciliation and security verification",
+  "productionFilesChanged": false,
+  "databaseMigrationAdded": false,
+  "reactFeatureAdded": false,
+  "profitabilityPersistenceAdded": false,
+  "liveIntegrationCoverageAdded": true,
+  "authoritativeSources": [
+    "Module 9 CostActual",
+    "Module 15 Client Billing",
+    "Module 16 Client Receipts",
+    "Module 17 Supplier Payables",
+    "Module 18 Finance",
+    "Module 7 Project Stages"
+  ],
+  "frozenProjectExample": {
+    "recognizedRevenue": "1700.00",
+    "actualCost": "600.00",
+    "profitAmount": "1100.00",
+    "billedAmount": "1700.00",
+    "receivedAmount": "1500.00",
+    "allocatedAmount": "1000.00",
+    "advanceAmount": "500.00",
+    "outstandingAmount": "700.00",
+    "supplierPayableAmount": "650.00"
+  },
+  "canonicalRandomAdvance": {
+    "amount": "500000.00",
+    "recognizedRevenue": "0.00",
+    "profitAmount": "0.00"
+  },
+  "security": [
+    "negative finance permission",
+    "explicit Project scope",
+    "cross-Company isolation",
+    "portfolio permission intersection"
+  ],
+  "sourceFiltering": [
+    "draft Client Invoice",
+    "draft Finance Journal",
+    "draft Supplier Invoice",
+    "draft Supplier Payment allocation",
+    "future actual cost",
+    "unapproved and future Stage progress"
+  ],
+  "liveExecution": "guarded; not claimed because the supplied archive has no installed node_modules or disposable PostgreSQL runtime",
+  "nextPass": "B19.9 Project Profitability React feature",
+  "verification": {
+    "b19_8Gate": "129/129 PASS",
+    "projectProfitabilityAlignment": "101/101 PASS",
+    "postPassFinal21Static": "724/724 PASS",
+    "currentStaticSuite": "829/829 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "89 migrations locked across 89 gates PASS",
+    "legacyCleanupManifest": "PASS",
+    "integrationSyntax": "PASS",
+    "liveIntegration": "guarded; not executed because the archive has no installed node_modules or disposable PostgreSQL runtime",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

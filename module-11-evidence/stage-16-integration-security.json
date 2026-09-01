@@ -1,0 +1,166 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-integration-security-evidence",
+  "generatedAt": "2026-08-25T05:47:46.269Z",
+  "pass": 262,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "mode": "static",
+  "status": "STAGE_16_MODULE_11_INTEGRATION_SECURITY_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "httpPrepared": true,
+  "integrationFile": "tests/integration/module-11-api.integration.test.mjs",
+  "coverage": [
+    "all eight reviewed Subcontractor Management operations run through real Fastify, service, repository and PostgreSQL boundaries",
+    "same-Company Module-8 Vendor linkage is accepted while cross-Company Vendor linkage is rejected without duplicating the supplier master",
+    "Module-22 execution approval is required and an approved subcontract creates Module-7 commitments exactly once under idempotent replay",
+    "progress applications derive server-owned numbering and prior certified progress before immutable certification",
+    "certification enforces per-line and whole-contract cumulative limits while calculating retention on the server",
+    "missing authentication/permission, restricted Project scope, cross-Company resources and browser-owned authority are rejected",
+    "database constraints reject cross-Company Vendor and Project persistence outside the service boundary",
+    "late outbox failures roll back execution status, commitments, audit and certification state without partial commits",
+    "generated OpenAPI exposes exactly eight reviewed operations with bearer security and Idempotency-Key on seven writes",
+    "Finance/AP posting, Change Order revisions, retention release and unsupported subcontract/application readback routes remain absent"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicRoutesAdded": 0,
+  "reviewedRouteCount": 8,
+  "reviewedPermissionCount": 7,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "vendorLinkAndIsolationVerified": false,
+  "module22ApprovalVerified": false,
+  "module7CommitmentAtomicityVerified": false,
+  "paymentApplicationCertificationVerified": false,
+  "cumulativeCertificationLimitVerified": false,
+  "serverOwnedRetentionVerified": false,
+  "negativeAuthorizationVerified": false,
+  "projectScopeIsolationVerified": false,
+  "crossCompanyIsolationVerified": false,
+  "generatedOpenApiVerified": false,
+  "transactionRollbackVerified": false,
+  "financeApWritesAdded": 0,
+  "changeOrderWritesAdded": 0,
+  "retentionReleaseRoutesAdded": 0,
+  "subcontractReadbackRoutesAdded": 0,
+  "reactGenerated": false,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 263 - Module 11 React typed API, TanStack Query hooks and the reviewed Subcontractor register, subcontract workflow, commitment, application/certification and retention UI without inventing missing readback APIs.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-http-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.728Z",
+      "finishedAt": "2026-08-25T05:47:29.728Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-http-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.728Z",
+      "finishedAt": "2026-08-25T05:47:44.900Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-static-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:44.900Z",
+      "finishedAt": "2026-08-25T05:47:45.052Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.052Z",
+      "finishedAt": "2026-08-25T05:47:45.181Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.181Z",
+      "finishedAt": "2026-08-25T05:47:45.306Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.307Z",
+      "finishedAt": "2026-08-25T05:47:45.422Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.422Z",
+      "finishedAt": "2026-08-25T05:47:45.563Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.563Z",
+      "finishedAt": "2026-08-25T05:47:45.649Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.649Z",
+      "finishedAt": "2026-08-25T05:47:45.766Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.766Z",
+      "finishedAt": "2026-08-25T05:47:45.782Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-runtime-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:45.782Z",
+      "finishedAt": "2026-08-25T05:47:46.188Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:46.188Z",
+      "finishedAt": "2026-08-25T05:47:46.225Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:46.225Z",
+      "finishedAt": "2026-08-25T05:47:46.268Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

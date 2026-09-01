@@ -1,0 +1,32 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-operations-evidence",
+  "generatedAt": "2026-08-25T05:59:13.211Z",
+  "pass": 265,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage15LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_15_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financeApWritesAdded": 0,
+  "changeOrderWritesAdded": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-11:operations:gate:live before claiming Stage-16 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

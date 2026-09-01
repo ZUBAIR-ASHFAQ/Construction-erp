@@ -1,0 +1,147 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-invoice-retention-evidence",
+  "generatedAt": "2026-08-26T11:02:43.770Z",
+  "pass": 351,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "status": "STAGE_23_MODULE_16_INVOICE_RETENTION_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "serviceFile": "apps/api/src/modules/client-billing/client-billing.service.ts",
+  "repositoryFile": "apps/api/src/modules/client-billing/client-billing.repository.ts",
+  "invoiceIssueIdempotent": true,
+  "retentionReleaseIdempotent": true,
+  "invoiceRequiresCertifiedClaim": true,
+  "oneInvoicePerClaimProtected": true,
+  "invoiceNumberUsesFoundationSequence": "client-invoice",
+  "invoiceGrossUsesCertifiedValue": true,
+  "invoiceRetentionUsesCertifiedClaimRetention": true,
+  "invoiceDeductionUsesCertifiedClaimDeduction": true,
+  "invoiceTaxPolicyInvented": false,
+  "invoiceTaxHeldAtZeroUntilSourcePolicyExists": true,
+  "invoiceTotalReceivableServerCalculated": true,
+  "invoiceDueDateCannotPrecedeInvoiceDate": true,
+  "clientInvoiceStableSourceKeyPrepared": true,
+  "financeArAdapterGeneratedEarly": false,
+  "retentionLedgerCreatedWithInvoice": true,
+  "retentionReleaseBodylessFullRelease": true,
+  "retentionReleaseCannotExceedHeldAmount": true,
+  "retentionReleaseSafeReplayReturnsCurrentState": true,
+  "retentionReadbackIncludedInContractRegister": true,
+  "privateLifecycleTokensOnly": true,
+  "approvedChangeAdapterImplemented": false,
+  "approvedChangeAdapterFailClosedUntilTargetMappingExists": true,
+  "approvedChangeTargetMappingInvented": false,
+  "stage27ChangeContractProofStillRequired": true,
+  "publicRoutesGenerated": false,
+  "reactGenerated": false,
+  "databaseMigrationGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "Invoice number scope/format remains Foundation sequence configuration rather than a source-defined public numbering rule.",
+    "The source does not define tax inputs or tax policy, so Pass 351 keeps tax_amount at zero instead of inventing a rate or tax engine.",
+    "The bodyless retention release is implemented as full release of the remaining approved amount because no partial-release amount/date payload exists.",
+    "Retention source_type, direction and lifecycle values remain implementation-private string tokens because the source does not enumerate public vocabularies.",
+    "Approved Change Order to Client Contract revised_value integration cannot be applied safely yet because the source does not define the target Contract mapping/source-key structure; no Project-wide revenue amount is guessed onto every Contract.",
+    "Full Client-Invoice-to-AR posting remains Stage-26 Module 15B and Stage-27 must prove Claim -> Invoice -> AR with approved variations and stable source identity."
+  ],
+  "nextPass": "Pass 352 - Module 16 Fastify routes, module registration, authentication/RBAC, exact seven-route HTTP surface and OpenAPI verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-service",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:34.829Z",
+      "finishedAt": "2026-08-26T11:02:41.830Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-invoice-retention-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:41.830Z",
+      "finishedAt": "2026-08-26T11:02:42.025Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-invoice-retention-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:42.026Z",
+      "finishedAt": "2026-08-26T11:02:42.507Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:42.507Z",
+      "finishedAt": "2026-08-26T11:02:42.719Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:42.719Z",
+      "finishedAt": "2026-08-26T11:02:42.890Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:42.890Z",
+      "finishedAt": "2026-08-26T11:02:43.035Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:43.035Z",
+      "finishedAt": "2026-08-26T11:02:43.217Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:43.217Z",
+      "finishedAt": "2026-08-26T11:02:43.436Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:43.436Z",
+      "finishedAt": "2026-08-26T11:02:43.618Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:43.618Z",
+      "finishedAt": "2026-08-26T11:02:43.715Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T11:02:43.715Z",
+      "finishedAt": "2026-08-26T11:02:43.770Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

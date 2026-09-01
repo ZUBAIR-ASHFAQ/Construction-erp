@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-playwright-evidence",
+  "generatedAt": "2026-08-24T01:14:30.442Z",
+  "pass": 198,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage9LiveAccepted": false,
+  "reason": "STAGE_9_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-4b:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

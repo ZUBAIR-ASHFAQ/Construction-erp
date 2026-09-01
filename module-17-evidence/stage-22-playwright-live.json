@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-playwright-evidence",
+  "generatedAt": "2026-08-26T09:18:39.394Z",
+  "pass": 344,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage21LiveAccepted": false,
+  "reason": "STAGE_21_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-17:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

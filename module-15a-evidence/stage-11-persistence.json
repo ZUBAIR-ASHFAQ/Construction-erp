@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-finance-core-persistence-evidence",
+  "generatedAt": "2026-08-24T06:16:41.249Z",
+  "pass": 202,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "status": "STAGE_11_MODULE_15A_PERSISTENCE_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "migration": "20260824000100_module_15a_finance_core",
+  "ownedTables": [
+    "gl_accounts",
+    "fiscal_periods",
+    "journals",
+    "journal_lines"
+  ],
+  "deferred15BTables": [
+    "ap_invoices",
+    "ar_invoices",
+    "payments",
+    "payment_allocations"
+  ],
+  "statusEnumsInvented": false,
+  "sourceTypeEnumInvented": false,
+  "reversalLinkageInvented": false,
+  "costStructureTarget": "project_cost_codes.id",
+  "costStructureResolutionIsExplicit": true,
+  "databaseIntegrity": [
+    "GL account parent stays inside the owning Company without inventing account-tree cycle semantics.",
+    "Journal fiscal period belongs to the Journal Company and contains the posting date.",
+    "Journal line account belongs to the Journal Company.",
+    "Journal line Project belongs to the Journal Company when supplied.",
+    "Journal line cost structure references Module 6 project_cost_codes and stays inside the Journal Company and selected Project.",
+    "Stable non-null source identity is unique per Company/source type/source ID."
+  ],
+  "apiGenerated": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 203 - Module 15A Finance Core Zod request/response schema boundary for the six reviewed Stage-11 operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.276Z",
+      "finishedAt": "2026-08-24T06:16:40.917Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:40.917Z",
+      "finishedAt": "2026-08-24T06:16:41.122Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:41.123Z",
+      "finishedAt": "2026-08-24T06:16:41.182Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:41.182Z",
+      "finishedAt": "2026-08-24T06:16:41.249Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

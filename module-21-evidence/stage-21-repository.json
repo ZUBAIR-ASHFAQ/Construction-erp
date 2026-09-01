@@ -1,0 +1,140 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-21-module-21-project-scheduling-repository-evidence",
+  "generatedAt": "2026-08-26T02:16:15.779Z",
+  "pass": 325,
+  "stage": 21,
+  "module": "21 - Project Scheduling",
+  "status": "STAGE_21_MODULE_21_REPOSITORY_PREPARED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "stage20LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/scheduling/scheduling.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityExplicit": true,
+  "transactionClientSupported": true,
+  "projectLookupCompanyAndProjectScoped": true,
+  "projectWriteLockPrepared": true,
+  "currentScheduleAggregateReadPrepared": true,
+  "currentScheduleWriteLockPrepared": true,
+  "createSchedulePrimitivePrepared": true,
+  "activityReadCompanyAndProjectScoped": true,
+  "activityCodeCollisionLookupPrepared": true,
+  "activitySetLookupPrepared": true,
+  "optionalWbsLookupSameProjectScoped": true,
+  "createActivityPrimitivePrepared": true,
+  "updateActivityPlanningPrimitivePrepared": true,
+  "dependencyGraphReadPrepared": true,
+  "dependencyCompleteReplacePrimitivePrepared": true,
+  "dependencyCycleAlgorithmDuplicatedInRepository": false,
+  "latestBaselineLookupPrepared": true,
+  "immutableBaselineCreatePrimitivePrepared": true,
+  "baselineTimestampUpdateSeparatedFromSnapshot": true,
+  "progressHistoryCreatePrimitivePrepared": true,
+  "currentActivityProgressUpdateSeparatedFromHistory": true,
+  "progressHistoryReadPrepared": true,
+  "boundedDateRangeActivityReadPrepared": true,
+  "publicLookaheadQueryNamesInvented": false,
+  "scheduleDeletePrimitiveGenerated": false,
+  "activityDeletePrimitiveGenerated": false,
+  "baselineMutationPrimitiveGenerated": false,
+  "progressHistoryMutationPrimitiveGenerated": false,
+  "advancedCpmRepositoryGenerated": false,
+  "changeOrderIntegrationGenerated": false,
+  "dailyReportIntegrationGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "Project Schedule and Schedule Activity status vocabularies remain service-owned but undefined.",
+    "Activity parent-cycle policy beyond no-self/same-Schedule validation remains a service concern.",
+    "Baseline numbering start, reopen/revision policy and exact SCHEDULE_BASELINE_LOCKED scope remain undefined.",
+    "Public look-ahead start-date/window query semantics remain undefined; the repository exposes only a generic bounded date-range primitive.",
+    "Progress duplicate/replace and approval policy remain undefined.",
+    "schedule.milestone_changed emission condition remains undefined.",
+    "Change Order and Daily Report integrations remain downstream."
+  ],
+  "nextPass": "Pass 326 - Module 21 Scheduling service/business transactions for current Schedule, Activities, Dependencies, Baseline, Progress and source-bounded look-ahead orchestration.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-21-schema",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:11.674Z",
+      "finishedAt": "2026-08-26T02:16:14.412Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:14.412Z",
+      "finishedAt": "2026-08-26T02:16:14.558Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:14.558Z",
+      "finishedAt": "2026-08-26T02:16:14.990Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:14.990Z",
+      "finishedAt": "2026-08-26T02:16:15.156Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.156Z",
+      "finishedAt": "2026-08-26T02:16:15.334Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.334Z",
+      "finishedAt": "2026-08-26T02:16:15.513Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-14b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.513Z",
+      "finishedAt": "2026-08-26T02:16:15.679Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.679Z",
+      "finishedAt": "2026-08-26T02:16:15.727Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T02:16:15.727Z",
+      "finishedAt": "2026-08-26T02:16:15.778Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

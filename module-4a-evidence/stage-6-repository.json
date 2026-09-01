@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-repository-evidence",
+  "generatedAt": "2026-08-23T07:09:59.128Z",
+  "status": "STAGE_6_REPOSITORY_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 126,
+  "stage5LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_6_UNTIL_STAGE_5_LIVE_ACCEPTED",
+  "repositoryFile": "apps/api/src/modules/boq/boq.repository.ts",
+  "companyScopeSource": "trusted request context through requireCompanyRepositoryScope()",
+  "childScopeRule": "boq_revisions and boq_items are accessed only through a company-owned BOQ",
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 127 may be prepared, but Stage 6 activation remains blocked until Module 3 live Stage-5 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4a-schema",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:49.587Z",
+      "finishedAt": "2026-08-23T07:09:58.962Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:58.962Z",
+      "finishedAt": "2026-08-23T07:09:59.061Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.061Z",
+      "finishedAt": "2026-08-23T07:09:59.088Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.088Z",
+      "finishedAt": "2026-08-23T07:09:59.128Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

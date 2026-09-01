@@ -1,0 +1,114 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-persistence-evidence",
+  "generatedAt": "2026-08-26T07:22:32.888Z",
+  "pass": 335,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_PERSISTENCE_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "migration": "20260826000200_module_17_change_orders_core",
+  "ownedTables": [
+    "change_requests",
+    "change_request_lines",
+    "change_orders",
+    "change_order_impacts"
+  ],
+  "projectCompanyForeignKeyEnforced": true,
+  "requesterCompanyForeignKeyEnforced": true,
+  "changeNumberUniquenessInvented": false,
+  "statusEnumsInvented": false,
+  "changeTypeEnumInvented": false,
+  "estimatedAmountsPrecision": "DECIMAL(18,2)",
+  "approvedAmountsPrecision": "DECIMAL(18,2)",
+  "approvedDaysPrecision": "DECIMAL(10,2)",
+  "impactAmountPrecision": "DECIMAL(18,2)",
+  "impactQuantityPrecision": "DECIMAL(18,4)",
+  "optionalCostReferencesScoped": true,
+  "postingEnabledCostCombinationEnforcedWhenComplete": true,
+  "optionalBoqProjectScopeEnforced": true,
+  "oneFormalChangeOrderPerRequest": true,
+  "approvedChangeOrderSnapshotImmutableAtDatabase": true,
+  "genericImpactTargetForeignKeyInvented": false,
+  "impactIdentityAndValuesImmutableAtDatabase": true,
+  "appliedImpactImmutableAtDatabase": true,
+  "stage27TargetAdaptersGeneratedEarly": false,
+  "clientBillingGeneratedEarly": false,
+  "scheduleAdapterGeneratedEarly": false,
+  "apiSchemaGenerated": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "publicRoutesGenerated": false,
+  "reactGenerated": false,
+  "productionRuntimeActivationAllowed": false,
+  "unresolvedSourceAmbiguities": [
+    "change_requests.change_no numbering authority and uniqueness scope remain undefined.",
+    "change_type and lifecycle status vocabularies remain undefined.",
+    "PUT draft-line replacement semantics remain undefined until the API schema/service pass.",
+    "No Change Request or Change Order detail GET route is defined.",
+    "Exact Module-22 terminal approval linkage remains undefined.",
+    "changes.apply still has no standalone public apply route.",
+    "approved_days business semantics and Schedule target mapping remain undefined.",
+    "Impact target_type/status vocabularies and target adapter identities remain Stage-27 gated.",
+    "Reversal/adjustment policy remains required at Stage 27 but no public reversal command is defined."
+  ],
+  "nextPass": "Pass 336 - Module 17 strict Zod/API schema boundary for the seven reviewed Change Order operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.021Z",
+      "finishedAt": "2026-08-26T07:22:32.289Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.289Z",
+      "finishedAt": "2026-08-26T07:22:32.551Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-system-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.551Z",
+      "finishedAt": "2026-08-26T07:22:32.717Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "database-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.717Z",
+      "finishedAt": "2026-08-26T07:22:32.796Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.796Z",
+      "finishedAt": "2026-08-26T07:22:32.839Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.840Z",
+      "finishedAt": "2026-08-26T07:22:32.888Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

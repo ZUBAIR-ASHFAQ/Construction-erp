@@ -1,0 +1,216 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-10-stage-15-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-25T00:35:00.424Z",
+  "status": "STAGE_15_STATIC_GATE_PASSED_STAGE_14_LIVE_HANDOFF_PENDING",
+  "module": "10 - Inventory & Material Management",
+  "pass": 255,
+  "stage": 15,
+  "stage14LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_15_UNTIL_STAGE_14_LIVE_HANDOFF",
+  "ownedTables": [
+    "inventory_items",
+    "warehouses",
+    "inventory_balances",
+    "goods_receipts",
+    "goods_receipt_items",
+    "stock_transactions"
+  ],
+  "routeCount": 8,
+  "activePermissions": [
+    "inventory.read",
+    "inventory.item.manage",
+    "inventory.receive",
+    "inventory.transfer",
+    "inventory.issue",
+    "inventory.adjust"
+  ],
+  "activeEvents": [
+    "inventory.received",
+    "inventory.transferred",
+    "inventory.issued",
+    "inventory.returned",
+    "inventory.adjusted"
+  ],
+  "hardDependencies": [
+    "9 - Purchase Orders",
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing"
+  ],
+  "projectScopeAuthority": "Module 24B - Project Scope Activation",
+  "purchaseOrderAuthority": "Module 9 - Purchase Orders",
+  "projectActualCostAuthority": "Module 7 - Budgeting & Job Costing",
+  "stockLedgerAppendOnly": true,
+  "inventoryBalanceMaintainedTransactionally": true,
+  "receiptUpdatesPoConsumptionAtomically": true,
+  "issueCreatesProjectActualIdempotently": true,
+  "financeSourceAdapterDeferredToStage26": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "The source requires Warehouse/site-store management but defines no Warehouse management public API; Stage 15 therefore does not invent Warehouse CRUD.",
+    "The source requires stock-ledger and low-stock UI views but defines no dedicated stock-ledger read route, reorder threshold fields or low-stock API.",
+    "The source defines valuation_method and approved unit conversion rules without an exact valuation algorithm, UOM master, conversion table or conversion API.",
+    "The source defines a return command without a dedicated inventory.return permission; Stage 15 preserves the frozen issue-plus-adjust authorization convention.",
+    "The source defines STOCK_PERIOD_LOCKED without assigning Inventory a stock-period model; Stage 15 does not borrow Module-15 fiscal-period authority.",
+    "Formal Inventory accounting/source adapters remain deferred to Module 15B / Stage 26."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-14/Stage-15 live chain and rerun module-10:acceptance:live before starting Stage 16 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:57.141Z",
+      "finishedAt": "2026-08-25T00:34:57.307Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:57.307Z",
+      "finishedAt": "2026-08-25T00:34:57.462Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:57.462Z",
+      "finishedAt": "2026-08-25T00:34:57.637Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:57.637Z",
+      "finishedAt": "2026-08-25T00:34:57.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:57.874Z",
+      "finishedAt": "2026-08-25T00:34:58.036Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:58.036Z",
+      "finishedAt": "2026-08-25T00:34:58.246Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:34:58.246Z",
+      "finishedAt": "2026-08-25T00:35:00.154Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.154Z",
+      "finishedAt": "2026-08-25T00:35:00.204Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.204Z",
+      "finishedAt": "2026-08-25T00:35:00.266Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.266Z",
+      "finishedAt": "2026-08-25T00:35:00.285Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.285Z",
+      "finishedAt": "2026-08-25T00:35:00.304Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.304Z",
+      "finishedAt": "2026-08-25T00:35:00.323Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "inventory-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.323Z",
+      "finishedAt": "2026-08-25T00:35:00.349Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "inventory-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.349Z",
+      "finishedAt": "2026-08-25T00:35:00.368Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "inventory-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.368Z",
+      "finishedAt": "2026-08-25T00:35:00.387Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "inventory-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.387Z",
+      "finishedAt": "2026-08-25T00:35:00.406Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T00:35:00.406Z",
+      "finishedAt": "2026-08-25T00:35:00.423Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

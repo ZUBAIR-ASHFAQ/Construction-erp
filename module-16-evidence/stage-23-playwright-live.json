@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-playwright-evidence",
+  "generatedAt": "2026-08-26T12:45:19.588Z",
+  "pass": 356,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage22LiveAccepted": false,
+  "reason": "STAGE_22_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite and rerun module-16:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

@@ -1,0 +1,58 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T13:21:54.865Z",
+  "status": "BLOCKED",
+  "module": "24B - Project Scope Activation",
+  "businessModule": "24 - Users, Roles & Permissions",
+  "pass": 164,
+  "stage7LiveAccepted": false,
+  "operationsLiveVerified": false,
+  "repairHoldActive": true,
+  "activation": "COMPLETE_STAGE_8_AUDIT_REPAIR_CHAIN_BEFORE_DEPLOYMENT",
+  "ownedTables": [
+    "project_members"
+  ],
+  "extendedTables": [
+    "user_role_assignments"
+  ],
+  "newRouteCount": 1,
+  "activatedMembershipRoute": "PUT /api/v1/projects/:id/members",
+  "extendedRoleScopeRoute": "PUT /api/v1/users/:id/roles",
+  "activePermissions": [
+    "projects.manage_members"
+  ],
+  "activeEvents": [
+    "project.member_changed",
+    "user.roles_changed"
+  ],
+  "projectScopeShapes": [
+    "all",
+    "restricted"
+  ],
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "module6Generated": false,
+  "productionRuntimeChanges": 0,
+  "nextStage": "Complete Pass 165-175 Stage-8 audit repair chain",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-8-audit-repair-hold",
+      "status": "failed",
+      "startedAt": "2026-08-23T13:21:54.865Z",
+      "finishedAt": "2026-08-23T13:21:54.865Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_8_AUDIT_REPAIR_REQUIRED"
+    }
+  ]
+}

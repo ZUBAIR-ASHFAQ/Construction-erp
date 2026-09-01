@@ -1,0 +1,129 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-364-module-9-direct-purchase-exception",
+  "generatedAt": "2026-08-26T17:00:40.602Z",
+  "pass": 364,
+  "baselinePass": 363,
+  "status": "PASS_364_MODULE_9_DIRECT_PURCHASE_EXCEPTION_ACCEPTED",
+  "repairContractItems": [
+    "M9-01"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 1,
+  "databaseTablesAdded": 0,
+  "databaseColumnsAdded": 1,
+  "publicRoutesAdded": 0,
+  "sourceRoutesPreserved": 8,
+  "permissionsAdded": [
+    "purchase_orders.direct_purchase"
+  ],
+  "rolesAutoGrantedPermission": false,
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "directPurchaseReasonPersisted": true,
+  "sourceSwitchingAllowed": false,
+  "module22ApprovalPreserved": true,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "54c7c99d27ff7a497c8a3b45cb1006a254133e605e5ec2b1081ad8efb8820cf4",
+  "unchangedScopeSnapshotActual": "54c7c99d27ff7a497c8a3b45cb1006a254133e605e5ec2b1081ad8efb8820cf4",
+  "unchangedScopeFileCount": 1180,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires the configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 365 - Module 9 exact revision history and durable cancellation evidence",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-363-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-363 scope remains byte-identical across 1180 files."
+    },
+    {
+      "name": "pass-364-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:33.482Z",
+      "finishedAt": "2026-08-26T17:00:33.575Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-static-acceptance",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:33.575Z",
+      "finishedAt": "2026-08-26T17:00:37.366Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:37.366Z",
+      "finishedAt": "2026-08-26T17:00:39.753Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:39.753Z",
+      "finishedAt": "2026-08-26T17:00:39.917Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:39.917Z",
+      "finishedAt": "2026-08-26T17:00:40.073Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "typescript-source-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:40.073Z",
+      "finishedAt": "2026-08-26T17:00:40.525Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:40.525Z",
+      "finishedAt": "2026-08-26T17:00:40.545Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-9-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:40.545Z",
+      "finishedAt": "2026-08-26T17:00:40.563Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-fixture-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:40.563Z",
+      "finishedAt": "2026-08-26T17:00:40.581Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-fixture-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T17:00:40.581Z",
+      "finishedAt": "2026-08-26T17:00:40.602Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

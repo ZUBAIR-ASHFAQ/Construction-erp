@@ -1,0 +1,114 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-17-stage-22-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-26T09:32:15.336Z",
+  "status": "BLOCKED",
+  "module": "17 - Change Orders / Variations",
+  "pass": 345,
+  "stage": 22,
+  "stage21LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_22_UNTIL_STAGE_21_LIVE_HANDOFF",
+  "sourceDefinedTables": [
+    "change_requests",
+    "change_request_lines",
+    "change_orders",
+    "change_order_impacts"
+  ],
+  "reviewedRouteCount": 7,
+  "reviewedWriteRouteCount": 5,
+  "activePermissions": [
+    "changes.read",
+    "changes.create",
+    "changes.estimate",
+    "changes.submit",
+    "changes.approve",
+    "changes.apply"
+  ],
+  "stableErrors": [
+    "CHANGE_REQUEST_NOT_FOUND",
+    "CHANGE_REQUEST_LOCKED",
+    "CHANGE_APPROVAL_REQUIRED",
+    "CHANGE_IMPACT_ALREADY_APPLIED",
+    "CHANGE_TARGET_CLOSED"
+  ],
+  "sourceDefinedEvents": [
+    "change_request.created",
+    "change_request.submitted",
+    "change_order.approved",
+    "change_order.impact_applied",
+    "change_request.rejected"
+  ],
+  "hardDependencies": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "22 - Approval Workflows"
+  ],
+  "optionalDependencies": [
+    "4B - BOQ Project Mapping when boq_item_id is used"
+  ],
+  "conditionalDependencies": [
+    "21 - Project Scheduling when approved_days or Schedule impact is enabled"
+  ],
+  "projectAuthorizationUsesModule24B": true,
+  "supportingDocumentsReuseModule18": true,
+  "approvedVariationSnapshotImmutable": true,
+  "budgetForecastImpactMandatory": true,
+  "atomicImpactBoundaryVerified": true,
+  "idempotentWriteBoundaryVerified": true,
+  "rejectedChangesRemainHistorical": true,
+  "scheduleImpactFailClosedUntilReviewedAdapter": true,
+  "scheduleAdapterGenerated": false,
+  "clientBillingAdapterGenerated": false,
+  "subcontractAdapterGenerated": false,
+  "stage27TargetAdapterProofStillRequired": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "Change Request status vocabulary is not enumerated by the source.",
+    "Change type vocabulary is not enumerated by the source.",
+    "Formal Change Order status vocabulary is not enumerated by the source.",
+    "Change impact target_type/status vocabularies are not enumerated by the source.",
+    "Change number uniqueness scope is not defined; Foundation numbering is used without inventing a database uniqueness scope.",
+    "The workflow mentions withdrawn changes, but the reviewed API defines no withdraw command.",
+    "The source does not define a separate Change Request detail GET; the Change register carries the reviewed aggregate.",
+    "The exact approval latest-revision representation and required-document list are not defined by Module 17.",
+    "Supporting document mutation stays in Module 18 because Module 17 defines no attachment command.",
+    "approved_days and Schedule impact remain fail-closed until the reviewed Schedule target adapter is completed.",
+    "Client Billing and Subcontract target adapters remain deferred to their owning stages and Stage 27 integration proof.",
+    "Reversal/adjustment semantics for already-applied Change impacts remain a Stage-27 policy gap and are not invented here."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextDependentStage": "23 - Module 16 Client Billing",
+  "nextReviewedPass": "Pass 346 - Stage 23 / Module 16 Client Billing contract freeze.",
+  "nextStage": "Stage-23 contract preparation may continue, but Stage-22 runtime acceptance/deployment remains blocked until the genuine Stage-21/Stage-22 live chain passes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-21-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-26T09:32:15.336Z",
+      "finishedAt": "2026-08-26T09:32:15.336Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_21_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

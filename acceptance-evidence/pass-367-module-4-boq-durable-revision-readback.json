@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-367-module-4-boq-durable-revision-readback",
+  "generatedAt": "2026-08-26T18:06:37.753Z",
+  "pass": 367,
+  "baselinePass": 366,
+  "status": "PASS_367_MODULE_4_BOQ_DURABLE_REVISION_READBACK_ACCEPTED",
+  "repairContractItems": [
+    "M4A-01"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 0,
+  "databaseTablesAdded": [],
+  "prismaModelsAdded": [],
+  "repositoryFunctionsAdded": [],
+  "sourceRoutesPreserved": 6,
+  "publicRepairRoutesAdded": [
+    "GET /api/v1/boqs/:id",
+    "GET /api/v1/boqs/:id/revisions/:revId"
+  ],
+  "repairRoutesReadOnly": true,
+  "readAuthority": "boq.read",
+  "permissionsAdded": [],
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "genericItemCrudAdded": false,
+  "historicalRevisionReadbackDurable": true,
+  "browserReloadHistorySupported": true,
+  "browserReloadComparisonSupported": true,
+  "frozenRevisionImmutabilityPreserved": true,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "6d71ebace32852bf19dbcff4d9c99bf23aba122d6fd9926c0aaf29f0e8c88e94",
+  "unchangedScopeSnapshotActual": "6d71ebace32852bf19dbcff4d9c99bf23aba122d6fd9926c0aaf29f0e8c88e94",
+  "unchangedScopeFileCount": 1214,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires the configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 368 - Module 10 Inventory warehouse management, stock-ledger read and low-stock support",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-366-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-366 scope remains byte-identical across 1214 files."
+    },
+    {
+      "name": "pass-367-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:34.394Z",
+      "finishedAt": "2026-08-26T18:06:34.479Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-cumulative-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:34.479Z",
+      "finishedAt": "2026-08-26T18:06:34.599Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-cumulative-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:34.599Z",
+      "finishedAt": "2026-08-26T18:06:34.709Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:34.709Z",
+      "finishedAt": "2026-08-26T18:06:36.948Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:36.948Z",
+      "finishedAt": "2026-08-26T18:06:37.105Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:37.105Z",
+      "finishedAt": "2026-08-26T18:06:37.227Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "typescript-source-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:37.227Z",
+      "finishedAt": "2026-08-26T18:06:37.703Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:37.703Z",
+      "finishedAt": "2026-08-26T18:06:37.719Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:37.719Z",
+      "finishedAt": "2026-08-26T18:06:37.736Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:06:37.736Z",
+      "finishedAt": "2026-08-26T18:06:37.752Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

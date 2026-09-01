@@ -1,0 +1,260 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-21-stage-21-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T06:31:08.673Z",
+  "status": "STAGE_21_STATIC_GATE_PASSED_STAGE_20_LIVE_HANDOFF_PENDING",
+  "module": "21 - Project Scheduling",
+  "pass": 333,
+  "stage": 21,
+  "stage20LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_21_UNTIL_STAGE_20_LIVE_HANDOFF",
+  "sourceDefinedTables": [
+    "project_schedules",
+    "schedule_activities",
+    "schedule_dependencies",
+    "schedule_baselines",
+    "schedule_progress_updates"
+  ],
+  "reviewedRouteCount": 8,
+  "reviewedWriteRouteCount": 6,
+  "activePermissions": [
+    "schedule.read",
+    "schedule.manage",
+    "schedule.baseline",
+    "schedule.progress"
+  ],
+  "stableErrors": [
+    "SCHEDULE_NOT_FOUND",
+    "DUPLICATE_ACTIVITY_CODE",
+    "SCHEDULE_DEPENDENCY_CYCLE",
+    "SCHEDULE_BASELINE_LOCKED",
+    "INVALID_PROGRESS_UPDATE"
+  ],
+  "sourceDefinedEvents": [
+    "schedule.created",
+    "schedule.baselined",
+    "schedule.progress_updated",
+    "schedule.milestone_changed"
+  ],
+  "hardDependencies": [
+    "5 - Project Management"
+  ],
+  "optionalDependencies": [
+    "6 - WBS & Cost Codes for optional activity mapping"
+  ],
+  "projectAuthorizationUsesModule24B": true,
+  "oneCurrentSchedulePerProject": true,
+  "baselineSnapshotImmutable": true,
+  "progressHistoryAppendOnly": true,
+  "dependencyCycleProtection": true,
+  "idempotentWriteBoundaryVerified": true,
+  "advancedCpmAdded": false,
+  "fullP6ParityClaimed": false,
+  "externalSchedulerSyncAdded": false,
+  "changeOrderIntegrationStillDeferredToStage22And27": true,
+  "dailyReportIntegrationStillDeferredToStage25And27": true,
+  "stage27ScheduleImpactProofStillRequired": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "Project Schedule status vocabulary is not enumerated.",
+    "Schedule Activity status vocabulary is not enumerated.",
+    "The workflow mentions an activity owner and planned duration, but neither field is defined in the source table contract.",
+    "Activity hierarchy depth and the exact post-baseline parent-change policy are not defined.",
+    "Dependency types beyond the guaranteed first-scope finish-start relationship are not enumerated.",
+    "Negative lead and fractional lag-day semantics are not defined.",
+    "The canonical baseline snapshot_json shape and baseline numbering start value are not defined by the source.",
+    "The baseline reopen/revision lifecycle and exact SCHEDULE_BASELINE_LOCKED field scope are not defined.",
+    "Forecast start and complete revised-forecast persistence are not defined.",
+    "Look-ahead public query parameter names and start-date semantics are not defined.",
+    "Progress approval and duplicate/replace behavior for one Activity/data_date are not defined.",
+    "The exact schedule.milestone_changed emission condition is not defined.",
+    "Approved Change Order schedule impact belongs to Module 17 and still requires the Stage-27 integration proof.",
+    "Daily Site Report activity linkage is deferred until its owning stage and Stage-27 completion.",
+    "Advanced CPM/P6 calculations, calendars, resource loading and external scheduler synchronization remain outside the medium ERP scope."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "newPermissions": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextDependentStage": "22 - Module 17 Change Orders / Variations",
+  "nextReviewedPass": "Pass 334 - Stage 22 / Module 17 Change Orders / Variations contract freeze.",
+  "nextStage": "Stage-22 contract preparation may continue, but Stage-21 runtime acceptance/deployment remains blocked until the genuine Stage-20/Stage-21 live chain passes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:05.207Z",
+      "finishedAt": "2026-08-26T06:31:05.359Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:05.359Z",
+      "finishedAt": "2026-08-26T06:31:05.506Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:05.506Z",
+      "finishedAt": "2026-08-26T06:31:05.629Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:05.629Z",
+      "finishedAt": "2026-08-26T06:31:05.811Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:05.811Z",
+      "finishedAt": "2026-08-26T06:31:07.840Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.840Z",
+      "finishedAt": "2026-08-26T06:31:07.878Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.878Z",
+      "finishedAt": "2026-08-26T06:31:07.929Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.929Z",
+      "finishedAt": "2026-08-26T06:31:07.948Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.948Z",
+      "finishedAt": "2026-08-26T06:31:07.965Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.965Z",
+      "finishedAt": "2026-08-26T06:31:07.982Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.982Z",
+      "finishedAt": "2026-08-26T06:31:07.999Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:07.999Z",
+      "finishedAt": "2026-08-26T06:31:08.017Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.017Z",
+      "finishedAt": "2026-08-26T06:31:08.035Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.035Z",
+      "finishedAt": "2026-08-26T06:31:08.053Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-index-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.053Z",
+      "finishedAt": "2026-08-26T06:31:08.069Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.069Z",
+      "finishedAt": "2026-08-26T06:31:08.086Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-main-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.086Z",
+      "finishedAt": "2026-08-26T06:31:08.103Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-browser-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.103Z",
+      "finishedAt": "2026-08-26T06:31:08.118Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.118Z",
+      "finishedAt": "2026-08-26T06:31:08.133Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "scheduling-react-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T06:31:08.133Z",
+      "finishedAt": "2026-08-26T06:31:08.673Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

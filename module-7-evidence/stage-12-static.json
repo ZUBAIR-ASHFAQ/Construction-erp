@@ -1,0 +1,160 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-7-stage-12-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-26T15:20:40.170Z",
+  "status": "STAGE_12_STATIC_GATE_PASSED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "module": "7 - Budgeting & Job Costing",
+  "pass": 222,
+  "stage": 12,
+  "stage11LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_12_UNTIL_STAGE_11_LIVE_HANDOFF",
+  "ownedTables": [
+    "project_budgets",
+    "budget_lines",
+    "cost_commitments",
+    "cost_actuals",
+    "forecast_lines"
+  ],
+  "sourceRouteCount": 7,
+  "pass361DraftRecoveryRoutesAdded": 1,
+  "routeCount": 8,
+  "activePermissions": [
+    "budgets.read",
+    "budgets.create",
+    "budgets.edit",
+    "budgets.freeze",
+    "job_cost.read",
+    "forecast.update"
+  ],
+  "activeEvents": [
+    "budget.created",
+    "budget.frozen",
+    "budget.revised",
+    "forecast.updated"
+  ],
+  "sourceDerivedEventDeferred": "job_cost.source_posted",
+  "sourceAdaptersDeferred": true,
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "unresolvedSourceContract": [
+    "Pass 361 adds one bounded latest-DRAFT recovery read; generic budget-list/history CRUD remains outside the repair contract.",
+    "The reviewed public API defines no explicit Module-7 submit/approve/reopen command even though approval is described as conditional in the broader workflow.",
+    "The source names cost_commitments.cost_structure_id and cost_actuals.cost_structure_id without explicitly naming the foreign-key target; Stage 12 preserves the reviewed Module-6 Project cost-structure interpretation."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextStage": "Complete the genuine Stage-11/Stage-12 live chain and rerun module-7:acceptance:live before starting Stage 13 runtime deployment.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:29.524Z",
+      "finishedAt": "2026-08-26T15:20:30.004Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:30.004Z",
+      "finishedAt": "2026-08-26T15:20:30.519Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:30.519Z",
+      "finishedAt": "2026-08-26T15:20:30.995Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:30.995Z",
+      "finishedAt": "2026-08-26T15:20:31.513Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:31.514Z",
+      "finishedAt": "2026-08-26T15:20:39.346Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.346Z",
+      "finishedAt": "2026-08-26T15:20:39.529Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.529Z",
+      "finishedAt": "2026-08-26T15:20:39.693Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.693Z",
+      "finishedAt": "2026-08-26T15:20:39.782Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.782Z",
+      "finishedAt": "2026-08-26T15:20:39.871Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.871Z",
+      "finishedAt": "2026-08-26T15:20:39.964Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:39.964Z",
+      "finishedAt": "2026-08-26T15:20:40.068Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T15:20:40.068Z",
+      "finishedAt": "2026-08-26T15:20:40.170Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

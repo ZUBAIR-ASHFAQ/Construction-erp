@@ -1,0 +1,190 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-contract-evidence",
+  "generatedAt": "2026-08-26T07:22:32.276Z",
+  "pass": 334,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_CONTRACT_FROZEN_STAGE_21_LIVE_HANDOFF_PENDING",
+  "contractOnly": true,
+  "stage21LiveAccepted": false,
+  "hardPrerequisites": [
+    "5 - Project Management",
+    "6 - WBS & Cost Codes",
+    "7 - Budgeting & Job Costing",
+    "22 - Approval Workflows"
+  ],
+  "optionalPrerequisites": [
+    "4B - BOQ Project Mapping when boq_item_id is used"
+  ],
+  "schedulePrerequisiteConditional": true,
+  "schedulePrerequisiteCondition": "approved_days is present or Schedule impact is enabled",
+  "projectScopeReusesModule24B": true,
+  "supportingDocumentsReuseModule18": true,
+  "approvalWorkflowReusesModule22": true,
+  "ownedTables": [
+    "change_requests",
+    "change_request_lines",
+    "change_orders",
+    "change_order_impacts"
+  ],
+  "reviewedRouteCount": 7,
+  "reviewedRoutes": [
+    "GET /api/v1/change-orders",
+    "POST /api/v1/change-orders/requests",
+    "PUT /api/v1/change-orders/requests/:id/lines",
+    "POST /api/v1/change-orders/requests/:id/submit",
+    "POST /api/v1/change-orders/requests/:id/approve",
+    "POST /api/v1/change-orders/requests/:id/reject",
+    "GET /api/v1/change-orders/:id/impact"
+  ],
+  "reviewedPermissions": [
+    "changes.read",
+    "changes.create",
+    "changes.estimate",
+    "changes.submit",
+    "changes.approve",
+    "changes.apply"
+  ],
+  "reviewedErrors": [
+    "CHANGE_REQUEST_NOT_FOUND",
+    "CHANGE_REQUEST_LOCKED",
+    "CHANGE_APPROVAL_REQUIRED",
+    "CHANGE_IMPACT_ALREADY_APPLIED",
+    "CHANGE_TARGET_CLOSED"
+  ],
+  "reviewedEvents": [
+    "change_request.created",
+    "change_request.submitted",
+    "change_order.approved",
+    "change_order.impact_applied",
+    "change_request.rejected"
+  ],
+  "decimalSafeAmountsRequired": true,
+  "approvedVariationSnapshotImmutable": true,
+  "oneFormalChangeOrderPerRequest": true,
+  "impactApplicationIdempotent": true,
+  "impactApplicationAtomic": true,
+  "budgetImpactMandatory": true,
+  "stage27TargetAdapterProofRequired": true,
+  "module21BaselineMutationAllowed": false,
+  "extraRoutesInvented": false,
+  "extraPermissionsInvented": false,
+  "extraApplyRouteInvented": false,
+  "clientBillingGeneratedEarly": false,
+  "productionFilesGenerated": false,
+  "databaseMigrationGenerated": false,
+  "changeNumberAuthorityGapRecorded": true,
+  "withdrawRouteGapRecorded": true,
+  "linePutSemanticsGapRecorded": true,
+  "detailGetRouteGapRecorded": true,
+  "latestRevisionRepresentationGapRecorded": true,
+  "unresolvedSourceAmbiguities": [
+    "change_requests.change_no numbering authority and uniqueness scope are not defined.",
+    "change_type vocabulary is not enumerated.",
+    "Change Request status vocabulary is not enumerated.",
+    "Change Order status vocabulary is not enumerated.",
+    "change_order_impacts target_type vocabulary is not enumerated.",
+    "change_order_impacts status vocabulary is not enumerated.",
+    "PUT draft-line replace-all versus merge semantics are not explicitly defined.",
+    "No Change Request or Change Order detail GET route is defined.",
+    "List filters and the combined request/order list response shape are not defined.",
+    "Create and approve/reject command bodies are not fully enumerated.",
+    "The workflow mentions withdrawn changes but no withdraw route exists.",
+    "Approval refers to the latest revision but no Change Request revision table or number exists.",
+    "Exact linkage between Module-22 terminal approval and Module-17 approve/reject commands is not defined.",
+    "changes.apply exists but there is no standalone apply route.",
+    "Mandatory supporting-document rules are not defined.",
+    "Exact approved-cost and approved-revenue derivation from estimate lines is not fully defined.",
+    "approved_days and Schedule-impact target mapping are not defined.",
+    "Impact target identity and idempotency-key structure are not defined.",
+    "Stage-27 reversal/adjustment policy is required but no Module-17 reversal command is defined.",
+    "Potential/unapproved Change forecast inclusion is optional and not defined.",
+    "Locked Contract/Budget reopen policy belongs to owning modules and is not defined here."
+  ],
+  "productionRuntimeActivationAllowed": false,
+  "persistencePreparationAllowed": true,
+  "nextPass": "Pass 335 - Module 17 Change Orders / Variations Prisma models, constraints, indexes and Stage-22 migration. Deployment remains blocked until the Stage-21 live handoff is genuine.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-project-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.136Z",
+      "finishedAt": "2026-08-26T07:22:31.292Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-cost-structure-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.292Z",
+      "finishedAt": "2026-08-26T07:22:31.443Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-budget-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.443Z",
+      "finishedAt": "2026-08-26T07:22:31.608Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-approval-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.608Z",
+      "finishedAt": "2026-08-26T07:22:31.697Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-optional-boq-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.697Z",
+      "finishedAt": "2026-08-26T07:22:31.815Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-21-conditional-schedule-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:31.815Z",
+      "finishedAt": "2026-08-26T07:22:32.032Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.032Z",
+      "finishedAt": "2026-08-26T07:22:32.178Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.178Z",
+      "finishedAt": "2026-08-26T07:22:32.226Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.226Z",
+      "finishedAt": "2026-08-26T07:22:32.276Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

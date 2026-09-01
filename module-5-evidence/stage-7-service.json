@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-service-evidence",
+  "generatedAt": "2026-08-23T09:41:00.914Z",
+  "status": "STAGE_7_SERVICE_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 141,
+  "stage6LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_7_UNTIL_STAGE_6_LIVE_ACCEPTED",
+  "serviceFile": "apps/api/src/modules/projects/projects.service.ts",
+  "repositoryAdjustment": "one same-company Tender row lock used to serialize the one-primary-Project rule",
+  "lifecycle": [
+    "DRAFT -> ACTIVE",
+    "ACTIVE -> COMPLETED",
+    "COMPLETED -> CLOSED"
+  ],
+  "retrySafeStates": [
+    "ACTIVE",
+    "COMPLETED",
+    "CLOSED"
+  ],
+  "eventTypes": [
+    "project.created",
+    "project.activated",
+    "project.completed",
+    "project.closed"
+  ],
+  "auditActions": [
+    "project.created",
+    "project.updated",
+    "project.activated",
+    "project.completed",
+    "project.closed"
+  ],
+  "closeReadiness": "optional service callback; downstream blocker tables are not invented in Stage 7",
+  "ownedTables": [
+    "projects",
+    "project_status_history"
+  ],
+  "deferredTable": "project_members",
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 142 may be prepared, but Stage 7 activation remains blocked until Module 4A live Stage-6 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-repository",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:49.155Z",
+      "finishedAt": "2026-08-23T09:41:00.656Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.657Z",
+      "finishedAt": "2026-08-23T09:41:00.792Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.792Z",
+      "finishedAt": "2026-08-23T09:41:00.811Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.811Z",
+      "finishedAt": "2026-08-23T09:41:00.827Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.827Z",
+      "finishedAt": "2026-08-23T09:41:00.863Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.863Z",
+      "finishedAt": "2026-08-23T09:41:00.914Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

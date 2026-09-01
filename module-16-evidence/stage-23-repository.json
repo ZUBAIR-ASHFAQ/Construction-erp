@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-repository-evidence",
+  "generatedAt": "2026-08-26T10:27:40.945Z",
+  "pass": 349,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "status": "STAGE_23_MODULE_16_REPOSITORY_PREPARED_STAGE_22_LIVE_HANDOFF_PENDING",
+  "stage22LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/client-billing/client-billing.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityExplicit": true,
+  "transactionClientSupported": true,
+  "boundedPaginationOnly": true,
+  "contractAggregateListPrepared": true,
+  "projectScopeLookupPrepared": true,
+  "clientCompanyLookupPrepared": true,
+  "contractAggregateReadPrepared": true,
+  "contractWriteLockPrepared": true,
+  "contractCreatePrimitivePrepared": true,
+  "claimHistoryReadPreparedForCumulativeChecks": true,
+  "claimAggregateReadPrepared": true,
+  "claimWriteLockPrepared": true,
+  "claimCreatePrimitivePrepared": true,
+  "claimLineReadPreparedForServerTotals": true,
+  "projectBoqLookupPrepared": true,
+  "claimLineCompleteReplacePrepared": true,
+  "certificationTotalsUpdatePrepared": true,
+  "existingInvoiceByClaimLookupPrepared": true,
+  "immutableInvoiceCreatePrepared": true,
+  "retentionSourceLookupPrepared": true,
+  "retentionWriteLockPrepared": true,
+  "retentionCreatePrimitivePrepared": true,
+  "retentionReleaseUpdatePrepared": true,
+  "retentionContractOwnershipInvented": false,
+  "numberAuthorityInvented": false,
+  "lifecycleEnumsInvented": false,
+  "claimSubmitPrimitiveInvented": false,
+  "paymentPersistenceInvented": false,
+  "financeArAdapterGeneratedEarly": false,
+  "approvedChangeAdapterGeneratedEarly": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "Contract, Claim and Invoice number scope/format remain service-owned because the source does not define them.",
+    "billing_method and Contract/Claim/Invoice/Retention lifecycle vocabularies remain string-backed.",
+    "The source defines progress_claim.submitted without a submit route; the repository does not invent one.",
+    "Cumulative certification policy and which historical statuses count as previously certified remain service concerns.",
+    "Retention/deduction calculation policy remains service-owned; repository primitives persist only server-calculated values.",
+    "Retention source_type/direction/status vocabulary and exact Contract-to-retention aggregation remain undefined, so no fake direct ownership relation is introduced.",
+    "Invoice tax and due-date policy remain service concerns.",
+    "Approved Change Order revised Contract integration remains for the reviewed later integration pass.",
+    "Client Invoice to AR posting remains Stage-26 Module 15B and Stage-27 integration proof."
+  ],
+  "nextPass": "Pass 350 - Module 16 Client Billing core service transactions for Contract creation, Claim valuation, cumulative checks, certification, audit/outbox and idempotency.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-16-schema",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:36.941Z",
+      "finishedAt": "2026-08-26T10:27:39.449Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:39.450Z",
+      "finishedAt": "2026-08-26T10:27:39.574Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-16-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:39.574Z",
+      "finishedAt": "2026-08-26T10:27:39.952Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:39.952Z",
+      "finishedAt": "2026-08-26T10:27:40.080Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-2-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.080Z",
+      "finishedAt": "2026-08-26T10:27:40.213Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.213Z",
+      "finishedAt": "2026-08-26T10:27:40.334Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.334Z",
+      "finishedAt": "2026-08-26T10:27:40.458Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.458Z",
+      "finishedAt": "2026-08-26T10:27:40.649Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.649Z",
+      "finishedAt": "2026-08-26T10:27:40.852Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.852Z",
+      "finishedAt": "2026-08-26T10:27:40.895Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T10:27:40.895Z",
+      "finishedAt": "2026-08-26T10:27:40.945Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

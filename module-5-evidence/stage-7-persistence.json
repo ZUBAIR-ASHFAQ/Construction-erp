@@ -1,0 +1,63 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-persistence-evidence",
+  "generatedAt": "2026-08-23T09:41:00.224Z",
+  "status": "STAGE_7_PERSISTENCE_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 138,
+  "stage6LiveAccepted": false,
+  "ownedTables": [
+    "projects",
+    "project_status_history"
+  ],
+  "migration": "20260823000400_module_5_project_management_core",
+  "deferredToModule24B": [
+    "project_members",
+    "validated project memberships",
+    "project-scoped authorization"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 139 may be prepared, but Stage 7 activation remains blocked until Module 4A live Stage-6 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:49.450Z",
+      "finishedAt": "2026-08-23T09:41:00.031Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.031Z",
+      "finishedAt": "2026-08-23T09:41:00.155Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.155Z",
+      "finishedAt": "2026-08-23T09:41:00.184Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.184Z",
+      "finishedAt": "2026-08-23T09:41:00.224Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-operations-evidence",
+  "generatedAt": "2026-08-23T09:41:25.680Z",
+  "status": "BLOCKED",
+  "module": "5 - Project Management",
+  "pass": 149,
+  "mode": "live",
+  "stage6LiveAccepted": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_6_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "productionRuntimeChanges": 0,
+  "membershipDeferredToModule24B": true,
+  "nextPass": "Resolve the live prerequisite and rerun module-5:operations:gate:live before claiming operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

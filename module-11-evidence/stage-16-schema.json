@@ -1,0 +1,151 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-schema-evidence",
+  "generatedAt": "2026-08-25T05:47:32.468Z",
+  "pass": 258,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_SCHEMA_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/subcontracts/subcontracts.schema.ts",
+  "reviewedRouteCount": 8,
+  "reviewedPermissionCount": 7,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "maxPageSize": 100,
+  "listFiltersInvented": false,
+  "listQueryDecision": "The reviewed subcontractor GET route documents no business filter vocabulary, so Pass 258 accepts bounded pagination only.",
+  "createSubcontractorBrowserFields": [
+    "vendorId",
+    "code",
+    "legalName",
+    "taxNo",
+    "contactJson",
+    "complianceStatus"
+  ],
+  "subcontractorStatusAcceptedFromBrowser": false,
+  "vendorLinkAcceptedFromBrowser": true,
+  "contactJsonKeysInvented": false,
+  "createSubcontractBrowserFields": [
+    "projectId",
+    "subcontractorId",
+    "startDate",
+    "endDate",
+    "retentionPercent",
+    "currency",
+    "items"
+  ],
+  "subcontractItemBrowserFields": [
+    "boqItemId",
+    "description",
+    "quantity",
+    "unit",
+    "rate",
+    "amount",
+    "wbsNodeId",
+    "costCodeId",
+    "costTypeId"
+  ],
+  "subcontractNumberAcceptedFromBrowser": false,
+  "originalValueAcceptedFromBrowser": false,
+  "revisedValueAcceptedFromBrowser": false,
+  "itemAmountAcceptedFromBrowser": true,
+  "itemAmountFormulaInvented": false,
+  "draftProjectChangeAcceptedFromBrowser": false,
+  "draftEditPermissionInvented": false,
+  "executeBodyless": true,
+  "closeBodyless": true,
+  "paymentApplicationBrowserFields": [
+    "periodFrom",
+    "periodTo",
+    "lines"
+  ],
+  "paymentApplicationLineBrowserFields": [
+    "subcontractItemId",
+    "currentQty",
+    "currentValue"
+  ],
+  "applicationNumberAcceptedFromBrowser": false,
+  "previousQtyAcceptedFromBrowser": false,
+  "claimedAmountAcceptedFromBrowser": false,
+  "certificationBrowserFields": [
+    "lines"
+  ],
+  "certificationLineBrowserFields": [
+    "subcontractItemId",
+    "certifiedValue"
+  ],
+  "certifiedAmountAcceptedFromBrowser": false,
+  "retentionAmountAcceptedFromBrowser": false,
+  "deductionFieldInvented": false,
+  "certificationOverrideFieldInvented": false,
+  "retentionReleaseFieldInvented": false,
+  "approvalFieldsAcceptedFromBrowser": false,
+  "commitmentFieldsAcceptedFromBrowser": false,
+  "financeFieldsAcceptedFromBrowser": false,
+  "exactDecimalStringsUsed": true,
+  "quantityRateScale": 4,
+  "moneyScale": 2,
+  "retentionPercentScale": 4,
+  "statusEnumsInvented": false,
+  "extraReadRoutesInvented": false,
+  "commitmentSourceTokensExposedInResponse": false,
+  "financePostingStateExposedInResponse": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 259 - Module 11 Company/Project-scoped repository with Vendor/BOQ/cost-structure lookups, row locking, payment-application persistence and Module-7 commitment primitives.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.120Z",
+      "finishedAt": "2026-08-25T05:47:31.841Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.841Z",
+      "finishedAt": "2026-08-25T05:47:31.989Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:31.989Z",
+      "finishedAt": "2026-08-25T05:47:32.368Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:32.368Z",
+      "finishedAt": "2026-08-25T05:47:32.412Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:32.412Z",
+      "finishedAt": "2026-08-25T05:47:32.468Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

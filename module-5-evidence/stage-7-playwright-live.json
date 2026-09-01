@@ -1,0 +1,23 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-playwright-evidence",
+  "generatedAt": "2026-08-23T09:34:20.713Z",
+  "status": "BLOCKED",
+  "module": "5 - Project Management",
+  "pass": 148,
+  "mode": "live",
+  "stage6LiveAccepted": false,
+  "reason": "STAGE_6_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "membershipDeferredToModule24B": true,
+  "nextPass": "Resolve the live prerequisite and rerun module-5:playwright:gate:live before claiming browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

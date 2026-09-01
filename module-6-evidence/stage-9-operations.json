@@ -1,0 +1,119 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-operations-evidence",
+  "generatedAt": "2026-08-26T14:47:54.799Z",
+  "pass": 188,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "mode": "static",
+  "status": "STAGE_9_OPERATIONS_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent duplicate WBS creation leaves one node and one complete audit/outbox side-effect set",
+    "concurrent duplicate Company Cost Code creation leaves one code and one complete audit/outbox side-effect set",
+    "concurrent whole-set Project mapping replacement serializes on the Project row and never leaves mixed mapping state",
+    "WBS Project/parent listing can use wbs_nodes_project_parent_sort_idx",
+    "Project mapping listing can use project_cost_codes_combination_uq",
+    "Company Cost Code listing can use cost_codes_company_code_uq"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Module 6 introduces no Pass-188 migration because existing constraints and indexes already support the reviewed workflows"
+  ],
+  "rollbackCoverage": [
+    "losing duplicate WBS creation leaves no partial audit or outbox residue",
+    "losing duplicate Cost Code creation leaves no partial audit or outbox residue",
+    "whole-set mapping replacement commits one complete serialized set per successful request"
+  ],
+  "deploymentReadiness": [
+    "full dependency-free regression remains green before live execution",
+    "service, repository and integration test syntax remain valid",
+    "migration policy remains valid before clean/previous-schema live verification"
+  ],
+  "unresolvedSourceContract": [
+    "The reviewed freeze command still has no durable freeze-state field or reopen command, so Pass 188 does not claim concurrent freeze idempotency or persistent freeze enforcement.",
+    "The reviewed API still has no Cost Type CRUD or archive command, so operational verification does not invent either workflow."
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-8 handoff and Pass-187 live browser verification; Pass 189 may be prepared but cannot claim Stage-9 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:33.484Z",
+      "finishedAt": "2026-08-26T14:47:45.053Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:45.053Z",
+      "finishedAt": "2026-08-26T14:47:45.577Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:45.577Z",
+      "finishedAt": "2026-08-26T14:47:54.129Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.129Z",
+      "finishedAt": "2026-08-26T14:47:54.229Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.229Z",
+      "finishedAt": "2026-08-26T14:47:54.321Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.321Z",
+      "finishedAt": "2026-08-26T14:47:54.411Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.411Z",
+      "finishedAt": "2026-08-26T14:47:54.602Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:54.603Z",
+      "finishedAt": "2026-08-26T14:47:54.798Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

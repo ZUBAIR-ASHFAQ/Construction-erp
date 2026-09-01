@@ -1,0 +1,108 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-http-evidence",
+  "generatedAt": "2026-08-26T14:47:37.540Z",
+  "pass": 181,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "status": "STAGE_9_HTTP_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "routeFile": "apps/api/src/modules/wbs-cost-codes/wbs-cost-codes.routes.ts",
+  "indexFile": "apps/api/src/modules/wbs-cost-codes/index.ts",
+  "appRegistration": "apps/api/src/app.ts",
+  "operationCount": 7,
+  "routes": [
+    "GET /api/v1/projects/:projectId/wbs",
+    "POST /api/v1/projects/:projectId/wbs/nodes",
+    "PATCH /api/v1/projects/:projectId/wbs/nodes/:id",
+    "GET /api/v1/cost-codes",
+    "POST /api/v1/cost-codes",
+    "PUT /api/v1/projects/:projectId/cost-code-assignments",
+    "POST /api/v1/projects/:projectId/wbs/freeze"
+  ],
+  "httpBoundary": {
+    "everyRouteAuthenticated": true,
+    "projectScopeRevalidatedByService": true,
+    "companyCostCodePermissionsCheckedAtRouteAndService": true,
+    "strictZodBoundaryReused": true,
+    "safeResponseDtos": true,
+    "freezeCommandBodyless": true,
+    "extraCrudAdded": false
+  },
+  "intentionallyDeferred": [
+    "PostgreSQL/Fastify integration remains deferred to Pass 182.",
+    "Dedicated security/isolation verification remains deferred to Pass 183.",
+    "OpenAPI stable-error enum verification remains deferred to the dedicated API-contract pass.",
+    "React and Playwright remain deferred until backend verification is complete."
+  ],
+  "integrationTestsGenerated": false,
+  "reactRuntimeGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 182 - Module 6 PostgreSQL and Fastify integration tests for the seven reviewed operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-service-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:36.297Z",
+      "finishedAt": "2026-08-26T14:47:36.297Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:36.297Z",
+      "finishedAt": "2026-08-26T14:47:36.815Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:36.815Z",
+      "finishedAt": "2026-08-26T14:47:36.921Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-index-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:36.921Z",
+      "finishedAt": "2026-08-26T14:47:37.027Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:37.027Z",
+      "finishedAt": "2026-08-26T14:47:37.124Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:37.124Z",
+      "finishedAt": "2026-08-26T14:47:37.301Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T14:47:37.301Z",
+      "finishedAt": "2026-08-26T14:47:37.540Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

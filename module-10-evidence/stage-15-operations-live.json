@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-15-module-10-inventory-materials-operations-evidence",
+  "generatedAt": "2026-08-25T00:26:31.571Z",
+  "pass": 254,
+  "stage": 15,
+  "module": "10 - Inventory & Material Management",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage14LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "reason": "STAGE_14_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financeWritesAdded": 0,
+  "nextPass": "Resolve the live prerequisite and rerun module-10:operations:gate:live before claiming Stage-15 operational verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

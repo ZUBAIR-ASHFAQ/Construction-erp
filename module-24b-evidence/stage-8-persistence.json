@@ -1,0 +1,79 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-persistence-evidence",
+  "generatedAt": "2026-08-23T12:36:47.066Z",
+  "status": "STAGE_8_PERSISTENCE_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 152,
+  "stage7LiveAccepted": false,
+  "ownedTable": "project_members",
+  "migration": "20260823000500_module_24b_project_scope_activation",
+  "projectMemberIntegrity": [
+    "company_id resolves to companies",
+    "project_id + company_id resolves to same-company projects",
+    "user_id + company_id resolves to same-company users",
+    "one Project/User membership row",
+    "non-blank project_role and status",
+    "valid membership date range"
+  ],
+  "projectRoleScopeIntegrity": [
+    "COMPANY scope keeps scope_id null",
+    "PROJECT scope requires scope_id",
+    "PROJECT scope_id + company_id resolves to same-company projects",
+    "duplicate COMPANY assignments rejected",
+    "duplicate same-Project assignments rejected",
+    "same role may be assigned on different Projects"
+  ],
+  "stillDeferred": [
+    "membership Zod request boundary",
+    "membership repository/service transaction",
+    "PUT /api/v1/projects/:id/members runtime route",
+    "trusted request projectScope resolution",
+    "project.member_changed runtime event",
+    "React membership workflow"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 153 may be prepared, but Stage 8 activation remains blocked until Module 5 live Stage-7 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:33.514Z",
+      "finishedAt": "2026-08-23T12:36:46.848Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:46.848Z",
+      "finishedAt": "2026-08-23T12:36:46.985Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:46.985Z",
+      "finishedAt": "2026-08-23T12:36:47.020Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.020Z",
+      "finishedAt": "2026-08-23T12:36:47.065Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

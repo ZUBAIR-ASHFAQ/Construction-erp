@@ -1,0 +1,144 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-22-module-17-change-orders-schema-evidence",
+  "generatedAt": "2026-08-26T07:22:33.540Z",
+  "pass": 336,
+  "stage": 22,
+  "module": "17 - Change Orders / Variations",
+  "status": "STAGE_22_MODULE_17_SCHEMA_PREPARED_STAGE_21_LIVE_HANDOFF_PENDING",
+  "stage21LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/change-orders/change-orders.schema.ts",
+  "reviewedRouteCount": 7,
+  "reviewedPermissions": [
+    "changes.read",
+    "changes.create",
+    "changes.estimate",
+    "changes.submit",
+    "changes.approve",
+    "changes.apply"
+  ],
+  "reviewedErrors": [
+    "CHANGE_REQUEST_NOT_FOUND",
+    "CHANGE_REQUEST_LOCKED",
+    "CHANGE_APPROVAL_REQUIRED",
+    "CHANGE_IMPACT_ALREADY_APPLIED",
+    "CHANGE_TARGET_CLOSED"
+  ],
+  "reviewedEvents": [
+    "change_request.created",
+    "change_request.submitted",
+    "change_order.approved",
+    "change_order.impact_applied",
+    "change_request.rejected"
+  ],
+  "listFiltersInvented": false,
+  "boundedPaginationOnly": true,
+  "maxPageSize": 100,
+  "createRequestBrowserFields": [
+    "projectId",
+    "changeType",
+    "title",
+    "description",
+    "reason"
+  ],
+  "changeNumberBrowserOwned": false,
+  "requestStatusBrowserOwned": false,
+  "draftLinePutSemantics": "complete-replacement",
+  "lineBrowserFields": [
+    "wbsNodeId",
+    "costCodeId",
+    "costTypeId",
+    "description",
+    "costAmount",
+    "revenueAmount",
+    "boqItemId"
+  ],
+  "lineIdsBrowserOwned": false,
+  "submitBodyless": true,
+  "approveBrowserFields": [
+    "effectiveDate",
+    "approvedDays"
+  ],
+  "approvedTotalsBrowserOwned": false,
+  "rejectBodyless": true,
+  "rejectionReasonInvented": false,
+  "impactWriteBodyInvented": false,
+  "impactTargetsBrowserOwned": false,
+  "exactDecimalStringsUsed": true,
+  "approvedDaysWholeNumberRestrictionInvented": false,
+  "changeTypeEnumInvented": false,
+  "lifecycleStatusEnumsInvented": false,
+  "impactTargetEnumInvented": false,
+  "separateDetailRouteInvented": false,
+  "aggregateListReadbackUsed": true,
+  "extraRoutesInvented": false,
+  "extraPermissionsInvented": false,
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "remainingSourceAmbiguities": [
+    "change_requests.change_no numbering authority and uniqueness scope remain undefined for the service pass.",
+    "change_type and lifecycle status vocabularies remain undefined and string-backed.",
+    "The source does not define named list filters, so Pass 336 accepts bounded pagination only.",
+    "The source does not define a separate request/order detail GET, so the reviewed list readback carries request lines and optional formal order state.",
+    "The source does not define a Module-17 rejection payload; rejection remains bodyless and Module-22 owns approval action evidence.",
+    "Exact Module-22 terminal approval linkage and latest-revision representation remain service concerns.",
+    "changes.apply still has no standalone public apply route.",
+    "approved_days Schedule mapping and impact target/status vocabularies remain service/Stage-27 concerns.",
+    "Reversal/adjustment policy remains required at Stage 27 but no public reversal command is defined."
+  ],
+  "nextPass": "Pass 337 - Module 17 Company/Project-scoped repository primitives using only the Pass-336 schemas and Pass-335 persistence.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-17-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:30.881Z",
+      "finishedAt": "2026-08-26T07:22:32.912Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:32.912Z",
+      "finishedAt": "2026-08-26T07:22:33.037Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-17-schema-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:33.037Z",
+      "finishedAt": "2026-08-26T07:22:33.448Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:33.448Z",
+      "finishedAt": "2026-08-26T07:22:33.496Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T07:22:33.496Z",
+      "finishedAt": "2026-08-26T07:22:33.540Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

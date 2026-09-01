@@ -1,0 +1,49 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T07:52:56.426Z",
+  "status": "BLOCKED",
+  "module": "4A - BOQ Commercial Core",
+  "businessModule": "4 - BOQ Management",
+  "stage5LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_6_UNTIL_STAGE_5_LIVE_ACCEPTED",
+  "ownedTables": [
+    "boqs",
+    "boq_revisions",
+    "boq_items"
+  ],
+  "routeCount": 6,
+  "permissions": [
+    "boq.read",
+    "boq.create",
+    "boq.edit",
+    "boq.freeze",
+    "boq.export"
+  ],
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "nextStage": "Complete Module 3 live Stage-5 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-5-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-23T07:52:56.426Z",
+      "finishedAt": "2026-08-23T07:52:56.426Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_5_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

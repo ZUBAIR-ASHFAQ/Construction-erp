@@ -1,0 +1,133 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-operations-evidence",
+  "generatedAt": "2026-08-24T10:12:45.731Z",
+  "pass": 221,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "mode": "static",
+  "status": "STAGE_12_MODULE_7_OPERATIONS_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent budget creation serializes on the Company-owned Project row and allocates unique monotonic Project version numbers",
+    "concurrent freeze retries for one DRAFT budget produce one durable FROZEN transition and one budget.frozen audit/outbox side-effect set",
+    "the highest-version FROZEN budget remains the single current approved Project read model while historical frozen versions remain immutable",
+    "concurrent same-date forecast replacement serializes on the Project row and leaves one row per supplied budget line rather than duplicate snapshots",
+    "scoped source-key unique indexes reject concurrent duplicate commitment and actual fixtures without adding source-ingestion APIs",
+    "reviewed current-budget, budget-line, source-cost and forecast read paths have supporting Stage-12 indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 221 adds no migration because Pass 213 already owns the complete reviewed Module-7 persistence change"
+  ],
+  "rollbackCoverage": [
+    "a valid replace-all request whose aggregate total exceeds DECIMAL(18,2) rolls back inserted replacement lines and authoritative budget totals together",
+    "the failed replacement does not create a second budget.lines_replaced audit record",
+    "concurrent lifecycle retry does not duplicate budget.frozen audit/outbox rows"
+  ],
+  "deploymentReadiness": [
+    "the complete dependency-free static regression remains green before live execution",
+    "Stage-11 acceptance plus Module-7 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-11, Pass-218 integration/security and Pass-220 browser handoffs; Pass 222 may be prepared but cannot claim Stage-12 acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:40.874Z",
+      "finishedAt": "2026-08-24T10:12:40.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:40.874Z",
+      "finishedAt": "2026-08-24T10:12:40.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:40.875Z",
+      "finishedAt": "2026-08-24T10:12:44.082Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:44.082Z",
+      "finishedAt": "2026-08-24T10:12:44.223Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:44.223Z",
+      "finishedAt": "2026-08-24T10:12:45.570Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:45.570Z",
+      "finishedAt": "2026-08-24T10:12:45.593Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:45.593Z",
+      "finishedAt": "2026-08-24T10:12:45.617Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:45.617Z",
+      "finishedAt": "2026-08-24T10:12:45.636Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:45.636Z",
+      "finishedAt": "2026-08-24T10:12:45.680Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:12:45.680Z",
+      "finishedAt": "2026-08-24T10:12:45.731Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

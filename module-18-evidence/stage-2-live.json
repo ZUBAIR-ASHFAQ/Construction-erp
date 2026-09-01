@@ -1,0 +1,31 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-stage-2-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-22T17:42:33.547Z",
+  "status": "BLOCKED",
+  "module": "18 - Document Management",
+  "stage1LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_2_UNTIL_STAGE_1_LIVE_ACCEPTED",
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "nextStage": "Complete Module 24A live Stage-1 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": true,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-1-live-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-22T17:42:33.547Z",
+      "finishedAt": "2026-08-22T17:42:33.547Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_1_LIVE_ACCEPTANCE_REQUIRED"
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-persistence-evidence",
+  "generatedAt": "2026-08-24T00:34:07.807Z",
+  "pass": 191,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "status": "STAGE_10_MODULE_4B_PERSISTENCE_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "migration": "20260823000800_module_4b_boq_project_mapping",
+  "activatedColumns": [
+    "boqs.project_id",
+    "boq_items.wbs_node_id",
+    "boq_items.cost_code_id"
+  ],
+  "tenderIdNowNullable": true,
+  "existingTenderBoqsRemainValid": true,
+  "historicalMappingsBackfilled": false,
+  "costTypeIdAddedToBoqItems": false,
+  "databaseIntegrity": [
+    "BOQ keeps at least one of tender_id or project_id.",
+    "BOQ Project must belong to the BOQ Company.",
+    "BOQ-item WBS must belong to the BOQ Project.",
+    "BOQ-item Cost Code must belong to the BOQ Company."
+  ],
+  "apiRelationshipFieldsGenerated": false,
+  "repositoryRelationshipLogicGenerated": false,
+  "serviceRelationshipLogicGenerated": false,
+  "reactRelationshipUiGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 192 - Module 4B Zod request/response relationship activation inside the existing six BOQ operations.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.159Z",
+      "finishedAt": "2026-08-24T00:34:07.641Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-persistence-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.642Z",
+      "finishedAt": "2026-08-24T00:34:07.736Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.736Z",
+      "finishedAt": "2026-08-24T00:34:07.766Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.766Z",
+      "finishedAt": "2026-08-24T00:34:07.807Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

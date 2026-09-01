@@ -1,0 +1,87 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-schema-evidence",
+  "generatedAt": "2026-08-24T00:34:07.989Z",
+  "pass": 192,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "status": "STAGE_10_MODULE_4B_SCHEMA_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "schemaFile": "apps/api/src/modules/boq/boq.schema.ts",
+  "createBoundary": {
+    "tenderIdOptional": true,
+    "projectIdOptional": true,
+    "atLeastOneRequired": true
+  },
+  "itemMappingBoundary": {
+    "wbsNodeIdOptional": true,
+    "costCodeIdOptional": true,
+    "projectIdRejectedInsideItems": true,
+    "costTypeIdNotAdded": true
+  },
+  "responseBoundary": {
+    "tenderIdNullable": true,
+    "projectIdPreparedAsNullableOptional": true,
+    "wbsNodeIdPreparedAsNullableOptional": true,
+    "costCodeIdPreparedAsNullableOptional": true,
+    "existingStage6SerializersRemainCompatible": true
+  },
+  "routeCountChanged": false,
+  "newRoutesAdded": 0,
+  "repositoryRelationshipLogicGenerated": false,
+  "serviceRelationshipLogicGenerated": false,
+  "reactRelationshipUiGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 193 - Module 4B company/project-aware repository relationship activation.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.064Z",
+      "finishedAt": "2026-08-24T00:34:07.817Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.817Z",
+      "finishedAt": "2026-08-24T00:34:07.897Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.897Z",
+      "finishedAt": "2026-08-24T00:34:07.917Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.918Z",
+      "finishedAt": "2026-08-24T00:34:07.949Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T00:34:07.949Z",
+      "finishedAt": "2026-08-24T00:34:07.988Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

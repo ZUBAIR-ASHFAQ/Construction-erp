@@ -1,0 +1,107 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-172-service-readability",
+  "generatedAt": "2026-08-23T15:08:25.839Z",
+  "pass": 172,
+  "status": "PASS_172_JUNIOR_READABLE_SERVICE_REFACTOR_PREPARED_REPAIR_HOLD_ACTIVE",
+  "refactoredServices": [
+    "documents.service.ts completeUploadIntent workflow",
+    "approvals.service.ts actOnApproval workflow",
+    "approvals.service.ts requestApprovalInTransaction workflow",
+    "tendering-estimation.service.ts submitTender workflow"
+  ],
+  "behaviorChangesIntended": 0,
+  "databaseChanges": 0,
+  "migrationsAdded": 0,
+  "apiRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "repositoryMethodsAdded": 0,
+  "serviceFilesAdded": 0,
+  "productionFilesAdded": 0,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 173 - Consolidated audit-repair regression gate.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-18-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:22.100Z",
+      "finishedAt": "2026-08-23T15:08:22.333Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:22.333Z",
+      "finishedAt": "2026-08-23T15:08:22.987Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-3-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:22.987Z",
+      "finishedAt": "2026-08-23T15:08:23.535Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "documents-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:23.535Z",
+      "finishedAt": "2026-08-23T15:08:23.554Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "approvals-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:23.554Z",
+      "finishedAt": "2026-08-23T15:08:23.574Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "tender-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:23.574Z",
+      "finishedAt": "2026-08-23T15:08:23.593Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "complete-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:23.593Z",
+      "finishedAt": "2026-08-23T15:08:25.750Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:25.750Z",
+      "finishedAt": "2026-08-23T15:08:25.789Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T15:08:25.789Z",
+      "finishedAt": "2026-08-23T15:08:25.838Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

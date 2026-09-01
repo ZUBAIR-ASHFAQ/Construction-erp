@@ -1,0 +1,62 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-live-evidence",
+  "mode": "live",
+  "generatedAt": "2026-08-23T17:34:49.142Z",
+  "status": "BLOCKED",
+  "module": "6 - WBS & Cost Codes",
+  "pass": 189,
+  "stage": 9,
+  "module6LiveHandoffAccepted": false,
+  "operationsLiveVerified": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_9_UNTIL_STAGE_8_LIVE_HANDOFF",
+  "ownedTables": [
+    "wbs_nodes",
+    "cost_codes",
+    "cost_types",
+    "project_cost_codes"
+  ],
+  "routeCount": 7,
+  "activePermissions": [
+    "wbs.read",
+    "wbs.manage",
+    "cost_codes.read",
+    "cost_codes.manage",
+    "wbs.freeze"
+  ],
+  "activeEvents": [
+    "wbs.node_created",
+    "wbs.updated",
+    "cost_code.created",
+    "project.cost_structure_frozen"
+  ],
+  "unresolvedSourceContract": [
+    "The source requires a Cost Type master UI but defines no reviewed Cost Type HTTP CRUD operations.",
+    "The source mentions archive behavior but defines no reviewed WBS or Cost Code archive command.",
+    "The source requires controlled frozen-baseline revision or reopen but defines no durable freeze-state field or reviewed reopen command."
+  ],
+  "exactApprovedBusinessModuleCount": 24,
+  "stageSuffixCreatesBusinessModule": false,
+  "productionRuntimeChanges": 0,
+  "runtimeVerificationComplete": false,
+  "nextStage": "Complete the genuine Stage-8 live handoff before Stage-9 live acceptance.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "stage-8-live-handoff-prerequisite",
+      "status": "failed",
+      "startedAt": "2026-08-23T17:34:49.140Z",
+      "finishedAt": "2026-08-23T17:34:49.140Z",
+      "code": 1,
+      "signal": null,
+      "errorCode": "STAGE_8_LIVE_HANDOFF_REQUIRED"
+    }
+  ]
+}

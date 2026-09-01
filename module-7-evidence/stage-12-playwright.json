@@ -1,0 +1,103 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-playwright-evidence",
+  "generatedAt": "2026-08-24T10:03:08.587Z",
+  "pass": 220,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "mode": "static",
+  "status": "STAGE_12_MODULE_7_PLAYWRIGHT_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "browserFile": "tests/e2e/module-7-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open the permission-aware Budgeting & Job Costing workspace",
+    "select one authorized Project through the existing Project register read contract",
+    "create one server-numbered DRAFT budget using budgetType only",
+    "replace one complete exact-decimal budget line set using existing Module-6 WBS, Cost Code and Cost Type assignment IDs",
+    "freeze the DRAFT through the reviewed bodyless command and read the current frozen budget",
+    "read source-derived commitment and actual rows without browser write controls",
+    "save dated ETC and forecast comments while final cost, revenue, EAC, variance and margin remain server-calculated",
+    "open the cost-code drilldown and match source ledger rows through the existing Project cost structure",
+    "verify Module-7 browser writes do not send Company, actor, Project scope, lifecycle, totals, calculated forecast or source-history authority",
+    "verify a read-only Module-7 user does not receive create/forecast controls and receives HTTP 403 on direct write attempts"
+  ],
+  "intentionallyAbsent": [
+    "No commitment or actual create/update/delete browser workflow because those rows remain source-derived.",
+    "No budget approval, reopen, reconciliation or generic CRUD browser workflow because those operations are not defined.",
+    "No DRAFT reload-after-navigation workflow because the reviewed API has no draft list/detail route.",
+    "No Cost Type master workflow because Module 6 does not define a Cost Type read/create endpoint.",
+    "Project-scope and cross-Company security remain additionally covered by the Pass-218 API integration/security suite."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 221 - Module 7 operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.653Z",
+      "finishedAt": "2026-08-24T10:03:05.653Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.653Z",
+      "finishedAt": "2026-08-24T10:03:08.326Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.327Z",
+      "finishedAt": "2026-08-24T10:03:08.460Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.460Z",
+      "finishedAt": "2026-08-24T10:03:08.477Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.477Z",
+      "finishedAt": "2026-08-24T10:03:08.504Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.504Z",
+      "finishedAt": "2026-08-24T10:03:08.549Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.549Z",
+      "finishedAt": "2026-08-24T10:03:08.587Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

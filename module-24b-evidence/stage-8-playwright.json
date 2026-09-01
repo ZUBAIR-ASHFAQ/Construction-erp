@@ -1,0 +1,85 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-playwright-evidence",
+  "generatedAt": "2026-08-23T12:36:49.853Z",
+  "status": "STAGE_8_PLAYWRIGHT_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 162,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "browserFile": "tests/e2e/module-24b-browser.spec.mjs",
+  "browserCoverage": [
+    "system administrator resolves all-Project scope from trusted server state",
+    "Project A membership is replaced through the reviewed whole-set browser command",
+    "membership alone does not grant projects.read",
+    "PROJECT-scoped projects.read is assigned to Project A through the complete access form",
+    "fresh restricted login sees Project A and does not see Project B",
+    "direct Project A API read succeeds while direct Project B read returns PROJECT_SCOPE_FORBIDDEN",
+    "restricted user cannot manage Project-B membership",
+    "membership and role changes persist audit and outbox records",
+    "browser replacement payloads never send company, actor, permissions, effective scope or changedBy authority"
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live Playwright gate after genuine Stage-7 acceptance; Pass 163 may be prepared but cannot claim live Stage-8 browser verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-react-workflow",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.391Z",
+      "finishedAt": "2026-08-23T12:36:49.595Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.596Z",
+      "finishedAt": "2026-08-23T12:36:49.733Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-playwright-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.733Z",
+      "finishedAt": "2026-08-23T12:36:49.752Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.752Z",
+      "finishedAt": "2026-08-23T12:36:49.769Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.769Z",
+      "finishedAt": "2026-08-23T12:36:49.804Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.804Z",
+      "finishedAt": "2026-08-23T12:36:49.853Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

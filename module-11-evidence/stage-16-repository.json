@@ -1,0 +1,144 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-repository-evidence",
+  "generatedAt": "2026-08-25T05:47:34.588Z",
+  "pass": 259,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_REPOSITORY_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/subcontracts/subcontracts.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityRequiredForSubcontractReadsAndWrites": true,
+  "transactionClientSupported": true,
+  "paginationBounded": true,
+  "businessListFiltersInvented": false,
+  "subcontractorReadCreatePrepared": true,
+  "subcontractorUpdateDeleteGenerated": false,
+  "vendorReadPrimitivePrepared": true,
+  "vendorWriteMethodsGenerated": false,
+  "module6CostStructureReadPrepared": true,
+  "module4BoqItemReadPrepared": true,
+  "boqWriteMethodsGenerated": false,
+  "subcontractCreatePrimitivePrepared": true,
+  "subcontractDraftReplacePrimitivePrepared": true,
+  "subcontractStatusCompareAndSetPrepared": true,
+  "subcontractRowLockPrepared": true,
+  "paymentApplicationReadPrepared": true,
+  "paymentApplicationCreatePrepared": true,
+  "paymentApplicationRowLockPrepared": true,
+  "certificationUpdatePrimitivePrepared": true,
+  "module7CommitmentReadPrepared": true,
+  "module7CommitmentUpsertPrepared": true,
+  "commitmentSourceTokenVocabularyInvented": false,
+  "retentionFormulaDecidedInRepository": false,
+  "certificationLimitDecidedInRepository": false,
+  "approvalPersistenceInvented": false,
+  "financeWriteMethodsGenerated": false,
+  "variationPersistenceInvented": false,
+  "retentionLedgerPersistenceInvented": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "indexGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 260 - Module 11 service/business transactions: Project resource policy, Module-22 approval verification, atomic execute-to-Module-7 commitment, progress applications, certification/retention, closeout, idempotency, audit and outbox while keeping Finance/AP and formal Change Order adapters deferred.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-schema",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:30.019Z",
+      "finishedAt": "2026-08-25T05:47:32.477Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:32.477Z",
+      "finishedAt": "2026-08-25T05:47:32.610Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:32.610Z",
+      "finishedAt": "2026-08-25T05:47:33.108Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:33.108Z",
+      "finishedAt": "2026-08-25T05:47:33.308Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:33.309Z",
+      "finishedAt": "2026-08-25T05:47:33.438Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:33.438Z",
+      "finishedAt": "2026-08-25T05:47:33.757Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:33.757Z",
+      "finishedAt": "2026-08-25T05:47:33.931Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:33.931Z",
+      "finishedAt": "2026-08-25T05:47:34.136Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:34.136Z",
+      "finishedAt": "2026-08-25T05:47:34.346Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:34.346Z",
+      "finishedAt": "2026-08-25T05:47:34.416Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:34.416Z",
+      "finishedAt": "2026-08-25T05:47:34.588Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

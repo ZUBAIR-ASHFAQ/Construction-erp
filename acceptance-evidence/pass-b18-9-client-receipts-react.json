@@ -1,0 +1,50 @@
+{
+  "pass": "B18.9",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "React completion for Receipt register, source selectors, allocation, advance balance and controlled reversal",
+  "databaseMigrationAdded": false,
+  "backendRoutesChanged": false,
+  "backendRouteCount": 6,
+  "featureDirectories": [
+    "api",
+    "hooks",
+    "components",
+    "pages"
+  ],
+  "usesTanStackQuery": true,
+  "usesReactHookFormAndZod": true,
+  "sourceModuleSelectors": [
+    "Client Management",
+    "Project Management",
+    "Project Stages / Progress",
+    "Client Billing invoices",
+    "Finance Cash / Bank accounts"
+  ],
+  "implemented": [
+    "Client and Project payment history through the bounded Receipt register",
+    "Project-owned Client selection without raw identifiers",
+    "optional Project Stage selection",
+    "Cash / Bank account selection filtered by payment method",
+    "source-derived received, allocated and advance / unallocated display",
+    "issued Client Invoice selector for allocation",
+    "controlled unallocation command",
+    "controlled Receipt reversal only after active allocations are cleared",
+    "cross-module query refresh for Billing, Stages, Finance and Client summaries",
+    "permission-aware shell navigation"
+  ],
+  "browserOwnedOutstandingFormula": false,
+  "cashTreatedAsProfit": false,
+  "nextPass": "B18.10 Client Receipts final integration, E2E and freeze",
+  "verification": {
+    "b18FocusedTests": "105/105 PASS",
+    "b18_9Gate": "133/133 PASS",
+    "final21Tests": "612/612 PASS",
+    "fullStaticSuite": "717/717 PASS",
+    "workspaceRequiredStack": "PASS",
+    "migrationPolicy": "88/88 PASS",
+    "functionPurposeComments": "PASS",
+    "changedFrontendTypeScriptSyntax": "5/5 PASS",
+    "dependencyBackedPrismaTypeScriptViteBuild": "NOT RUN - source archive has no installed project dependencies",
+    "liveMigrationVerification": "NOT RUN - MIGRATION_TEST_DATABASE_URL not provided"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "pass": "B16.4",
+  "module": "Module 17 - Supplier Payables",
+  "scope": "Company/project-scoped Supplier Payables repository only",
+  "productionFilesAdded": [
+    "apps/api/src/modules/supplier-payables/supplier-payables.repository.ts"
+  ],
+  "repositoryCapabilities": [
+    "bounded Supplier Invoice list/detail",
+    "Vendor invoice duplicate lookup",
+    "Vendor/Project/PO/Goods Receipt/Stage/GL/Cash-Bank scoped dependency reads",
+    "DRAFT Supplier Invoice creation with lines",
+    "Supplier Invoice FOR UPDATE lock and DRAFT-to-POSTED persistence",
+    "bounded Supplier Payment list/detail",
+    "server-numbered Supplier Payment persistence",
+    "Supplier Payment FOR UPDATE lock and DRAFT-to-POSTED persistence",
+    "invoice/payment allocation sums",
+    "append-only Supplier Payment allocation persistence",
+    "bounded posted as-of aging source reads"
+  ],
+  "deferred": [
+    "Supplier Payables service",
+    "Fastify routes and module registration",
+    "Finance/AP journal posting",
+    "Project Budget/Cost posting policy",
+    "audit/outbox/idempotency business commands",
+    "Module 21 supplier_invoice resource linking",
+    "React Supplier Payables feature",
+    "Playwright workflow"
+  ],
+  "migrationAdded": false,
+  "nextPass": "B16.5 - Supplier Invoice service logic and posting integration",
+  "verification": {
+    "b16FocusedTests": "43/43 PASS",
+    "final21StaticTests": "316/316 PASS",
+    "workspaceTests": "31/31 PASS",
+    "migrationSystemTests": "8/8 PASS",
+    "migrationPolicy": "83/83 migrations locked",
+    "databaseCleanupTests": "6/6 PASS",
+    "workspaceStructure": "PASS",
+    "typescriptSyntaxTranspile": "PASS",
+    "dependencyBackedBuild": "NOT CLAIMED - archive has no node_modules"
+  }
+}

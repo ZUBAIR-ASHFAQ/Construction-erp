@@ -1,0 +1,88 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-security-evidence",
+  "generatedAt": "2026-08-23T07:09:59.931Z",
+  "status": "STAGE_6_SECURITY_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 130,
+  "mode": "static",
+  "stage5LiveAccepted": false,
+  "securityFile": "tests/integration/module-4a-api.integration.test.mjs",
+  "coverage": [
+    "authentication on all six BOQ routes",
+    "exact five-permission RBAC matrix",
+    "cross-company list/create/revision/item/freeze/export isolation",
+    "direct repository company filtering",
+    "direct service permission and company-scope revalidation",
+    "strict rejection of client-owned company/actor/lifecycle/amount authority",
+    "same-company Tender foreign-key enforcement",
+    "revision uniqueness/status/positive-number constraints",
+    "same-revision item hierarchy and non-negative decimal constraints",
+    "current-revision ownership constraint",
+    "reviewed Stage-6 index presence",
+    "safe public errors without SQL/Prisma leakage"
+  ],
+  "deferredToPass131": [
+    "exact OpenAPI operation inventory",
+    "request/response schema and stable error-code documentation proof",
+    "Swagger contract regression"
+  ],
+  "productionRuntimeChanges": 0,
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live security gate after genuine Stage-5 acceptance; Pass 131 may be prepared but cannot claim live Stage-6 security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4a-integration",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:49.201Z",
+      "finishedAt": "2026-08-23T07:09:59.746Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-security-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.746Z",
+      "finishedAt": "2026-08-23T07:09:59.849Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-security-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.849Z",
+      "finishedAt": "2026-08-23T07:09:59.865Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.865Z",
+      "finishedAt": "2026-08-23T07:09:59.891Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:59.891Z",
+      "finishedAt": "2026-08-23T07:09:59.931Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

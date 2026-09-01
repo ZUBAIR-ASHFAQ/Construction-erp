@@ -1,0 +1,157 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-16-module-11-subcontractor-management-http-evidence",
+  "generatedAt": "2026-08-25T05:47:44.889Z",
+  "pass": 261,
+  "stage": 16,
+  "module": "11 - Subcontractor Management",
+  "status": "STAGE_16_MODULE_11_HTTP_PREPARED_STAGE_15_LIVE_HANDOFF_PENDING",
+  "stage15LiveAccepted": false,
+  "routeFile": "apps/api/src/modules/subcontracts/subcontracts.routes.ts",
+  "indexFile": "apps/api/src/modules/subcontracts/index.ts",
+  "appRegistrationFile": "apps/api/src/app.ts",
+  "serverConfigFile": "packages/config/src/server.ts",
+  "exactReviewedRouteCount": 8,
+  "routes": [
+    "GET /api/v1/subcontractors",
+    "POST /api/v1/subcontractors",
+    "POST /api/v1/subcontracts",
+    "PATCH /api/v1/subcontracts/:id",
+    "POST /api/v1/subcontracts/:id/execute",
+    "POST /api/v1/subcontracts/:id/payment-applications",
+    "POST /api/v1/subcontracts/:id/payment-applications/:appId/certify",
+    "POST /api/v1/subcontracts/:id/close"
+  ],
+  "authenticationRequiredForAllRoutes": true,
+  "serviceResourcePolicyRemainsAuthoritative": true,
+  "strictZodBoundaryRetained": true,
+  "responseZodValidationRetained": true,
+  "exactDecimalOpenApiSerialization": true,
+  "idempotentCommandRouteCount": 7,
+  "bodylessCommandCount": 2,
+  "reviewedPermissionCount": 7,
+  "reviewedErrorCount": 5,
+  "reviewedEventCount": 5,
+  "approvalDefinitionServerOwned": true,
+  "approvalDefinitionEnvironmentKey": "SUBCONTRACT_APPROVAL_DEFINITION_CODE",
+  "serverOwnedRequestAuthorityExposed": false,
+  "appRegistrationPrepared": true,
+  "openApiOperationsPrepared": true,
+  "subcontractReadbackRoutesAdded": 0,
+  "paymentApplicationReadbackRoutesAdded": 0,
+  "retentionReleaseRoutesAdded": 0,
+  "genericApprovalRoutesAdded": 0,
+  "changeOrderRoutesAdded": 0,
+  "financeRoutesAdded": 0,
+  "newDatabaseMigrationAdded": false,
+  "integrationTestsGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 262 - Module 11 PostgreSQL/Fastify integration, generated OpenAPI, Company/Project isolation, RBAC, approval, commitment and certification security verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-11-service",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:29.826Z",
+      "finishedAt": "2026-08-25T05:47:37.812Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:37.813Z",
+      "finishedAt": "2026-08-25T05:47:38.325Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-11-http-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:38.325Z",
+      "finishedAt": "2026-08-25T05:47:39.751Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "runtime-composition-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:39.752Z",
+      "finishedAt": "2026-08-25T05:47:40.275Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:40.275Z",
+      "finishedAt": "2026-08-25T05:47:40.788Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:40.788Z",
+      "finishedAt": "2026-08-25T05:47:40.931Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:40.931Z",
+      "finishedAt": "2026-08-25T05:47:42.423Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:42.423Z",
+      "finishedAt": "2026-08-25T05:47:43.392Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:43.392Z",
+      "finishedAt": "2026-08-25T05:47:44.636Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:44.637Z",
+      "finishedAt": "2026-08-25T05:47:44.790Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:44.790Z",
+      "finishedAt": "2026-08-25T05:47:44.830Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-25T05:47:44.830Z",
+      "finishedAt": "2026-08-25T05:47:44.889Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-11-module-15a-react-evidence",
+  "generatedAt": "2026-08-24T06:16:46.476Z",
+  "pass": 208,
+  "stage": 11,
+  "module": "15A - Finance Core",
+  "businessModule": "15 - Finance & Accounting",
+  "status": "STAGE_11_MODULE_15A_REACT_PREPARED_STAGE_10_LIVE_HANDOFF_PENDING",
+  "stage10LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API for exactly the six reviewed Finance Core operations",
+    "TanStack Query bounded Chart-of-Accounts reads and period-scoped trial balance reads",
+    "TanStack Query manual-journal, post, reverse and period-close mutations",
+    "manual journal form keeps journal number, period, source identity, status and totals server-owned",
+    "decimal debit and credit values remain strings from form input through API request and readback",
+    "post, reverse and period close remain bodyless browser commands",
+    "Finance navigation is permission-aware and Project-scope aware without weakening backend authorization",
+    "Stage-11 UI exposes accounts, journal entry/posting/reversal, trial balance and period close only"
+  ],
+  "intentionallyAbsent": [
+    "No AP invoice, AR invoice, payment, allocation, aging or source-adapter UI is added before Module 15B.",
+    "No account setup UI is invented because the reviewed Stage-11 API has no account create/update route.",
+    "No fiscal-period list/setup/reopen UI is invented because those routes are not defined.",
+    "No journal register/detail UI is invented because the reviewed API has no journal list/detail route.",
+    "Exact Project-level Finance permission lists are not exposed by /auth/me, so Project-scoped action visibility remains best-effort and the API stays authoritative."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFiles": 4,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 209 - Module 15A Playwright Finance Core workflow verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-15a-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.062Z",
+      "finishedAt": "2026-08-24T06:16:39.063Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:39.063Z",
+      "finishedAt": "2026-08-24T06:16:46.047Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-15a-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.048Z",
+      "finishedAt": "2026-08-24T06:16:46.262Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.262Z",
+      "finishedAt": "2026-08-24T06:16:46.288Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "finance-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.289Z",
+      "finishedAt": "2026-08-24T06:16:46.316Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.317Z",
+      "finishedAt": "2026-08-24T06:16:46.399Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:16:46.399Z",
+      "finishedAt": "2026-08-24T06:16:46.476Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

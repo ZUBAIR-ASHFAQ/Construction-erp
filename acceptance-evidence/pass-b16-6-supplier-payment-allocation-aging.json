@@ -1,0 +1,51 @@
+{
+  "pass": "B16.6",
+  "module": "Module 17 - Supplier Payables",
+  "scope": "Supplier Payment creation/posting, immutable invoice allocation, derived outstanding and aging service logic",
+  "productionFilesChanged": [
+    "apps/api/src/modules/supplier-payables/supplier-payables.service.ts",
+    "apps/api/src/modules/supplier-payables/supplier-payables.repository.ts"
+  ],
+  "implemented": [
+    "bounded Supplier Payment register service",
+    "Foundation supplier-payment number allocation",
+    "atomic Supplier Payment create plus Finance posting plus DRAFT-to-POSTED transition",
+    "deterministic supplier_payment:<paymentId> Finance source key",
+    "Supplier Payable debit and Cash/Bank credit posting",
+    "same-company Vendor and optional Project validation",
+    "active Cash/Bank and GL ownership validation",
+    "idempotent payment-to-invoice allocation command",
+    "deterministic row locking for payment and target invoices",
+    "POSTED payment and POSTED same-Vendor invoice enforcement",
+    "remaining-payment and invoice-outstanding over-allocation guards",
+    "append-only allocation persistence",
+    "supplier_payment.posted and supplier_payment.allocated audit/outbox evidence",
+    "posted-only as-of Supplier aging calculation",
+    "due-date-first deterministic ageDays rule without invented aging buckets"
+  ],
+  "implementationDecisionsForSourceGaps": [
+    "Because Module 17 defines POST /payments but no separate payment-post route, create payment posts it atomically instead of inventing a ninth endpoint.",
+    "Because the requirements require ageDays output but do not define an aging-day basis, ageDays uses due date when present, otherwise invoice date, clamped at zero.",
+    "Payment Finance posting follows the explicit requirement that cash payment reduces Supplier Payable and Cash/Bank; allocation does not post Finance again."
+  ],
+  "deferred": [
+    "Fastify routes and OpenAPI registration",
+    "Module 21 supplier_invoice document-link enablement",
+    "React Supplier Payables feature",
+    "Playwright workflow",
+    "Supplier Payment correction/reversal route because it is not present in the frozen Module 17 HTTP contract"
+  ],
+  "migrationAdded": false,
+  "nextPass": "B16.7 - exact eight-route Supplier Payables Fastify and OpenAPI registration",
+  "verification": {
+    "b16FocusedTests": "68/68 PASS",
+    "final21StaticTests": "341/341 PASS",
+    "workspaceTests": "31/31 PASS",
+    "migrationSystemTests": "8/8 PASS",
+    "databaseCleanupTests": "6/6 PASS",
+    "migrationPolicy": "83/83 migrations locked",
+    "legacyCleanupManifest": "PASS",
+    "typescriptSyntaxTranspile": "PASS",
+    "dependencyBackedBuild": "NOT CLAIMED - archive has no installed node_modules"
+  }
+}

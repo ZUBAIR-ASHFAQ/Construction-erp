@@ -1,0 +1,92 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-5-stage-7-http-evidence",
+  "generatedAt": "2026-08-23T09:41:01.174Z",
+  "status": "STAGE_7_HTTP_PREPARED_STAGE_6_LIVE_ACCEPTANCE_PENDING",
+  "module": "5 - Project Management",
+  "pass": 142,
+  "stage6LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_7_UNTIL_STAGE_6_LIVE_ACCEPTED",
+  "routeFile": "apps/api/src/modules/projects/projects.routes.ts",
+  "indexFile": "apps/api/src/modules/projects/index.ts",
+  "appRegistration": "apps/api/src/app.ts",
+  "operationCount": 7,
+  "routes": [
+    "GET /api/v1/projects",
+    "POST /api/v1/projects",
+    "GET /api/v1/projects/:id",
+    "PATCH /api/v1/projects/:id",
+    "POST /api/v1/projects/:id/activate",
+    "POST /api/v1/projects/:id/complete",
+    "POST /api/v1/projects/:id/close"
+  ],
+  "membershipRouteDeferred": "PUT /api/v1/projects/:id/members -> Module 24B",
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 143 may be prepared, but Stage 7 activation remains blocked until Module 4A live Stage-6 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-service",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:40:49.027Z",
+      "finishedAt": "2026-08-23T09:41:00.923Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-http-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:00.923Z",
+      "finishedAt": "2026-08-23T09:41:01.055Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.055Z",
+      "finishedAt": "2026-08-23T09:41:01.071Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-index-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.071Z",
+      "finishedAt": "2026-08-23T09:41:01.087Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-app-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.087Z",
+      "finishedAt": "2026-08-23T09:41:01.103Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.103Z",
+      "finishedAt": "2026-08-23T09:41:01.132Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T09:41:01.132Z",
+      "finishedAt": "2026-08-23T09:41:01.174Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

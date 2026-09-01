@@ -1,0 +1,107 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-service-evidence",
+  "generatedAt": "2026-08-23T12:36:47.797Z",
+  "status": "STAGE_8_SERVICE_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 155,
+  "stage7LiveAccepted": false,
+  "serviceFiles": [
+    "apps/api/src/modules/projects/projects.service.ts",
+    "apps/api/src/modules/administration/administration.service.ts"
+  ],
+  "membershipService": {
+    "atomicReplacement": true,
+    "exactProjectPermissionRequired": "projects.manage_members",
+    "sameCompanyUsersValidated": true,
+    "auditAction": "project.members_changed",
+    "outboxEvent": "project.member_changed"
+  },
+  "projectRoleScopeService": {
+    "projectAssignmentsAcceptedAfterResolvedScope": true,
+    "sameCompanyProjectValidation": true,
+    "actorProjectScopeCannotBeExceeded": true,
+    "actorPermissionEscalationBlockedPerProject": true,
+    "companyAssignmentsRemainSupported": true
+  },
+  "projectScopePreparation": {
+    "restrictedMembershipScopeBuilderPrepared": true,
+    "emptyEligibleMembershipStatusSetFailsClosed": true,
+    "allScopePolicyStillDeferred": true
+  },
+  "stillDeferred": [
+    "PUT /api/v1/projects/:id/members Fastify route and registration",
+    "authentication projectScope activation",
+    "PostgreSQL/Fastify Stage-8 integration workflow",
+    "OpenAPI Stage-8 contract activation",
+    "React membership and Project-role workflow"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 156 may be prepared, but Stage 8 activation remains blocked until Module 5 live Stage-7 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-repository",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:33.179Z",
+      "finishedAt": "2026-08-23T12:36:47.530Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-service-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.530Z",
+      "finishedAt": "2026-08-23T12:36:47.662Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.662Z",
+      "finishedAt": "2026-08-23T12:36:47.681Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.681Z",
+      "finishedAt": "2026-08-23T12:36:47.699Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.699Z",
+      "finishedAt": "2026-08-23T12:36:47.717Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.717Z",
+      "finishedAt": "2026-08-23T12:36:47.751Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:47.751Z",
+      "finishedAt": "2026-08-23T12:36:47.797Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

@@ -1,0 +1,59 @@
+{
+  "pass": "B19.6",
+  "module": "Module 19 Project Profitability",
+  "scope": "Stage reconciliation, bounded trend and permission-scoped portfolio service",
+  "productionFilesChanged": true,
+  "databaseMigrationAdded": false,
+  "serviceMethods": [
+    "getProjectSummary",
+    "getProjectStages",
+    "getProjectTrend",
+    "getPortfolio"
+  ],
+  "stagePolicy": {
+    "explicitStageSourcesOnly": true,
+    "projectOnlyBucket": true,
+    "allNineFinancialFieldsReconcile": true,
+    "supplierPayableStageAllocationInvented": false,
+    "remainingSupplierPayableLocation": "projectOnly",
+    "ambiguousNegativeProjectOnlyBucket": "PROFITABILITY_SOURCE_INCOMPLETE"
+  },
+  "trendPolicy": {
+    "metrics": [
+      "recognizedRevenue",
+      "actualCost",
+      "profitAmount"
+    ],
+    "day": "UTC calendar day",
+    "week": "Monday-based week clipped to request window",
+    "month": "UTC calendar month clipped to request window",
+    "emptyBucketsIncluded": true,
+    "maximumDays": 366
+  },
+  "portfolioPolicy": {
+    "requiredPermissions": [
+      "project_profitability.read",
+      "project_profitability.finance.read",
+      "project_profitability.portfolio.read"
+    ],
+    "requestProjectScopeIntersected": true,
+    "defaultPageSize": 25,
+    "batchSourceReadPerReturnedPage": true,
+    "crossCurrencyGrandTotal": false
+  },
+  "readOnly": true,
+  "routeRegistrationAdded": false,
+  "reactFeatureAdded": false,
+  "nextPass": "B19.7 Project Profitability HTTP, RBAC and OpenAPI",
+  "verification": {
+    "b19_6Gate": "100/100 PASS",
+    "projectProfitabilityAlignment": "72/72 PASS",
+    "postPassFinal21Static": "695/695 PASS",
+    "currentStaticSuite": "800/800 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "legacyCleanupManifest": "6/6 PASS",
+    "typescriptSyntaxTranspile": "PASS",
+    "dependencyBackedBuild": "not claimed; archive has no installed node_modules"
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-contract-evidence",
+  "generatedAt": "2026-08-23T12:36:46.836Z",
+  "status": "STAGE_8_CONTRACT_FROZEN_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "contractOnly": true,
+  "stage7LiveAccepted": false,
+  "ownedTable": "project_members",
+  "activatedExistingPersistence": "user_role_assignments PROJECT scope validation",
+  "activatedRoute": "PUT /api/v1/projects/:id/members",
+  "reusedRoleAssignmentRoute": "PUT /api/v1/users/:id/roles",
+  "activatedPermission": "projects.manage_members",
+  "activatedEvent": "project.member_changed",
+  "projectScopeBefore": {
+    "kind": "not-resolved"
+  },
+  "projectScopeAfter": [
+    "restricted",
+    "all when an existing reviewed company-wide policy applies"
+  ],
+  "runtimeImplementationAllowed": false,
+  "nextPass": "Pass 152 persistence may be prepared, but Stage 8 activation remains blocked until Module 5 live Stage-7 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-5-static-prerequisite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:33.619Z",
+      "finishedAt": "2026-08-23T12:36:46.601Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:46.601Z",
+      "finishedAt": "2026-08-23T12:36:46.738Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:46.738Z",
+      "finishedAt": "2026-08-23T12:36:46.774Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:46.774Z",
+      "finishedAt": "2026-08-23T12:36:46.835Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

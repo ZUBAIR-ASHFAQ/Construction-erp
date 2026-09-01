@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-api-contract-evidence",
+  "generatedAt": "2026-08-23T07:16:08.977Z",
+  "status": "BLOCKED",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 131,
+  "mode": "live",
+  "stage5LiveAccepted": false,
+  "reason": "STAGE_5_LIVE_ACCEPTANCE_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "nextPass": "Resolve the live prerequisite, then rerun module-4a:api-contract:gate:live before Pass 132.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

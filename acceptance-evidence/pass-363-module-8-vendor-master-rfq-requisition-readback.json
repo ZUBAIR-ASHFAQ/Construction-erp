@@ -1,0 +1,101 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-363-module-8-vendor-master-rfq-requisition-readback",
+  "generatedAt": "2026-08-26T16:29:44.807Z",
+  "pass": 363,
+  "baselinePass": 362,
+  "status": "PASS_363_MODULE_8_VENDOR_MASTER_RFQ_REQUISITION_READBACK_ACCEPTED",
+  "repairContractItems": [
+    "M8-02",
+    "M8-03"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 0,
+  "databaseTablesAdded": 0,
+  "publicRepairRoutesAdded": 11,
+  "originalSourceRoutesPreserved": 8,
+  "permissionsAdded": 0,
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "destructiveVendorDeleteAdded": false,
+  "rfqItemCrudAdded": false,
+  "stage26FinanceDeferralsRemainFrozen": true,
+  "stage27IntegrationDeferralsRemainFrozen": true,
+  "unchangedScopeSnapshotExpected": "9d388844d46945f4cc42271ba6afce9574505ead559484447e63e50b55860303",
+  "unchangedScopeSnapshotActual": "9d388844d46945f4cc42271ba6afce9574505ead559484447e63e50b55860303",
+  "unchangedScopeFileCount": 1199,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires the configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 364 - Module 9 Direct Purchase exception workflow",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-362-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-362 scope remains byte-identical across 1199 files."
+    },
+    {
+      "name": "pass-363-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:22.849Z",
+      "finishedAt": "2026-08-26T16:29:23.203Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-static-acceptance",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:23.204Z",
+      "finishedAt": "2026-08-26T16:29:35.458Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:35.458Z",
+      "finishedAt": "2026-08-26T16:29:43.660Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:43.660Z",
+      "finishedAt": "2026-08-26T16:29:44.125Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:44.125Z",
+      "finishedAt": "2026-08-26T16:29:44.613Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:44.613Z",
+      "finishedAt": "2026-08-26T16:29:44.716Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T16:29:44.716Z",
+      "finishedAt": "2026-08-26T16:29:44.806Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

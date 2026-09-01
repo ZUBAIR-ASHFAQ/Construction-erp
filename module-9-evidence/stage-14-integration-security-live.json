@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-14-module-9-purchase-orders-integration-security-evidence",
+  "generatedAt": "2026-08-24T14:49:17.548Z",
+  "pass": 240,
+  "stage": 14,
+  "module": "9 - Purchase Orders",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage13LiveAccepted": false,
+  "reason": "STAGE_13_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the live prerequisite, then rerun module-9:integration-security:gate:live before claiming Stage-14 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

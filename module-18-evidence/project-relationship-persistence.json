@@ -1,0 +1,77 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-project-relationship-persistence-repair",
+  "generatedAt": "2026-08-23T14:40:19.436Z",
+  "status": "MODULE_18_PROJECT_RELATIONSHIP_PERSISTENCE_PREPARED_REPAIR_HOLD_ACTIVE",
+  "pass": 168,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "migration": "20260823000600_module_18_project_relationship_activation",
+  "persistenceCoverage": [
+    "document_folders gains nullable same-company project_id ownership",
+    "documents gains nullable same-company project_id ownership",
+    "document_upload_intents carries the trusted nullable Project target through the signed-upload lifecycle",
+    "folder trees cannot mix company-wide and Project-scoped ownership",
+    "documents cannot be placed in a folder with a different nullable Project scope",
+    "upload intents cannot disagree with their folder or existing document Project scope",
+    "existing company-wide rows remain valid because project_id is nullable"
+  ],
+  "productionBackendBehaviorChanges": 0,
+  "apiRoutesAdded": 0,
+  "permissionsAdded": 0,
+  "migrationCountAdded": 1,
+  "repairHoldActive": true,
+  "module6Allowed": false,
+  "runtimeVerificationComplete": false,
+  "nextPass": "Pass 169 - Module 18 Project repository and service security repair.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-167-react-readback",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:15.291Z",
+      "finishedAt": "2026-08-23T14:40:19.070Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-18-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.071Z",
+      "finishedAt": "2026-08-23T14:40:19.185Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-system-static",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.185Z",
+      "finishedAt": "2026-08-23T14:40:19.347Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.347Z",
+      "finishedAt": "2026-08-23T14:40:19.402Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T14:40:19.402Z",
+      "finishedAt": "2026-08-23T14:40:19.436Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

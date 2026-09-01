@@ -1,0 +1,100 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-12-module-7-react-evidence",
+  "generatedAt": "2026-08-24T10:03:08.316Z",
+  "pass": 219,
+  "stage": 12,
+  "module": "7 - Budgeting & Job Costing",
+  "status": "STAGE_12_MODULE_7_REACT_PREPARED_STAGE_11_LIVE_HANDOFF_PENDING",
+  "stage11LiveAccepted": false,
+  "reactCoverage": [
+    "typed browser API for exactly the seven reviewed Module-7 operations",
+    "TanStack Query current-budget, job-cost and bounded ledger reads plus reviewed mutations",
+    "React Hook Form plus Zod for budget creation, exact-decimal budget lines and forecast assumptions",
+    "Project selector reuses the existing Project register and leaves Project authorization server-authoritative",
+    "budget grid plus selected cost-code drilldown using existing Module-6 WBS/mapping readback when authorized",
+    "budget versus committed versus actual versus forecast, EAC, variance, revenue and margin server readback",
+    "forecast ETC and comment editing while final forecast values stay response-only",
+    "source-derived commitment and actual ledger remains read-only with bounded pagination",
+    "permission-aware navigation and sensitive action visibility without weakening backend enforcement"
+  ],
+  "intentionallyAbsent": [
+    "No commitment or actual create/update/delete UI is added because those histories are source-derived.",
+    "No budget list, draft-budget detail, approval, reopen or reconciliation UI is invented because those routes are not defined.",
+    "No Cost Type master endpoint is invented; authorized Module-6 assignment IDs are reused when available.",
+    "An unfinished DRAFT cannot be reloaded after leaving its browser session because the reviewed API has no DRAFT detail/list route.",
+    "Exact Project-level Module-7 permission lists are not exposed by /auth/me, so sensitive writes stay hidden unless the corresponding Company permission is visible."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFiles": 4,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 220 - Module 7 Playwright Budgeting & Job Costing workflow verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-7-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.759Z",
+      "finishedAt": "2026-08-24T10:03:05.759Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:05.759Z",
+      "finishedAt": "2026-08-24T10:03:08.073Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-react-static-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.073Z",
+      "finishedAt": "2026-08-24T10:03:08.201Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.201Z",
+      "finishedAt": "2026-08-24T10:03:08.219Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.219Z",
+      "finishedAt": "2026-08-24T10:03:08.236Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.236Z",
+      "finishedAt": "2026-08-24T10:03:08.273Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T10:03:08.274Z",
+      "finishedAt": "2026-08-24T10:03:08.316Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

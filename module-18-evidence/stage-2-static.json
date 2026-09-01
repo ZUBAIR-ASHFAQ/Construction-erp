@@ -1,0 +1,54 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-18-stage-2-static-evidence",
+  "mode": "static",
+  "generatedAt": "2026-08-28T12:28:36.701Z",
+  "status": "STAGE_2_STATIC_GATE_PASSED_STAGE_1_LIVE_ACCEPTANCE_PENDING",
+  "module": "18 - Document Management",
+  "stage1LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_2_UNTIL_STAGE_1_LIVE_ACCEPTED",
+  "projectScope": "deferred-until-project-management-and-module-24b",
+  "nextStage": "Complete Module 24A live Stage-1 acceptance",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "foundation-and-workspace-regression",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:27.798Z",
+      "finishedAt": "2026-08-28T12:28:36.591Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:36.591Z",
+      "finishedAt": "2026-08-28T12:28:36.620Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:36.620Z",
+      "finishedAt": "2026-08-28T12:28:36.662Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-storage-server-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-28T12:28:36.662Z",
+      "finishedAt": "2026-08-28T12:28:36.701Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

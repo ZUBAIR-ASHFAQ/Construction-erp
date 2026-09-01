@@ -1,0 +1,121 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-24b-stage-8-api-contract-evidence",
+  "generatedAt": "2026-08-23T12:36:49.070Z",
+  "status": "STAGE_8_API_CONTRACT_PREPARED_STAGE_7_LIVE_ACCEPTANCE_PENDING",
+  "module": "24B - Project Scope Activation",
+  "pass": 159,
+  "mode": "static",
+  "stage7LiveAccepted": false,
+  "contractCoverage": [
+    "reviewed PUT /api/v1/projects/{id}/members operation with bearer security",
+    "strict membership request shape with no browser-owned company, actor, permission or Project-scope authority",
+    "safe membership success DTO without company ownership internals",
+    "exact membership validation, authentication, authorization and not-found error-code enums",
+    "existing PUT /api/v1/users/{id}/roles documents active COMPANY and validated PROJECT scope",
+    "PROJECT role-assignment route documents exact stable 400/401/403/404/409/500 errors",
+    "sign-in, refresh and current-identity responses document only resolved all/restricted Project scope",
+    "Module 5 keeps exactly seven historical operationIds while Stage 8 adds one separate Project-membership operation",
+    "Project resource OpenAPI exposes PROJECT_SCOPE_FORBIDDEN while Project creation remains company-scope only"
+  ],
+  "openApiRoute": "/openapi.json",
+  "productionBusinessBehaviorChanges": 0,
+  "openApiMetadataCorrections": [
+    "remove stale Module-24A text that said PROJECT role assignments were rejected until Module 24B",
+    "tag the existing user-role replacement operation as a Stage-8 Project-scope surface",
+    "narrow Stage-8 user-role replacement response schemas to stable error-code enums",
+    "repair the historical Module-5 generated OpenAPI regression so it counts only module5 operationIds after Stage-8 route activation"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live API-contract gate after genuine Stage-7 acceptance; Pass 160 may be prepared but cannot claim live Stage-8 API-contract verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-24b-security",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:32.729Z",
+      "finishedAt": "2026-08-23T12:36:48.742Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-api-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.742Z",
+      "finishedAt": "2026-08-23T12:36:48.874Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "projects-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.875Z",
+      "finishedAt": "2026-08-23T12:36:48.895Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.895Z",
+      "finishedAt": "2026-08-23T12:36:48.912Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "users-rbac-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.912Z",
+      "finishedAt": "2026-08-23T12:36:48.931Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-api-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.931Z",
+      "finishedAt": "2026-08-23T12:36:48.952Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-api-regression-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.952Z",
+      "finishedAt": "2026-08-23T12:36:48.970Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-registration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.970Z",
+      "finishedAt": "2026-08-23T12:36:48.988Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:48.988Z",
+      "finishedAt": "2026-08-23T12:36:49.022Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T12:36:49.022Z",
+      "finishedAt": "2026-08-23T12:36:49.070Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

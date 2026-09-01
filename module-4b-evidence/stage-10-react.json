@@ -1,0 +1,125 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-10-module-4b-react-evidence",
+  "generatedAt": "2026-08-24T06:44:36.621Z",
+  "pass": 197,
+  "stage": 10,
+  "module": "4B - BOQ Project Mapping",
+  "businessModule": "4 - BOQ Management",
+  "status": "STAGE_10_MODULE_4B_REACT_PREPARED_STAGE_9_LIVE_HANDOFF_PENDING",
+  "stage9LiveAccepted": false,
+  "reactCoverage": [
+    "BOQ register readback shows nullable Tender and Project relationships",
+    "existing BOQ create form supports Tender-only, Project-only and combined creation",
+    "Project discovery reuses the existing Project register instead of inventing a lookup route",
+    "Project-linked BOQ item grid exposes optional WBS and Cost Code mapping controls",
+    "WBS mapping options reuse the existing Module 6 WBS tree read contract",
+    "Cost Code mapping options reuse the existing bounded Module 6 Cost Code read contract",
+    "blank mapping controls are removed before the existing whole-set BOQ item command is sent",
+    "server-calculated readback displays persisted WBS and Cost Code IDs",
+    "Tender-only BOQs keep mapping controls unavailable"
+  ],
+  "intentionallyAbsent": [
+    "No new BOQ route or Project-attachment command.",
+    "No Cost Type relationship is added to BOQ items.",
+    "No Project filter is invented for the BOQ list route.",
+    "CSV import keeps the reviewed commercial columns; mappings are selected after import.",
+    "The current auth identity does not expose exact effective permissions per Project, so Project-specific write controls remain conservative and the API stays authoritative."
+  ],
+  "productionBackendChanges": 0,
+  "databaseChanges": 0,
+  "newReactFiles": 0,
+  "runtimeVerificationComplete": false,
+  "dependencyBackedWebBuildRequired": true,
+  "nextPass": "Pass 198 - Module 4B Playwright Project BOQ and WBS/Cost Code mapping workflow verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4b-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.340Z",
+      "finishedAt": "2026-08-24T06:44:34.340Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-integration-security-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:34.340Z",
+      "finishedAt": "2026-08-24T06:44:35.985Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4b-react-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:35.985Z",
+      "finishedAt": "2026-08-24T06:44:36.177Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.177Z",
+      "finishedAt": "2026-08-24T06:44:36.357Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "boq-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.357Z",
+      "finishedAt": "2026-08-24T06:44:36.389Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "boq-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.389Z",
+      "finishedAt": "2026-08-24T06:44:36.422Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-web-api-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.422Z",
+      "finishedAt": "2026-08-24T06:44:36.445Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-web-hooks-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.445Z",
+      "finishedAt": "2026-08-24T06:44:36.471Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.471Z",
+      "finishedAt": "2026-08-24T06:44:36.540Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T06:44:36.540Z",
+      "finishedAt": "2026-08-24T06:44:36.621Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

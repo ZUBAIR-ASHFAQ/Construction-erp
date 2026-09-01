@@ -1,0 +1,48 @@
+{
+  "pass": "B18.4",
+  "module": "Module 16 - Client Receipts / Payments",
+  "scope": "Company/project-scoped repository and five-file backend module shape",
+  "productionFilesAdded": [
+    "apps/api/src/modules/client-receipts/client-receipts.repository.ts",
+    "apps/api/src/modules/client-receipts/client-receipts.service.ts",
+    "apps/api/src/modules/client-receipts/client-receipts.routes.ts",
+    "apps/api/src/modules/client-receipts/index.ts"
+  ],
+  "repositoryCapabilities": [
+    "bounded Client Receipt register/detail reads",
+    "Client/Project/Stage ownership lookups",
+    "Cash/Bank plus mapped GL lookup",
+    "same Client/Project Client Invoice lookup",
+    "POSTED Client Receipt persistence",
+    "Client Receipt FOR UPDATE lock",
+    "Client Invoice FOR UPDATE allocation lock",
+    "Receipt and Invoice allocation sums",
+    "allocation lookup/create/controlled delete persistence",
+    "POSTED to REVERSED receipt persistence"
+  ],
+  "deferred": [
+    "Client Receipt service business policy",
+    "numbering/idempotency orchestration",
+    "Finance cash/AR/client-advance posting",
+    "allocation limits and accounting",
+    "audit/outbox events",
+    "Fastify route registration",
+    "Module 21 client_receipt resource linking",
+    "React Client Receipts feature"
+  ],
+  "migrationAdded": false,
+  "nextPass": "B18.5 Client Receipt creation and atomic Finance posting",
+  "verification": {
+    "b18FocusedTests": "45/45 PASS",
+    "b18CumulativeGate": "73/73 PASS",
+    "final21StaticTests": "552/552 PASS",
+    "currentFullStaticSuite": "657/657 PASS",
+    "workspaceStructure": "PASS",
+    "migrationPolicy": "88/88 migrations locked across 88 gates",
+    "databaseCleanupTests": "6/6 PASS",
+    "functionPurposeComments": "PASS",
+    "modifiedTypeScriptSyntax": "PASS",
+    "dependencyBackedBuild": "NOT CLAIMED - archive has no installed node_modules",
+    "liveMigrationVerification": "NOT RUN - MIGRATION_TEST_DATABASE_URL is not provided"
+  }
+}

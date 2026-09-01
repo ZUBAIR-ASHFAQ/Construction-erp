@@ -1,0 +1,100 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-api-contract-evidence",
+  "generatedAt": "2026-08-23T07:15:54.088Z",
+  "status": "STAGE_6_API_CONTRACT_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 131,
+  "mode": "static",
+  "stage5LiveAccepted": false,
+  "contractCoverage": [
+    "exact six-operation OpenAPI inventory",
+    "bearer security on every BOQ operation",
+    "strict request schemas with server-owned authority absent",
+    "bodyless freeze command",
+    "exact success DTO schemas with decimal strings",
+    "actual shared error envelope shape with requestId nested under error",
+    "stable shared and Module 4A error-code enums",
+    "no import, generic CRUD or Module 4B project-mapping routes"
+  ],
+  "openApiRoute": "/openapi.json",
+  "productionRuntimeBehaviorChanges": 0,
+  "openApiMetadataCorrections": [
+    "replace generic success schemas with exact BOQ DTO schemas",
+    "correct requestId location in the documented error envelope",
+    "document stable per-status error code enums"
+  ],
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "runtimeVerificationComplete": false,
+  "nextPass": "Run the live API-contract gate after genuine Stage-5 acceptance; Pass 132 may be prepared but cannot claim live Stage-6 contract verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4a-security",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:42.669Z",
+      "finishedAt": "2026-08-23T07:15:53.851Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-api-contract-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:53.851Z",
+      "finishedAt": "2026-08-23T07:15:53.954Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-routes-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:53.954Z",
+      "finishedAt": "2026-08-23T07:15:53.970Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-api-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:53.970Z",
+      "finishedAt": "2026-08-23T07:15:53.987Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "api-registration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:53.987Z",
+      "finishedAt": "2026-08-23T07:15:54.004Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:54.004Z",
+      "finishedAt": "2026-08-23T07:15:54.032Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:15:54.032Z",
+      "finishedAt": "2026-08-23T07:15:54.088Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

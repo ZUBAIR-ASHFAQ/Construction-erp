@@ -1,0 +1,104 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-playwright-evidence",
+  "generatedAt": "2026-08-24T12:43:58.503Z",
+  "pass": 231,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "mode": "static",
+  "status": "STAGE_13_MODULE_8_PLAYWRIGHT_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "browserFile": "tests/e2e/module-8-browser.spec.mjs",
+  "browserCoverage": [
+    "sign in through the real Module-24A browser flow and open the permission-aware Procurement & RFQ workspace",
+    "select one authorized Project through the existing Project register contract",
+    "create one server-numbered purchase requisition using an active Module-6 WBS, Cost Code and Cost Type posting combination",
+    "submit the requisition through the reviewed bodyless command after the frozen Module-7 budget readiness gate",
+    "create one server-numbered RFQ from the submitted requisition and issue it to two ACTIVE + QUALIFIED Module-8 Vendor ids",
+    "record two supplier quotations while line and header totals stay server-calculated",
+    "exercise the local JSON quotation-line import without inventing a server import endpoint",
+    "read the side-by-side comparison, verify stored-total ordering and select the reviewed quotation with rationale",
+    "verify selection leaves Module-7 commitments and Finance journals untouched until a later PO/subcontract issue",
+    "verify Module-8 browser writes do not send Company, actor, requester, buyer, numbering, lifecycle, totals or financial-commitment authority",
+    "verify a read-only Module-8 user does not receive write controls and receives HTTP 403 on direct create/selection attempts"
+  ],
+  "intentionallyAbsent": [
+    "No Vendor list/create/update/contact browser workflow because the reviewed API defines no Vendor-master endpoints.",
+    "No RFQ register/detail reload workflow because the reviewed API defines no RFQ list/detail route.",
+    "No rfq_items table/read route is invented; quotation lines keep the source-defined rfqItemId explicit.",
+    "No Purchase Order conversion, job-cost commitment write, Finance journal or payable action is added.",
+    "Project-scope and cross-Company security remain additionally covered by the Pass-229 API integration/security suite."
+  ],
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 232 - Module 8 operational, migration and concurrency verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-react-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.101Z",
+      "finishedAt": "2026-08-24T12:43:54.101Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-react-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:54.101Z",
+      "finishedAt": "2026-08-24T12:43:58.220Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-playwright-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.220Z",
+      "finishedAt": "2026-08-24T12:43:58.363Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-browser-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.363Z",
+      "finishedAt": "2026-08-24T12:43:58.383Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "playwright-config-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.383Z",
+      "finishedAt": "2026-08-24T12:43:58.404Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.404Z",
+      "finishedAt": "2026-08-24T12:43:58.443Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.443Z",
+      "finishedAt": "2026-08-24T12:43:58.503Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

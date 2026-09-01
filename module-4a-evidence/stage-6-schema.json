@@ -1,0 +1,71 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-4a-stage-6-schema-evidence",
+  "generatedAt": "2026-08-23T07:09:58.953Z",
+  "status": "STAGE_6_SCHEMA_PREPARED_STAGE_5_LIVE_ACCEPTANCE_PENDING",
+  "module": "4A - BOQ Commercial Core",
+  "pass": 125,
+  "stage5LiveAccepted": false,
+  "activation": "DO_NOT_DEPLOY_STAGE_6_UNTIL_STAGE_5_LIVE_ACCEPTED",
+  "schemaFile": "apps/api/src/modules/boq/boq.schema.ts",
+  "serverOwnedRequestFields": [
+    "companyId",
+    "actorUserId",
+    "permissions",
+    "projectScope",
+    "status",
+    "revisionNo",
+    "amount",
+    "approvedBy",
+    "currentRevisionId"
+  ],
+  "deferredColumns": [
+    "project_id",
+    "wbs_node_id",
+    "cost_code_id"
+  ],
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Complete Module 3 live Stage-5 acceptance before activating Stage 6 or treating Pass 126 as deployable",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-4a-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:49.681Z",
+      "finishedAt": "2026-08-23T07:09:58.785Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-4a-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:58.785Z",
+      "finishedAt": "2026-08-23T07:09:58.884Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:58.884Z",
+      "finishedAt": "2026-08-23T07:09:58.912Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T07:09:58.912Z",
+      "finishedAt": "2026-08-23T07:09:58.952Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

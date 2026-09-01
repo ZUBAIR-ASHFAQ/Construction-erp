@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-23-module-16-client-billing-integration-security-evidence",
+  "generatedAt": "2026-08-26T11:48:21.617Z",
+  "pass": 353,
+  "stage": 23,
+  "module": "16 - Client Billing",
+  "mode": "live",
+  "status": "BLOCKED",
+  "stage22LiveAccepted": false,
+  "reason": "STAGE_22_LIVE_HANDOFF_REQUIRED",
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Resolve the Stage-22 live prerequisite, then rerun module-16:integration-security:gate:live before claiming Stage-23 runtime verification.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": []
+}

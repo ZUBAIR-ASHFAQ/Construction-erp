@@ -1,0 +1,91 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-module-6-stage-9-schema-evidence",
+  "generatedAt": "2026-08-23T16:02:47.309Z",
+  "pass": 178,
+  "stage": 9,
+  "module": "6 - WBS & Cost Codes",
+  "status": "STAGE_9_SCHEMA_PREPARED_STAGE_8_LIVE_HANDOFF_PENDING",
+  "module6LiveHandoffAccepted": false,
+  "schemaFile": "apps/api/src/modules/wbs-cost-codes/wbs-cost-codes.schema.ts",
+  "reviewedRoutes": 7,
+  "serverOwnedRequestFields": [
+    "companyId",
+    "actorUserId",
+    "permissions",
+    "projectScope",
+    "effectivePermissions",
+    "createdBy",
+    "updatedBy",
+    "projectId",
+    "level"
+  ],
+  "schemaDecisions": [
+    "WBS level is response-only and server-derived from hierarchy.",
+    "Status/category fields remain bounded strings because the source does not enumerate public values.",
+    "GET WBS readback includes the current assignment set so replace-all mapping is safe.",
+    "Freeze response does not invent durable freeze-state fields."
+  ],
+  "unresolvedSourceAmbiguities": [
+    "Cost Type master has no reviewed list/create HTTP operation.",
+    "Unused-code/node archive has no reviewed command.",
+    "Frozen baseline reopen/revision and durable freeze-state contract are absent.",
+    "Public status/category vocabularies remain unenumerated."
+  ],
+  "repositoryGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactRuntimeGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 179 - Module 6 company/project-scoped repository. Reuse trusted Module-24B request scope and do not invent Cost Type/reopen APIs.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-6-persistence",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:25.169Z",
+      "finishedAt": "2026-08-23T16:02:47.098Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-schema-suite",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:47.098Z",
+      "finishedAt": "2026-08-23T16:02:47.194Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-schema-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:47.194Z",
+      "finishedAt": "2026-08-23T16:02:47.216Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:47.216Z",
+      "finishedAt": "2026-08-23T16:02:47.255Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-23T16:02:47.255Z",
+      "finishedAt": "2026-08-23T16:02:47.309Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

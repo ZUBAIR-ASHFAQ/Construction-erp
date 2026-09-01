@@ -1,0 +1,124 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-procurement-rfq-repository-evidence",
+  "generatedAt": "2026-08-24T11:41:38.906Z",
+  "pass": 226,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "status": "STAGE_13_MODULE_8_REPOSITORY_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "repositoryFile": "apps/api/src/modules/procurement/procurement.repository.ts",
+  "companyOwnershipFromTrustedRequestContext": true,
+  "projectVisibilityRequiredForProjectScopedReads": true,
+  "transactionClientSupported": true,
+  "requisitionPaginationBounded": true,
+  "projectWriteLockPrepared": true,
+  "requisitionWriteLockPrepared": true,
+  "rfqWriteLockPrepared": true,
+  "postingCombinationValidationPrepared": true,
+  "vendorMasterReadSupportPrepared": true,
+  "vendorMasterWriteMethodsGenerated": false,
+  "rfqInvitationCompanyScopePrepared": true,
+  "quotationInvitationScopePrepared": true,
+  "quotationTotalsCalculatedInRepository": false,
+  "comparisonRankingCalculatedInRepository": false,
+  "rfqItemRelationshipGapRecorded": true,
+  "rfqItemForeignKeyAssumedByRepository": false,
+  "selectionPersistenceColumnInvented": false,
+  "financialCommitmentWriteMethodsGenerated": false,
+  "serviceGenerated": false,
+  "routesGenerated": false,
+  "reactGenerated": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Pass 227 - Module 8 service/business rules, Project resource policy, Approval/Module-7 boundary checks, server totals, audit/outbox and pre-commitment selection.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-schema",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:35.534Z",
+      "finishedAt": "2026-08-24T11:41:37.627Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-repository-suite",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:37.628Z",
+      "finishedAt": "2026-08-24T11:41:37.759Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-repository-typescript-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:37.759Z",
+      "finishedAt": "2026-08-24T11:41:38.159Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-5-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.159Z",
+      "finishedAt": "2026-08-24T11:41:38.301Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-6-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.301Z",
+      "finishedAt": "2026-08-24T11:41:38.448Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-7-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.448Z",
+      "finishedAt": "2026-08-24T11:41:38.582Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-22-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.582Z",
+      "finishedAt": "2026-08-24T11:41:38.688Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-24b-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.688Z",
+      "finishedAt": "2026-08-24T11:41:38.823Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.823Z",
+      "finishedAt": "2026-08-24T11:41:38.861Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T11:41:38.861Z",
+      "finishedAt": "2026-08-24T11:41:38.906Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

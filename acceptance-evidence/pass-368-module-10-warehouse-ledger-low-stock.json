@@ -1,0 +1,134 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-pass-368-module-10-warehouse-ledger-low-stock",
+  "generatedAt": "2026-08-26T18:49:27.048Z",
+  "pass": 368,
+  "baselinePass": 367,
+  "status": "PASS_368_MODULE_10_WAREHOUSE_LEDGER_LOW_STOCK_ACCEPTED",
+  "repairContractItems": [
+    "M10-01",
+    "M10-02"
+  ],
+  "businessModulesAdded": 0,
+  "migrationsAdded": 1,
+  "migrationName": "20260826000800_module_10_warehouse_ledger_low_stock_repair",
+  "databaseTablesAdded": [],
+  "prismaModelsAdded": [],
+  "databaseColumnsAdded": [
+    "inventory_balances.minimum_stock_quantity"
+  ],
+  "sourceRoutesPreserved": 8,
+  "publicRepairRoutesAdded": [
+    "GET /api/v1/inventory/warehouses",
+    "POST /api/v1/inventory/warehouses",
+    "PATCH /api/v1/inventory/warehouses/:id",
+    "GET /api/v1/inventory/stock-ledger",
+    "PUT /api/v1/inventory/balances/minimum-stock",
+    "GET /api/v1/inventory/low-stock"
+  ],
+  "permissionsAdded": [],
+  "stableErrorsAdded": [],
+  "domainEventsAdded": [],
+  "warehouseDeleteOrReassignmentAdded": false,
+  "stockLedgerMutationAdded": false,
+  "lowStockRule": "minimum_stock_quantity IS NOT NULL AND quantity_on_hand <= minimum_stock_quantity",
+  "minimumStockAuditOnly": true,
+  "uomConversionDeferredToPass369": true,
+  "stockCountReconciliationDeferredToPass369": true,
+  "returnAndStockPeriodPolicyDeferredToPass369": true,
+  "stage26FinanceAdapterDeferred": true,
+  "stage27IntegrationCompletionDeferred": true,
+  "unchangedScopeSnapshotExpected": "81c440e2dc66ec77e1df25b694f76c404370b6aa6015797f9f2f817cb8d12533",
+  "unchangedScopeSnapshotActual": "81c440e2dc66ec77e1df25b694f76c404370b6aa6015797f9f2f817cb8d12533",
+  "unchangedScopeFileCount": 1215,
+  "liveDatabaseVerificationExecuted": false,
+  "liveDatabaseVerificationReason": "Dependency-free packaged acceptance was executed. Live PostgreSQL/Prisma and Playwright verification still requires configured workspace dependencies and disposable test services.",
+  "nextReviewedPass": "Pass 369 - Module 10 UOM conversion, inventory count/reconciliation and return/stock-period policy completion",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "pass-367-unchanged-scope-snapshot",
+      "status": "passed",
+      "details": "Unrelated Pass-367 scope remains byte-identical across 1215 files."
+    },
+    {
+      "name": "pass-368-focused-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:17.974Z",
+      "finishedAt": "2026-08-26T18:49:18.101Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-cumulative-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:18.101Z",
+      "finishedAt": "2026-08-26T18:49:18.369Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-system-static",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:18.369Z",
+      "finishedAt": "2026-08-26T18:49:18.587Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:18.587Z",
+      "finishedAt": "2026-08-26T18:49:26.216Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-contract",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:26.216Z",
+      "finishedAt": "2026-08-26T18:49:26.389Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:26.389Z",
+      "finishedAt": "2026-08-26T18:49:26.552Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "typescript-source-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:26.552Z",
+      "finishedAt": "2026-08-26T18:49:27.000Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-integration-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:27.000Z",
+      "finishedAt": "2026-08-26T18:49:27.017Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-10-playwright-test-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-26T18:49:27.017Z",
+      "finishedAt": "2026-08-26T18:49:27.048Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

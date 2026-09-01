@@ -1,0 +1,137 @@
+{
+  "formatVersion": 1,
+  "kind": "construction-erp-stage-13-module-8-operations-evidence",
+  "generatedAt": "2026-08-24T12:44:00.411Z",
+  "pass": 232,
+  "stage": 13,
+  "module": "8 - Procurement & RFQ",
+  "mode": "static",
+  "status": "STAGE_13_MODULE_8_OPERATIONS_PREPARED_STAGE_12_LIVE_HANDOFF_PENDING",
+  "stage12LiveAccepted": false,
+  "integrationLiveVerified": false,
+  "playwrightLiveVerified": false,
+  "operationalCoverage": [
+    "concurrent purchase-requisition creation serializes on the Company-owned Project row while Foundation numbering allocates unique monotonic PR numbers",
+    "concurrent RFQ creation uses the same guarded Project/numbering boundary and produces unique monotonic RFQ numbers",
+    "requisition submit, RFQ issue and quotation selection retries serialize through reviewed row locks and emit each reviewed audit/outbox transition once",
+    "RFQ issue retry preserves one invitation row per requested Vendor and rejects no duplicate side effects",
+    "quotation selection remains pre-commitment under retry and leaves Module-7 commitments plus Finance journals untouched",
+    "invalid calculated quotation ranges leave no quotation, invitation-response, audit or outbox partial state",
+    "a rejected non-lowest selection without required rationale leaves RFQ and quotation lifecycle state unchanged",
+    "reviewed Vendor, requisition, RFQ, invitation, quotation and quotation-item read shapes have supporting Stage-13 indexes"
+  ],
+  "migrationCoverage": [
+    "clean database migration deployment",
+    "upgrade from immediately previous supported schema",
+    "Pass 232 adds no migration because Pass 224 owns the complete reviewed Module-8 persistence change"
+  ],
+  "rollbackCoverage": [
+    "quotation range validation occurs inside the service transaction and no durable quotation or event state is left after rejection",
+    "policy rejection before quotation selection leaves RFQ/quotation states and selection audit/outbox rows unchanged",
+    "retry-safe requisition submission, RFQ issue and quotation selection do not duplicate their reviewed outbox events"
+  ],
+  "deploymentReadiness": [
+    "the complete dependency-free static regression remains green before live execution",
+    "Stage-12 acceptance plus Module-8 integration/security and Playwright live handoffs must be genuine before operational live execution",
+    "migration policy remains valid before clean and immediately-previous-schema verification"
+  ],
+  "hardDurationThresholds": false,
+  "productionRuntimeChanges": 0,
+  "databaseChanges": 0,
+  "newMigrations": 0,
+  "publicApiChanges": 0,
+  "financialCommitmentWritesAdded": 0,
+  "runtimeVerificationComplete": false,
+  "runtimeDeploymentAllowed": false,
+  "nextPass": "Run the guarded live operational gate after genuine Stage-12, Pass-229 integration/security and Pass-231 browser handoffs; Pass 233 may be prepared statically but cannot claim live Stage-13 acceptance before that chain passes.",
+  "environment": {
+    "nodeVersion": "v22.16.0",
+    "nodeEnv": null,
+    "liveDatabaseTestsEnabled": false,
+    "recoveryDrillConfirmed": false,
+    "restoreDatabaseConfigured": false,
+    "restoreStorageBucketConfigured": false
+  },
+  "checks": [
+    {
+      "name": "module-8-integration-security-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:53.998Z",
+      "finishedAt": "2026-08-24T12:43:53.998Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-playwright-evidence",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:53.998Z",
+      "finishedAt": "2026-08-24T12:43:53.998Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-playwright-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:53.998Z",
+      "finishedAt": "2026-08-24T12:43:58.513Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-operational-contract",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.513Z",
+      "finishedAt": "2026-08-24T12:43:58.661Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "full-static-regression",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:43:58.661Z",
+      "finishedAt": "2026-08-24T12:44:00.264Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-integration-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:44:00.264Z",
+      "finishedAt": "2026-08-24T12:44:00.285Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-service-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:44:00.285Z",
+      "finishedAt": "2026-08-24T12:44:00.305Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "module-8-repository-syntax",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:44:00.305Z",
+      "finishedAt": "2026-08-24T12:44:00.323Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "workspace-and-stack",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:44:00.323Z",
+      "finishedAt": "2026-08-24T12:44:00.359Z",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "name": "migration-policy",
+      "status": "passed",
+      "startedAt": "2026-08-24T12:44:00.360Z",
+      "finishedAt": "2026-08-24T12:44:00.411Z",
+      "code": 0,
+      "signal": null
+    }
+  ]
+}

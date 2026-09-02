@@ -57,9 +57,9 @@ test('B11 requires Foundation idempotency for every Procurement write and uses s
   for (const operation of [
     'procurement.requisition.create',
     'procurement.requisition.approve',
-    'procurement.purchase_order.create',
-    'procurement.purchase_order.issue',
-    'procurement.purchase_order.cancel'
+    'procurement.purchase-order.create',
+    'procurement.purchase-order.issue',
+    'procurement.purchase-order.cancel'
   ]) assert.ok(service.includes(`operation: '${operation}'`), `missing ${operation}`);
   assert.match(service, /receiveInventory\([\s\S]*idempotencyKey/);
   for (const code of ['REQUISITION_NOT_FOUND', 'PO_NOT_FOUND', 'PO_NOT_RECEIVABLE', 'OVER_RECEIPT_NOT_ALLOWED', 'VENDOR_NOT_ACTIVE']) {

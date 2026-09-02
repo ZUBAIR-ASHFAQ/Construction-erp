@@ -26,7 +26,7 @@ export function ProcurementPage() {
       <section className="admin-card">
         <label>Project<select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Select a Project</option>{(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
       </section>
-      {projectId && <ProcurementWorkspace projectId={projectId} canRead={canRead} canCreateRequisition={canCreateRequisition} canApproveRequisition={canApproveRequisition} canCreatePurchaseOrder={canCreatePurchaseOrder} canIssuePurchaseOrder={canIssuePurchaseOrder} canCreateGoodsReceipt={canCreateGoodsReceipt} canReadInventory={canReadInventory} canReadStages={canReadStages} />}
+      {projectId && <ProcurementWorkspace projectId={projectId} canCreateRequisition={canCreateRequisition} canApproveRequisition={canApproveRequisition} canCreatePurchaseOrder={canCreatePurchaseOrder} canIssuePurchaseOrder={canIssuePurchaseOrder} canCreateGoodsReceipt={canCreateGoodsReceipt} canReadInventory={canReadInventory} canReadStages={canReadStages} />}
     </section>
   );
 }

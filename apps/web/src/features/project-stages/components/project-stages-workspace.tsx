@@ -68,6 +68,16 @@ function formErrorMessages(errors: Record<string, unknown>): string[] {
   });
 }
 
+/** Return the next unused Stage sequence from persisted Project Stages. */
+function nextStageSequenceNo(stages: readonly Pick<ProjectStage, 'sequenceNo'>[]): number {
+  return stages.reduce((highest, stage) => Math.max(highest, stage.sequenceNo), 0) + 1;
+}
+
+/** Recognize only the safe automatic-sequence conflict that may be retried once. */
+function isAutomaticSequenceConflict(error: unknown): boolean {
+  return error instanceof Error && error.message === 'Stage sequence number is already in use inside the Project.';
+}
+
 /** Render one Stage row without confusing physical progress with weight or money. */
 function StageRow({ stage, fallbackPercent, canEdit, onEdit }: Readonly<{
   stage: ProjectStage;
@@ -120,19 +130,18 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   const progressMutation = useRecordStageProgress(props.projectId, progressStageId);
   const approvalMutation = useApproveStageProgress(props.projectId, progressStageId);
   const stages = stagesQuery.data?.items ?? [];
-  const nextSequenceNo = stages.reduce((highest, stage) => Math.max(highest, stage.sequenceNo), 0) + 1;
+  const automaticSequenceNo = nextStageSequenceNo(stages);
 
   useEffect(() => {
-    if (!stagesQuery.data || editingStageId || stageForm.formState.dirtyFields.sequenceNo) return;
-    stageForm.setValue('sequenceNo', nextSequenceNo);
-  }, [editingStageId, nextSequenceNo, stageForm, stagesQuery.data]);
+    if (stagesQuery.data?.projectId !== props.projectId || editingStageId || stageForm.formState.dirtyFields.sequenceNo) return;
+    stageForm.setValue('sequenceNo', automaticSequenceNo);
+  }, [automaticSequenceNo, editingStageId, props.projectId, stageForm, stagesQuery.data?.projectId]);
 
   /** Create or update one draft Stage using only editable planning fields. */
   async function handleSaveStage(values: StageFormValues): Promise<void> {
-    const input = {
+    const editableInput = {
       code: values.code,
       name: values.name,
-      sequenceNo: values.sequenceNo,
       weightPercent: values.weightPercent,
       ...(props.projectModel === 'COST_PLUS_PERCENTAGE' ? { costPlusPercent: values.costPlusPercent === '' ? null : values.costPlusPercent } : {}),
       plannedStartDate: values.plannedStartDate === '' ? null : values.plannedStartDate,
@@ -140,13 +149,31 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
     };
 
     if (editingStageId) {
-      await updateMutation.mutateAsync(input);
+      await updateMutation.mutateAsync({ ...editableInput, sequenceNo: values.sequenceNo });
     } else {
-      await createMutation.mutateAsync(input);
+      const sequenceWasEdited = Boolean(stageForm.formState.dirtyFields.sequenceNo);
+      const latest = await stagesQuery.refetch();
+      const firstSequenceNo = sequenceWasEdited
+        ? values.sequenceNo
+        : nextStageSequenceNo(latest.data?.items ?? stages);
+      let created: ProjectStage;
+      try {
+        created = await createMutation.mutateAsync({ ...editableInput, sequenceNo: firstSequenceNo });
+      } catch (error) {
+        if (sequenceWasEdited || !isAutomaticSequenceConflict(error)) throw error;
+        const refreshed = await stagesQuery.refetch();
+        created = await createMutation.mutateAsync({
+          ...editableInput,
+          sequenceNo: nextStageSequenceNo(refreshed.data?.items ?? stages)
+        });
+      }
+      setEditingStageId(null);
+      stageForm.reset({ code: '', name: '', sequenceNo: created.sequenceNo + 1, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
+      return;
     }
 
     setEditingStageId(null);
-    stageForm.reset({ code: '', name: '', sequenceNo: Math.max(nextSequenceNo, values.sequenceNo + 1), weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
+    stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
   /** Load one draft Stage into the shared planning form for a simple edit flow. */
@@ -166,7 +193,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   /** Cancel a draft Stage edit without changing persisted Stage data. */
   function handleCancelStageEdit(): void {
     setEditingStageId(null);
-    stageForm.reset({ code: '', name: '', sequenceNo: nextSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
+    stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
   /** Submit one physical-progress update and preserve its id for immediate approval when allowed. */

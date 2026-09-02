@@ -753,6 +753,30 @@
       "migrations": [
         "20260901000100_stage_cost_plus_percentage"
       ]
+    },
+    {
+      "stage": 60,
+      "gate": "final-21-repair-project-stage-create-flow",
+      "description": "Repairs Project Stage permission grants after the final Project permission vocabulary exists, including the established full Stage permission policy for active system administrators.",
+      "migrations": [
+        "20260901000200_final21_project_stage_create_repair"
+      ]
+    },
+    {
+      "stage": 61,
+      "gate": "final-21-repair-procurement-requisition-sequence",
+      "description": "Repairs the Final-21 Material Requirement number sequence for existing companies by carrying the legacy Procurement counter forward without changing established numbering definitions.",
+      "migrations": [
+        "20260901000300_final21_procurement_requisition_sequence_repair"
+      ]
+    },
+    {
+      "stage": 62,
+      "gate": "final-21-repair-procurement-material-triggers",
+      "description": "Repairs Procurement requisition-line and Purchase-Order-line Company-scope trigger functions after the active material master replaced the legacy inventory item table.",
+      "migrations": [
+        "20260901000400_final21_procurement_material_trigger_repair"
+      ]
     }
   ]
 }

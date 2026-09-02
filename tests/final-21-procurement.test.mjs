@@ -16,6 +16,8 @@ const webProcurement = await readFile('apps/web/src/features/procurement/compone
 const webInventory = await readFile('apps/web/src/features/inventory/components/inventory-workspace.tsx', 'utf8');
 const prisma = await readFile('packages/database/prisma/schema.prisma', 'utf8');
 const migration = await readFile('packages/database/prisma/migrations/20260829000300_final21_procurement_without_rfq/migration.sql', 'utf8');
+const sequenceRepair = await readFile('packages/database/prisma/migrations/20260901000300_final21_procurement_requisition_sequence_repair/migration.sql', 'utf8');
+const materialTriggerRepair = await readFile('packages/database/prisma/migrations/20260901000400_final21_procurement_material_trigger_repair/migration.sql', 'utf8');
 
 const FINAL_ROUTES = [
   ['GET', '/api/v1/procurement/requisitions'],
@@ -124,7 +126,7 @@ test('Goods Receipt is a Procurement command while Inventory performs the atomic
   assert.match(routes, /\/api\/v1\/procurement\/goods-receipts/);
   assert.doesNotMatch(inventoryRoutes, /\/api\/v1\/inventory\/receipts/);
   assert.match(service, /new InventoryService\(this\.db\)\.receiveInventory/);
-  assert.match(inventoryService, /operation: 'goods_receipts\.create'/);
+  assert.match(inventoryService, /operation: 'goods-receipts\.create'/);
   assert.match(inventoryService, /eventType: 'goods_receipt\.posted'/);
   assert.match(inventoryService, /eventType: 'inventory\.receipt_posted'/);
   assert.doesNotMatch(webInventory, /ReceiptForm|useReceiveInventory|PO receipt/);
@@ -145,4 +147,26 @@ test('A9 forward migration removes active RFQ/cost-structure coupling without de
   assert.match(migration, /DROP COLUMN IF EXISTS "cost_type_id"/);
   assert.match(migration, /'procurement\.rfq\.manage', 'requisitions\.approve'/);
   assert.doesNotMatch(migration, /DROP TABLE\s+"?(rfqs|supplier_quotations)"?/i);
+});
+
+test('Final-21 Procurement carries the legacy requirement counter into the active sequence', () => {
+  assert.match(service, /REQUISITION_SEQUENCE_KEY = 'purchase-requisition'/);
+  assert.match(sequenceRepair, /legacy\."sequence_key" = 'procurement\.pr'/);
+  assert.match(sequenceRepair, /'purchase-requisition'/);
+  assert.match(sequenceRepair, /GREATEST\("number_sequences"\."next_value", EXCLUDED\."next_value"\)/);
+  assert.match(sequenceRepair, /ON CONFLICT \("company_id", "sequence_key"\) DO UPDATE/);
+});
+
+test('Final-21 Procurement item triggers use the active material master everywhere', () => {
+  assert.match(materialTriggerRepair, /CREATE OR REPLACE FUNCTION "module_10_validate_requisition_item_company_scope"/);
+  assert.match(materialTriggerRepair, /CREATE OR REPLACE FUNCTION "module_10_validate_purchase_order_item_company_scope"/);
+  assert.match(materialTriggerRepair, /CROSS JOIN "materials" material/g);
+  assert.doesNotMatch(materialTriggerRepair, /inventory_items/);
+});
+
+test('Procurement lifecycle idempotency operation names satisfy the shared command contract', () => {
+  assert.match(service, /operation: 'procurement\.purchase-order\.create'/);
+  assert.match(service, /operation: 'procurement\.purchase-order\.issue'/);
+  assert.match(service, /operation: 'procurement\.purchase-order\.cancel'/);
+  assert.doesNotMatch(service, /operation: '[^']*_[^']*'/);
 });

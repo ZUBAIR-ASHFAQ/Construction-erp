@@ -420,7 +420,7 @@ export class InventoryService {
   /** Receive one issued Purchase Order into stock atomically for the Procurement module. */
   async receiveInventory(input: ReceiveInventoryBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
-      operation: 'goods_receipts.create', idempotencyKey, fingerprintInput: input
+      operation: 'goods-receipts.create', idempotencyKey, fingerprintInput: input
     }, async (tx) => this.receiveInventoryOnce(tx, input));
     return result.response.body;
   }

@@ -176,9 +176,16 @@ function baselineResponse(baseline: Readonly<{
   };
 }
 
-/** Recognize a Prisma unique conflict without leaking Prisma details. */
-function isUniqueConstraintError(error: unknown): boolean {
-  return Boolean(error && typeof error === 'object' && 'code' in error && error.code === 'P2002');
+/** Return a safe Stage field message for one Prisma unique conflict. */
+function stageUniqueConstraintMessage(error: unknown): string | null {
+  if (!error || typeof error !== 'object' || !('code' in error) || error.code !== 'P2002') return null;
+  const meta = 'meta' in error && error.meta && typeof error.meta === 'object' ? error.meta : null;
+  const target = meta && 'target' in meta ? meta.target : null;
+  const fields = Array.isArray(target) ? target.map(String) : typeof target === 'string' ? [target] : [];
+  const normalizedTarget = fields.join(' ').toLowerCase();
+  if (normalizedTarget.includes('sequence')) return 'Stage sequence number is already in use inside the Project.';
+  if (normalizedTarget.includes('code')) return 'Stage code is already in use inside the Project.';
+  return 'Stage code or sequence number is already in use inside the Project.';
 }
 
 /** Convert one request date-only string into a stable UTC Date. */
@@ -343,9 +350,8 @@ export class ProjectStagesService {
       );
       return result.response.body;
     } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
-      }
+      const message = stageUniqueConstraintMessage(error);
+      if (message) throw new ValidationError({ message });
       throw error;
     }
   }
@@ -389,9 +395,8 @@ export class ProjectStagesService {
       );
       return result.response.body;
     } catch (error) {
-      if (isUniqueConstraintError(error)) {
-        throw new ValidationError({ message: 'Stage code and sequence number must be unique inside the Project.' });
-      }
+      const message = stageUniqueConstraintMessage(error);
+      if (message) throw new ValidationError({ message });
       throw error;
     }
   }

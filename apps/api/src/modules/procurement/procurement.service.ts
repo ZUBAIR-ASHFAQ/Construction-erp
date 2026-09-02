@@ -390,7 +390,7 @@ export class ProcurementService {
 
     const result = await executeIdempotentCommand(
       this.db,
-      { operation: 'procurement.purchase_order.create', idempotencyKey, fingerprintInput: input },
+      { operation: 'procurement.purchase-order.create', idempotencyKey, fingerprintInput: input },
       async (tx) => {
         const txRepository = new ProcurementRepository(tx);
         const locked = await txRepository.lockPurchaseRequisitionForWrite(requisition.projectId, requisition.id);
@@ -438,7 +438,7 @@ export class ProcurementService {
 
     const result = await executeIdempotentCommand(
       this.db,
-      { operation: 'procurement.purchase_order.issue', idempotencyKey, fingerprintInput: { purchaseOrderId } },
+      { operation: 'procurement.purchase-order.issue', idempotencyKey, fingerprintInput: { purchaseOrderId } },
       async (tx) => {
         const repository = new ProcurementRepository(tx);
         const locked = await repository.lockPurchaseOrderForWrite(current.projectId, current.id);
@@ -483,7 +483,7 @@ export class ProcurementService {
 
     const result = await executeIdempotentCommand(
       this.db,
-      { operation: 'procurement.purchase_order.cancel', idempotencyKey, fingerprintInput: { purchaseOrderId, ...input } },
+      { operation: 'procurement.purchase-order.cancel', idempotencyKey, fingerprintInput: { purchaseOrderId, ...input } },
       async (tx) => {
         const repository = new ProcurementRepository(tx);
         const locked = await repository.lockPurchaseOrderForWrite(current.projectId, current.id);

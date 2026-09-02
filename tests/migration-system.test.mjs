@@ -41,9 +41,9 @@ test('migration gates remain ordered and the latest gate is the current Final-21
     assert.ok(gateManifest.gates[index].stage >= gateManifest.gates[index - 1].stage, 'migration gate stages must be non-decreasing');
   }
   const latest = gateManifest.gates.at(-1);
-  assert.equal(latest?.stage, 59);
-  assert.equal(latest?.gate, 'stage-cost-plus-percentage-billing');
-  assert.deepEqual(latest?.migrations, ['20260901000100_stage_cost_plus_percentage']);
+  assert.equal(latest?.stage, 61);
+  assert.equal(latest?.gate, 'final-21-repair-procurement-requisition-sequence');
+  assert.deepEqual(latest?.migrations, ['20260901000300_final21_procurement_requisition_sequence_repair']);
 });
 
 test('previous-schema calculation rebuilds every accepted migration before the latest gate', () => {

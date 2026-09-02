@@ -124,7 +124,7 @@ test('B12 preserves atomic Procurement receipt integration into stock', () => {
   assert.match(procurementRepository, /this\.db\.material\.findMany/);
   assert.doesNotMatch(procurementRepository, /this\.db\.inventoryItem/);
   assert.match(procurementService, /new InventoryService\(this\.db\)\.receiveInventory/);
-  assert.match(inventoryService, /operation: 'goods_receipts\.create'/);
+  assert.match(inventoryService, /operation: 'goods-receipts\.create'/);
   assert.match(inventoryService, /movementType: 'RECEIPT'/);
   assert.match(inventoryService, /stageId: item\.stageId \?\? null/);
   assert.match(inventoryService, /addPurchaseOrderReceivedQuantity\(item\.poItemId, scale4ToDecimal\(accepted\)\)/);

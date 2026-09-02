@@ -27,6 +27,11 @@
                                 "sequenceKey":  "project"
                             },
                             {
+                                "sequenceKey":  "purchase-requisition",
+                                "prefix":  "PR-",
+                                "padWidth":  4
+                            },
+                            {
                                 "sequenceKey":  "purchase-order"
                             },
                             {

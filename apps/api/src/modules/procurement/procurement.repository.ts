@@ -120,7 +120,7 @@ export class ProcurementRepository {
         requestedBy: input.requestedBy,
         requiredDate: input.requiredDate,
         status: 'DRAFT',
-        purpose: input.notes ?? '',
+        purpose: input.notes ?? '\u00A0',
         items: { create: input.items.map((item) => ({ itemId: item.materialId, description: item.description, quantity: item.quantity, unit: item.unit, estimatedRate: null, stageId: item.stageId ?? null })) }
       }),
       include: { items: { orderBy: [{ id: 'asc' }] } }

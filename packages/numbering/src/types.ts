@@ -6,6 +6,7 @@ export const NUMBER_SEQUENCE_STATUS = Object.freeze({
 /** Stable Foundation sequence keys required by the final 21-module ERP. */
 export const FOUNDATION_REQUIRED_SEQUENCE_KEYS = Object.freeze([
   'project',
+  'purchase-requisition',
   'purchase-order',
   'client-invoice',
   'client-receipt',

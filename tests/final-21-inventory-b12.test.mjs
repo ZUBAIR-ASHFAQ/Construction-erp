@@ -78,7 +78,9 @@ test('B12 Inventory no longer depends on WBS Cost Codes Cost Types or cost struc
     `${web}/api/inventory-api.ts`,
     `${web}/hooks/inventory.ts`,
     `${web}/components/inventory-workspace.tsx`,
-    `${web}/pages/inventory-page.tsx`
+    `${web}/components/materials-workspace.tsx`,
+    `${web}/pages/inventory-page.tsx`,
+    `${web}/pages/materials-page.tsx`
   ];
   for (const path of sources) {
     const source = read(path);
@@ -134,18 +136,27 @@ test('B12 aligns Inventory permissions and React workspace with Final-21', () =>
   const schema = read(`${backend}/inventory.schema.ts`);
   const service = read(`${backend}/inventory.service.ts`);
   const page = read(`${web}/pages/inventory-page.tsx`);
+  const materialsPage = read(`${web}/pages/materials-page.tsx`);
   const workspace = read(`${web}/components/inventory-workspace.tsx`);
+  const materialsWorkspace = read(`${web}/components/materials-workspace.tsx`);
   const adminShell = read('apps/web/src/features/administration/components/admin-shell.tsx');
   for (const permission of ['inventory.read', 'materials.manage', 'inventory.issue', 'inventory.transfer', 'inventory.adjust']) {
     assert.ok(schema.includes(`'${permission}'`), `missing ${permission}`);
   }
   assert.match(service, /requireCompanyPermission\(users, 'materials\.manage'/);
-  assert.match(page, /usePermission\('materials\.manage'\)/);
+  assert.doesNotMatch(page, /usePermission\('materials\.manage'\)/);
+  assert.match(materialsPage, /usePermission\('materials\.manage'\)/);
   assert.match(adminShell, /'materials\.manage'/);
   assert.doesNotMatch(adminShell, /'inventory\.item\.manage'/);
   assert.match(workspace, /useProjectStages/);
   assert.match(workspace, /Issue material to project \/ stage/);
   assert.match(workspace, /Append-only stock ledger/);
+  assert.doesNotMatch(workspace, /Create material|Add material/);
+  assert.match(materialsWorkspace, /Add material/);
+  assert.match(materialsWorkspace, /Material master/);
+  assert.match(adminShell, />Materials<\/button>/);
+  assert.match(adminShell, />Inventory<\/button>/);
+  assert.match(adminShell, /activeView === 'materials'/);
 });
 
 /** Confirm every public Inventory write is idempotent and produces audit/outbox evidence. */
@@ -190,7 +201,9 @@ test('B12 keeps changed Inventory functions junior-readable with purpose comment
     `${web}/api/inventory-api.ts`,
     `${web}/hooks/inventory.ts`,
     `${web}/components/inventory-workspace.tsx`,
-    `${web}/pages/inventory-page.tsx`
+    `${web}/components/materials-workspace.tsx`,
+    `${web}/pages/inventory-page.tsx`,
+    `${web}/pages/materials-page.tsx`
   ];
   for (const path of paths) {
     const lines = read(path).split('\n');

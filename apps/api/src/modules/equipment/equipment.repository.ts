@@ -284,6 +284,10 @@ export class EquipmentRepository {
         take
       })
     ]);
-    return { equipment, assignments, usage, maintenance };
+    const costActuals = usage.length === 0 ? [] : await this.db.costActual.findMany({
+      where: scope.where({ sourceType: 'equipment_usage', sourceId: { in: usage.map((row) => row.id) } }),
+      select: { id: true, sourceId: true }
+    });
+    return { equipment, assignments, usage, maintenance, costActuals };
   }
 }

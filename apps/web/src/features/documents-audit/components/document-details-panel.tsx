@@ -2,10 +2,23 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
+  useCreateDocumentLink,
+  useDeleteDocumentLink,
   useDocument,
   useDocumentDownload,
   useUploadDocumentVersion
 } from '../hooks/documents.js';
+import type { DocumentLinkResourceType } from '../api/documents-api.js';
+
+const documentLinkResourceTypes = [
+  'project',
+  'employee',
+  'project_stage',
+  'client_invoice',
+  'client_receipt',
+  'supplier_invoice',
+  'site_expense'
+] as const satisfies readonly DocumentLinkResourceType[];
 
 const versionUploadSchema = z.object({
   revisionCode: z.string().trim().max(100),
@@ -15,17 +28,31 @@ const versionUploadSchema = z.object({
   )
 });
 
+const documentLinkSchema = z.object({
+  versionId: z.string().trim(),
+  resourceType: z.enum(documentLinkResourceTypes),
+  resourceId: z.string().uuid('Use a valid resource UUID.')
+});
+
 type VersionUploadValues = z.infer<typeof versionUploadSchema>;
+type DocumentLinkValues = z.infer<typeof documentLinkSchema>;
 
 /** Show one document's metadata, immutable version history, links and allowed actions. */
 export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: string | null }>) {
   const documentQuery = useDocument(documentId);
   const downloadMutation = useDocumentDownload();
   const versionMutation = useUploadDocumentVersion();
+  const linkMutation = useCreateDocumentLink();
+  const unlinkMutation = useDeleteDocumentLink();
 
   const versionForm = useForm<VersionUploadValues>({
     resolver: zodResolver(versionUploadSchema),
     defaultValues: { revisionCode: '' }
+  });
+
+  const linkForm = useForm<DocumentLinkValues>({
+    resolver: zodResolver(documentLinkSchema),
+    defaultValues: { versionId: '', resourceType: 'project', resourceId: '' }
   });
 
   if (!documentId) {
@@ -50,6 +77,7 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
 
   const currentDocumentId = document.id;
   const canVersion = document.capabilities.canVersion;
+  const canLink = document.capabilities.canLink;
   const currentVersion = document.versions.find((version) => version.id === document.currentVersionId) ?? null;
 
   /** Ask the API to authorize the current file before opening its short-lived URL. */
@@ -69,6 +97,24 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
       revisionCode: values.revisionCode || null
     });
     versionForm.reset();
+  }
+
+  /** Link this document or one selected version to an approved ERP resource. */
+  async function linkDocument(values: DocumentLinkValues): Promise<void> {
+    await linkMutation.mutateAsync({
+      documentId: currentDocumentId,
+      link: {
+        versionId: values.versionId || null,
+        resourceType: values.resourceType,
+        resourceId: values.resourceId
+      }
+    });
+    linkForm.reset({ versionId: '', resourceType: values.resourceType, resourceId: '' });
+  }
+
+  /** Remove one existing resource link from this document. */
+  async function unlinkDocument(linkId: string): Promise<void> {
+    await unlinkMutation.mutateAsync({ documentId: currentDocumentId, linkId });
   }
 
   return (
@@ -128,6 +174,40 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
         </div>
       )}
 
+      {canLink && (
+        <div className="document-section">
+          <h3>Link business record</h3>
+          <form className="admin-form" onSubmit={linkForm.handleSubmit(linkDocument)} noValidate>
+            <label>
+              Version
+              <select {...linkForm.register('versionId')}>
+                <option value="">Current version</option>
+                {document.versions.map((version) => (
+                  <option key={version.id} value={version.id}>v{version.versionNo} · {version.originalName}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Resource type
+              <select {...linkForm.register('resourceType')}>
+                {documentLinkResourceTypes.map((resourceType) => (
+                  <option key={resourceType} value={resourceType}>{resourceType.replaceAll('_', ' ')}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Resource ID
+              <input placeholder="Resource UUID" {...linkForm.register('resourceId')} />
+            </label>
+            {linkForm.formState.errors.resourceId && <span className="field-error">{linkForm.formState.errors.resourceId.message}</span>}
+            {linkMutation.error instanceof Error && <div className="form-error" role="alert">{linkMutation.error.message}</div>}
+            <button type="submit" disabled={linkMutation.isPending}>
+              {linkMutation.isPending ? 'Linking…' : 'Link record'}
+            </button>
+          </form>
+        </div>
+      )}
+
       <div className="document-section">
         <h3>Version history</h3>
         {document.versions.length === 0 ? (
@@ -162,12 +242,13 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
 
       <div className="document-section">
         <h3>Linked records</h3>
+        {unlinkMutation.error instanceof Error && <div className="form-error" role="alert">{unlinkMutation.error.message}</div>}
         {document.links.length === 0 ? (
           <p className="muted">No business records are linked to this document yet.</p>
         ) : (
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Link ID</th><th>Resource</th><th>Resource ID</th><th>Version ID</th><th>Project</th><th>Stage</th><th>Created</th></tr></thead>
+              <thead><tr><th>Link ID</th><th>Resource</th><th>Resource ID</th><th>Version ID</th><th>Project</th><th>Stage</th><th>Created</th>{canLink && <th>Action</th>}</tr></thead>
               <tbody>
                 {document.links.map((link) => (
                   <tr key={link.id}>
@@ -178,6 +259,18 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
                     <td>{link.projectId ?? '—'}</td>
                     <td>{link.stageId ?? '—'}</td>
                     <td>{new Date(link.createdAt).toLocaleString()}</td>
+                    {canLink && (
+                      <td>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={unlinkMutation.isPending}
+                          onClick={() => void unlinkDocument(link.id)}
+                        >
+                          Unlink
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

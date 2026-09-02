@@ -334,6 +334,20 @@ export class ClientBillingService {
     }
   }
 
+  /** Enforce the agreed Fixed Price Project value as the cumulative certified billing ceiling. */
+  private async requireFixedPriceBasis(
+    repository: ClientBillingRepository,
+    project: Readonly<{ id: string; projectValue: DecimalLike }>,
+    lines: readonly Readonly<{ amount: DecimalLike }>[],
+    visibility: ClientBillingVisibility
+  ): Promise<void> {
+    const projectLimit = moneyToMinorUnits(project.projectValue);
+    if (projectLimit <= 0n) throw createClientBillingError('INVALID_BILLING_BASIS');
+    const gross = lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
+    const priorGross = moneyToMinorUnits(await repository.sumFinalizedClaimGross(project.id, visibility) ?? '0');
+    if (priorGross + gross > projectLimit) throw createClientBillingError('INVALID_BILLING_BASIS');
+  }
+
   /** Read the Project-level issued/posted invoice summary for permission-safe Project detail. */
   async getProjectSummary(projectId: string) {
     await this.requireProjectPermission(
@@ -499,7 +513,9 @@ export class ClientBillingService {
     if (settings?.status === 'INACTIVE') throw createClientBillingError('INVALID_BILLING_BASIS');
     const billingMethod = requireBillingMethod(project, settings);
     await this.requireClaimStages(repository, project.id, current.lines, visibility);
-    if (billingMethod === 'COST_PLUS_PERCENTAGE') {
+    if (billingMethod === 'FIXED_PRICE') {
+      await this.requireFixedPriceBasis(repository, project, current.lines, visibility);
+    } else {
       await this.requireCostPlusBasis(repository, project, current.periodEnd, current.lines, visibility);
     }
     const gross = current.lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);

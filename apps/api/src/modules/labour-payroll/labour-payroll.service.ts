@@ -340,6 +340,9 @@ export class LabourPayrollService {
       const status = input.status ?? before.status;
       const hours = input.hours === undefined ? before.hours?.toString() ?? null : input.hours;
       const overtimeHours = input.overtimeHours === undefined ? before.overtimeHours?.toString() ?? null : input.overtimeHours;
+      if (decimal4Units(hours) + decimal4Units(overtimeHours) > 24n * SCALE_4) {
+        throw new ValidationError({ fieldErrors: [{ field: 'hours', message: 'hours plus overtimeHours cannot exceed 24.' }] });
+      }
       if (status === 'ABSENT' && (decimal4Units(hours) > 0n || decimal4Units(overtimeHours) > 0n)) {
         throw new ValidationError({ fieldErrors: [{ field: 'status', message: 'ABSENT attendance cannot contain worked hours.' }] });
       }

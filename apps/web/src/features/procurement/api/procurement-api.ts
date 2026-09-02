@@ -175,3 +175,8 @@ export function createGoodsReceipt(input: CreateGoodsReceiptInput): Promise<Good
     body: JSON.stringify(input)
   });
 }
+
+/** Load one durable Goods Receipt by id. */
+export function getGoodsReceipt(goodsReceiptId: string): Promise<GoodsReceipt> {
+  return authenticatedRequest<GoodsReceipt>(`procurement/goods-receipts/${goodsReceiptId}`);
+}

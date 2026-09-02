@@ -3,7 +3,6 @@ import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
 import {
   useAdjustStock,
-  useCreateMaterial,
   useCreateMaterialIssue,
   useInventoryLedger,
   useInventoryStock,
@@ -13,19 +12,17 @@ import {
 
 type InventoryWorkspaceProps = Readonly<{
   canRead: boolean;
-  canManageMaterials: boolean;
   canIssue: boolean;
   canTransfer: boolean;
   canAdjust: boolean;
 }>;
 
-/** Render the simplified Final-21 Material, stock, issue, transfer and adjustment workspace. */
+/** Render the Final-21 stock, issue, transfer and adjustment workspace. */
 export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const materials = useMaterials(props.canRead);
   const stock = useInventoryStock(props.canRead);
   const ledger = useInventoryLedger(props.canRead);
   const projects = useProjects({ page: 1, pageSize: 100, status: 'ACTIVE' }, props.canIssue);
-  const createMaterial = useCreateMaterial();
   const createIssue = useCreateMaterialIssue();
   const transfer = useTransferMaterial();
   const adjust = useAdjustStock();
@@ -47,19 +44,6 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const [adjustMaterialId, setAdjustMaterialId] = useState('');
   const [adjustQuantity, setAdjustQuantity] = useState('1.0000');
   const [adjustReason, setAdjustReason] = useState('Stock correction');
-
-  /** Submit one new Company Material. */
-  function submitMaterial(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    createMaterial.mutate({
-      code: String(form.get('code') ?? ''),
-      name: String(form.get('name') ?? ''),
-      unit: String(form.get('unit') ?? ''),
-      category: String(form.get('category') ?? '') || null
-    });
-    event.currentTarget.reset();
-  }
 
   /** Submit one single-line Project/Stage Material Issue from the compact UI. */
   function submitIssue(event: FormEvent<HTMLFormElement>) {
@@ -93,19 +77,6 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
 
   return (
     <div className="admin-stack">
-      {props.canManageMaterials && (
-        <section className="admin-card">
-          <h2>Material master</h2>
-          <form className="form-grid" onSubmit={submitMaterial}>
-            <label>Code<input name="code" required /></label>
-            <label>Name<input name="name" required /></label>
-            <label>Unit<input name="unit" required placeholder="KG, BAG, PCS" /></label>
-            <label>Category<input name="category" /></label>
-            <button type="submit" disabled={createMaterial.isPending}>Create material</button>
-          </form>
-        </section>
-      )}
-
       {props.canRead && (
         <section className="admin-card">
           <h2>Warehouse stock <small className="muted">({stock.data?.total ?? 0} row(s))</small></h2>

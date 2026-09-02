@@ -53,7 +53,7 @@ test('R7 keeps every active backend module paired with a browser feature area an
 
 test('R7 keeps every browser page imported and rendered by the authenticated shell or sign-in flow', async () => {
   const [shell, pageFiles] = await Promise.all([readFile(shellPath, 'utf8'), listPageFiles()]);
-  assert.equal(pageFiles.length, 25, 'unexpected browser page count');
+  assert.equal(pageFiles.length, 26, 'unexpected browser page count');
 
   for (const pageFile of pageFiles) {
     const source = await readFile(pageFile, 'utf8');
@@ -80,7 +80,7 @@ test('R7 keeps every authenticated workspace view present in order, access, navi
   const navigation = [...shell.matchAll(/navigationButtonClass\(activeView, '([^']+)'\)/g)].map((match) => match[1]);
   const rendered = [...shell.matchAll(/activeView === '([^']+)'/g)].map((match) => match[1]);
 
-  assert.equal(views.length, 24, 'unexpected authenticated workspace view count');
+  assert.equal(views.length, 25, 'unexpected authenticated workspace view count');
   assert.deepEqual(order, views, 'workspace fallback order must cover every view exactly once');
   assert.deepEqual(new Set(access), new Set(views), 'permission access map must cover every view');
   assert.deepEqual(new Set(navigation), new Set(views), 'navigation must expose every authorized view');

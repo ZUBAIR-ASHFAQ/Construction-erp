@@ -24,6 +24,7 @@ import {
   type CreateProjectBody,
   type ListProjectsQuery,
   type ProjectPermissionCode,
+  type ResumeProjectBody,
   type SuspendProjectBody,
   type UpdateProjectBody
 } from './projects.schema.js';
@@ -628,6 +629,73 @@ export class ProjectsService {
           projectId,
           fromStatus: PROJECT_ACTIVE,
           toStatus: PROJECT_SUSPENDED,
+          reason: input.reason ?? null
+        }
+      });
+
+      return updated;
+    });
+  }
+
+  /** Resume one SUSPENDED Project after revalidating the same references required for activation. */
+  async resumeProject(projectId: string, input: ResumeProjectBody) {
+    const actorUserId = requireActorUserId();
+    const now = new Date();
+
+    return withTransaction(this.db, async (tx) => {
+      const repository = new ProjectsRepository(tx);
+      await this.requireProjectPermission(
+        new AdministrationRepository(tx),
+        projectId,
+        'projects.activate',
+        now
+      );
+      const locked = await repository.lockProjectForWrite(projectId);
+      if (!locked) throw createProjectError('PROJECT_NOT_FOUND');
+
+      const before = await repository.findProjectById(projectId);
+      if (!before) throw createProjectError('PROJECT_NOT_FOUND');
+      if (before.status === PROJECT_ACTIVE) return before;
+      if (before.status !== PROJECT_SUSPENDED) {
+        throw createProjectError('INVALID_PROJECT_TRANSITION');
+      }
+
+      assertValidDateRange(before.startDate, before.plannedEndDate);
+      assertValidCommercialModel(before.projectModel, before.projectValue, before.costPlusPercent);
+      await this.requireActiveProjectReferences(repository, {
+        clientId: before.clientId,
+        projectManagerUserId: before.projectManagerUserId
+      });
+
+      const updated = await repository.transitionProjectStatus(projectId, PROJECT_SUSPENDED, PROJECT_ACTIVE);
+      if (!updated) throw createProjectError('INVALID_PROJECT_TRANSITION');
+
+      await repository.createProjectStatusHistory({
+        projectId,
+        fromStatus: PROJECT_SUSPENDED,
+        toStatus: PROJECT_ACTIVE,
+        changedBy: actorUserId,
+        reason: input.reason ?? null
+      });
+
+      await recordAudit(tx, {
+        action: 'project.resumed',
+        entityType: 'project',
+        entityId: projectId,
+        before: { status: PROJECT_SUSPENDED },
+        after: {
+          status: PROJECT_ACTIVE,
+          reason: input.reason ?? null
+        }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'project.status_changed',
+        resourceType: 'project',
+        resourceId: projectId,
+        payload: {
+          projectId,
+          fromStatus: PROJECT_SUSPENDED,
+          toStatus: PROJECT_ACTIVE,
           reason: input.reason ?? null
         }
       });

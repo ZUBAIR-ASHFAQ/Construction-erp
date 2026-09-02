@@ -18,6 +18,7 @@ import { FinancePage } from '../../finance/pages/finance-page.js';
 import { BudgetsJobCostPage } from '../../budgets-job-cost/pages/budgets-job-cost-page.js';
 import { ProcurementPage } from '../../procurement/pages/procurement-page.js';
 import { InventoryPage } from '../../inventory/pages/inventory-page.js';
+import { MaterialsPage } from '../../inventory/pages/materials-page.js';
 import { VendorsSubcontractorsPage } from '../../vendors-subcontractors/pages/vendors-subcontractors-page.js';
 import { EquipmentPage } from '../../equipment/pages/equipment-page.js';
 import { EmployeesPage } from '../../employees/pages/employees-page.js';
@@ -45,6 +46,7 @@ type WorkspaceView =
   | 'finance'
   | 'budgets-job-cost'
   | 'procurement'
+  | 'materials'
   | 'inventory'
   | 'vendors-subcontractors'
   | 'equipment'
@@ -95,9 +97,9 @@ const PROCUREMENT_PERMISSIONS = [
   'purchase_orders.issue',
   'goods_receipts.create'
 ] as const;
+const MATERIAL_PERMISSIONS = ['inventory.read', 'materials.manage'] as const;
 const INVENTORY_PERMISSIONS = [
   'inventory.read',
-  'materials.manage',
   'inventory.transfer',
   'inventory.issue',
   'inventory.adjust'
@@ -175,6 +177,7 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'finance',
   'budgets-job-cost',
   'procurement',
+  'materials',
   'inventory',
   'vendors-subcontractors',
   'equipment',
@@ -209,6 +212,7 @@ export function AdminShell() {
   const canUseBudgets = canUseProjectScopedWorkspace(auth.identity, BUDGET_PERMISSIONS);
   const hasProcurementCompanyPermission = hasAnyIdentityPermission(auth.identity, PROCUREMENT_PERMISSIONS);
   const canUseProcurement = hasProcurementCompanyPermission || hasRestrictedProjectMembership(auth.identity);
+  const canUseMaterials = canUseProjectScopedWorkspace(auth.identity, MATERIAL_PERMISSIONS);
   const canUseInventory = canUseProjectScopedWorkspace(auth.identity, INVENTORY_PERMISSIONS);
   const canUseVendorsSubcontractors = hasAnyIdentityPermission(auth.identity, VENDOR_PERMISSIONS);
   const hasEquipmentCompanyPermission = hasAnyIdentityPermission(auth.identity, EQUIPMENT_PERMISSIONS);
@@ -255,6 +259,7 @@ export function AdminShell() {
     finance: canUseFinance,
     'budgets-job-cost': canUseBudgets,
     procurement: canUseProcurement,
+    materials: canUseMaterials,
     inventory: canUseInventory,
     'vendors-subcontractors': canUseVendorsSubcontractors,
     equipment: canUseEquipment,
@@ -393,8 +398,11 @@ export function AdminShell() {
                 {canUseProcurement && (
                   <button type="button" className={navigationButtonClass(activeView, 'procurement')} onClick={() => selectView('procurement')}>Procurement</button>
                 )}
+                {canUseMaterials && (
+                  <button type="button" className={navigationButtonClass(activeView, 'materials')} onClick={() => selectView('materials')}>Materials</button>
+                )}
                 {canUseInventory && (
-                  <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => selectView('inventory')}>Inventory & Materials</button>
+                  <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => selectView('inventory')}>Inventory</button>
                 )}
                 {canUseVendorsSubcontractors && (
                   <button type="button" className={navigationButtonClass(activeView, 'vendors-subcontractors')} onClick={() => selectView('vendors-subcontractors')}>Suppliers & Subcontractors</button>
@@ -484,6 +492,7 @@ export function AdminShell() {
           {activeView === 'finance' && <FinancePage />}
           {activeView === 'budgets-job-cost' && <BudgetsJobCostPage />}
           {activeView === 'procurement' && <ProcurementPage />}
+          {activeView === 'materials' && <MaterialsPage />}
           {activeView === 'inventory' && <InventoryPage />}
           {activeView === 'vendors-subcontractors' && <VendorsSubcontractorsPage />}
           {activeView === 'equipment' && <EquipmentPage />}

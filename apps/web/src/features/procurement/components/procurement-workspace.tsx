@@ -96,7 +96,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const issuePurchaseOrder = useIssueProcurementPurchaseOrder();
   const cancelPurchaseOrder = useCancelProcurementPurchaseOrder();
   const createGoodsReceipt = useCreateGoodsReceipt();
-  const materials = useMaterials(props.canReadInventory && props.canCreateRequisition);
+  const materials = useMaterials(props.canCreateRequisition);
   const stock = useInventoryStock(props.canReadInventory && props.canCreateGoodsReceipt);
   const stages = useProjectStages(props.projectId, props.canReadStages && props.canCreateRequisition);
 
@@ -209,8 +209,8 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
             <label>Quantity<input inputMode="decimal" {...requisitionForm.register('quantity')} /></label>
             <label>Unit<input {...requisitionForm.register('unit')} /></label>
             <label>Material
-              <select {...requisitionForm.register('materialId')} disabled={!props.canReadInventory}>
-                <option value="">{props.canReadInventory ? 'Select material' : 'Inventory read permission required'}</option>
+              <select {...requisitionForm.register('materialId')}>
+                <option value="">Select material</option>
                 {materialOptions.map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name} · {material.unit}</option>)}
               </select>
             </label>
@@ -224,7 +224,6 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
             <button type="submit" disabled={createRequisition.isPending}>Create requirement</button>
           </form>
         )}
-        {!props.canReadInventory && props.canCreateRequisition && <p className="muted"><code>inventory.read</code> is required for the Material selector; raw Material IDs are not accepted.</p>}
         {Object.values(requisitionForm.formState.errors)[0]?.message && <p className="error-text">{String(Object.values(requisitionForm.formState.errors)[0]?.message)}</p>}
         {createRequisition.error && <p className="error-text">{mutationMessage(createRequisition.error)}</p>}
         <div className="table-wrap">

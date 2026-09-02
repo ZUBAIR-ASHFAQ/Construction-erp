@@ -42,8 +42,14 @@ const editAssignmentSchema = assignmentBaseSchema
     message: 'End date must be on or after the start date.'
   });
 
+const endAssignmentSchema = z.object({
+  endDate: dateSchema,
+  note: z.string().trim().max(2000, 'End note must be at most 2000 characters.')
+});
+
 type AssignmentFormValues = z.infer<typeof assignmentSchema>;
 type EditAssignmentFormValues = z.infer<typeof editAssignmentSchema>;
+type EndAssignmentFormValues = z.infer<typeof endAssignmentSchema>;
 
 export type ProjectTeamWorkspaceProps = Readonly<{
   canRead: boolean;
@@ -69,6 +75,7 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
   const updateMutation = useUpdateProjectTeamAssignment();
   const endMutation = useEndProjectTeamAssignment();
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
+  const [endingAssignmentId, setEndingAssignmentId] = useState<string | null>(null);
   const createForm = useForm<AssignmentFormValues>({
     resolver: zodResolver(assignmentSchema),
     defaultValues: { employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' }
@@ -77,12 +84,18 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
     resolver: zodResolver(editAssignmentSchema),
     defaultValues: { projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' }
   });
+  const endForm = useForm<EndAssignmentFormValues>({
+    resolver: zodResolver(endAssignmentSchema),
+    defaultValues: { endDate: '', note: '' }
+  });
 
-  /** Change the active Project and clear dependent create/edit state. */
+  /** Change the active Project and clear dependent create/edit/end state. */
   function selectProject(nextProjectId: string): void {
     setProjectId(nextProjectId);
     setEditingAssignmentId(null);
+    setEndingAssignmentId(null);
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
+    endForm.reset({ endDate: '', note: '' });
   }
 
   /** Create one Employee Project/Stage assignment with server-owned lifecycle state. */
@@ -104,6 +117,7 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
 
   /** Open the readable assignment editor without asking the user to type a Stage UUID. */
   function startEdit(assignment: ProjectTeamAssignment): void {
+    setEndingAssignmentId(null);
     setEditingAssignmentId(assignment.id);
     editForm.reset({
       projectRole: assignment.projectRole,
@@ -131,11 +145,25 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
     setEditingAssignmentId(null);
   }
 
-  /** End one assignment with an explicit effective date instead of deleting it. */
-  async function endAssignment(assignmentId: string): Promise<void> {
-    const endDate = window.prompt('End date (YYYY-MM-DD)');
-    if (!endDate || !projectId) return;
-    await endMutation.mutateAsync({ projectId, assignmentId, endDate });
+  /** Open the explicit assignment-end form with the backend-supported optional note. */
+  function startEnd(assignment: ProjectTeamAssignment): void {
+    setEditingAssignmentId(null);
+    setEndingAssignmentId(assignment.id);
+    endForm.reset({ endDate: assignment.toDate ?? '', note: '' });
+  }
+
+  /** End one assignment with its effective date and optional persisted history note. */
+  async function handleEnd(values: EndAssignmentFormValues): Promise<void> {
+    if (!projectId || !endingAssignmentId) return;
+    const note = values.note.trim();
+    await endMutation.mutateAsync({
+      projectId,
+      assignmentId: endingAssignmentId,
+      endDate: values.endDate,
+      ...(note ? { note } : {})
+    });
+    setEndingAssignmentId(null);
+    endForm.reset({ endDate: '', note: '' });
   }
 
   const projects = projectsQuery.data?.items ?? [];
@@ -216,6 +244,22 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
         </section>
       )}
 
+      {endingAssignmentId && (
+        <section className="admin-card">
+          <h2>End Assignment</h2>
+          <form className="admin-form" onSubmit={endForm.handleSubmit((values) => void handleEnd(values))}>
+            <label>End date<input type="date" {...endForm.register('endDate')} /></label>
+            <label>End note (optional)<textarea rows={3} maxLength={2000} {...endForm.register('note')} /></label>
+            {Object.values(endForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
+            {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
+            <div className="button-row">
+              <button type="submit" disabled={endMutation.isPending}>{endMutation.isPending ? 'Ending…' : 'End Assignment'}</button>
+              <button type="button" className="secondary-button" onClick={() => setEndingAssignmentId(null)}>Cancel</button>
+            </div>
+          </form>
+        </section>
+      )}
+
       <section className="admin-card">
         <h2>Project Team</h2>
         {teamQuery.isPending && projectId && <p>Loading assignments…</p>}
@@ -224,16 +268,19 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
         {errorMessage(employeesQuery.error) && <div className="form-error" role="alert">{errorMessage(employeesQuery.error)}</div>}
         {errorMessage(stagesQuery.error) && <div className="form-error" role="alert">{errorMessage(stagesQuery.error)}</div>}
         {teamQuery.data && (
-          <div className="table-scroll">
-            <table>
-              <thead><tr><th>Employee</th><th>Role</th><th>Allocation</th><th>Stage</th><th>Dates</th><th>Status</th><th>History</th><th>Actions</th></tr></thead>
+          <>
+            <p className="muted">Project Team Project ID: <code>{teamQuery.data.projectId}</code></p>
+            <div className="table-scroll">
+              <table>
+              <thead><tr><th>References</th><th>Employee</th><th>Role</th><th>Allocation</th><th>Stage</th><th>Dates</th><th>Status</th><th>History</th><th>Actions</th></tr></thead>
               <tbody>
                 {teamQuery.data.items.map((assignment) => (
                   <tr key={assignment.id}>
+                    <td>Assignment: <code>{assignment.id}</code><br />Project: <code>{assignment.projectId}</code><br />Employee: <code>{assignment.employeeId}</code><br />Stage: <code>{assignment.stageId ?? 'Project level'}</code></td>
                     <td>{assignment.employeeName ?? 'Employee'}<br /><small>{assignment.employeeNo ?? 'Employee record'}</small></td>
                     <td>{assignment.projectRole}</td>
                     <td>{assignment.allocationPercent}%</td>
-                    <td>{assignment.stage ? `${assignment.stage.code} · ${assignment.stage.name}` : 'Project level'}</td>
+                    <td>{assignment.stage ? <>{assignment.stage.code} · {assignment.stage.name}<br /><small>Stage object ID: <code>{assignment.stage.id}</code></small></> : 'Project level'}</td>
                     <td>{assignment.fromDate} → {assignment.toDate ?? 'Open'}</td>
                     <td>{assignment.status}</td>
                     <td>
@@ -246,16 +293,17 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
                       {props.canManage && assignment.status === 'ACTIVE' && (
                         <div className="button-row">
                           <button type="button" className="secondary-button" onClick={() => startEdit(assignment)}>Edit</button>
-                          <button type="button" className="secondary-button" onClick={() => void endAssignment(assignment.id)}>End</button>
+                          <button type="button" className="secondary-button" onClick={() => startEnd(assignment)}>End</button>
                         </div>
                       )}
                     </td>
                   </tr>
                 ))}
-                {teamQuery.data.items.length === 0 && <tr><td colSpan={8} className="muted">No Project Team assignments.</td></tr>}
+                {teamQuery.data.items.length === 0 && <tr><td colSpan={9} className="muted">No Project Team assignments.</td></tr>}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </section>

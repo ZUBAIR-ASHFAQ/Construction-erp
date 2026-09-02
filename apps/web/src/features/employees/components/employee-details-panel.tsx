@@ -12,6 +12,7 @@ import type { EmployeePayType } from '../api/employees-api.js';
 
 const updateEmployeeSchema = z.object({
   employeeNo: z.string().trim().min(1, 'Employee number is required.').max(100),
+  userId: z.union([z.string().trim().uuid('Use a valid User UUID.'), z.literal('')]),
   name: z.string().trim().min(1, 'Name is required.').max(200),
   cnicOrId: z.string().trim().max(100),
   phone: z.string().trim().max(50),
@@ -76,7 +77,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
   const updateForm = useForm<UpdateEmployeeValues>({
     resolver: zodResolver(updateEmployeeSchema),
     defaultValues: {
-      employeeNo: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
+      employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
       jobTitle: '', employeeType: '', joiningDate: ''
     }
   });
@@ -91,6 +92,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
     if (!employee) return;
     updateForm.reset({
       employeeNo: employee.employeeNo,
+      userId: employee.userId ?? '',
       name: employee.name,
       cnicOrId: employee.cnicOrId ?? '',
       phone: employee.phone ?? '',
@@ -108,6 +110,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
   async function handleUpdate(values: UpdateEmployeeValues): Promise<void> {
     await updateMutation.mutateAsync({
       employeeNo: values.employeeNo,
+      userId: values.userId || null,
       name: values.name,
       cnicOrId: values.cnicOrId || null,
       phone: values.phone || null,
@@ -145,6 +148,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
       {employee && (
         <>
           <div className="module14b-summary-grid">
+            <div><dt>Employee ID</dt><dd>{employee.id}</dd></div>
             <div><dt>Employee</dt><dd>{employee.employeeNo} · {employee.name}</dd></div>
             <div><dt>Status</dt><dd>{employee.status}</dd></div>
             <div><dt>Type</dt><dd>{employee.employeeType}</dd></div>
@@ -162,6 +166,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
               <h3>Edit Employee</h3>
               <div className="module14b-form-grid">
                 <label>Employee no.<input {...updateForm.register('employeeNo')} /></label>
+                <label>Login user ID (optional)<input {...updateForm.register('userId')} placeholder="User UUID" /></label>
                 <label>Name<input {...updateForm.register('name')} /></label>
                 <label>CNIC / ID<input {...updateForm.register('cnicOrId')} /></label>
                 <label>Phone<input {...updateForm.register('phone')} /></label>
@@ -191,17 +196,21 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
             {props.canManageCompensation && detailQuery.data?.compensationHistory && (
               <div className="table-wrap">
                 <table className="admin-table">
-                  <thead><tr><th>Effective range</th><th>Pay type</th><th>Authorized value</th></tr></thead>
+                  <thead><tr><th>Compensation ID</th><th>Employee ID</th><th>Effective from</th><th>Effective to</th><th>Pay type</th><th>Base salary / wage</th><th>Hourly rate</th></tr></thead>
                   <tbody>
                     {detailQuery.data.compensationHistory.map((compensation) => (
                       <tr key={compensation.id}>
-                        <td>{compensation.effectiveFrom} → {compensation.effectiveTo ?? 'Current'}</td>
+                        <td>{compensation.id}</td>
+                        <td>{compensation.employeeId}</td>
+                        <td>{compensation.effectiveFrom}</td>
+                        <td>{compensation.effectiveTo ?? 'Current'}</td>
                         <td>{compensation.payType}</td>
-                        <td>{compensation.payType === 'HOURLY' ? compensation.hourlyRate : compensation.baseSalaryOrWage}</td>
+                        <td>{compensation.baseSalaryOrWage ?? '—'}</td>
+                        <td>{compensation.hourlyRate ?? '—'}</td>
                       </tr>
                     ))}
                     {detailQuery.data.compensationHistory.length === 0 && (
-                      <tr><td colSpan={3} className="muted">No compensation history yet.</td></tr>
+                      <tr><td colSpan={7} className="muted">No compensation history yet.</td></tr>
                     )}
                   </tbody>
                 </table>

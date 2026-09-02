@@ -25,7 +25,7 @@ const equipmentSchema = z.object({
   equipmentType: z.string().trim().min(1, 'Equipment type is required.').max(120),
   ownershipType: z.string().trim().min(1, 'Ownership type is required.').max(64),
   defaultRate: z.union([z.literal(''), decimalSchema]),
-  rateUnit: z.string().trim().max(64)
+  rateUnit: z.string().trim().max(32)
 }).refine((value) => (value.defaultRate === '') === (value.rateUnit === ''), {
   path: ['rateUnit'],
   message: 'Default rate and rate unit must be provided together.'
@@ -79,6 +79,7 @@ function EquipmentIdentity({ equipment }: Readonly<{ equipment: Equipment }>) {
     <span>
       <strong>{equipment.code}</strong><br />
       {equipment.name}<br />
+      <small className="muted">ID: {equipment.id}</small><br />
       <small className="muted">{equipment.equipmentType} · {equipment.ownershipType} · {equipment.status}</small>
     </span>
   );
@@ -123,7 +124,7 @@ function EquipmentRegister(props: Readonly<{
           </div>
           <div className="pagination-row">
             <button type="button" className="secondary-button" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))}>Previous</button>
-            <span>Page {page} of {pageCount}</span>
+            <span>Page {query.data.page} of {pageCount} · Total {query.data.total} · Page size {query.data.pageSize}</span>
             <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button>
           </div>
         </>
@@ -319,22 +320,22 @@ function EquipmentHistoryPanel(props: Readonly<{ equipmentId: string; canAssign:
       <EquipmentIdentity equipment={props.data.equipment} />
 
       <h3>Assignments</h3>
-      <div className="table-scroll"><table><thead><tr><th>Project / Stage</th><th>Dates</th><th>Status</th><th>Action</th></tr></thead><tbody>
-        {props.data.assignments.map((row) => <tr key={row.id}><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.fromDate} → {row.toDate ?? 'Open'}</td><td>{row.status}</td><td>{props.canAssign && row.status === 'ACTIVE' ? <button type="button" className="secondary-button" disabled={endMutation.isPending} onClick={() => void endAssignment(row.id)}>End</button> : '—'}</td></tr>)}
-        {props.data.assignments.length === 0 && <tr><td colSpan={4} className="muted">No assignments.</td></tr>}
+      <div className="table-scroll"><table><thead><tr><th>Assignment ID</th><th>Equipment ID</th><th>Project / Stage</th><th>Dates</th><th>Status</th><th>Action</th></tr></thead><tbody>
+        {props.data.assignments.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.equipmentId}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.fromDate} → {row.toDate ?? 'Open'}</td><td>{row.status}</td><td>{props.canAssign && row.status === 'ACTIVE' ? <button type="button" className="secondary-button" disabled={endMutation.isPending} onClick={() => void endAssignment(row.id)}>End</button> : '—'}</td></tr>)}
+        {props.data.assignments.length === 0 && <tr><td colSpan={6} className="muted">No assignments.</td></tr>}
       </tbody></table></div>
       {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
 
       <h3>Usage & actual cost</h3>
-      <div className="table-scroll"><table><thead><tr><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th><th>Entered by</th><th>Cost actual</th><th>Status</th></tr></thead><tbody>
-        {props.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.quantity}</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.enteredBy}</td><td>{row.costActualId ?? '—'}</td><td>{row.status}</td></tr>)}
-        {props.data.usage.length === 0 && <tr><td colSpan={8} className="muted">No usage posted.</td></tr>}
+      <div className="table-scroll"><table><thead><tr><th>Usage ID</th><th>Assignment ID</th><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th><th>Entered by</th><th>Cost actual</th><th>Status</th></tr></thead><tbody>
+        {props.data.usage.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.assignmentId}</td><td>{row.usageDate}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.quantity}</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.enteredBy}</td><td>{row.costActualId ?? '—'}</td><td>{row.status}</td></tr>)}
+        {props.data.usage.length === 0 && <tr><td colSpan={10} className="muted">No usage posted.</td></tr>}
       </tbody></table></div>
 
       <h3>Maintenance</h3>
-      <div className="table-scroll"><table><thead><tr><th>Date</th><th>Type</th><th>Cost</th><th>Note</th></tr></thead><tbody>
-        {props.data.maintenance.map((row) => <tr key={row.id}><td>{row.maintenanceDate}</td><td>{row.type}</td><td>{row.cost}</td><td>{row.note ?? '—'}</td></tr>)}
-        {props.data.maintenance.length === 0 && <tr><td colSpan={4} className="muted">No maintenance history.</td></tr>}
+      <div className="table-scroll"><table><thead><tr><th>Maintenance ID</th><th>Equipment ID</th><th>Date</th><th>Type</th><th>Cost</th><th>Note</th><th>Status</th></tr></thead><tbody>
+        {props.data.maintenance.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.equipmentId}</td><td>{row.maintenanceDate}</td><td>{row.type}</td><td>{row.cost}</td><td>{row.note ?? '—'}</td><td>{row.status}</td></tr>)}
+        {props.data.maintenance.length === 0 && <tr><td colSpan={7} className="muted">No maintenance history.</td></tr>}
       </tbody></table></div>
 
       <h3>Project / Stage Equipment cost summary</h3>

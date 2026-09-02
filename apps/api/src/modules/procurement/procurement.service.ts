@@ -530,7 +530,12 @@ export class ProcurementService {
           batchNo: item.batchNo ?? null
         }))
       }, idempotencyKey);
-      return goodsReceiptResponse(received);
+      if (!received || Array.isArray(received) || typeof received !== 'object' || typeof received.id !== 'string') {
+        throw new Error('Inventory Goods Receipt replay result is invalid.');
+      }
+      const persistedReceipt = await new ProcurementRepository(this.db).findGoodsReceiptById(received.id, visibility);
+      if (!persistedReceipt) throw createProcurementError('GOODS_RECEIPT_NOT_FOUND');
+      return goodsReceiptResponse(persistedReceipt);
     } catch (error) {
       if (error instanceof AppError && error.code === 'RECEIPT_EXCEEDS_PO') throw createProcurementError('OVER_RECEIPT_NOT_ALLOWED');
       throw error;

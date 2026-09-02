@@ -9,6 +9,7 @@ import type { EmployeeStatus } from '../api/employees-api.js';
 
 const createEmployeeSchema = z.object({
   employeeNo: z.string().trim().min(1, 'Employee number is required.').max(100),
+  userId: z.union([z.string().trim().uuid('Use a valid User UUID.'), z.literal('')]),
   name: z.string().trim().min(1, 'Name is required.').max(200),
   cnicOrId: z.string().trim().max(100),
   phone: z.string().trim().max(50),
@@ -51,7 +52,7 @@ export function EmployeesPage() {
   const createForm = useForm<CreateEmployeeValues>({
     resolver: zodResolver(createEmployeeSchema),
     defaultValues: {
-      employeeNo: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
+      employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
       jobTitle: '', employeeType: '', joiningDate: ''
     }
   });
@@ -79,6 +80,7 @@ export function EmployeesPage() {
   async function handleCreate(values: CreateEmployeeValues): Promise<void> {
     const employee = await createMutation.mutateAsync({
       employeeNo: values.employeeNo,
+      userId: values.userId || null,
       name: values.name,
       cnicOrId: values.cnicOrId || null,
       phone: values.phone || null,
@@ -149,6 +151,7 @@ export function EmployeesPage() {
           <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="module14b-form-grid">
               <label>Employee no.<input {...createForm.register('employeeNo')} /></label>
+              <label>Login user ID (optional)<input {...createForm.register('userId')} placeholder="User UUID" /></label>
               <label>Name<input {...createForm.register('name')} /></label>
               <label>CNIC / ID<input {...createForm.register('cnicOrId')} /></label>
               <label>Phone<input {...createForm.register('phone')} /></label>

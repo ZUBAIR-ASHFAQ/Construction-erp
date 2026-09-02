@@ -34,8 +34,10 @@ export type EquipmentUsage = Readonly<{
   amount: string;
   enteredBy: string;
   status: string;
-  costActualId?: string;
+  costActualId: string;
 }>;
+
+export type EquipmentHistoryUsage = Readonly<Omit<EquipmentUsage, 'costActualId'> & { costActualId: string | null }>;
 
 export type EquipmentMaintenance = Readonly<{
   id: string;
@@ -52,7 +54,7 @@ export type EquipmentCostSummary = Readonly<{ projectId: string; stageId: string
 export type EquipmentHistory = Readonly<{
   equipment: Equipment;
   assignments: EquipmentAssignment[];
-  usage: EquipmentUsage[];
+  usage: EquipmentHistoryUsage[];
   maintenance: EquipmentMaintenance[];
   costSummary: EquipmentCostSummary[];
 }>;

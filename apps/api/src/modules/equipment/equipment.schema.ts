@@ -206,7 +206,7 @@ export const equipmentCostSummaryResponseSchema = z.object({
 export const equipmentHistoryResponseSchema = z.object({
   equipment: equipmentResponseSchema,
   assignments: z.array(equipmentAssignmentResponseSchema),
-  usage: z.array(equipmentUsageResponseSchema.omit({ costActualId: true })),
+  usage: z.array(equipmentUsageResponseSchema.omit({ costActualId: true }).extend({ costActualId: uuid.nullable() })),
   maintenance: z.array(equipmentMaintenanceResponseSchema),
   costSummary: z.array(equipmentCostSummaryResponseSchema)
 }).strict();

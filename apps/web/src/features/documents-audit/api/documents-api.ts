@@ -37,6 +37,29 @@ export type DocumentLink = Readonly<{
   createdAt: string;
 }>;
 
+export type DocumentLinkResourceType =
+  | 'project'
+  | 'employee'
+  | 'project_stage'
+  | 'client_invoice'
+  | 'client_receipt'
+  | 'supplier_invoice'
+  | 'site_expense';
+
+export type CreateDocumentLinkInput = Readonly<{
+  versionId?: string | null;
+  resourceType: DocumentLinkResourceType;
+  resourceId: string;
+}>;
+
+export type DocumentLinkResult = DocumentLink & Readonly<{ documentId: string }>;
+
+export type DeleteDocumentLinkResult = Readonly<{
+  id: string;
+  documentId: string;
+  unlinked: true;
+}>;
+
 export type DocumentDetails = Readonly<{
   id: string;
   projectId: string | null;
@@ -154,6 +177,21 @@ export function listDocuments(input: ListDocumentsInput = {}): Promise<DocumentP
 /** Load document metadata, version history and linked records. */
 export function getDocument(documentId: string): Promise<DocumentDetails> {
   return authenticatedRequest<DocumentDetails>(`documents/${documentId}`);
+}
+
+/** Link one document version to an approved ERP resource. */
+export function createDocumentLink(documentId: string, input: CreateDocumentLinkInput): Promise<DocumentLinkResult> {
+  return authenticatedRequest<DocumentLinkResult>(`documents/${documentId}/links`, {
+    method: 'POST',
+    body: JSON.stringify(input)
+  });
+}
+
+/** Remove one existing document/resource link without deleting the document. */
+export function deleteDocumentLink(documentId: string, linkId: string): Promise<DeleteDocumentLinkResult> {
+  return authenticatedRequest<DeleteDocumentLinkResult>(`documents/${documentId}/links/${linkId}`, {
+    method: 'DELETE'
+  });
 }
 
 /** Ask the ERP API for a short-lived direct-upload URL for a new document. */

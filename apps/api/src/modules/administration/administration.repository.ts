@@ -19,6 +19,9 @@ import type { AuthActionPurpose } from '../../plugins/authentication.js';
 
 type RepositoryClient = DatabaseClient | TransactionClient;
 
+// TEMPORARY: keep authentication/company isolation, but bypass role permissions and Project scope authorization.
+const TEMPORARY_AUTHORIZATION_BYPASS = true;
+
 export type RepositoryPageWindow = Readonly<{
   skip: number;
   take: number;
@@ -760,6 +763,9 @@ export class AdministrationRepository {
     });
     if (!user) return { kind: 'restricted' as const, projectIds: [] as string[] };
 
+    // TEMPORARY: set TEMPORARY_AUTHORIZATION_BYPASS to false to restore role/project-scope enforcement.
+    if (TEMPORARY_AUTHORIZATION_BYPASS) return { kind: 'all' as const };
+
     const allProjectAssignment = await this.db.userRole.findFirst({
       where: {
         companyId: user.companyId,
@@ -853,6 +859,9 @@ export class AdministrationRepository {
     companyId: string,
     input: EffectivePermissionLookupInput
   ) {
+    // TEMPORARY: grant the full server permission catalog while RBAC is bypassed.
+    if (TEMPORARY_AUTHORIZATION_BYPASS) return this.listPermissionCodes();
+
     if (input.assignmentStatuses.length === 0 || input.roleStatuses.length === 0) return [];
 
     const assignments = await this.db.userRole.findMany({

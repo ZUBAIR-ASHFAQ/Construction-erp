@@ -72,12 +72,16 @@ test('B17.5 also protects each claimed Stage against its own Cost + Percentage s
   assert.match(region, /prior \+ claimed > limit/);
 });
 
-test('B17.5 applies Cost + Percentage validation only at server-side finalization and preserves Fixed Price manual claim lines', () => {
+test('B17.5 enforces the agreed Fixed Price ceiling and keeps Cost + Percentage source-basis validation separate', () => {
+  const fixed = methodRegion(service, 'requireFixedPriceBasis', 'getProjectSummary');
   const finalize = methodRegion(service, 'finalizeClaimOnce', 'createInvoice');
-  assert.match(finalize, /billingMethod === 'COST_PLUS_PERCENTAGE'/);
+  assert.match(fixed, /moneyToMinorUnits\(project\.projectValue\)/);
+  assert.match(fixed, /sumFinalizedClaimGross\(project\.id, visibility\)/);
+  assert.match(fixed, /priorGross \+ gross > projectLimit/);
+  assert.match(finalize, /billingMethod === 'FIXED_PRICE'/);
+  assert.match(finalize, /requireFixedPriceBasis\(repository, project, current\.lines, visibility\)/);
   assert.match(finalize, /requireCostPlusBasis\(repository, project, current\.periodEnd, current\.lines, visibility\)/);
-  assert.match(finalize, /current\.lines\.reduce/);
-  assert.doesNotMatch(finalize, /stageProgress|physicalProgress|progressPercent/);
+  assert.doesNotMatch(fixed + finalize, /stageProgress|physicalProgress|progressPercent/);
 });
 
 test('B17.5 retains source-supported retention and does not invent deductions or advance-recovery formulas', () => {

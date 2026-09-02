@@ -185,9 +185,15 @@ export class InventoryService {
     await this.requireCompanyPermission(repository, permission, asOf);
   }
 
-  /** List Material master rows after persisted authorization. */
+  /** List Material master rows for Inventory readers or Material managers. */
   async listMaterials(query: ListMaterialsQuery) {
-    await this.resolveVisibility(new AdministrationRepository(this.db), 'inventory.read', new Date());
+    const users = new AdministrationRepository(this.db);
+    const now = new Date();
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    if (!(await this.hasCompanyPermission(users, 'materials.manage', now))) {
+      await this.resolveVisibility(users, 'inventory.read', now);
+    }
     const page = pageWindow(query);
     const result = await new InventoryRepository(this.db).listMaterials(page);
     return { items: result.items.map(materialResponse), total: result.total, page: page.page, pageSize: page.pageSize };

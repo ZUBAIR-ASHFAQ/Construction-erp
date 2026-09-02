@@ -136,7 +136,7 @@ function assignmentResponse(row: Readonly<{
 }
 
 /** Convert one Equipment usage row and assignment destination to the API response. */
-function usageResponse(row: Readonly<{
+function usageResponse<TCostActualId extends string | null>(row: Readonly<{
   id: string;
   assignmentId: string;
   usageDate: Date;
@@ -145,7 +145,7 @@ function usageResponse(row: Readonly<{
   amount: DecimalLike;
   enteredBy: string;
   status: string;
-}>, assignment: Readonly<{ projectId: string; stageId: string | null }>, costActualId?: string) {
+}>, assignment: Readonly<{ projectId: string; stageId: string | null }>, costActualId: TCostActualId) {
   return {
     id: row.id,
     assignmentId: row.assignmentId,
@@ -157,7 +157,7 @@ function usageResponse(row: Readonly<{
     amount: moneyString(row.amount),
     enteredBy: row.enteredBy,
     status: row.status,
-    ...(costActualId ? { costActualId } : {})
+    costActualId
   };
 }
 
@@ -421,7 +421,8 @@ export class EquipmentService {
     const result = await repository.getHistory(equipmentId, this.historyVisibility(), query.pageSize ?? 50);
     if (!result) throw createModule12Error('EQUIPMENT_NOT_FOUND');
     const assignments = result.assignments.map(assignmentResponse);
-    const usage = result.usage.map((row: any) => usageResponse(row, row.assignment));
+    const costActualByUsageId = new Map(result.costActuals.map((row) => [row.sourceId, row.id]));
+    const usage = result.usage.map((row: any) => usageResponse(row, row.assignment, costActualByUsageId.get(row.id) ?? null));
     const maintenance = result.maintenance.map(maintenanceResponse);
     const totals = new Map<string, { projectId: string; stageId: string | null; minorUnits: bigint }>();
     for (const row of usage) {

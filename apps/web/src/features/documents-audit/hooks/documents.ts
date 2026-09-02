@@ -1,5 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createDocumentLink,
+  deleteDocumentLink,
   getDocument,
   getDocumentDownload,
   listAuditLogs,
@@ -7,6 +9,7 @@ import {
   uploadDocument,
   uploadDocumentVersion,
   type ListAuditLogsInput,
+  type CreateDocumentLinkInput,
   type ListDocumentsInput,
   type UploadDocumentInput,
   type UploadDocumentVersionInput
@@ -30,6 +33,30 @@ export function useDocument(documentId: string | null) {
     queryKey: [...DOCUMENTS_QUERY_KEY, documentId],
     queryFn: () => getDocument(documentId as string),
     enabled: documentId !== null
+  });
+}
+
+/** Create one authorized document/resource link and refresh document views. */
+export function useCreateDocumentLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ documentId: string; link: CreateDocumentLinkInput }>) =>
+      createDocumentLink(input.documentId, input.link),
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+    }
+  });
+}
+
+/** Remove one authorized document/resource link and refresh document views. */
+export function useDeleteDocumentLink() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ documentId: string; linkId: string }>) =>
+      deleteDocumentLink(input.documentId, input.linkId),
+    async onSuccess() {
+      await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY_KEY });
+    }
   });
 }
 

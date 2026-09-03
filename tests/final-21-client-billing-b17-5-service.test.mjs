@@ -72,6 +72,16 @@ test('B17.5 also protects each claimed Stage against its own Cost + Percentage s
   assert.match(region, /prior \+ claimed > limit/);
 });
 
+test('B17.5 applies the required Stage billable formula independently for multiple Stage rates', () => {
+  const billable = (eligibleCost, percent) => eligibleCost + Math.round((eligibleCost * percent) / 100);
+  assert.equal(billable(10_000_000, 10), 11_000_000);
+  assert.equal(billable(5_000_000, 15), 5_750_000);
+
+  const region = methodRegion(service, 'requireCostPlusBasis', 'getSettings');
+  assert.match(region, /const limit = cost \+ percentageOf\(cost, percent\)/);
+  assert.match(region, /stagePercentById = new Map\(stages\.map\(\(stage\) => \[stage\.id, stage\.costPlusPercent \?\? project\.costPlusPercent\]\)\)/);
+});
+
 test('B17.5 enforces the agreed Fixed Price ceiling and keeps Cost + Percentage source-basis validation separate', () => {
   const fixed = methodRegion(service, 'requireFixedPriceBasis', 'getProjectSummary');
   const finalize = methodRegion(service, 'finalizeClaimOnce', 'createInvoice');

@@ -46,6 +46,17 @@ test('B7 adds Project Stage, progress and frozen baseline persistence with Compa
   assert.match(migration, /FOREIGN KEY \("project_id", "company_id"\) REFERENCES "projects"\("id", "company_id"\)/);
 });
 
+/** Confirm Stage markup is nullable, constrained and independent from Stage weight/progress/cost values. */
+test('B7 stores an optional Stage Cost + Percentage override with Project fallback semantics', () => {
+  const prisma = read('packages/database/prisma/schema.prisma');
+  const migration = read('packages/database/prisma/migrations/20260901000100_stage_cost_plus_percentage/migration.sql');
+  const stageModel = prisma.match(/model ProjectStage \{[\s\S]*?@@map\("project_stages"\)\n\}/)?.[0] ?? '';
+  assert.match(stageModel, /costPlusPercent\s+Decimal\?\s+@map\("cost_plus_percent"\)\s+@db\.Decimal\(7, 4\)/);
+  assert.match(migration, /ADD COLUMN "cost_plus_percent" DECIMAL\(7,4\)/);
+  assert.match(migration, /"cost_plus_percent" IS NULL OR \("cost_plus_percent" > 0 AND "cost_plus_percent" <= 100\)/);
+  assert.doesNotMatch(stageModel, /physicalProgressPercent|costPercent|billingProgressPercent/);
+});
+
 /** Confirm the public Module 7 command/read surface exactly matches the Final-21 contract. */
 test('B7 exposes the exact final Project Stages route surface with no generic delete endpoint', () => {
   const schema = read(`${backend}/project-stages.schema.ts`);

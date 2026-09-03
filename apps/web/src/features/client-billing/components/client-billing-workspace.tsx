@@ -4,6 +4,7 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
+import { useClients } from '../../clients/hooks/clients.js';
 import type { Project } from '../../projects/api/projects-api.js';
 import type { BillingClaim, BillingMethod } from '../api/client-billing-api.js';
 import {
@@ -98,7 +99,9 @@ function billingBasisText(project: Project): string {
 /** Render the focused Final-21 Client Billing settings, claims and invoices workspace. */
 export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canRead);
+  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canRead);
   const projects = projectsQuery.data?.items ?? [];
+  const clientNames = useMemo(() => new Map((clientsQuery.data?.items ?? []).map((client) => [client.id, client.displayName])), [clientsQuery.data?.items]);
   const [projectId, setProjectId] = useState('');
   const [editingClaim, setEditingClaim] = useState<BillingClaim | null>(null);
   const [invoiceClaim, setInvoiceClaim] = useState<BillingClaim | null>(null);
@@ -208,7 +211,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
         <section className="admin-card">
           <h2>Billing settings</h2>
           <p className="muted">The commercial model is owned by Project Management. Client Billing controls retention, cycle, advance-recovery flag and billing status only.</p>
-          <p className="muted">Project ID {settingsQuery.data.projectId}</p>
+          <p className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {selectedProject ? clientNames.get(selectedProject.clientId) ?? 'Project client' : 'Project client'}</p>
           {props.canManageSettings ? (
             <form className="admin-form" onSubmit={settingsForm.handleSubmit(submitSettings)}>
               <label>Billing method
@@ -274,7 +277,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
               <div className="module-row">
                 <div>
                   <strong>{claim.claimNo}</strong>
-                  <div className="muted">Claim ID {claim.id} · Project ID {claim.projectId} · Client ID {claim.clientId}</div>
+                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(claim.clientId) ?? 'Project client'}</div>
                   <div className="muted">{claim.periodEnd} · {claim.status} · Gross {displayMoney(claim.grossValue)} · Deductions {displayMoney(claim.deductions)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div>
                 </div>
                 <div className="admin-actions">
@@ -284,17 +287,17 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
                 </div>
               </div>
               <table>
-                <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Billing progress</th><th>Amount</th></tr></thead>
-                <tbody>{claim.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{line.billingProgressPercent ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                <thead><tr><th>Description</th><th>Stage</th><th>Billing progress</th><th>Amount</th></tr></thead>
+                <tbody>{claim.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.billingProgressPercent ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
               </table>
               {claim.invoice ? (
                 <div className="admin-card">
                   <strong>Linked invoice {claim.invoice.invoiceNo}</strong>
-                  <div className="muted">Invoice ID {claim.invoice.id} · Project ID {claim.invoice.projectId} · Client ID {claim.invoice.clientId} · Claim ID {claim.invoice.claimId ?? '—'}</div>
+                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(claim.invoice.clientId) ?? 'Project client'} · Claim {claim.claimNo}</div>
                   <div className="muted">{claim.invoice.invoiceDate} · Due {claim.invoice.dueDate ?? '—'} · {claim.invoice.status} · Subtotal {displayMoney(claim.invoice.subtotal)} · Tax {displayMoney(claim.invoice.taxAmount)} · Billed {displayMoney(claim.invoice.totalAmount)}</div>
                   <table>
-                    <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Amount</th></tr></thead>
-                    <tbody>{claim.invoice.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                    <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
+                    <tbody>{claim.invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
                   </table>
                 </div>
               ) : <p className="muted">Linked invoice —</p>}
@@ -329,13 +332,13 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
               <div className="module-row">
                 <div>
                   <strong>{invoice.invoiceNo}</strong>
-                  <div className="muted">Invoice ID {invoice.id} · Project ID {invoice.projectId} · Client ID {invoice.clientId} · Claim ID {invoice.claimId ?? '—'}</div>
+                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(invoice.clientId) ?? 'Project client'} · Claim {(claimsQuery.data?.items ?? []).find((claim) => claim.id === invoice.claimId)?.claimNo ?? 'Direct billing'}</div>
                   <div>{invoice.invoiceDate} · Due {invoice.dueDate ?? '—'} · {invoice.status} · Subtotal {displayMoney(invoice.subtotal)} · Tax {displayMoney(invoice.taxAmount)} · Billed {displayMoney(invoice.totalAmount)}</div>
                 </div>
               </div>
               <table>
-                <thead><tr><th>Line ID</th><th>Description</th><th>Stage</th><th>Stage ID</th><th>Amount</th></tr></thead>
-                <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.id}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.stageId ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
+                <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
+                <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
               </table>
             </div>
           ))}

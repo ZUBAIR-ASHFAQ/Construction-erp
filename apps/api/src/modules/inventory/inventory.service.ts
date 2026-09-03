@@ -223,13 +223,13 @@ export class InventoryService {
     const now = new Date();
     const visibility = await this.resolveVisibility(new AdministrationRepository(this.db), 'inventory.read', now);
     const page = pageWindow(query);
-    const result = await new InventoryRepository(this.db).listStock({ ...page, visibility, warehouseId: query.warehouseId, materialId: query.materialId });
+    const result = await new InventoryRepository(this.db).listStock({ ...page, visibility, projectId: query.projectId, warehouseId: query.warehouseId, materialId: query.materialId });
     return {
       items: result.items.map((row: any) => ({
         warehouseId: row.warehouse.id,
         warehouseCode: row.warehouse.code,
         warehouseName: row.warehouse.name,
-        projectId: row.warehouse.projectId ?? null,
+        projectId: row.projectId ?? null,
         materialId: row.material.id,
         materialCode: row.material.code,
         materialName: row.material.name,
@@ -284,7 +284,7 @@ export class InventoryService {
     for (const line of input.items) {
       const material = await repository.findMaterialById(line.materialId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
-      const position = await repository.getStockPosition(warehouse.id, material.id);
+      const position = await repository.getStockPosition(warehouse.id, material.id, input.projectId);
       const quantity = decimalToScale4(line.quantity);
       const available = decimalToScale4(position?.quantityOnHand ?? '0');
       if (quantity > available) throw createModule11Error('INSUFFICIENT_STOCK');
@@ -391,9 +391,16 @@ export class InventoryService {
       ]);
       if (!warehouse) throw createModule11Error('WAREHOUSE_NOT_FOUND');
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
+      if (input.projectId) {
+        await this.requireProjectPermission(users, input.projectId, 'inventory.adjust', now);
+        const project = await repository.findProjectById(input.projectId);
+        if (!project || token(project.status) !== ACTIVE) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+        if (warehouse.projectId && warehouse.projectId !== input.projectId) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+      }
       await this.requireWarehousePermission(users, warehouse, 'inventory.adjust', now);
       await repository.lockStockKey(warehouse.id, material.id);
-      const position = await repository.getStockPosition(warehouse.id, material.id);
+      const stockProjectId = input.projectId ?? warehouse.projectId;
+      const position = await repository.getStockPosition(warehouse.id, material.id, stockProjectId);
       const delta = decimalToScale4(input.quantityDelta);
       const available = decimalToScale4(position?.quantityOnHand ?? '0');
       if (delta < 0n && -delta > available) throw createModule11Error('INSUFFICIENT_STOCK');
@@ -401,7 +408,7 @@ export class InventoryService {
       const movement = await repository.createLedgerEntry({
         materialId: material.id,
         warehouseId: warehouse.id,
-        projectId: warehouse.projectId,
+        projectId: stockProjectId,
         movementType: 'ADJUSTMENT',
         quantity: scale4ToDecimal(delta),
         unitCost: scale4ToDecimal(unitCost),
@@ -447,13 +454,16 @@ export class InventoryService {
       if (!line || line.itemId !== requested.itemId) throw new ValidationError({ message: 'Goods Receipt line does not match the Purchase Order material.' });
       const material = await repository.findMaterialById(requested.itemId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
-      if (token(material.unit) !== token(line.unit)) throw new ValidationError({ message: 'Purchase Order unit must match the Material base unit.' });
       const quantity = decimalToScale4(requested.quantity);
       const accepted = decimalToScale4(requested.acceptedQty);
       const rejected = decimalToScale4(requested.rejectedQty);
       if (accepted + rejected !== quantity) throw new ValidationError({ message: 'Accepted plus rejected quantity must equal received quantity.' });
       const locked = await repository.lockPurchaseOrderItem(line.id);
       if (!locked) throw new NotFoundError();
+      if (token(material.unit) !== token(line.unit)) {
+        const repaired = await repository.repairUnreceivedPurchaseOrderItemUnit(line.id, material.unit);
+        if (!repaired) throw new ValidationError({ message: 'Purchase Order unit must match the Material base unit.' });
+      }
       if (decimalToScale4(locked.receivedQty) + quantity > decimalToScale4(locked.quantity)) throw createModule11Error('RECEIPT_EXCEEDS_PO');
       prepared.push({
         poItemId: line.id,
@@ -473,6 +483,7 @@ export class InventoryService {
       });
     }
 
+    await repository.ensureGoodsReceiptNumberSequence();
     const number = await allocateCompanyNumber(tx, { sequenceKey: GOODS_RECEIPT_SEQUENCE });
     const receipt = await repository.createGoodsReceipt({
       projectId: purchaseOrder.projectId,

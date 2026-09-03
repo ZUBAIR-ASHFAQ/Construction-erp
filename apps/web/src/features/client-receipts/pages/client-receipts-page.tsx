@@ -2,7 +2,7 @@ import { useAuth, usePermission } from '../../administration/hooks/auth.js';
 import { ClientReceiptsWorkspace } from '../components/client-receipts-workspace.js';
 
 /** Bind Final Module 16 Client Receipt permissions to the React workspace. */
-export function ClientReceiptsPage() {
+export function ClientReceiptsPage({ view = 'ledger' }: Readonly<{ view?: 'payment' | 'ledger' }> = {}) {
   const auth = useAuth();
   const hasRestrictedProjects = auth.identity?.projectScope.kind === 'restricted' && auth.identity.projectScope.projectIds.length > 0;
   const canRead = usePermission('client_receipts.read') || Boolean(hasRestrictedProjects);
@@ -11,10 +11,11 @@ export function ClientReceiptsPage() {
     <section className="admin-stack" aria-labelledby="client-receipts-title">
       <div className="section-heading">
         <p className="eyebrow">Module 16 · Finance &amp; Collections</p>
-        <h1 id="client-receipts-title">Client Receipts / Payments</h1>
+        <h1 id="client-receipts-title">Client {view === 'payment' ? 'New Payment' : 'Ledger'}</h1>
         <p className="muted">Record posted Client cash, preserve advance/unallocated history, allocate receipts to issued Client Invoices and reverse through controlled compensating entries.</p>
       </div>
       <ClientReceiptsWorkspace
+        view={view}
         canRead={canRead}
         canCreate={usePermission('client_receipts.create')}
         canAllocate={usePermission('client_receipts.allocate')}

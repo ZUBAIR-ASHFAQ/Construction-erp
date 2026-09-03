@@ -21,13 +21,13 @@ export function useMaterials(enabled = true) {
 }
 
 /** Load current derived stock and Warehouse options. */
-export function useInventoryStock(enabled = true) {
-  return useQuery({ queryKey: [...KEY, 'stock'], queryFn: () => listStock({ page: 1, pageSize: 100 }), enabled });
+export function useInventoryStock(projectId?: string, enabled = true) {
+  return useQuery({ queryKey: [...KEY, 'stock', projectId ?? ''], queryFn: () => listStock({ page: 1, pageSize: 100, ...(projectId ? { projectId } : {}) }), enabled });
 }
 
 /** Load the newest stock-ledger movements. */
-export function useInventoryLedger(enabled = true) {
-  return useQuery({ queryKey: [...KEY, 'ledger'], queryFn: () => listLedger({ page: 1, pageSize: 100 }), enabled });
+export function useInventoryLedger(projectId?: string, enabled = true) {
+  return useQuery({ queryKey: [...KEY, 'ledger', projectId ?? ''], queryFn: () => listLedger({ page: 1, pageSize: 100, ...(projectId ? { projectId } : {}) }), enabled });
 }
 
 /** Create a Material then refresh Material and stock reads. */

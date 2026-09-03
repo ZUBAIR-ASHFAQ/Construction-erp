@@ -116,6 +116,13 @@ function purchaseOrderResponse(row: PurchaseOrderRecord) {
     deliveryAddress: row.deliveryAddress,
     terms: row.terms,
     cancelReason: row.cancelReason ?? null,
+    goodsReceipts: row.goodsReceipts.map((receipt) => ({
+      id: receipt.id,
+      receiptNo: receipt.receiptNo,
+      warehouseId: receipt.warehouseId,
+      receivedAt: receipt.receivedAt instanceof Date ? receipt.receivedAt.toISOString() : receipt.receivedAt,
+      status: receipt.status
+    })),
     items: row.items.map((item: PurchaseOrderItemRecord) => ({
       id: item.id,
       purchaseOrderId: item.purchaseOrderId,
@@ -273,18 +280,26 @@ export class ProcurementService {
     this.requireWritableProject(project);
 
     const materialIds = [...new Set(input.items.map((item) => item.materialId))];
-    const activeMaterialIds = new Set(await repository.findActiveMaterialIds(materialIds));
-    if (materialIds.some((materialId) => !activeMaterialIds.has(materialId))) {
+    const activeMaterials = await repository.findActiveMaterials(materialIds);
+    const materialById = new Map(activeMaterials.map((material) => [material.id, material] as const));
+    if (materialIds.some((materialId) => !materialById.has(materialId))) {
       throw new ValidationError({ message: 'Every material requirement line must reference an active Company material.' });
     }
 
-    const effectiveItems = input.items.map((item) => ({
-      materialId: item.materialId,
-      description: item.description,
-      quantity: item.quantity,
-      unit: item.unit,
-      stageId: item.stageId ?? input.stageId ?? null
-    }));
+    const effectiveItems = input.items.map((item) => {
+      const material = materialById.get(item.materialId);
+      if (!material) throw new ValidationError({ message: 'Every material requirement line must reference an active Company material.' });
+      if (item.unit.trim().toUpperCase() !== material.unit.trim().toUpperCase()) {
+        throw new ValidationError({ message: `Material requirement unit must match the selected Material base unit (${material.unit}).` });
+      }
+      return {
+        materialId: item.materialId,
+        description: item.description,
+        quantity: item.quantity,
+        unit: material.unit,
+        stageId: item.stageId ?? input.stageId ?? null
+      };
+    });
     await this.requireProjectStages(repository, input.projectId, [input.stageId, ...effectiveItems.map((item) => item.stageId)]);
     const security = requireRequestSecurityContext();
 

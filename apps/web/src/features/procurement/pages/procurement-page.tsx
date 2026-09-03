@@ -19,8 +19,8 @@ export function ProcurementPage() {
   return (
     <section className="admin-stack" aria-labelledby="procurement-title">
       <div className="section-heading">
-        <p className="eyebrow">Final Module 10</p>
-        <h1 id="procurement-title">Procurement / Purchase</h1>
+        <p className="eyebrow">Procure-to-pay</p>
+        <h1 id="procurement-title">Procurement</h1>
         <p className="muted">Material Requirement → Purchase Order → Goods Receipt.</p>
       </div>
       <section className="admin-card">

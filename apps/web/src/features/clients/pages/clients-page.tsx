@@ -25,10 +25,11 @@ type ClientDialog =
 
 type ClientsPageProps = Readonly<{
   onOpenProjectsForClient?: (clientId: string) => void;
+  initialCreate?: boolean;
 }>;
 
 /** Render the permission-aware final Client Management workspace. */
-export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) {
+export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: ClientsPageProps = {}) {
   const canReadClients = usePermission('clients.read');
   const canCreate = usePermission('clients.create');
   const canUpdate = usePermission('clients.update');
@@ -36,7 +37,7 @@ export function ClientsPage({ onOpenProjectsForClient }: ClientsPageProps = {}) 
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<ClientStatus | ''>('');
   const [page, setPage] = useState(1);
-  const [dialog, setDialog] = useState<ClientDialog>(null);
+  const [dialog, setDialog] = useState<ClientDialog>(initialCreate ? { kind: 'create' } : null);
 
   const clientsQuery = useClients({
     ...(search ? { search } : {}),

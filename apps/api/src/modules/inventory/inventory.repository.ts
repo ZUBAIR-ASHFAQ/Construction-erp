@@ -81,6 +81,25 @@ export class InventoryRepository {
     return this.db.warehouse.findFirst({ where: scope.where({ id: warehouseId, ...warehouseVisibilityWhere(visibility) }) });
   }
 
+  /** Ensure legacy companies have the Goods Receipt number sequence without changing an existing definition. */
+  async ensureGoodsReceiptNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'goods-receipt' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'goods-receipt',
+        prefix: 'GR-',
+        suffix: '',
+        padWidth: 4,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Find one same-Company Project. */
   async findProjectById(projectId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -96,13 +115,13 @@ export class InventoryRepository {
   /** Serialize writes for one Warehouse/Material stock key without a redundant balance table. */
   async lockStockKey(warehouseId: string, materialId: string): Promise<void> {
     const scope = requireCompanyRepositoryScope();
-    await this.db.$queryRaw<Array<{ lockResult: unknown }>>`
-      SELECT pg_advisory_xact_lock(hashtext(${`${scope.companyId}:${warehouseId}:${materialId}`})) AS "lockResult"
+    await this.db.$queryRaw<Array<{ lockResult: string }>>`
+      SELECT pg_advisory_xact_lock(hashtext(${`${scope.companyId}:${warehouseId}:${materialId}`}))::text AS "lockResult"
     `;
   }
 
   /** Derive current quantity and weighted average cost from the append-only stock ledger. */
-  async getStockPosition(warehouseId: string, materialId: string) {
+  async getStockPosition(warehouseId: string, materialId: string, projectId?: string | null) {
     const scope = requireCompanyRepositoryScope();
     const rows = await this.db.$queryRaw<Array<{ quantityOnHand: { toString(): string }; averageCost: { toString(): string } }>>`
       SELECT
@@ -115,12 +134,13 @@ export class InventoryRepository {
       WHERE company_id = ${scope.companyId}::uuid
         AND warehouse_id = ${warehouseId}::uuid
         AND material_id = ${materialId}::uuid
+        AND (${projectId ?? null}::uuid IS NULL OR project_id = ${projectId ?? null}::uuid)
     `;
     return rows[0] ?? null;
   }
 
   /** List bounded derived stock rows for visible Warehouses. */
-  async listStock(input: PageWindow & Readonly<{ visibility: InventoryVisibility; warehouseId?: string | undefined; materialId?: string | undefined }>) {
+  async listStock(input: PageWindow & Readonly<{ visibility: InventoryVisibility; projectId?: string | undefined; warehouseId?: string | undefined; materialId?: string | undefined }>) {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
     const warehouses = await this.listWarehouses(input.visibility);
@@ -129,9 +149,10 @@ export class InventoryRepository {
     if (input.warehouseId && !warehouseIds.includes(input.warehouseId)) return { items: [], total: 0, warehouses };
 
     const groups = await this.db.stockLedger.groupBy({
-      by: ['warehouseId', 'materialId'],
+      by: ['warehouseId', 'materialId', 'projectId'],
       where: {
         companyId: scope.companyId,
+        ...(input.projectId ? { projectId: input.projectId } : {}),
         warehouseId: input.warehouseId ? input.warehouseId : { in: warehouseIds },
         ...(input.materialId ? { materialId: input.materialId } : {})
       },
@@ -145,9 +166,9 @@ export class InventoryRepository {
       const [warehouse, material, position] = await Promise.all([
         this.db.warehouse.findUnique({ where: { id: group.warehouseId } }),
         this.db.material.findUnique({ where: { id: group.materialId } }),
-        this.getStockPosition(group.warehouseId, group.materialId)
+        this.getStockPosition(group.warehouseId, group.materialId, group.projectId)
       ]);
-      if (warehouse && material && position) items.push({ warehouse, material, ...position });
+      if (warehouse && material && position) items.push({ warehouse, material, projectId: group.projectId, ...position });
     }
     return { items, total: visibleGroups.length, warehouses };
   }
@@ -236,6 +257,27 @@ export class InventoryRepository {
       FOR UPDATE
     `;
     return rows[0] ?? null;
+  }
+
+  /** Repair one legacy unreceived Purchase Order line to the selected Material base unit. */
+  async repairUnreceivedPurchaseOrderItemUnit(poItemId: string, unit: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{ id: string }>>`
+      UPDATE purchase_order_items poi
+      SET unit = ${unit}
+      FROM purchase_orders po
+      WHERE poi.id = ${poItemId}::uuid
+        AND po.id = poi.purchase_order_id
+        AND po.company_id = ${scope.companyId}::uuid
+        AND poi.received_qty = 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM goods_receipt_items gri
+          WHERE gri.po_item_id = poi.id
+        )
+      RETURNING poi.id
+    `;
+    return rows.length === 1;
   }
 
   /** Increase one Purchase Order line's server-owned received quantity. */

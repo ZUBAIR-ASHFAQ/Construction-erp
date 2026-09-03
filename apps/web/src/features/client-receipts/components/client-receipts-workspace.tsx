@@ -43,6 +43,7 @@ type ReceiptForm = z.infer<typeof receiptFormSchema>;
 type AllocationForm = z.infer<typeof allocationFormSchema>;
 
 type ClientReceiptsWorkspaceProps = Readonly<{
+  view?: 'payment' | 'ledger';
   canRead: boolean;
   canCreate: boolean;
   canAllocate: boolean;
@@ -120,6 +121,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
     () => (cashBankQuery.data?.items ?? []).filter((account) => account.accountType.toUpperCase() === receiptPaymentMethod),
     [cashBankQuery.data?.items, receiptPaymentMethod]
   );
+  const cashBankNames = useMemo(() => new Map((cashBankQuery.data?.items ?? []).map((account) => [account.id, account.name])), [cashBankQuery.data?.items]);
   const createReceipt = useCreateClientReceipt();
 
   const allocationProjectId = allocationReceipt?.projectId ?? '';
@@ -210,7 +212,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
 
   return (
     <div className="admin-stack">
-      {props.canCreate && (
+      {props.canCreate && props.view !== 'ledger' && (
         <section className="admin-card">
           <h2>New Client Receipt</h2>
           <p className="muted">Receipt cash is posted immediately to Cash/Bank and Client Advance. It is not profit, and AR changes only when the receipt is allocated to an issued Client Invoice.</p>
@@ -297,17 +299,18 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
             </div>
           </div>
           <div className="summary-grid">
-            <div><strong>Receipt ID</strong><span>{receiptDetailQuery.data.id}</span></div>
+            <div><strong>Client</strong><span>{clientLabel(receiptDetailQuery.data.clientId)}</span></div>
+            <div><strong>Project</strong><span>{projectLabel(receiptDetailQuery.data.projectId)}</span></div>
             <div><strong>Received</strong><span>{displayMoney(receiptDetailQuery.data.amount)}</span></div>
             <div><strong>Allocated</strong><span>{displayMoney(receiptDetailQuery.data.allocatedAmount)}</span></div>
             <div><strong>Advance / unallocated</strong><span>{displayMoney(receiptDetailQuery.data.unallocatedAmount)}</span></div>
             <div><strong>Stage</strong><span>{stageLabel(receiptDetailQuery.data.stageId)}</span></div>
           </div>
-          <p className="muted">Cash/Bank account {receiptDetailQuery.data.cashBankAccountId} · Created by {receiptDetailQuery.data.createdBy} · Created {new Date(receiptDetailQuery.data.createdAt).toLocaleString()} · Posted {receiptDetailQuery.data.postedAt ? new Date(receiptDetailQuery.data.postedAt).toLocaleString() : '—'}</p>
+          <p className="muted">Cash/Bank account {cashBankNames.get(receiptDetailQuery.data.cashBankAccountId) ?? 'Selected account'} · Created {new Date(receiptDetailQuery.data.createdAt).toLocaleString()} · Posted {receiptDetailQuery.data.postedAt ? new Date(receiptDetailQuery.data.postedAt).toLocaleString() : '—'}</p>
           <p className="muted">Outstanding remains an Invoice-level server calculation: billed minus allocated receipts. This screen does not treat cash received as profit.</p>
-          <div className="table-wrap"><table><thead><tr><th>Allocation ID</th><th>Invoice</th><th>Allocated</th><th>Allocated at</th><th>Allocated by</th><th>Action</th></tr></thead><tbody>
-            {receiptDetailQuery.data.allocations.map((allocation) => <tr key={allocation.id}><td>{allocation.id}</td><td>{invoiceLabel(allocation.clientInvoiceId)}</td><td>{displayMoney(allocation.amount)}</td><td>{new Date(allocation.allocatedAt).toLocaleString()}</td><td>{allocation.allocatedBy}</td><td>{props.canAllocate && receiptDetailQuery.data?.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={unallocateReceipt.isPending} onClick={() => void reverseAllocation(allocation.id)}>Unallocate</button> : '—'}</td></tr>)}
-            {receiptDetailQuery.data.allocations.length === 0 && <tr><td colSpan={6} className="muted">No active Invoice allocations.</td></tr>}
+          <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Allocated</th><th>Allocated at</th><th>Action</th></tr></thead><tbody>
+            {receiptDetailQuery.data.allocations.map((allocation) => <tr key={allocation.id}><td>{invoiceLabel(allocation.clientInvoiceId)}</td><td>{displayMoney(allocation.amount)}</td><td>{new Date(allocation.allocatedAt).toLocaleString()}</td><td>{props.canAllocate && receiptDetailQuery.data?.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={unallocateReceipt.isPending} onClick={() => void reverseAllocation(allocation.id)}>Unallocate</button> : '—'}</td></tr>)}
+            {receiptDetailQuery.data.allocations.length === 0 && <tr><td colSpan={4} className="muted">No active Invoice allocations.</td></tr>}
           </tbody></table></div>
           {mutationMessage(unallocateReceipt.error) && <p className="field-error">{mutationMessage(unallocateReceipt.error)}</p>}
           {mutationMessage(reverseReceipt.error) && <p className="field-error">{mutationMessage(reverseReceipt.error)}</p>}

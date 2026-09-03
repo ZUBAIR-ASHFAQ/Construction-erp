@@ -173,6 +173,13 @@ export const purchaseOrderResponseSchema = z.object({
   deliveryAddress: textSchema,
   terms: textSchema,
   cancelReason: z.string().nullable(),
+  goodsReceipts: z.array(z.object({
+    id: uuidSchema,
+    receiptNo: textSchema,
+    warehouseId: uuidSchema,
+    receivedAt: z.string().datetime({ offset: true }),
+    status: statusSchema
+  }).strict()),
   items: z.array(purchaseOrderItemResponseSchema)
 }).strict();
 

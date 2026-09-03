@@ -66,6 +66,7 @@ export const createMaterialBodySchema = z.object({
 /** Validate bounded stock filters. */
 export const listStockQuerySchema = z.object({
   ...pageShape,
+  projectId: uuid.optional(),
   warehouseId: uuid.optional(),
   materialId: uuid.optional()
 }).strict();
@@ -108,6 +109,7 @@ export const transferMaterialBodySchema = z.object({
 
 /** Validate one controlled stock adjustment command. */
 export const adjustStockBodySchema = z.object({
+  projectId: uuid.optional(),
   warehouseId: uuid,
   materialId: uuid,
   quantityDelta: signedDecimal,

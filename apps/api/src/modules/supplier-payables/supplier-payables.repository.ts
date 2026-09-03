@@ -223,6 +223,31 @@ export class SupplierPayablesRepository {
     });
   }
 
+  /** Ensure the minimal Supplier Invoice posting accounts exist for this Company. */
+  async ensureSupplierInvoiceAccounts() {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'finance.journal' } },
+      create: { companyId: scope.companyId, sequenceKey: 'finance.journal', prefix: 'JE-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+    const definitions = [
+      { accountCode: 'SUPPLIER-PAYABLE', name: 'Supplier Payable', accountType: 'LIABILITY' },
+      { accountCode: 'INPUT-TAX', name: 'Input Tax', accountType: 'ASSET' },
+      { accountCode: 'INVENTORY-ASSET', name: 'Inventory Asset', accountType: 'ASSET' },
+      { accountCode: 'PROJECT-EXPENSE', name: 'Project Expense', accountType: 'EXPENSE' }
+    ] as const;
+    const accounts = [];
+    for (const definition of definitions) {
+      accounts.push(await this.db.glAccount.upsert({
+        where: { companyId_accountCode: { companyId: scope.companyId, accountCode: definition.accountCode } },
+        create: scope.createData({ ...definition, parentId: null, status: 'ACTIVE' }),
+        update: {}
+      }));
+    }
+    return accounts;
+  }
+
   /** Find whether the selected Vendor has one active Subcontractor profile for direct-cost classification. */
   async findActiveSubcontractorByVendorId(vendorId: string) {
     const scope = requireCompanyRepositoryScope();

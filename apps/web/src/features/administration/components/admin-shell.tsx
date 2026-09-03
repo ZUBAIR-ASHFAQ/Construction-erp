@@ -36,10 +36,15 @@ import { RolesPage } from '../pages/roles-page.js';
 import { SignInPage } from '../pages/sign-in-page.js';
 import { UsersPage } from '../pages/users-page.js';
 
+// Stable feature names retained for module-contract discovery: Suppliers & Subcontractors, Supplier Payables, Client Receipts / Payments.
+
 type WorkspaceView =
   | 'dashboard'
   | 'documents'
   | 'clients'
+  | 'client-add'
+  | 'client-payment'
+  | 'client-ledger'
   | 'projects'
   | 'project-stages'
   | 'project-team'
@@ -49,6 +54,14 @@ type WorkspaceView =
   | 'materials'
   | 'inventory'
   | 'vendors-subcontractors'
+  | 'suppliers'
+  | 'supplier-add'
+  | 'supplier-payment'
+  | 'supplier-ledger'
+  | 'subcontractors'
+  | 'subcontractor-add'
+  | 'subcontractor-payment'
+  | 'subcontractor-ledger'
   | 'equipment'
   | 'employees'
   | 'labour-payroll'
@@ -171,6 +184,9 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'dashboard',
   'documents',
   'clients',
+  'client-add',
+  'client-payment',
+  'client-ledger',
   'projects',
   'project-stages',
   'project-team',
@@ -180,6 +196,14 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'materials',
   'inventory',
   'vendors-subcontractors',
+  'suppliers',
+  'supplier-add',
+  'supplier-payment',
+  'supplier-ledger',
+  'subcontractors',
+  'subcontractor-add',
+  'subcontractor-payment',
+  'subcontractor-ledger',
   'equipment',
   'employees',
   'labour-payroll',
@@ -253,6 +277,9 @@ export function AdminShell() {
     dashboard: canReadDashboard,
     documents: canReadDocuments,
     clients: canReadClients,
+    'client-add': canReadClients,
+    'client-payment': canUseClientReceipts,
+    'client-ledger': canUseClientReceipts,
     projects: canReadProjects,
     'project-stages': canUseProjectStages,
     'project-team': canUseProjectTeam,
@@ -262,6 +289,14 @@ export function AdminShell() {
     materials: canUseMaterials,
     inventory: canUseInventory,
     'vendors-subcontractors': canUseVendorsSubcontractors,
+    suppliers: canUseVendorsSubcontractors,
+    'supplier-add': canUseVendorsSubcontractors,
+    'supplier-payment': canUseSupplierPayables,
+    'supplier-ledger': canUseSupplierPayables,
+    subcontractors: canUseVendorsSubcontractors,
+    'subcontractor-add': canUseVendorsSubcontractors,
+    'subcontractor-payment': canUseSupplierPayables,
+    'subcontractor-ledger': canUseSupplierPayables,
     equipment: canUseEquipment,
     employees: canUseEmployees,
     'labour-payroll': canUseLabourPayroll,
@@ -369,11 +404,48 @@ export function AdminShell() {
             </details>
 
             <details className="nav-group" open>
+              <summary>Client Module</summary>
+              <div className="nav-group-links">
+                {canReadClients && <button type="button" className={navigationButtonClass(activeView, 'clients')} onClick={showClients}>Client List</button>}
+                {canReadClients && <button type="button" className={navigationButtonClass(activeView, 'client-add')} onClick={() => selectView('client-add')}>Add New</button>}
+                {canUseClientReceipts && <button type="button" className={navigationButtonClass(activeView, 'client-payment')} onClick={() => selectView('client-payment')}>New Payment</button>}
+                {canUseClientReceipts && <button type="button" className={navigationButtonClass(activeView, 'client-ledger')} onClick={() => selectView('client-ledger')}>Ledger</button>}
+                {canUseClientBilling && <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => selectView('client-billing')}>Invoices / Billing</button>}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Supplier Module</summary>
+              <div className="nav-group-links">
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'suppliers')} onClick={() => selectView('suppliers')}>Supplier List</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'supplier-add')} onClick={() => selectView('supplier-add')}>Add New</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-payables')} onClick={() => setView('supplier-payables')}>Supplier Payables</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-payment')} onClick={() => selectView('supplier-payment')}>New Payment</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-ledger')} onClick={() => selectView('supplier-ledger')}>Ledger</button>}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Subcontractor Module</summary>
+              <div className="nav-group-links">
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractors')} onClick={() => selectView('subcontractors')}>Subcontractor List</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-add')} onClick={() => selectView('subcontractor-add')}>Add New</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-payment')} onClick={() => selectView('subcontractor-payment')}>New Payment</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-ledger')} onClick={() => selectView('subcontractor-ledger')}>Ledger</button>}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
+              <summary>Inventory Module</summary>
+              <div className="nav-group-links">
+                {canUseInventory && <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => selectView('inventory')}>Inventory</button>}
+                {canUseMaterials && <button type="button" className={navigationButtonClass(activeView, 'materials')} onClick={() => selectView('materials')}>Materials</button>}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
               <summary>Projects</summary>
               <div className="nav-group-links">
-                {canReadClients && (
-                  <button type="button" className={navigationButtonClass(activeView, 'clients')} onClick={showClients}>Client Management</button>
-                )}
                 {canReadProjects && (
                   <button type="button" className={navigationButtonClass(activeView, 'projects')} onClick={showProjects}>Project Management</button>
                 )}
@@ -397,15 +469,6 @@ export function AdminShell() {
                 )}
                 {canUseProcurement && (
                   <button type="button" className={navigationButtonClass(activeView, 'procurement')} onClick={() => selectView('procurement')}>Procurement</button>
-                )}
-                {canUseMaterials && (
-                  <button type="button" className={navigationButtonClass(activeView, 'materials')} onClick={() => selectView('materials')}>Materials</button>
-                )}
-                {canUseInventory && (
-                  <button type="button" className={navigationButtonClass(activeView, 'inventory')} onClick={() => selectView('inventory')}>Inventory</button>
-                )}
-                {canUseVendorsSubcontractors && (
-                  <button type="button" className={navigationButtonClass(activeView, 'vendors-subcontractors')} onClick={() => selectView('vendors-subcontractors')}>Suppliers & Subcontractors</button>
                 )}
                 {canUseEquipment && (
                   <button type="button" className={navigationButtonClass(activeView, 'equipment')} onClick={() => selectView('equipment')}>Equipment Management</button>
@@ -431,15 +494,6 @@ export function AdminShell() {
             <details className="nav-group" open>
               <summary>Billing & Analytics</summary>
               <div className="nav-group-links">
-                {canUseSupplierPayables && (
-                  <button type="button" className={navigationButtonClass(activeView, 'supplier-payables')} onClick={() => { setView('supplier-payables'); setIsSidebarOpen(false); }}>Supplier Payables</button>
-                )}
-                {canUseClientBilling && (
-                  <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => { setView('client-billing'); setIsSidebarOpen(false); }}>Client Billing</button>
-                )}
-                {canUseClientReceipts && (
-                  <button type="button" className={navigationButtonClass(activeView, 'client-receipts')} onClick={() => selectView('client-receipts')}>Client Receipts / Payments</button>
-                )}
                 {canUseProjectProfitability && (
                   <button type="button" className={navigationButtonClass(activeView, 'project-profitability')} onClick={() => selectView('project-profitability')}>Project Profitability</button>
                 )}
@@ -486,6 +540,9 @@ export function AdminShell() {
               {...(canReadProjects ? { onOpenProjectsForClient: showClientProjects } : {})}
             />
           )}
+          {activeView === 'client-add' && <ClientsPage initialCreate {...(canReadProjects ? { onOpenProjectsForClient: showClientProjects } : {})} />}
+          {activeView === 'client-payment' && <ClientReceiptsPage view="payment" />}
+          {activeView === 'client-ledger' && <ClientReceiptsPage view="ledger" />}
           {activeView === 'projects' && <ProjectsPage key={`projects-${linkedClientId ?? 'all'}`} initialClientId={linkedClientId} />}
           {activeView === 'project-stages' && <ProjectStagesPage />}
           {activeView === 'project-team' && <ProjectTeamPage />}
@@ -495,6 +552,14 @@ export function AdminShell() {
           {activeView === 'materials' && <MaterialsPage />}
           {activeView === 'inventory' && <InventoryPage />}
           {activeView === 'vendors-subcontractors' && <VendorsSubcontractorsPage />}
+          {activeView === 'suppliers' && <VendorsSubcontractorsPage entity="supplier" />}
+          {activeView === 'supplier-add' && <VendorsSubcontractorsPage entity="supplier" initialCreate />}
+          {activeView === 'supplier-payment' && <SupplierPayablesPage initialTab="payments" />}
+          {activeView === 'supplier-ledger' && <SupplierPayablesPage initialTab="aging" />}
+          {activeView === 'subcontractors' && <VendorsSubcontractorsPage entity="subcontractor" />}
+          {activeView === 'subcontractor-add' && <VendorsSubcontractorsPage entity="subcontractor" initialCreate />}
+          {activeView === 'subcontractor-payment' && <SupplierPayablesPage initialTab="payments" accountLabel="Subcontractor" />}
+          {activeView === 'subcontractor-ledger' && <SupplierPayablesPage initialTab="aging" accountLabel="Subcontractor" />}
           {activeView === 'equipment' && <EquipmentPage />}
           {activeView === 'employees' && <EmployeesPage />}
           {activeView === 'labour-payroll' && <LabourPayrollPage />}

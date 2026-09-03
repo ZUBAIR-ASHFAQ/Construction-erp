@@ -4632,3 +4632,37 @@ textarea {
   white-space: normal;
   overflow-wrap: anywhere;
 }
+
+/* Procurement purchase-to-pay workflow */
+.procurement-flow-card { overflow: hidden; }
+.procurement-flow-card .section-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.procurement-flow-card h2, .procurement-stage-card h2 { margin-bottom: 0.35rem; }
+.procurement-flow-legend { display: flex; flex-wrap: wrap; gap: 0.7rem; color: #61708a; font-size: 0.72rem; }
+.procurement-flow-legend span { display: inline-flex; align-items: center; gap: 0.3rem; }
+.procurement-flow-legend i { width: 8px; height: 8px; border-radius: 50%; background: #cbd5e1; }
+.procurement-flow-legend i.complete { background: #18845d; }
+.procurement-flow-legend i.current { background: #2d6cdf; }
+.procurement-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+.procurement-flow-step { position: relative; min-width: 0; }
+.procurement-flow-step:not(:last-child)::after { content: '→'; position: absolute; z-index: 2; top: 50%; right: -0.62rem; color: #9bacbd; transform: translateY(-50%); }
+.procurement-flow-step button { width: 100%; min-height: 72px; display: flex; align-items: center; gap: 0.65rem; padding: 0.75rem; border: 1px solid #dce4ec; border-radius: 11px; background: #f8fafc; color: #53667a; text-align: left; }
+.procurement-flow-step button:disabled { cursor: default; opacity: 1; }
+.procurement-flow-step.is-current button { border-color: #9ab8f2; background: #f1f6ff; color: #244f99; box-shadow: inset 0 0 0 1px rgb(45 108 223 / 8%); }
+.procurement-flow-step.is-complete button { border-color: #b9e4d3; background: #edf9f4; color: #16684d; }
+.procurement-flow-number { flex: 0 0 auto; width: 27px; height: 27px; display: grid; place-items: center; border: 1px solid currentColor; border-radius: 50%; font-size: 0.7rem; font-weight: 850; }
+.procurement-flow-step strong, .procurement-flow-step small { display: block; }
+.procurement-flow-step strong { font-size: 0.76rem; }
+.procurement-flow-step small { margin-top: 0.18rem; color: inherit; font-size: 0.64rem; line-height: 1.35; opacity: 0.82; }
+.procurement-commitment-branch { display: block; width: fit-content; margin: 0.35rem auto 0; padding: 0.22rem 0.48rem; border: 1px dashed #d5a94c; border-radius: 999px; background: #fff9eb; color: #8a6519; font-size: 0.61rem; font-weight: 800; }
+.procurement-flow-note { margin: 1rem 0 0; padding: 0.75rem 0.85rem; border-left: 3px solid #2d6cdf; background: #f5f8fc; color: #53667a; font-size: 0.75rem; }
+.procurement-stage-card { scroll-margin-top: 1rem; }
+
+@media (max-width: 1000px) {
+  .procurement-flow { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 700px) {
+  .procurement-flow-card .section-heading { flex-direction: column; }
+  .procurement-flow { grid-template-columns: 1fr; }
+  .procurement-flow-step:not(:last-child)::after { content: '↓'; top: auto; right: 50%; bottom: -0.65rem; transform: translateX(50%); }
+}

@@ -36,6 +36,8 @@ type SubcontractorValues = z.infer<typeof subcontractorSchema>;
 type SubcontractorEditValues = z.infer<typeof subcontractorEditSchema>;
 
 type WorkspaceProps = Readonly<{
+  entity?: 'supplier' | 'subcontractor' | 'all';
+  initialCreate?: boolean;
   canReadVendors: boolean;
   canCreateVendors: boolean;
   canUpdateVendors: boolean;
@@ -45,6 +47,8 @@ type WorkspaceProps = Readonly<{
 
 /** Render the final company-level Supplier and Subcontractor master workspace. */
 export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
+  const showSuppliers = props.entity !== 'subcontractor';
+  const showSubcontractors = props.entity !== 'supplier';
   const [vendorSearch, setVendorSearch] = useState('');
   const [vendorStatus, setVendorStatus] = useState<VendorStatus | ''>('');
   const [qualification, setQualification] = useState<VendorQualificationStatus | ''>('');
@@ -72,6 +76,11 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
     resolver: zodResolver(subcontractorSchema),
     defaultValues: { vendorId: '', code: '', specialty: '', defaultTerms: '' }
   });
+
+  useEffect(() => {
+    if (!props.initialCreate) return;
+    requestAnimationFrame(() => document.getElementById(props.entity === 'subcontractor' ? 'add-subcontractor' : 'add-supplier')?.scrollIntoView({ block: 'start' }));
+  }, [props.entity, props.initialCreate]);
 
   /** Create one supplier/vendor and open its detail after success. */
   async function handleCreateVendor(values: VendorCreateValues): Promise<void> {
@@ -104,11 +113,11 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
     <section className="admin-stack" aria-labelledby="vendors-subcontractors-title">
       <section className="admin-card">
         <p className="eyebrow">Commercial master data</p>
-        <h1 id="vendors-subcontractors-title">Suppliers & Subcontractors</h1>
-        <p className="muted">Supplier balances stay Finance-owned. This module maintains only supplier/vendor and subcontractor master data.</p>
+        <h1 id="vendors-subcontractors-title">{props.entity === 'supplier' ? 'Supplier Management' : props.entity === 'subcontractor' ? 'Subcontractor Management' : 'Suppliers & Subcontractors'}</h1>
+        <p className="muted">Maintain master records here. Payments and ledger balances remain Finance-owned and are available from this module's navigation.</p>
       </section>
 
-      {props.canReadVendors && (
+      {showSuppliers && props.canReadVendors && (
         <section className="admin-card">
           <h2>Suppliers / Vendors</h2>
           <div className="client-form-grid">
@@ -127,15 +136,15 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
         </section>
       )}
 
-      {selectedVendorId && vendorDetail.data && (
+      {showSuppliers && selectedVendorId && vendorDetail.data && (
         <VendorDetail
           details={vendorDetail.data}
           canUpdate={props.canUpdateVendors}
         />
       )}
 
-      {props.canCreateVendors && (
-        <section className="admin-card">
+      {showSuppliers && props.canCreateVendors && (
+        <section className="admin-card" id="add-supplier">
           <h2>Add supplier / vendor</h2>
           <form className="admin-form" onSubmit={vendorForm.handleSubmit(handleCreateVendor)} noValidate>
             <div className="client-form-grid">
@@ -154,7 +163,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
         </section>
       )}
 
-      {props.canReadSubcontractors && (
+      {showSubcontractors && props.canReadSubcontractors && (
         <section className="admin-card">
           <h2>Subcontractors</h2>
           <label>Search<input value={subcontractorSearch} onChange={(event) => setSubcontractorSearch(event.target.value)} /></label>
@@ -167,12 +176,12 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
         </section>
       )}
 
-      {props.canManageSubcontractors && selectedSubcontractor && (
+      {showSubcontractors && props.canManageSubcontractors && selectedSubcontractor && (
         <SubcontractorEditor subcontractor={selectedSubcontractor} vendors={vendors.data?.items ?? []} onSaved={setSelectedSubcontractor} />
       )}
 
-      {props.canManageSubcontractors && (
-        <section className="admin-card">
+      {showSubcontractors && props.canManageSubcontractors && (
+        <section className="admin-card" id="add-subcontractor">
           <h2>Add subcontractor</h2>
           <form className="admin-form" onSubmit={subcontractorForm.handleSubmit(handleCreateSubcontractor)} noValidate>
             <div className="client-form-grid">

@@ -2,9 +2,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useCashBankAccounts, useFinanceAccounts } from '../../finance/hooks/finance.js';
+import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProcurementPurchaseOrders } from '../../procurement/hooks/procurement.js';
-import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
 import { useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
 import type { SupplierInvoice, SupplierPayment } from '../api/supplier-payables-api.js';
@@ -18,6 +17,8 @@ import {
   useSupplierInvoices,
   useSupplierPayments
 } from '../hooks/supplier-payables.js';
+
+// Invoice entry no longer needs useProjectStages or useFinanceAccounts; the server derives those accounting details.
 
 const uuidSchema = z.string().uuid('Select a valid value.');
 const optionalUuidSchema = z.string().refine((value) => value === '' || uuidSchema.safeParse(value).success, 'Use a valid UUID or leave blank.');
@@ -38,7 +39,7 @@ const invoiceFormSchema = z.object({
     stageId: optionalUuidSchema,
     description: z.string().trim().min(1, 'Description is required.').max(4000),
     amount: positiveMoneySchema,
-    expenseOrInventoryAccountId: uuidSchema
+    expenseOrInventoryAccountId: optionalUuidSchema
   })).min(1, 'Add at least one invoice line.')
 }).superRefine((value, context) => {
   if (value.dueDate && !dateSchema.safeParse(value.dueDate).success) {
@@ -69,6 +70,7 @@ type AllocationFormValues = z.infer<typeof allocationFormSchema>;
 type WorkspaceTab = 'invoices' | 'payments' | 'aging';
 
 type SupplierPayablesWorkspaceProps = Readonly<{
+  initialTab?: WorkspaceTab;
   canRead: boolean;
   canCreateInvoice: boolean;
   canPostInvoice: boolean;
@@ -115,7 +117,7 @@ function displayMoney(value: string): string {
 
 /** Render the focused Supplier Payables invoices, payments and aging workspace. */
 export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps) {
-  const [tab, setTab] = useState<WorkspaceTab>('invoices');
+  const [tab, setTab] = useState<WorkspaceTab>(props.initialTab ?? 'invoices');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<SupplierPayment | null>(null);
   const [vendorFilter, setVendorFilter] = useState('');
@@ -128,21 +130,30 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const vendorsQuery = useVendors({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadVendors);
   const projects = projectsQuery.data?.items ?? [];
   const vendors = vendorsQuery.data?.items ?? [];
+  const vendorNames = useMemo(() => new Map(vendors.map((vendor) => [vendor.id, vendor.displayName])), [vendors]);
+  const projectNames = useMemo(() => new Map(projects.map((project) => [project.id, project.name])), [projects]);
 
   const invoiceForm = useForm<InvoiceFormValues>({ resolver: zodResolver(invoiceFormSchema), defaultValues: EMPTY_INVOICE_FORM });
   const invoiceLines = useFieldArray({ control: invoiceForm.control, name: 'lines' });
   const watchedInvoiceProjectId = invoiceForm.watch('projectId');
   const watchedInvoiceVendorId = invoiceForm.watch('vendorId');
-  const stagesQuery = useProjectStages(watchedInvoiceProjectId || null, props.canReadStages && watchedInvoiceProjectId !== '');
+  const watchedPurchaseOrderId = invoiceForm.watch('purchaseOrderId');
   const purchaseOrdersQuery = useProcurementPurchaseOrders(watchedInvoiceProjectId || null, props.canReadProcurement && watchedInvoiceProjectId !== '');
-  const financeAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, props.canReadFinance);
+  const allPurchaseOrdersQuery = useProcurementPurchaseOrders('', props.canReadProcurement);
 
   const availablePurchaseOrders = useMemo(() => (
-    (purchaseOrdersQuery.data?.items ?? []).filter((purchaseOrder) => !watchedInvoiceVendorId || purchaseOrder.vendorId === watchedInvoiceVendorId)
+    (purchaseOrdersQuery.data?.items ?? []).filter((purchaseOrder) => (
+      purchaseOrder.status.toUpperCase() === 'ISSUED'
+      && (!watchedInvoiceVendorId || purchaseOrder.vendorId === watchedInvoiceVendorId)
+    ))
   ), [purchaseOrdersQuery.data?.items, watchedInvoiceVendorId]);
-  const availableInvoiceAccounts = useMemo(() => (
-    (financeAccountsQuery.data?.items ?? []).filter((account) => account.status === 'ACTIVE' && ['EXPENSE', 'ASSET'].includes(account.accountType.toUpperCase()))
-  ), [financeAccountsQuery.data?.items]);
+  const availableGoodsReceipts = useMemo(() => (
+    availablePurchaseOrders
+      .find((purchaseOrder) => purchaseOrder.id === watchedPurchaseOrderId)
+      ?.goodsReceipts.filter((receipt) => receipt.status.toUpperCase() === 'RECEIVED') ?? []
+  ), [availablePurchaseOrders, watchedPurchaseOrderId]);
+  const purchaseOrderNames = useMemo(() => new Map((allPurchaseOrdersQuery.data?.items ?? []).map((order) => [order.id, order.poNo])), [allPurchaseOrdersQuery.data?.items]);
+  const goodsReceiptNames = useMemo(() => new Map((allPurchaseOrdersQuery.data?.items ?? []).flatMap((order) => order.goodsReceipts.map((receipt) => [receipt.id, receipt.receiptNo] as const))), [allPurchaseOrdersQuery.data?.items]);
 
   const invoiceQuery = useSupplierInvoices({
     ...(vendorFilter ? { vendorId: vendorFilter } : {}),
@@ -189,6 +200,20 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     if (!selectedInvoiceId && invoiceQuery.data?.items[0]) setSelectedInvoiceId(invoiceQuery.data.items[0].id);
   }, [invoiceQuery.data?.items, selectedInvoiceId]);
 
+  useEffect(() => {
+    const selectedPurchaseOrderId = invoiceForm.getValues('purchaseOrderId');
+    if (selectedPurchaseOrderId && !availablePurchaseOrders.some((order) => order.id === selectedPurchaseOrderId)) {
+      invoiceForm.setValue('purchaseOrderId', '');
+    }
+  }, [availablePurchaseOrders, invoiceForm]);
+
+  useEffect(() => {
+    const selectedGoodsReceiptId = invoiceForm.getValues('goodsReceiptId');
+    if (selectedGoodsReceiptId && !availableGoodsReceipts.some((receipt) => receipt.id === selectedGoodsReceiptId)) {
+      invoiceForm.setValue('goodsReceiptId', '');
+    }
+  }, [availableGoodsReceipts, invoiceForm]);
+
   /** Create one DRAFT Supplier Invoice from the validated editor. */
   async function submitInvoice(values: InvoiceFormValues): Promise<void> {
     const created = await createInvoice.mutateAsync({
@@ -204,7 +229,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
         stageId: line.stageId || null,
         description: line.description.trim(),
         amount: line.amount,
-        expenseOrInventoryAccountId: line.expenseOrInventoryAccountId
+        expenseOrInventoryAccountId: line.expenseOrInventoryAccountId || null
       }))
     });
     setSelectedInvoiceId(created.id);
@@ -271,7 +296,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           {props.canCreateInvoice && (
             <section className="admin-card">
               <h2>New Supplier Invoice</h2>
-              <p className="muted">Totals are calculated by the server. PO and Goods Receipt links remain references to Procurement-owned source documents.</p>
+              <p className="muted">For a Procurement invoice, select its PO and Goods Receipt. For a direct purchase or service, choose Direct invoice (no PO); no receipt is required.</p>
               <form className="admin-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
                 <div className="two-column-form">
                   <label>Vendor
@@ -288,40 +313,37 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                     </select>
                     <span className="field-error">{invoiceForm.formState.errors.projectId?.message}</span>
                   </label>
-                  <label>Supplier invoice no.<input {...invoiceForm.register('invoiceNo')} /></label>
-                  <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /></label>
-                  <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /></label>
+                  <label>Supplier invoice no.<input {...invoiceForm.register('invoiceNo')} /><span className="field-error">{invoiceForm.formState.errors.invoiceNo?.message}</span></label>
+                  <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
+                  <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
                   <label>Purchase Order (optional)
                     <select {...invoiceForm.register('purchaseOrderId')}>
-                      <option value="">No PO</option>
+                      <option value="">Direct invoice (no PO)</option>
                       {availablePurchaseOrders.map((purchaseOrder) => <option key={purchaseOrder.id} value={purchaseOrder.id}>{purchaseOrder.poNo} · {purchaseOrder.status}</option>)}
                     </select>
                   </label>
-                  <label>Goods Receipt ID (optional)
-                    <input placeholder="UUID from Procurement receipt detail" {...invoiceForm.register('goodsReceiptId')} />
-                    <small className="muted">Module 10 has no Goods Receipt list route, so this screen does not invent one.</small>
+                  <label>Goods Receipt (optional)
+                    {/* Module 10 has no Goods Receipt list route, so this screen does not invent one; receipt choices come from the selected PO. */}
+                    <select {...invoiceForm.register('goodsReceiptId')} disabled={!watchedPurchaseOrderId}>
+                      <option value="">{watchedPurchaseOrderId ? 'No Goods Receipt' : 'Not applicable for direct invoice'}</option>
+                      {availableGoodsReceipts.map((receipt) => (
+                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()}</option>
+                      ))}
+                    </select>
+                    <small className="muted">Only received deliveries for the selected issued PO are shown.</small>
+                    <span className="field-error">{invoiceForm.formState.errors.goodsReceiptId?.message}</span>
                   </label>
-                  <label>Tax amount<input inputMode="decimal" {...invoiceForm.register('taxAmount')} /></label>
+                  <label>Tax amount<input inputMode="decimal" {...invoiceForm.register('taxAmount')} /><span className="field-error">{invoiceForm.formState.errors.taxAmount?.message}</span></label>
                 </div>
 
                 <h3>Invoice lines</h3>
                 {invoiceLines.fields.map((field, index) => (
                   <div className="admin-card" key={field.id}>
                     <div className="two-column-form">
-                      <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /></label>
-                      <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /></label>
-                      <label>Stage (optional)
-                        <select {...invoiceForm.register(`lines.${index}.stageId`)}>
-                          <option value="">Project level</option>
-                          {(stagesQuery.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
-                        </select>
-                      </label>
-                      <label>Expense / Inventory account
-                        <select {...invoiceForm.register(`lines.${index}.expenseOrInventoryAccountId`)}>
-                          <option value="">Select GL account</option>
-                          {availableInvoiceAccounts.map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name} ({account.accountType})</option>)}
-                        </select>
-                      </label>
+                      <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
+                      <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                        <input type="hidden" {...invoiceForm.register(`lines.${index}.stageId`)} />
+                        <input type="hidden" {...invoiceForm.register(`lines.${index}.expenseOrInventoryAccountId`)} />
                     </div>
                     {invoiceLines.fields.length > 1 && <button type="button" className="secondary-button" onClick={() => invoiceLines.remove(index)}>Remove line</button>}
                   </div>
@@ -351,7 +373,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                   <tbody>
                     {(invoiceQuery.data?.items ?? []).map((invoice) => (
                       <tr key={invoice.id}>
-                        <td>{invoice.invoiceNo}</td><td>{invoice.invoiceDate}</td><td>{invoice.status}</td><td>{displayMoney(invoice.totalAmount)}</td><td>{invoice.projectId}</td>
+                        <td>{invoice.invoiceNo}</td><td>{invoice.invoiceDate}</td><td>{invoice.status}</td><td>{displayMoney(invoice.totalAmount)}</td><td>{projectNames.get(invoice.projectId) ?? 'Unknown project'}</td>
                         <td><button type="button" className="secondary-button" onClick={() => setSelectedInvoiceId(invoice.id)}>View</button></td>
                       </tr>
                     ))}
@@ -360,16 +382,18 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                 </table>
               </div>
             )}
+            {invoiceQuery.error instanceof Error && <div className="form-error" role="alert">{invoiceQuery.error.message}</div>}
+            {purchaseOrdersQuery.error instanceof Error && <div className="form-error" role="alert">Purchase Orders could not be loaded: {purchaseOrdersQuery.error.message}</div>}
           </section>
 
           {invoiceDetailQuery.data && (
             <section className="admin-card">
               <h2>Invoice {invoiceDetailQuery.data.invoiceNo}</h2>
               <p><strong>Status:</strong> {invoiceDetailQuery.data.status} · <strong>Subtotal:</strong> {displayMoney(invoiceDetailQuery.data.subtotal)} · <strong>Tax:</strong> {displayMoney(invoiceDetailQuery.data.taxAmount)} · <strong>Total:</strong> {displayMoney(invoiceDetailQuery.data.totalAmount)}</p>
-              <p className="muted">Vendor {invoiceDetailQuery.data.vendorId} · Project {invoiceDetailQuery.data.projectId} · Invoice date {invoiceDetailQuery.data.invoiceDate} · Due {invoiceDetailQuery.data.dueDate ?? '—'} · PO {invoiceDetailQuery.data.purchaseOrderId ?? 'None'} · Goods Receipt {invoiceDetailQuery.data.goodsReceiptId ?? 'None'} · Record {invoiceDetailQuery.data.id}</p>
+              <p className="muted">Supplier {vendorNames.get(invoiceDetailQuery.data.vendorId) ?? 'Unknown supplier'} · Project {projectNames.get(invoiceDetailQuery.data.projectId) ?? 'Unknown project'} · Invoice date {invoiceDetailQuery.data.invoiceDate} · Due {invoiceDetailQuery.data.dueDate ?? '—'} · PO {invoiceDetailQuery.data.purchaseOrderId ? purchaseOrderNames.get(invoiceDetailQuery.data.purchaseOrderId) ?? 'Unknown PO' : 'Direct invoice'} · Goods Receipt {invoiceDetailQuery.data.goodsReceiptId ? goodsReceiptNames.get(invoiceDetailQuery.data.goodsReceiptId) ?? 'Unknown receipt' : 'None'}</p>
               <div className="table-wrap">
-                <table><thead><tr><th>Description</th><th>Stage</th><th>Account</th><th>Amount</th></tr></thead><tbody>
-                  {invoiceDetailQuery.data.lines.map((line) => <tr key={line.id}><td>{line.description}<br /><small>Line {line.id} · Invoice {line.supplierInvoiceId}</small></td><td>{line.stageId ?? 'Project'}</td><td>{line.expenseOrInventoryAccountId ?? 'Not set'}</td><td>{displayMoney(line.amount)}</td></tr>)}
+                  <table><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody>
+                  {invoiceDetailQuery.data.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{displayMoney(line.amount)}</td></tr>)}
                 </tbody></table>
               </div>
               {props.canPostInvoice && invoiceDetailQuery.data.status === 'DRAFT' && (
@@ -385,14 +409,14 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
         <>
           {props.canCreatePayment && (
             <section className="admin-card">
-              <h2>New Supplier Payment</h2>
-              <p className="muted">The documented payment command creates and posts the payment atomically. It reduces Supplier Payable and Cash/Bank through Finance.</p>
+              <h2>New Supplier Payment — partial or full</h2>
+              <p className="muted">Enter any partial amount and select the cash/bank account paying it. To pay from two accounts, create one partial payment from each account, then allocate both to the same invoice.</p>
               <form className="admin-form" onSubmit={paymentForm.handleSubmit(submitPayment)}>
                 <div className="two-column-form">
                   <label>Vendor<select {...paymentForm.register('vendorId')}><option value="">Select vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select></label>
                   <label>Project (optional)<select {...paymentForm.register('projectId')}><option value="">Company-level payment</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
                   <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /></label>
-                  <label>Amount<input inputMode="decimal" {...paymentForm.register('amount')} /></label>
+                  <label>Payment amount (partial or full)<input inputMode="decimal" {...paymentForm.register('amount')} /></label>
                   <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{(cashBankQuery.data?.items ?? []).map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select></label>
                   <label>Reference (optional)<input {...paymentForm.register('reference')} /></label>
                 </div>
@@ -405,7 +429,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           <section className="admin-card">
             <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option></select></label></div>
             <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Amount</th><th>Reference</th><th>Action</th></tr></thead><tbody>
-              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Vendor {payment.vendorId} · Project {payment.projectId ?? 'Company'} · Cash/Bank {payment.cashBankAccountId} · {payment.id}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => setSelectedPayment(payment)}>Allocate</button> : '—'}</td></tr>)}
+              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => setSelectedPayment(payment)}>Allocate</button> : '—'}</td></tr>)}
               {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={6} className="muted">No Supplier Payments match the current filters.</td></tr>}
             </tbody></table></div>
           </section>
@@ -413,7 +437,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           {props.canAllocatePayment && selectedPayment && (
             <section className="admin-card">
               <h2>Allocate {selectedPayment.paymentNo}</h2>
-              <p className="muted">Payment amount: {displayMoney(selectedPayment.amount)}. The server prevents allocations above either the remaining payment or invoice outstanding.</p>
+              <p className="muted">Payment amount: {displayMoney(selectedPayment.amount)}. The server prevents allocations above either the remaining payment or invoice outstanding. Allocate all or part; payments from another account can also be allocated to the same invoice.</p>
               <form className="admin-form two-column-form" onSubmit={allocationForm.handleSubmit(submitAllocation)}>
                 <label>Posted invoice with outstanding
                   <select {...allocationForm.register('supplierInvoiceId')}>
@@ -425,7 +449,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                 <button type="submit" disabled={allocatePayment.isPending}>{allocatePayment.isPending ? 'Allocating…' : 'Allocate payment'}</button>
               </form>
               {mutationMessage(allocatePayment.error) && <p className="field-error">{mutationMessage(allocatePayment.error)}</p>}
-              {allocatePayment.data?.map((allocation) => <p className="muted" key={allocation.id}>Allocation {allocation.id} · Payment {allocation.supplierPaymentId} · Invoice {allocation.supplierInvoiceId} · Amount {displayMoney(allocation.amount)} · Allocated {new Date(allocation.allocatedAt).toLocaleString()}</p>)}
+              {allocatePayment.data?.map((allocation) => <p className="muted" key={allocation.id}>Allocated {displayMoney(allocation.amount)} to {allocationInvoiceOptions.find((invoice) => invoice.supplierInvoiceId === allocation.supplierInvoiceId)?.invoiceNo ?? 'supplier invoice'} on {new Date(allocation.allocatedAt).toLocaleString()}</p>)}
             </section>
           )}
         </>
@@ -436,7 +460,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           <div className="section-heading compact-heading"><h2>Supplier Outstanding &amp; Aging</h2><label>As of date<input type="date" value={agingAsOfDate} onChange={(event) => setAgingAsOfDate(event.target.value)} /></label></div>
           <p className="muted">Outstanding is derived from POSTED Supplier Invoices minus immutable POSTED-payment allocations. As of: {agingQuery.data?.asOfDate ?? 'current date'}.</p>
           <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Invoice date</th><th>Due</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Age days</th></tr></thead><tbody>
-            {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}<br /><small>Invoice {row.supplierInvoiceId} · Vendor {row.vendorId} · Project {row.projectId}</small></td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td></tr>)}
+            {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}<br /><small>Supplier {vendorNames.get(row.vendorId) ?? 'Unknown supplier'} · Project {projectNames.get(row.projectId) ?? 'Unknown project'}</small></td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td></tr>)}
             {(agingQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={7} className="muted">No outstanding Supplier Invoices match the current filters.</td></tr>}
           </tbody></table></div>
         </section>

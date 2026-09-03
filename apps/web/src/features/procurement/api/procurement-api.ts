@@ -61,6 +61,13 @@ export type PurchaseOrder = Readonly<{
   deliveryAddress: string;
   terms: string;
   cancelReason: string | null;
+  goodsReceipts: Array<Readonly<{
+    id: string;
+    receiptNo: string;
+    warehouseId: string;
+    receivedAt: string;
+    status: string;
+  }>>;
   items: PurchaseOrderItem[];
 }>;
 

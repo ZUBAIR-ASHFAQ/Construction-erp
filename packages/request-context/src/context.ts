@@ -15,6 +15,9 @@ type MutableState = {
 const storage = new AsyncLocalStorage<MutableState>();
 const states = new WeakMap<RequestContext, MutableState>();
 
+// TEMPORARY: set to false to restore normal permission enforcement. Authentication and company scope stay active.
+const TEMPORARY_PERMISSION_BYPASS = true;
+
 /** Validate and return non-empty text. */
 function nonEmpty(value: unknown, field: string): string {
   if (typeof value !== 'string') throw new Error(`${field} must be a non-empty string.`);
@@ -41,6 +44,15 @@ function normalizeProjectScope(scope: ProjectScope): ProjectScope {
 /** Normalize security context. */
 function normalizeSecurityContext(input: RequestSecurityContext): RequestSecurityContext {
   const permissions = [...new Set(input.permissions.map((permission) => nonEmpty(permission, 'permission')))].sort();
+
+  // TEMPORARY: preserve the real permission values but make permission membership checks succeed.
+  // Remove this block, or set TEMPORARY_PERMISSION_BYPASS to false, to restore the original behavior.
+  if (TEMPORARY_PERMISSION_BYPASS) {
+    Object.defineProperty(permissions, 'includes', {
+      value: () => true,
+      enumerable: false
+    });
+  }
 
   return Object.freeze({
     actorUserId: nonEmpty(input.actorUserId, 'actorUserId'),

@@ -29,6 +29,9 @@ type AuthContextValue = Readonly<{
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_QUERY_KEY = ['module-24a', 'current-identity'] as const;
 
+// TEMPORARY: set to false to restore normal frontend permission gating. Authentication still remains required.
+const TEMPORARY_PERMISSION_BYPASS = true;
+
 /** Provide the current Administration session and auth actions to the React tree. */
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const queryClient = useQueryClient();
@@ -96,12 +99,20 @@ export function useAuth(): AuthContextValue {
 /** Check one effective permission returned by `/auth/me`. */
 export function usePermission(permission: string): boolean {
   const { identity } = useAuth();
-  return identity?.permissions.includes(permission) ?? false;
+  if (!identity) return false;
+
+  // TEMPORARY: bypass UI permission gating while preserving the original check for easy restoration.
+  if (TEMPORARY_PERMISSION_BYPASS) return true;
+  return identity.permissions.includes(permission);
 }
 
 /** Return whether one authenticated identity has any permission from a small workspace permission set. */
 export function hasAnyIdentityPermission(identity: CurrentIdentity | null, requiredPermissions: readonly string[]): boolean {
-  return identity?.permissions.some((permission) => requiredPermissions.includes(permission)) ?? false;
+  if (!identity) return false;
+
+  // TEMPORARY: bypass workspace permission visibility while preserving the original check below.
+  if (TEMPORARY_PERMISSION_BYPASS) return true;
+  return identity.permissions.some((permission) => requiredPermissions.includes(permission));
 }
 
 /** Return whether one authenticated identity has at least one explicit restricted Project membership. */

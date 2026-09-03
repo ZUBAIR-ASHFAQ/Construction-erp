@@ -23,7 +23,7 @@ export type CreateMaterialIssueInput = Readonly<{
   items: ReadonlyArray<Readonly<{ materialId: string; quantity: string }>>;
 }>;
 export type TransferMaterialInput = Readonly<{ sourceWarehouseId: string; destinationWarehouseId: string; materialId: string; quantity: string }>;
-export type AdjustStockInput = Readonly<{ warehouseId: string; materialId: string; quantityDelta: string; reason: string }>;
+export type AdjustStockInput = Readonly<{ projectId?: string; warehouseId: string; materialId: string; quantityDelta: string; reason: string }>;
 
 /** Build one bounded Inventory query string. */
 function queryString(input: Readonly<Record<string, string | number | undefined | null>>): string {
@@ -48,7 +48,7 @@ export function createMaterial(input: CreateMaterialInput): Promise<Material> {
 }
 
 /** Load derived stock plus visible Warehouse options. */
-export function listStock(input: Readonly<{ page?: number; pageSize?: number; warehouseId?: string; materialId?: string }> = {}): Promise<StockPage> {
+export function listStock(input: Readonly<{ page?: number; pageSize?: number; projectId?: string; warehouseId?: string; materialId?: string }> = {}): Promise<StockPage> {
   return authenticatedRequest<StockPage>(`inventory/stock${queryString(input)}`);
 }
 

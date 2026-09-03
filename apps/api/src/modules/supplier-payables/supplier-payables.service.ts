@@ -33,6 +33,8 @@ const GOODS_RECEIPT_RECEIVED = 'RECEIVED';
 const ZERO_MONEY = '0.00';
 const SUPPLIER_PAYABLE_ACCOUNT_CODE = 'SUPPLIER-PAYABLE';
 const INPUT_TAX_ACCOUNT_CODE = 'INPUT-TAX';
+const INVENTORY_ASSET_ACCOUNT_CODE = 'INVENTORY-ASSET';
+const PROJECT_EXPENSE_ACCOUNT_CODE = 'PROJECT-EXPENSE';
 const SUPPLIER_PAYMENT_SEQUENCE_KEY = 'supplier-payment';
 const SUPPLIER_PAYMENT_SOURCE_TYPE = 'supplier_payment';
 const DAY_IN_MS = 86_400_000;
@@ -439,15 +441,25 @@ export class SupplierPayablesService {
 
     const duplicate = await repository.findSupplierInvoiceByVendorInvoiceNo(input.vendorId, input.invoiceNo.trim());
     if (duplicate) throw createSupplierPayablesError('DUPLICATE_SUPPLIER_INVOICE');
+    await repository.ensureSupplierInvoiceAccounts();
+    const defaultAccountCode = input.purchaseOrderId || input.goodsReceiptId
+      ? INVENTORY_ASSET_ACCOUNT_CODE
+      : PROJECT_EXPENSE_ACCOUNT_CODE;
+    const defaultAccount = await repository.findGlAccountByCode(defaultAccountCode);
+    if (!defaultAccount) throw new ValidationError({ message: 'Supplier Invoice posting account could not be prepared.' });
+    const invoiceLines = input.lines.map((line) => ({
+      ...line,
+      expenseOrInventoryAccountId: line.expenseOrInventoryAccountId ?? defaultAccount.id
+    }));
     await this.validateInvoiceDependencies(repository, visibility, {
       vendorId: input.vendorId,
       projectId: input.projectId,
       purchaseOrderId: input.purchaseOrderId ?? null,
       goodsReceiptId: input.goodsReceiptId ?? null,
-      lines: input.lines
+      lines: invoiceLines
     }, false);
 
-    const totals = calculateInvoiceTotals(input.lines, input.taxAmount);
+    const totals = calculateInvoiceTotals(invoiceLines, input.taxAmount);
     const created = await repository.createDraftSupplierInvoice({
       allowedProjectIds: visibility.allowedProjectIds,
       vendorId: input.vendorId,
@@ -460,7 +472,7 @@ export class SupplierPayablesService {
       subtotal: totals.subtotal,
       taxAmount: totals.taxAmount,
       totalAmount: totals.totalAmount,
-      lines: input.lines
+      lines: invoiceLines
     });
     if (!created) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
     const response = supplierInvoiceResponse(created);

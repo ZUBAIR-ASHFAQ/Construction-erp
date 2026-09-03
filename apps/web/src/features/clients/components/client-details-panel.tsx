@@ -222,8 +222,6 @@ function ClientDetailsContent(props: Readonly<{
       {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
 
       <dl className="client-detail-grid">
-        <div><dt>Client ID</dt><dd>{client.id}</dd></div>
-        <div><dt>Company ID</dt><dd>{client.companyId}</dd></div>
         <div><dt>Legal name</dt><dd>{client.legalName}</dd></div>
         <div><dt>Tax number</dt><dd>{client.taxNo ?? '—'}</dd></div>
         <div><dt>Credit terms</dt><dd>{client.creditTermsDays === null ? '—' : `${client.creditTermsDays} days`}</dd></div>
@@ -276,9 +274,6 @@ function ClientDetailsContent(props: Readonly<{
                   <span className={`client-status client-status-${contact.status.toLowerCase()}`}>{contact.status}</span>
                 </div>
                 <dl className="client-contact-grid">
-                  <div><dt>Contact ID</dt><dd>{contact.id}</dd></div>
-                  <div><dt>Client ID</dt><dd>{contact.clientId}</dd></div>
-                  <div><dt>Company ID</dt><dd>{contact.companyId}</dd></div>
                   <div><dt>Email</dt><dd>{contact.email ?? '—'}</dd></div>
                   <div><dt>Phone</dt><dd>{contact.phone ?? '—'}</dd></div>
                   <div><dt>Primary contact</dt><dd>{contact.isPrimary ? 'Yes' : 'No'}</dd></div>

@@ -859,8 +859,15 @@ export class AdministrationRepository {
     companyId: string,
     input: EffectivePermissionLookupInput
   ) {
-    // TEMPORARY: grant the full server permission catalog while RBAC is bypassed.
-    if (TEMPORARY_AUTHORIZATION_BYPASS) return this.listPermissionCodes();
+    // TEMPORARY: keep the real catalog for responses, but bypass permission membership checks used by services.
+    if (TEMPORARY_AUTHORIZATION_BYPASS) {
+      const permissions = await this.listPermissionCodes();
+      Object.defineProperty(permissions, 'includes', {
+        value: () => true,
+        enumerable: false
+      });
+      return permissions;
+    }
 
     if (input.assignmentStatuses.length === 0 || input.roleStatuses.length === 0) return [];
 

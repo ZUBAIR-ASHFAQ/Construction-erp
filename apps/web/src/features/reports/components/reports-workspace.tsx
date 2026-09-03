@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
 import {
   REPORT_CODES,
   type ReportCode,
@@ -99,7 +100,7 @@ const FILTER_LABELS: Readonly<Record<FilterField, string>> = {
   projectId: 'Project ID',
   stageId: 'Stage ID',
   clientId: 'Client ID',
-  vendorId: 'Supplier / Vendor ID',
+  vendorId: 'Supplier',
   employeeId: 'Employee ID',
   warehouseId: 'Warehouse ID',
   materialId: 'Material ID',
@@ -187,14 +188,17 @@ function reportColumns(rows: Record<string, unknown>[]): string[] {
 }
 
 /** Format one server-returned report cell for generic tabular display without recalculating values. */
-function displayReportValue(value: unknown): string {
+function displayReportValue(value: unknown, column: string, vendorNames: ReadonlyMap<string, string>): string {
   if (value === null || value === undefined || value === '') return '—';
+  if (column === 'vendorId' && typeof value === 'string') return vendorNames.get(value) ?? 'Unknown supplier';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
 
 /** Render the permission-filtered Module 20 catalog, filters, results, saved filters and export workflow. */
 export function ReportsWorkspace(props: ReportsWorkspaceProps) {
+  const vendorsQuery = useVendors({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canRead);
+  const vendorNames = useMemo(() => new Map((vendorsQuery.data?.items ?? []).map((vendor) => [vendor.id, vendor.displayName])), [vendorsQuery.data?.items]);
   const catalogQuery = useReportCatalog(props.canRead);
   const runMutation = useRunReport();
   const exportMutation = useCreateReportExport();
@@ -341,11 +345,11 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
                 {activeFilterFields.map((field) => (
                   <label key={field}>
                     {FILTER_LABELS[field]}
-                    <input
-                      type={field === 'fromDate' || field === 'toDate' || field === 'asOfDate' ? 'date' : 'text'}
-                      placeholder={field.endsWith('Id') ? 'UUID' : undefined}
-                      {...form.register(field)}
-                    />
+                    {field === 'vendorId' ? (
+                      <select {...form.register(field)}><option value="">All suppliers</option>{(vendorsQuery.data?.items ?? []).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.displayName}</option>)}</select>
+                    ) : (
+                      <input type={field === 'fromDate' || field === 'toDate' || field === 'asOfDate' ? 'date' : 'text'} placeholder={field.endsWith('Id') ? 'UUID' : undefined} {...form.register(field)} />
+                    )}
                     {form.formState.errors[field] && <span className="field-error">{form.formState.errors[field]?.message}</span>}
                   </label>
                 ))}
@@ -379,10 +383,10 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             {runMutation.data.rows.length === 0 ? <p>No matching rows.</p> : (
               <div className="table-wrap">
                 <table className="admin-table reports-result-table">
-                  <thead><tr>{columns.map((column) => <th key={column}>{column}</th>)}</tr></thead>
+                  <thead><tr>{columns.map((column) => <th key={column}>{column === 'vendorId' ? 'Supplier' : column}</th>)}</tr></thead>
                   <tbody>
                     {runMutation.data.rows.map((row, rowIndex) => (
-                      <tr key={rowIndex}>{columns.map((column) => <td key={column}>{displayReportValue(row[column])}</td>)}</tr>
+                      <tr key={rowIndex}>{columns.map((column) => <td key={column}>{displayReportValue(row[column], column, vendorNames)}</td>)}</tr>
                     ))}
                   </tbody>
                 </table>

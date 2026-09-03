@@ -49,15 +49,14 @@ export class ProcurementRepository {
     return this.db.project.findFirst({ where: scope.where({ id: projectId }) });
   }
 
-  /** Return active Company material ids used by one material requirement. */
-  async findActiveMaterialIds(materialIds: readonly string[]): Promise<string[]> {
+  /** Return active Company materials and their authoritative base units for one requirement. */
+  async findActiveMaterials(materialIds: readonly string[]): Promise<Array<{ id: string; unit: string }>> {
     if (materialIds.length === 0) return [];
     const scope = requireCompanyRepositoryScope();
-    const rows = await this.db.material.findMany({
+    return this.db.material.findMany({
       where: scope.where({ id: { in: [...materialIds] }, status: 'ACTIVE' }),
-      select: { id: true }
+      select: { id: true, unit: true }
     });
-    return rows.map((row) => row.id);
   }
 
   /** Return Project Stage ids that belong to the current Company and selected Project. */
@@ -141,7 +140,7 @@ export class ProcurementRepository {
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({ ...projectVisibilityWhere(input.visibility), ...(input.projectId ? { projectId: input.projectId } : {}) });
     const [items, total] = await Promise.all([
-      this.db.purchaseOrder.findMany({ where, include: { items: { orderBy: [{ id: 'asc' }] } }, orderBy: [{ orderDate: 'desc' }, { id: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.purchaseOrder.findMany({ where, include: { items: { orderBy: [{ id: 'asc' }] }, goodsReceipts: { orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }] } }, orderBy: [{ orderDate: 'desc' }, { id: 'desc' }], skip: input.skip, take: input.take }),
       this.db.purchaseOrder.count({ where })
     ]);
     return { items, total };
@@ -150,7 +149,7 @@ export class ProcurementRepository {
   /** Find one Purchase Order inside Company and Project visibility. */
   async findPurchaseOrderById(purchaseOrderId: string, visibility: ProjectVisibility) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.purchaseOrder.findFirst({ where: scope.where({ id: purchaseOrderId, ...projectVisibilityWhere(visibility) }), include: { items: { orderBy: [{ id: 'asc' }] } } });
+    return this.db.purchaseOrder.findFirst({ where: scope.where({ id: purchaseOrderId, ...projectVisibilityWhere(visibility) }), include: { items: { orderBy: [{ id: 'asc' }] }, goodsReceipts: { orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }] } } });
   }
 
   /** Lock one Purchase Order before issue or cancellation. */
@@ -205,7 +204,7 @@ export class ProcurementRepository {
           invoicedAmount: '0'
         })) }
       }),
-      include: { items: { orderBy: [{ id: 'asc' }] } }
+      include: { items: { orderBy: [{ id: 'asc' }] }, goodsReceipts: { orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }] } }
     });
   }
 
@@ -217,7 +216,7 @@ export class ProcurementRepository {
       data: { status, ...(cancellation ? { cancelReason: cancellation.reason, cancelledAt: cancellation.at, cancelledBy: cancellation.actorUserId } : {}) }
     });
     if (result.count === 0) return null;
-    return this.db.purchaseOrder.findFirst({ where: scope.where({ id: purchaseOrderId }), include: { items: { orderBy: [{ id: 'asc' }] } } });
+    return this.db.purchaseOrder.findFirst({ where: scope.where({ id: purchaseOrderId }), include: { items: { orderBy: [{ id: 'asc' }] }, goodsReceipts: { orderBy: [{ receivedAt: 'desc' }, { id: 'desc' }] } } });
   }
 
   /** Upsert one material commitment by Company-scoped source key. */

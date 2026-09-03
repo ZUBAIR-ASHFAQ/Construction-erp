@@ -56,8 +56,6 @@ model Company {
   stockLedger          StockLedger[]
   materialIssues       MaterialIssue[]
   subcontractors       Subcontractor[]
-  subcontractContracts SubcontractContract[]
-  subcontractPayments  SubcontractPayment[]
   equipment             Equipment[]
   employees                    Employee[]
   attendanceEntries           AttendanceEntry[]
@@ -342,7 +340,7 @@ model User {
   clientReceiptAllocations           ClientReceiptAllocation[] @relation("ClientReceiptAllocationActor")
   requestedReportRuns                  ReportRun[]                 @relation("ReportRunRequester")
   savedReportFilters                   SavedReportFilter[]         @relation("SavedReportFilterUser")
-  dashboardPreferences                 DashboardPreference[]       @relation("DashboardPreferenceUser")
+  dashboardPreference                  DashboardPreference?        @relation("DashboardPreferenceUser")
   dashboardSavedFilters                DashboardSavedFilter[]      @relation("DashboardSavedFilterUser")
 
   @@unique([companyId, email], map: "users_company_email_uq")
@@ -716,7 +714,6 @@ model Project {
   supplierPayments SupplierPayment[]
   clientReceipts ClientReceipt[]
   dashboardDefaultPreferences DashboardPreference[] @relation("DashboardPreferenceDefaultProject")
-  subcontractContracts SubcontractContract[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -737,7 +734,6 @@ model ProjectStage {
   name             String    @db.VarChar(300)
   sequenceNo       Int       @map("sequence_no")
   weightPercent    Decimal   @map("weight_percent") @db.Decimal(7, 4)
-  costPlusPercent  Decimal?  @map("cost_plus_percent") @db.Decimal(7, 4)
   plannedAmount    Decimal?  @map("planned_amount") @db.Decimal(18, 2)
   plannedStartDate DateTime? @map("planned_start_date") @db.Date
   plannedEndDate   DateTime? @map("planned_end_date") @db.Date
@@ -749,11 +745,11 @@ model ProjectStage {
 
   company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   project         Project               @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  progressUpdates StageProgressUpdate[]
-  teamAssignments ProjectTeamAssignment[]
-  budgetLines     BudgetLine[]
+  progressUpdates    StageProgressUpdate[]
+  teamAssignments    ProjectTeamAssignment[]
+  budgetLines        BudgetLine[]
   attendanceEntries  AttendanceEntry[]
-  costCommitments CostCommitment[]
+  costCommitments    CostCommitment[]
   costActuals     CostActual[]
   forecastLines   ForecastLine[]
   journalLines    JournalLine[]
@@ -1008,7 +1004,6 @@ model CashBankAccount {
   siteExpenses    SiteExpense[]
   supplierPayments SupplierPayment[]
   clientReceipts    ClientReceipt[]
-  subcontractPayments SubcontractPayment[]
 
   @@unique([companyId, code], map: "cash_bank_accounts_company_code_uq")
   @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
@@ -1482,8 +1477,8 @@ model MaterialIssueItem {
   @@map("material_issue_items")
 }
 
-/// Company-owned subcontractor master.
-/// Simple Project contract assignments are owned by SubcontractContract; legacy item/payment/revision scope remains removed.
+/// Final Module 5 company-owned subcontractor master.
+/// Operational subcontract contracts/payment applications are outside the final 21-module scope.
 model Subcontractor {
   id           String  @id @default(uuid()) @db.Uuid
   companyId    String  @map("company_id") @db.Uuid
@@ -1494,63 +1489,13 @@ model Subcontractor {
   defaultTerms String? @map("default_terms") @db.Text
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vendor    Vendor?               @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  contracts SubcontractContract[]
+  vendor  Vendor? @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([id, companyId], map: "subcontractors_id_company_uq")
   @@index([companyId, code], map: "subcontractors_company_code_idx")
   @@index([companyId, vendorId], map: "subcontractors_company_vendor_idx")
   @@index([companyId, status, specialty], map: "subcontractors_company_status_specialty_idx")
   @@map("subcontractors")
-}
-
-/// Company-owned Project assignment and agreed contract value for one subcontractor.
-model SubcontractContract {
-  id              String    @id @default(uuid()) @db.Uuid
-  companyId       String    @map("company_id") @db.Uuid
-  projectId       String    @map("project_id") @db.Uuid
-  subcontractorId String    @map("subcontractor_id") @db.Uuid
-  contractAmount  Decimal   @map("contract_amount") @db.Decimal(18, 2)
-  contractDate    DateTime  @map("contract_date") @db.Date
-  status          String    @default("ACTIVE") @db.VarChar(32)
-  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
-
-  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  subcontractor Subcontractor @relation(fields: [subcontractorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  payments      SubcontractPayment[]
-
-  @@unique([id, companyId], map: "subcontract_contracts_id_company_uq")
-  @@index([companyId, status, contractDate], map: "subcontract_contracts_company_status_date_idx")
-  @@index([companyId, projectId, status], map: "subcontract_contracts_company_project_status_idx")
-  @@index([companyId, subcontractorId, status], map: "subcontract_contracts_company_subcontractor_status_idx")
-  @@map("subcontract_contracts")
-}
-
-/// Company-owned direct payment against one subcontract contract.
-model SubcontractPayment {
-  id                    String   @id @default(uuid()) @db.Uuid
-  companyId             String   @map("company_id") @db.Uuid
-  subcontractContractId String   @map("subcontract_contract_id") @db.Uuid
-  paymentNo             String   @map("payment_no") @db.VarChar(100)
-  paymentDate           DateTime @map("payment_date") @db.Date
-  amount                Decimal  @db.Decimal(18, 2)
-  cashBankAccountId     String   @map("cash_bank_account_id") @db.Uuid
-  reference             String?  @db.VarChar(200)
-  status                String   @default("DRAFT") @db.VarChar(32)
-  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-
-  company             Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  subcontractContract SubcontractContract @relation(fields: [subcontractContractId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  cashBankAccount     CashBankAccount     @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-
-  @@unique([companyId, paymentNo], map: "subcontract_payments_company_payment_no_uq")
-  @@unique([id, companyId], map: "subcontract_payments_id_company_uq")
-  @@index([companyId, subcontractContractId, status, paymentDate], map: "subcontract_payments_company_contract_status_date_idx")
-  @@index([cashBankAccountId, paymentDate], map: "subcontract_payments_cash_bank_date_idx")
-  @@map("subcontract_payments")
 }
 
 /// Final Module 12 Company-owned Equipment master.
@@ -2185,7 +2130,7 @@ model DashboardPreference {
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company        Company  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  user           User     @relation("DashboardPreferenceUser", fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  user           User     @relation("DashboardPreferenceUser", fields: [companyId, userId], references: [companyId, id], onDelete: Restrict, onUpdate: Restrict)
   defaultProject Project? @relation("DashboardPreferenceDefaultProject", fields: [defaultProjectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
 
   @@unique([companyId, userId], map: "dashboard_preferences_company_user_uq")
@@ -2209,6 +2154,3 @@ model DashboardSavedFilter {
   @@index([companyId, userId, createdAt], map: "dashboard_saved_filters_company_user_created_idx")
   @@map("dashboard_saved_filters")
 }
-
-
-

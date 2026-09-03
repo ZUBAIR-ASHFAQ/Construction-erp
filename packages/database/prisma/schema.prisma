@@ -56,6 +56,8 @@ model Company {
   stockLedger          StockLedger[]
   materialIssues       MaterialIssue[]
   subcontractors       Subcontractor[]
+  subcontractContracts SubcontractContract[]
+  subcontractPayments  SubcontractPayment[]
   equipment             Equipment[]
   employees                    Employee[]
   attendanceEntries           AttendanceEntry[]
@@ -714,6 +716,7 @@ model Project {
   supplierPayments SupplierPayment[]
   clientReceipts ClientReceipt[]
   dashboardDefaultPreferences DashboardPreference[] @relation("DashboardPreferenceDefaultProject")
+  subcontractContracts SubcontractContract[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -1005,6 +1008,7 @@ model CashBankAccount {
   siteExpenses    SiteExpense[]
   supplierPayments SupplierPayment[]
   clientReceipts    ClientReceipt[]
+  subcontractPayments SubcontractPayment[]
 
   @@unique([companyId, code], map: "cash_bank_accounts_company_code_uq")
   @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
@@ -1478,8 +1482,8 @@ model MaterialIssueItem {
   @@map("material_issue_items")
 }
 
-/// Final Module 5 company-owned subcontractor master.
-/// Operational subcontract contracts/payment applications are outside the final 21-module scope.
+/// Company-owned subcontractor master.
+/// Simple Project contract assignments are owned by SubcontractContract; legacy item/payment/revision scope remains removed.
 model Subcontractor {
   id           String  @id @default(uuid()) @db.Uuid
   companyId    String  @map("company_id") @db.Uuid
@@ -1490,13 +1494,63 @@ model Subcontractor {
   defaultTerms String? @map("default_terms") @db.Text
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vendor  Vendor? @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  vendor    Vendor?               @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  contracts SubcontractContract[]
 
   @@unique([id, companyId], map: "subcontractors_id_company_uq")
   @@index([companyId, code], map: "subcontractors_company_code_idx")
   @@index([companyId, vendorId], map: "subcontractors_company_vendor_idx")
   @@index([companyId, status, specialty], map: "subcontractors_company_status_specialty_idx")
   @@map("subcontractors")
+}
+
+/// Company-owned Project assignment and agreed contract value for one subcontractor.
+model SubcontractContract {
+  id              String    @id @default(uuid()) @db.Uuid
+  companyId       String    @map("company_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  subcontractorId String    @map("subcontractor_id") @db.Uuid
+  contractAmount  Decimal   @map("contract_amount") @db.Decimal(18, 2)
+  contractDate    DateTime  @map("contract_date") @db.Date
+  status          String    @default("ACTIVE") @db.VarChar(32)
+  finishedAt      DateTime? @map("finished_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  subcontractor Subcontractor @relation(fields: [subcontractorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  payments      SubcontractPayment[]
+
+  @@unique([id, companyId], map: "subcontract_contracts_id_company_uq")
+  @@index([companyId, status, contractDate], map: "subcontract_contracts_company_status_date_idx")
+  @@index([companyId, projectId, status], map: "subcontract_contracts_company_project_status_idx")
+  @@index([companyId, subcontractorId, status], map: "subcontract_contracts_company_subcontractor_status_idx")
+  @@map("subcontract_contracts")
+}
+
+/// Company-owned direct payment against one subcontract contract.
+model SubcontractPayment {
+  id                    String   @id @default(uuid()) @db.Uuid
+  companyId             String   @map("company_id") @db.Uuid
+  subcontractContractId String   @map("subcontract_contract_id") @db.Uuid
+  paymentNo             String   @map("payment_no") @db.VarChar(100)
+  paymentDate           DateTime @map("payment_date") @db.Date
+  amount                Decimal  @db.Decimal(18, 2)
+  cashBankAccountId     String   @map("cash_bank_account_id") @db.Uuid
+  reference             String?  @db.VarChar(200)
+  status                String   @default("DRAFT") @db.VarChar(32)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company             Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subcontractContract SubcontractContract @relation(fields: [subcontractContractId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount     CashBankAccount     @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([companyId, paymentNo], map: "subcontract_payments_company_payment_no_uq")
+  @@unique([id, companyId], map: "subcontract_payments_id_company_uq")
+  @@index([companyId, subcontractContractId, status, paymentDate], map: "subcontract_payments_company_contract_status_date_idx")
+  @@index([cashBankAccountId, paymentDate], map: "subcontract_payments_cash_bank_date_idx")
+  @@map("subcontract_payments")
 }
 
 /// Final Module 12 Company-owned Equipment master.

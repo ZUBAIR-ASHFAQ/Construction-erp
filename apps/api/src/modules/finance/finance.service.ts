@@ -31,8 +31,11 @@ import {
   type TrialBalanceQuery
 } from './finance.schema.js';
 
+const ACCOUNT_SEQUENCE_KEY = 'finance.account';
 const JOURNAL_SEQUENCE_KEY = 'finance.journal';
 const JOURNAL_SOURCE_MANUAL = 'MANUAL';
+const JOURNAL_SOURCE_ACCOUNT_OPENING = 'ACCOUNT_OPENING_BALANCE';
+const OPENING_BALANCE_EQUITY_CODE = 'OPENING-BALANCE-EQUITY';
 const JOURNAL_SOURCE_REVERSAL = 'REVERSAL';
 const JOURNAL_DRAFT = 'DRAFT';
 const JOURNAL_POSTED = 'POSTED';
@@ -285,11 +288,14 @@ export class FinanceService {
     return { includeCompanyWideLines: false, allowedProjectIds };
   }
 
-  /** Ensure an optional GL parent is a same-Company account and not itself. */
-  private async validateAccountParent(repository: FinanceRepository, parentId: string | null | undefined): Promise<void> {
-    if (!parentId) return;
-    const parent = await repository.findAccountById(parentId);
-    if (!parent) throw createFinanceError('GL_ACCOUNT_INVALID');
+  /** Allocate one unused server-owned Finance account code inside the active transaction. */
+  private async allocateAccountCode(tx: TransactionClient, repository: FinanceRepository): Promise<string> {
+    await repository.ensureAccountNumberSequence();
+    for (let attempt = 0; attempt < 100; attempt += 1) {
+      const allocation = await allocateCompanyNumber(tx, { sequenceKey: ACCOUNT_SEQUENCE_KEY });
+      if (!(await repository.findAccountByCode(allocation.formatted))) return allocation.formatted;
+    }
+    throw new ConflictError({ message: 'Unable to allocate a unique Finance account code.' });
   }
 
   /** Ensure every referenced GL account exists and is active. */
@@ -320,7 +326,7 @@ export class FinanceService {
     return { ...result, page, pageSize };
   }
 
-  /** Create one active GL account exactly once. */
+  /** Create one active Cash/Bank GL account exactly once with a server-owned code. */
   async createAccount(input: CreateFinanceAccountBody, idempotencyKey: string) {
     try {
       const result = await executeIdempotentCommand(
@@ -330,22 +336,42 @@ export class FinanceService {
       );
       return result.response.body;
     } catch (error) {
-      if (isUniqueConstraintError(error)) throw new ConflictError({ message: 'The account code already exists in this Company.' });
+      if (isUniqueConstraintError(error)) throw new ConflictError({ message: 'The generated Finance account code conflicts with existing data.' });
       throw error;
     }
   }
 
-  /** Persist one GL account with audit evidence. */
+  /** Persist one Cash/Bank account and post its opening balance atomically. */
   private async createAccountOnce(tx: TransactionClient, input: CreateFinanceAccountBody) {
     this.requirePermission('finance.accounts.manage');
     const repository = new FinanceRepository(tx);
-    await this.validateAccountParent(repository, input.parentId);
-    const account = await repository.createAccount({ ...input, parentId: input.parentId ?? null, status: ACCOUNT_ACTIVE });
-    const accountType = account.accountType.trim().toUpperCase();
-    if (accountType === 'CASH' || accountType === 'BANK') {
-      await repository.createCashBankAccountForGl({ code: account.accountCode, name: account.name, accountType, glAccountId: account.id, status: account.status });
+    const accountType = input.accountType;
+    if (!(accountType === 'CASH' || accountType === 'BANK')) throw createFinanceError('GL_ACCOUNT_INVALID');
+    const accountCode = await this.allocateAccountCode(tx, repository);
+    const account = await repository.createAccount({ accountCode, name: input.name, accountType, parentId: null, status: ACCOUNT_ACTIVE });
+    await repository.createCashBankAccountForGl({ code: account.accountCode, name: account.name, accountType, glAccountId: account.id, status: account.status });
+
+    if (moneyToMinorUnits(input.openingBalance) > 0n) {
+      const period = await repository.findFirstOpenFiscalPeriod();
+      if (!period) throw createFinanceError('FISCAL_PERIOD_CLOSED');
+      const openingEquity = await repository.ensureOpeningBalanceEquityAccount();
+      if (openingEquity.status !== ACCOUNT_ACTIVE || openingEquity.accountType.trim().toUpperCase() !== 'EQUITY') {
+        throw new ConflictError({ message: `${OPENING_BALANCE_EQUITY_CODE} must be an active equity account.` });
+      }
+      await this.postSourceJournalOnce(tx, {
+        sourceType: JOURNAL_SOURCE_ACCOUNT_OPENING,
+        sourceId: account.id,
+        sourceKey: `finance_account_opening:${account.id}`,
+        postingDate: period.startDate,
+        description: `Opening balance - ${account.name}`,
+        lines: [
+          { accountId: account.id, projectId: null, stageId: null, debit: input.openingBalance, credit: '0.00', description: `Opening balance - ${account.name}` },
+          { accountId: openingEquity.id, projectId: null, stageId: null, debit: '0.00', credit: input.openingBalance, description: OPENING_BALANCE_EQUITY_CODE }
+        ]
+      });
     }
-    await recordAudit(tx, { action: 'finance.account.created', entityType: 'gl_account', entityId: account.id, after: { accountCode: account.accountCode, name: account.name, accountType: account.accountType, parentId: account.parentId, status: account.status } });
+
+    await recordAudit(tx, { action: 'finance.account.created', entityType: 'gl_account', entityId: account.id, after: { accountCode: account.accountCode, name: account.name, accountType: account.accountType, openingBalance: input.openingBalance, parentId: account.parentId, status: account.status } });
     return { statusCode: 201, body: financeAccountResponseBody(account) };
   }
 
@@ -364,7 +390,7 @@ export class FinanceService {
     return { ...result, page, pageSize };
   }
 
-  /** Create one draft manual Journal exactly once. */
+  /** Create and post one balanced manual Journal exactly once. */
   async createManualJournal(input: CreateManualJournalBody, idempotencyKey: string) {
     try {
       const result = await executeIdempotentCommand(
@@ -379,20 +405,25 @@ export class FinanceService {
     }
   }
 
-  /** Persist one draft manual Journal with server-owned numbering, period and totals. */
+  /** Persist one balanced manual Journal directly as POSTED with server-owned numbering and totals. */
   private async createManualJournalOnce(tx: TransactionClient, input: CreateManualJournalBody) {
     validateJournalLines(input.lines);
     const repository = new FinanceRepository(tx);
     const now = new Date();
     const lineScope = await this.resolveLineProjectScope(repository, input.lines);
-    await this.requireLinePermissions(new AdministrationRepository(tx), lineScope, 'finance.journals.create', now);
+    const users = new AdministrationRepository(tx);
+    await this.requireLinePermissions(users, lineScope, 'finance.journals.create', now);
+    await this.requireLinePermissions(users, lineScope, 'finance.journals.post', now);
     await this.validateActiveAccounts(repository, input.lines.map((line) => line.accountId));
 
     const postingDate = new Date(`${input.postingDate}T00:00:00.000Z`);
     const period = await this.resolveOpenPeriod(repository, postingDate);
     const totals = calculateJournalTotals(input.lines);
+    if (totals.debitMinorUnits !== totals.creditMinorUnits) throw createFinanceError('JOURNAL_UNBALANCED');
+    await repository.ensureJournalNumberSequence();
     const allocation = await allocateCompanyNumber(tx, { sequenceKey: JOURNAL_SEQUENCE_KEY });
     const security = requireRequestSecurityContext();
+    const postedAt = new Date();
     const journal = await repository.createJournal({
       journalNo: allocation.formatted,
       postingDate,
@@ -400,9 +431,10 @@ export class FinanceService {
       sourceId: null,
       sourceKey: null,
       description: input.description,
-      status: JOURNAL_DRAFT,
+      status: JOURNAL_POSTED,
       periodId: period.id,
       createdBy: security.actorUserId,
+      postedAt,
       totalDebit: totals.totalDebit,
       totalCredit: totals.totalCredit,
       lines: input.lines.map((line): CreateJournalLineRepositoryInput => ({
@@ -415,7 +447,8 @@ export class FinanceService {
       }))
     });
     if (!journal) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
-    await recordAudit(tx, { action: 'finance.journal.created', entityType: 'journal', entityId: journal.id, after: { journalNo: journal.journalNo, postingDate: input.postingDate, status: journal.status } });
+    await recordAudit(tx, { action: 'journal.posted', entityType: 'journal', entityId: journal.id, after: { journalNo: journal.journalNo, postingDate: input.postingDate, status: JOURNAL_POSTED, postedAt: postedAt.toISOString() } });
+    await recordOutboxEvent(tx, { eventType: 'journal.posted', resourceType: 'journal', resourceId: journal.id, payload: { journalId: journal.id, journalNo: journal.journalNo, periodId: period.id, postingDate: input.postingDate, totalDebit: totals.totalDebit, totalCredit: totals.totalCredit } });
     return { statusCode: 201, body: financeJournalResponseBody(journal) };
   }
 
@@ -547,6 +580,7 @@ export class FinanceService {
     await this.resolveLineProjectScope(repository, input.lines);
     await this.validateActiveAccounts(repository, input.lines.map((line) => line.accountId));
     const period = await this.resolveOpenPeriod(repository, input.postingDate);
+    await repository.ensureJournalNumberSequence();
     const allocation = await allocateCompanyNumber(tx, { sequenceKey: JOURNAL_SEQUENCE_KEY });
     const security = requireRequestSecurityContext();
     const postedAt = new Date();

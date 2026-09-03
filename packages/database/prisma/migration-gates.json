@@ -777,6 +777,22 @@
       "migrations": [
         "20260901000400_final21_procurement_material_trigger_repair"
       ]
+    },
+    {
+      "stage": 63,
+      "gate": "subcontract-contract-project-assignment",
+      "description": "Adds the requested simple subcontract Project assignment contract with agreed amount/date, ACTIVE-to-FINISHED lifecycle, company-safe Project/Subcontractor foreign keys and no legacy subcontract item/payment workflow.",
+      "migrations": [
+        "20260903000100_subcontract_contract_assignment"
+      ]
+    },
+    {
+      "stage": 64,
+      "gate": "subcontractor-direct-payment-ledger",
+      "description": "Adds direct contract-backed subcontractor payments with server numbering, Cash/Bank posting, source-derived contract balances and Project Cost/Finance integration without changing Supplier Payables or restoring the removed legacy subcontract payment-application workflow.",
+      "migrations": [
+        "20260903000200_subcontract_payment_ledger"
+      ]
     }
   ]
 }

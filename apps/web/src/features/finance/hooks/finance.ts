@@ -30,15 +30,12 @@ export function useFinanceAccounts(input: ListFinanceAccountsInput = {}, enabled
   return useQuery({ queryKey: [...FINANCE_KEY, 'accounts', input], queryFn: () => listFinanceAccounts(input), enabled });
 }
 
-/** Create a GL account and refresh account/cash-bank reads. */
+/** Create a Cash/Bank account and refresh every Finance view affected by its opening Journal. */
 export function useCreateFinanceAccount() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateFinanceAccountInput) => createFinanceAccount(input),
-    onSuccess: async () => Promise.all([
-      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEY, 'accounts'] }),
-      queryClient.invalidateQueries({ queryKey: [...FINANCE_KEY, 'cash-bank'] })
-    ])
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY })
   });
 }
 
@@ -53,10 +50,10 @@ export function useFinanceJournals(input: ListFinanceJournalsInput = {}, enabled
   return useQuery({ queryKey: [...FINANCE_KEY, 'journals', input], queryFn: () => listFinanceJournals(input), enabled });
 }
 
-/** Create a draft Journal and refresh Journal history. */
+/** Create and post a balanced Journal and refresh every affected Finance read model. */
 export function useCreateManualJournal() {
   const queryClient = useQueryClient();
-  return useMutation({ mutationFn: (input: CreateManualJournalInput) => createManualJournal(input), onSuccess: () => queryClient.invalidateQueries({ queryKey: [...FINANCE_KEY, 'journals'] }) });
+  return useMutation({ mutationFn: (input: CreateManualJournalInput) => createManualJournal(input), onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY }) });
 }
 
 /** Post a draft Journal and refresh all Finance read models affected by posting. */

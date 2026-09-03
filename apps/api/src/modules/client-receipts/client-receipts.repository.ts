@@ -176,6 +176,17 @@ export class ClientReceiptsRepository {
     });
   }
 
+  /** Ensure one server-owned Client Receipt control account exists without overwriting existing Finance configuration. */
+  async ensureReceiptControlAccount(input: Readonly<{ accountCode: string; name: string; accountType: string }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.glAccount.upsert({
+      where: { companyId_accountCode: { companyId: scope.companyId, accountCode: input.accountCode } },
+      create: scope.createData({ accountCode: input.accountCode, name: input.name, accountType: input.accountType, parentId: null, status: 'ACTIVE' }),
+      update: {},
+      select: { id: true, accountCode: true, accountType: true, status: true }
+    });
+  }
+
   /** Find one Client Invoice only when Company, Client, Project and trusted Project scope all agree. */
   async findClientInvoiceById(
     clientInvoiceId: string,

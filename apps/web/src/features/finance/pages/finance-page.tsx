@@ -20,12 +20,9 @@ import {
 import type { FinancePeriod, GetFinanceLedgerInput } from '../api/finance-api.js';
 
 const accountSchema = z.object({
-  accountCode: z.string().trim().min(1, 'Code is required.').max(100),
-  name: z.string().trim().min(1, 'Name is required.').max(300),
-  accountType: z.string().trim().min(1, 'Type is required.').max(100),
-  parentId: z.string().trim()
-}).superRefine((value, context) => {
-  if (value.parentId && !z.string().uuid().safeParse(value.parentId).success) context.addIssue({ code: z.ZodIssueCode.custom, path: ['parentId'], message: 'Parent ID must be a UUID.' });
+  name: z.string().trim().min(1, 'Account name is required.').max(300),
+  accountType: z.enum(['CASH', 'BANK']),
+  openingBalance: z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'Enter a valid opening balance.')
 });
 
 const periodIdSchema = z.object({ periodId: z.string().uuid('Select a fiscal period.') });
@@ -49,8 +46,10 @@ function formatPeriodLabel(period: FinancePeriod): string {
   return `FY ${period.fiscalYear} · P${period.periodNo} · ${period.startDate} to ${period.endDate} · ${period.status}`;
 }
 
-/** Render the Final Module 18 Finance Core workspace against only approved Finance APIs. */
-export function FinancePage() {
+type FinancePageProps = Readonly<{ view?: 'core' | 'ledger' }>;
+
+/** Render the Final Module 18 Finance Core or its separate Account Ledger view against approved Finance APIs. */
+export function FinancePage({ view = 'core' }: FinancePageProps) {
   const canReadFinance = usePermission('finance.read');
   const canReadScopedFinance = canReadFinance;
   const canManageAccounts = usePermission('finance.accounts.manage');
@@ -58,35 +57,33 @@ export function FinancePage() {
   const canClosePeriods = usePermission('finance.periods.close');
   const canReadProjects = usePermission('projects.read');
   const canReadStages = usePermission('stages.read');
-  const [accountPage, setAccountPage] = useState(1);
   const [journalPage, setJournalPage] = useState(1);
   const [trialPeriodId, setTrialPeriodId] = useState<string | null>(null);
   const [ledgerInput, setLedgerInput] = useState<GetFinanceLedgerInput | null>(null);
 
-  const accountsQuery = useFinanceAccounts({ page: accountPage, pageSize: 25 }, canReadFinance);
-  const selectorAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, canReadFinance);
-  const journalsQuery = useFinanceJournals({ page: journalPage, pageSize: 25 }, canReadScopedFinance);
-  const cashBankQuery = useCashBankAccounts({ page: 1, pageSize: 100, status: 'ACTIVE' }, canReadFinance);
+  const selectorAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, view === 'ledger' && canReadFinance);
+  const journalsQuery = useFinanceJournals({ page: journalPage, pageSize: 25 }, view === 'core' && canReadScopedFinance);
+  const cashBankQuery = useCashBankAccounts({ page: 1, pageSize: 100, status: 'ACTIVE' }, view === 'core' && canReadFinance);
   const periodsQuery = useFinancePeriods({ page: 1, pageSize: 100 }, canReadFinance || canClosePeriods);
-  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, canReadScopedFinance && canReadProjects);
+  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, view === 'ledger' && canReadScopedFinance && canReadProjects);
   const trialBalanceQuery = useFinanceTrialBalance(trialPeriodId);
   const ledgerQuery = useFinanceLedger(ledgerInput);
   const createAccountMutation = useCreateFinanceAccount();
   const reconciliationMutation = useCreateBankReconciliation();
   const closePeriodMutation = useCloseFinancePeriod();
 
-  const accountForm = useForm<AccountValues>({ resolver: zodResolver(accountSchema), defaultValues: { accountCode: '', name: '', accountType: '', parentId: '' } });
+  const accountForm = useForm<AccountValues>({ resolver: zodResolver(accountSchema), defaultValues: { name: '', accountType: 'CASH', openingBalance: '0.00' } });
   const trialForm = useForm<PeriodValues>({ resolver: zodResolver(periodIdSchema), defaultValues: { periodId: '' } });
   const closePeriodForm = useForm<PeriodValues>({ resolver: zodResolver(periodIdSchema), defaultValues: { periodId: '' } });
   const ledgerForm = useForm<LedgerValues>({ resolver: zodResolver(ledgerSchema), defaultValues: { periodId: '', accountId: '', projectId: '', stageId: '' } });
   const reconciliationForm = useForm<ReconciliationValues>({ resolver: zodResolver(reconciliationSchema), defaultValues: { cashBankAccountId: '', statementDate: new Date().toISOString().slice(0, 10) } });
   const ledgerProjectId = ledgerForm.watch('projectId');
-  const ledgerStagesQuery = useProjectStages(ledgerProjectId || null, canReadScopedFinance && canReadStages && ledgerProjectId !== '');
+  const ledgerStagesQuery = useProjectStages(ledgerProjectId || null, view === 'ledger' && canReadScopedFinance && canReadStages && ledgerProjectId !== '');
 
-  /** Create one General Ledger account and clear the simple form. */
+  /** Create one server-numbered Cash/Bank account and clear the setup form. */
   async function handleCreateAccount(values: AccountValues): Promise<void> {
-    await createAccountMutation.mutateAsync({ accountCode: values.accountCode, name: values.name, accountType: values.accountType, ...(values.parentId ? { parentId: values.parentId } : {}) });
-    accountForm.reset({ accountCode: '', name: '', accountType: '', parentId: '' });
+    await createAccountMutation.mutateAsync(values);
+    accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00' });
   }
 
   /** Run a trial-balance read for one explicit period. */
@@ -109,52 +106,52 @@ export function FinancePage() {
     await closePeriodMutation.mutateAsync(values.periodId);
   }
 
-  const accounts = accountsQuery.data?.items ?? [];
   const selectorAccounts = selectorAccountsQuery.data?.items ?? [];
   const journals = journalsQuery.data?.items ?? [];
   const periods = periodsQuery.data?.items ?? [];
   const projects = projectsQuery.data?.items ?? [];
   const ledgerStages = ledgerStagesQuery.data?.items ?? [];
-  const accountLabels = new Map(selectorAccounts.map((account) => [account.id, `${account.accountCode} · ${account.name}`]));
-  const projectLabels = new Map(projects.map((project) => [project.id, `${project.projectCode} · ${project.name}`]));
-  const stageLabels = new Map(ledgerStages.map((stage) => [stage.id, `${stage.code} · ${stage.name}`]));
   const openPeriods = periods.filter((period) => period.status === 'OPEN');
-  const accountPages = Math.max(1, Math.ceil((accountsQuery.data?.total ?? 0) / 25));
   const journalPages = Math.max(1, Math.ceil((journalsQuery.data?.total ?? 0) / 25));
+
+  if (view === 'ledger') {
+    return (
+      <section className="page-stack">
+        <header className="page-heading">
+          <div><p className="eyebrow">Module 18 · Finance Core</p><h1>Account Ledger</h1><p>Review posted General Ledger activity by fiscal period, account, Project and Stage.</p></div>
+        </header>
+
+        {periodsQuery.error instanceof Error && <p className="form-error" role="alert">{periodsQuery.error.message}</p>}
+        {selectorAccountsQuery.error instanceof Error && <p className="form-error" role="alert">{selectorAccountsQuery.error.message}</p>}
+        {projectsQuery.error instanceof Error && <p className="form-error" role="alert">{projectsQuery.error.message}</p>}
+        {ledgerStagesQuery.error instanceof Error && <p className="form-error" role="alert">{ledgerStagesQuery.error.message}</p>}
+
+        <section className="admin-card">
+          <h2>General Ledger</h2>
+          {canReadScopedFinance && <form className="admin-grid" onSubmit={ledgerForm.handleSubmit(handleLedger)}><label>Fiscal period<select {...ledgerForm.register('periodId')}><option value="">Select period</option>{periods.map((period) => <option key={period.id} value={period.id}>{formatPeriodLabel(period)}</option>)}</select></label><label>Account<select {...ledgerForm.register('accountId')}><option value="">All accounts</option>{selectorAccounts.map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name}</option>)}</select></label><label>Project<select {...ledgerForm.register('projectId')} disabled={!canReadProjects} onChange={(event) => { ledgerForm.setValue('projectId', event.target.value); ledgerForm.setValue('stageId', ''); }}><option value="">{canReadProjects ? 'All allowed Projects' : 'Project read permission required'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label><label>Stage<select {...ledgerForm.register('stageId')} disabled={!canReadStages || !ledgerProjectId}><option value="">{ledgerProjectId ? 'All Project Stages' : 'Select a Project first'}</option>{ledgerStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label><button type="submit">Load ledger</button></form>}
+          {ledgerQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Date</th><th>Journal</th><th>Account</th><th>Project / Stage</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{ledgerQuery.data.items.map((line) => <tr key={line.id}><td>{line.postingDate}</td><td>{line.journalNo}</td><td>{line.accountCode} · {line.accountName}</td><td><span>{line.projectName ? `${line.projectCode ?? ''}${line.projectCode ? ' · ' : ''}${line.projectName}` : 'Company'}</span><span>{line.stageName ? `${line.stageCode ?? ''}${line.stageCode ? ' · ' : ''}${line.stageName}` : '—'}</span></td><td>{line.description}</td><td>{line.debit}</td><td>{line.credit}</td></tr>)}</tbody></table></div>}
+          {ledgerQuery.error instanceof Error && <p className="form-error" role="alert">{ledgerQuery.error.message}</p>}
+        </section>
+      </section>
+    );
+  }
 
   return (
     <section className="page-stack">
       <header className="page-heading">
-        <div><p className="eyebrow">Module 18</p><h1>Finance & Accounting</h1><p>Chart of Accounts, balanced Journals, ledger, Cash/Bank, reconciliation and fiscal-period close.</p></div>
+        <div><p className="eyebrow">Module 18</p><h1>Finance & Accounting</h1><p>Journal records, trial balance, Cash/Bank reconciliation and fiscal-period close.</p></div>
       </header>
 
-      <section className="admin-card">
-        <h2>Chart of Accounts</h2>
-        {accountsQuery.error instanceof Error && <p className="form-error" role="alert">{accountsQuery.error.message}</p>}
-        {accountsQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Parent</th><th>Status</th></tr></thead><tbody>{accounts.map((account) => <tr key={account.id}><td>{account.accountCode}</td><td>{account.name}</td><td>{account.accountType}</td><td>{account.parentId ? (accountLabels.get(account.parentId) ?? 'Parent account') : '—'}</td><td>{account.status}</td></tr>)}</tbody></table></div>}
-        {accountsQuery.data && <div className="pagination-row"><button type="button" className="secondary-button" disabled={accountPage <= 1} onClick={() => setAccountPage((page) => page - 1)}>Previous</button><span>Page {accountPage} of {accountPages}</span><button type="button" className="secondary-button" disabled={accountPage >= accountPages} onClick={() => setAccountPage((page) => page + 1)}>Next</button></div>}
-        {canManageAccounts && <form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account code<input {...accountForm.register('accountCode')} /></label><label>Name<input {...accountForm.register('name')} /></label><label>Account type<input {...accountForm.register('accountType')} /></label><label>Parent account
-          <select {...accountForm.register('parentId')}>
-            <option value="">No parent account</option>
-            {selectorAccounts.map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name}</option>)}
-          </select>
-        </label><button type="submit" disabled={createAccountMutation.isPending}>Create account</button></form>}
+      {canManageAccounts && <section className="admin-card">
+        <h2>Create Account</h2>
+        <form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account name<input {...accountForm.register('name')} /></label><label>Account type<select {...accountForm.register('accountType')}><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label><label>Opening balance<input type="number" min="0" step="0.01" inputMode="decimal" {...accountForm.register('openingBalance')} /></label><div className="muted">Account code is generated automatically by the server. A non-zero opening balance posts an opening Journal automatically.</div><button type="submit" disabled={createAccountMutation.isPending}>Create account</button></form>
         {createAccountMutation.error instanceof Error && <p className="form-error" role="alert">{createAccountMutation.error.message}</p>}
-      </section>
+      </section>}
 
       {periodsQuery.error instanceof Error && <p className="form-error" role="alert">{periodsQuery.error.message}</p>}
       {selectorAccountsQuery.error instanceof Error && <p className="form-error" role="alert">{selectorAccountsQuery.error.message}</p>}
-      {projectsQuery.error instanceof Error && <p className="form-error" role="alert">{projectsQuery.error.message}</p>}
-      {ledgerStagesQuery.error instanceof Error && <p className="form-error" role="alert">{ledgerStagesQuery.error.message}</p>}
-      <FinanceJournalWorkspace accounts={selectorAccounts} journals={journals} />
+      <FinanceJournalWorkspace journals={journals} />
       {journalsQuery.data && <div className="pagination-row"><button type="button" className="secondary-button" disabled={journalPage <= 1} onClick={() => setJournalPage((page) => page - 1)}>Previous Journals</button><span>Page {journalPage} of {journalPages}</span><button type="button" className="secondary-button" disabled={journalPage >= journalPages} onClick={() => setJournalPage((page) => page + 1)}>Next Journals</button></div>}
-
-      <section className="admin-card">
-        <h2>General Ledger</h2>
-        {canReadScopedFinance && <form className="admin-grid" onSubmit={ledgerForm.handleSubmit(handleLedger)}><label>Fiscal period<select {...ledgerForm.register('periodId')}><option value="">Select period</option>{periods.map((period) => <option key={period.id} value={period.id}>{formatPeriodLabel(period)}</option>)}</select></label><label>Account<select {...ledgerForm.register('accountId')}><option value="">All accounts</option>{selectorAccounts.map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name}</option>)}</select></label><label>Project<select {...ledgerForm.register('projectId')} disabled={!canReadProjects} onChange={(event) => { ledgerForm.setValue('projectId', event.target.value); ledgerForm.setValue('stageId', ''); }}><option value="">{canReadProjects ? 'All allowed Projects' : 'Project read permission required'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label><label>Stage<select {...ledgerForm.register('stageId')} disabled={!canReadStages || !ledgerProjectId}><option value="">{ledgerProjectId ? 'All Project Stages' : 'Select a Project first'}</option>{ledgerStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label><button type="submit">Load ledger</button></form>}
-        {ledgerQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Date</th><th>Journal</th><th>Account</th><th>Project / Stage</th><th>Description</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{ledgerQuery.data.items.map((line) => <tr key={line.id}><td>{line.postingDate}<br /><small>{line.id}</small></td><td>{line.journalNo}<br /><small>{line.journalId}</small></td><td>{line.accountCode} · {line.accountName}<br /><small>{line.accountId}</small></td><td><span>{line.projectId ? (projectLabels.get(line.projectId) ?? line.projectId) : 'Company'}</span><span>{line.stageId ? (stageLabels.get(line.stageId) ?? line.stageId) : '—'}</span></td><td>{line.description}</td><td>{line.debit}</td><td>{line.credit}</td></tr>)}</tbody></table></div>}
-        {ledgerQuery.error instanceof Error && <p className="form-error" role="alert">{ledgerQuery.error.message}</p>}
-      </section>
 
       <section className="admin-card">
         <h2>Trial Balance</h2>

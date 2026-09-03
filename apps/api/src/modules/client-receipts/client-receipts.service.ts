@@ -21,10 +21,12 @@ import {
 const ROLE_ASSIGNMENT_ACTIVE = 'ACTIVE';
 const ROLE_ACTIVE = 'ACTIVE';
 const ACCOUNT_ACTIVE = 'ACTIVE';
-const CASH_ACCOUNT_TYPE = 'ASSET';
+const LEGACY_CASH_ACCOUNT_TYPE = 'ASSET';
 const CLIENT_ADVANCE_ACCOUNT_CODE = 'CLIENT-ADVANCE';
+const CLIENT_ADVANCE_ACCOUNT_NAME = 'Client Advance';
 const CLIENT_ADVANCE_ACCOUNT_TYPE = 'LIABILITY';
 const CLIENT_RECEIVABLE_ACCOUNT_CODE = 'CLIENT-RECEIVABLE';
+const CLIENT_RECEIVABLE_ACCOUNT_NAME = 'Client Receivable';
 const CLIENT_RECEIVABLE_ACCOUNT_TYPE = 'ASSET';
 const CLIENT_INVOICE_ISSUED = 'ISSUED';
 const JOURNAL_POSTED = 'POSTED';
@@ -233,20 +235,25 @@ export class ClientReceiptsService {
     }
 
     const cashBankAccount = await repository.findCashBankAccountById(input.cashBankAccountId);
+    const cashBankGlType = cashBankAccount?.glAccount.accountType.trim().toUpperCase();
     if (
       !cashBankAccount
       || cashBankAccount.status !== ACCOUNT_ACTIVE
       || cashBankAccount.accountType !== input.paymentMethod
       || cashBankAccount.glAccount.status !== ACCOUNT_ACTIVE
-      || cashBankAccount.glAccount.accountType !== CASH_ACCOUNT_TYPE
+      || (cashBankGlType !== LEGACY_CASH_ACCOUNT_TYPE && cashBankGlType !== input.paymentMethod)
     ) {
-      throw new ValidationError({ message: 'Client Receipt requires an active matching Cash/Bank account mapped to an active asset account.' });
+      throw new ValidationError({ message: 'Client Receipt requires an active matching Cash/Bank account with a compatible active GL account.' });
     }
 
-    const clientAdvanceAccount = await repository.findGlAccountByCode(CLIENT_ADVANCE_ACCOUNT_CODE);
+    const clientAdvanceAccount = await repository.findGlAccountByCode(CLIENT_ADVANCE_ACCOUNT_CODE)
+      ?? await repository.ensureReceiptControlAccount({
+        accountCode: CLIENT_ADVANCE_ACCOUNT_CODE,
+        name: CLIENT_ADVANCE_ACCOUNT_NAME,
+        accountType: CLIENT_ADVANCE_ACCOUNT_TYPE
+      });
     if (
-      !clientAdvanceAccount
-      || clientAdvanceAccount.status !== ACCOUNT_ACTIVE
+      clientAdvanceAccount.status !== ACCOUNT_ACTIVE
       || clientAdvanceAccount.accountType !== CLIENT_ADVANCE_ACCOUNT_TYPE
     ) {
       throw new ValidationError({ message: `Finance account ${CLIENT_ADVANCE_ACCOUNT_CODE} must be an active liability account before Client Receipts can be posted.` });
@@ -260,20 +267,30 @@ export class ClientReceiptsService {
 
   /** Validate the Finance accounts used to reclassify Client Advance into Client Receivable. */
   private async validateAllocationAccounts(repository: ClientReceiptsRepository) {
-    const [clientAdvanceAccount, clientReceivableAccount] = await Promise.all([
+    const [existingAdvanceAccount, existingReceivableAccount] = await Promise.all([
       repository.findGlAccountByCode(CLIENT_ADVANCE_ACCOUNT_CODE),
       repository.findGlAccountByCode(CLIENT_RECEIVABLE_ACCOUNT_CODE)
     ]);
+    const [clientAdvanceAccount, clientReceivableAccount] = await Promise.all([
+      existingAdvanceAccount ?? repository.ensureReceiptControlAccount({
+        accountCode: CLIENT_ADVANCE_ACCOUNT_CODE,
+        name: CLIENT_ADVANCE_ACCOUNT_NAME,
+        accountType: CLIENT_ADVANCE_ACCOUNT_TYPE
+      }),
+      existingReceivableAccount ?? repository.ensureReceiptControlAccount({
+        accountCode: CLIENT_RECEIVABLE_ACCOUNT_CODE,
+        name: CLIENT_RECEIVABLE_ACCOUNT_NAME,
+        accountType: CLIENT_RECEIVABLE_ACCOUNT_TYPE
+      })
+    ]);
     if (
-      !clientAdvanceAccount
-      || clientAdvanceAccount.status !== ACCOUNT_ACTIVE
+      clientAdvanceAccount.status !== ACCOUNT_ACTIVE
       || clientAdvanceAccount.accountType !== CLIENT_ADVANCE_ACCOUNT_TYPE
     ) {
       throw new ValidationError({ message: `Finance account ${CLIENT_ADVANCE_ACCOUNT_CODE} must be an active liability account.` });
     }
     if (
-      !clientReceivableAccount
-      || clientReceivableAccount.status !== ACCOUNT_ACTIVE
+      clientReceivableAccount.status !== ACCOUNT_ACTIVE
       || clientReceivableAccount.accountType !== CLIENT_RECEIVABLE_ACCOUNT_TYPE
     ) {
       throw new ValidationError({ message: `Finance account ${CLIENT_RECEIVABLE_ACCOUNT_CODE} must be an active asset account.` });

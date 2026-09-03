@@ -96,12 +96,11 @@ export const financePeriodParamsSchema = z.object({ id: uuidSchema }).strict();
 /** Bounded Chart-of-Accounts read query. */
 export const listFinanceAccountsQuerySchema = z.object({ ...paginationQueryShape }).strict();
 
-/** Create one active Company General Ledger account. */
+/** Create one active Cash/Bank General Ledger account with a server-owned code. */
 export const createFinanceAccountBodySchema = z.object({
-  accountCode: accountCodeSchema,
   name: accountNameSchema,
-  accountType: tokenSchema,
-  parentId: uuidSchema.nullable().optional()
+  accountType: z.enum(['CASH', 'BANK']),
+  openingBalance: nonNegativeMoneySchema
 }).strict();
 
 /** One manual Journal line using only Final-21 Project and optional Stage dimensions. */
@@ -118,7 +117,7 @@ export const manualJournalLineInputSchema = z.object({
   }
 });
 
-/** Create one draft manual Journal while numbering, period, status and totals stay server-owned. */
+/** Create and post one balanced manual Journal while numbering, period, status and totals stay server-owned. */
 export const createManualJournalBodySchema = z.object({
   postingDate: dateSchema,
   description: descriptionSchema,
@@ -200,8 +199,14 @@ export const financeJournalLineResponseSchema = z.object({
   id: uuidSchema,
   journalId: uuidSchema,
   accountId: uuidSchema,
+  accountCode: accountCodeSchema.optional(),
+  accountName: accountNameSchema.optional(),
   projectId: uuidSchema.nullable(),
+  projectCode: tokenSchema.nullable().optional(),
+  projectName: accountNameSchema.nullable().optional(),
   stageId: uuidSchema.nullable(),
+  stageCode: tokenSchema.nullable().optional(),
+  stageName: accountNameSchema.nullable().optional(),
   debit: nonNegativeMoneySchema,
   credit: nonNegativeMoneySchema,
   description: descriptionSchema
@@ -218,7 +223,9 @@ export const financeJournalResponseSchema = z.object({
   description: descriptionSchema,
   status: tokenSchema,
   periodId: uuidSchema,
+  periodLabel: z.string().trim().min(1).max(300).optional(),
   createdBy: uuidSchema.nullable(),
+  createdByName: z.string().trim().min(1).max(200).nullable().optional(),
   postedAt: z.string().datetime().nullable(),
   totalDebit: nonNegativeMoneySchema,
   totalCredit: nonNegativeMoneySchema,
@@ -243,7 +250,11 @@ export const financeLedgerLineResponseSchema = z.object({
   accountCode: accountCodeSchema,
   accountName: accountNameSchema,
   projectId: uuidSchema.nullable(),
+  projectCode: tokenSchema.nullable(),
+  projectName: accountNameSchema.nullable(),
   stageId: uuidSchema.nullable(),
+  stageCode: tokenSchema.nullable(),
+  stageName: accountNameSchema.nullable(),
   debit: nonNegativeMoneySchema,
   credit: nonNegativeMoneySchema,
   description: descriptionSchema

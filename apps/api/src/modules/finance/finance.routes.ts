@@ -49,12 +49,11 @@ const IDEMPOTENCY_HEADERS_JSON_SCHEMA = {
   properties: { 'idempotency-key': { type: 'string', minLength: 1, maxLength: 200 } }
 } as const;
 const CREATE_ACCOUNT_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['accountCode', 'name', 'accountType'],
+  type: 'object', additionalProperties: false, required: ['name', 'accountType', 'openingBalance'],
   properties: {
-    accountCode: { type: 'string', minLength: 1, maxLength: 100 },
     name: { type: 'string', minLength: 1, maxLength: 300 },
-    accountType: { type: 'string', minLength: 1, maxLength: 100 },
-    parentId: { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] }
+    accountType: { type: 'string', enum: ['CASH', 'BANK'] },
+    openingBalance: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }
   }
 } as const;
 const JOURNAL_LINE_BODY_JSON_SCHEMA = {
@@ -190,7 +189,9 @@ function serializeJournal(journal: Awaited<ReturnType<FinanceService['listJourna
     description: journal.description,
     status: journal.status,
     periodId: journal.periodId,
+    periodLabel: `FY ${journal.period.fiscalYear} · P${journal.period.periodNo} · ${journal.period.startDate.toISOString().slice(0, 10)} to ${journal.period.endDate.toISOString().slice(0, 10)}`,
     createdBy: journal.createdBy,
+    createdByName: journal.creator?.name ?? null,
     postedAt: journal.postedAt?.toISOString() ?? null,
     totalDebit: journal.totalDebit.toString(),
     totalCredit: journal.totalCredit.toString(),
@@ -198,8 +199,14 @@ function serializeJournal(journal: Awaited<ReturnType<FinanceService['listJourna
       id: line.id,
       journalId: line.journalId,
       accountId: line.accountId,
+      accountCode: line.account.accountCode,
+      accountName: line.account.name,
       projectId: line.projectId,
+      projectCode: line.project?.projectCode ?? null,
+      projectName: line.project?.name ?? null,
       stageId: line.stageId,
+      stageCode: line.stage?.code ?? null,
+      stageName: line.stage?.name ?? null,
       debit: line.debit.toString(),
       credit: line.credit.toString(),
       description: line.description
@@ -223,7 +230,7 @@ export async function registerFinanceRoutes(app: FastifyInstance, options: Finan
   });
 
   app.post('/api/v1/finance/accounts', {
-    schema: { tags: tag, operationId: 'financeCreateAccount', summary: 'Create General Ledger account', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_ACCOUNT_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+    schema: { tags: tag, operationId: 'financeCreateAccount', summary: 'Create Cash or Bank account with automatic code and opening balance', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_ACCOUNT_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     requireRouteAccess('finance.accounts.manage');
@@ -242,7 +249,7 @@ export async function registerFinanceRoutes(app: FastifyInstance, options: Finan
   });
 
   app.post('/api/v1/finance/journals', {
-    schema: { tags: tag, operationId: 'financeCreateManualJournal', summary: 'Create manual Journal', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_JOURNAL_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+    schema: { tags: tag, operationId: 'financeCreateManualJournal', summary: 'Create and post balanced manual Journal', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_JOURNAL_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     requireRouteAccess('finance.journals.create', true);

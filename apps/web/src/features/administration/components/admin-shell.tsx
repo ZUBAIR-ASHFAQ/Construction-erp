@@ -20,6 +20,8 @@ import { ProcurementPage } from '../../procurement/pages/procurement-page.js';
 import { InventoryPage } from '../../inventory/pages/inventory-page.js';
 import { MaterialsPage } from '../../inventory/pages/materials-page.js';
 import { VendorsSubcontractorsPage } from '../../vendors-subcontractors/pages/vendors-subcontractors-page.js';
+import { SubcontractContractsPage } from '../../vendors-subcontractors/pages/subcontract-contracts-page.js';
+import { SubcontractPaymentsPage } from '../../vendors-subcontractors/pages/subcontract-payments-page.js';
 import { EquipmentPage } from '../../equipment/pages/equipment-page.js';
 import { EmployeesPage } from '../../employees/pages/employees-page.js';
 import { LabourPayrollPage } from '../../labour-payroll/pages/labour-payroll-page.js';
@@ -49,6 +51,7 @@ type WorkspaceView =
   | 'project-stages'
   | 'project-team'
   | 'finance'
+  | 'account-ledger'
   | 'budgets-job-cost'
   | 'procurement'
   | 'materials'
@@ -60,6 +63,7 @@ type WorkspaceView =
   | 'supplier-ledger'
   | 'subcontractors'
   | 'subcontractor-add'
+  | 'subcontractor-contracts'
   | 'subcontractor-payment'
   | 'subcontractor-ledger'
   | 'equipment'
@@ -191,6 +195,7 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'project-stages',
   'project-team',
   'finance',
+  'account-ledger',
   'budgets-job-cost',
   'procurement',
   'materials',
@@ -202,6 +207,7 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'supplier-ledger',
   'subcontractors',
   'subcontractor-add',
+  'subcontractor-contracts',
   'subcontractor-payment',
   'subcontractor-ledger',
   'equipment',
@@ -219,6 +225,47 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'departments'
 ];
 
+const WORKSPACE_VIEW_META: Readonly<Record<WorkspaceView, { section: string; label: string }>> = {
+  dashboard: { section: 'Overview', label: 'Dashboard' },
+  documents: { section: 'Overview', label: 'Documents' },
+  clients: { section: 'Clients', label: 'Client List' },
+  'client-add': { section: 'Clients', label: 'Add Client' },
+  'client-payment': { section: 'Clients', label: 'New Payment' },
+  'client-ledger': { section: 'Clients', label: 'Client Ledger' },
+  projects: { section: 'Projects', label: 'Project Management' },
+  'project-stages': { section: 'Projects', label: 'Stages & Progress' },
+  'project-team': { section: 'Projects', label: 'Team & Assignment' },
+  finance: { section: 'Commercial', label: 'Finance Core' },
+  'account-ledger': { section: 'Commercial', label: 'Account Ledger' },
+  'budgets-job-cost': { section: 'Commercial', label: 'Budget & Cost Tracking' },
+  procurement: { section: 'Commercial', label: 'Procurement' },
+  materials: { section: 'Inventory', label: 'Materials' },
+  inventory: { section: 'Inventory', label: 'Stock & Inventory' },
+  'vendors-subcontractors': { section: 'Commercial', label: 'Vendors & Subcontractors' },
+  suppliers: { section: 'Suppliers', label: 'Supplier List' },
+  'supplier-add': { section: 'Suppliers', label: 'Add Supplier' },
+  'supplier-payment': { section: 'Suppliers', label: 'New Payment' },
+  'supplier-ledger': { section: 'Suppliers', label: 'Supplier Ledger' },
+  subcontractors: { section: 'Subcontractors', label: 'Subcontractor List' },
+  'subcontractor-add': { section: 'Subcontractors', label: 'Add Subcontractor' },
+  'subcontractor-contracts': { section: 'Subcontractors', label: 'Subcontract Contracts' },
+  'subcontractor-payment': { section: 'Subcontractors', label: 'New Payment' },
+  'subcontractor-ledger': { section: 'Subcontractors', label: 'Subcontractor Ledger' },
+  equipment: { section: 'Operations', label: 'Equipment Management' },
+  employees: { section: 'People & Site', label: 'Employees & Salaries' },
+  'labour-payroll': { section: 'People & Site', label: 'Attendance & Payroll' },
+  'site-expenses': { section: 'People & Site', label: 'Site Expenses' },
+  'supplier-payables': { section: 'Billing', label: 'Supplier Payables' },
+  'client-billing': { section: 'Billing', label: 'Client Billing' },
+  'client-receipts': { section: 'Billing', label: 'Client Receipts' },
+  'project-profitability': { section: 'Analytics', label: 'Project Profitability' },
+  reports: { section: 'Analytics', label: 'Reports & Analytics' },
+  'organization-profile': { section: 'Administration', label: 'Organization Profile' },
+  users: { section: 'Administration', label: 'Users' },
+  roles: { section: 'Administration', label: 'Roles & Permissions' },
+  departments: { section: 'Administration', label: 'Departments' }
+};
+
 /** Return the shared navigation button class for one workspace view. */
 function navigationButtonClass(activeView: WorkspaceView | null, view: WorkspaceView): string {
   return activeView === view ? 'nav-button active' : 'nav-button';
@@ -233,6 +280,7 @@ export function AdminShell() {
   const canUseProjectStages = canUseProjectScopedWorkspace(auth.identity, PROJECT_STAGES_PERMISSIONS);
   const canUseProjectTeam = canUseProjectScopedWorkspace(auth.identity, PROJECT_TEAM_PERMISSIONS);
   const canUseFinance = canUseProjectScopedWorkspace(auth.identity, FINANCE_PERMISSIONS);
+  const canReadFinance = usePermission('finance.read');
   const canUseBudgets = canUseProjectScopedWorkspace(auth.identity, BUDGET_PERMISSIONS);
   const hasProcurementCompanyPermission = hasAnyIdentityPermission(auth.identity, PROCUREMENT_PERMISSIONS);
   const canUseProcurement = hasProcurementCompanyPermission || hasRestrictedProjectMembership(auth.identity);
@@ -284,6 +332,7 @@ export function AdminShell() {
     'project-stages': canUseProjectStages,
     'project-team': canUseProjectTeam,
     finance: canUseFinance,
+    'account-ledger': canReadFinance,
     'budgets-job-cost': canUseBudgets,
     procurement: canUseProcurement,
     materials: canUseMaterials,
@@ -295,8 +344,9 @@ export function AdminShell() {
     'supplier-ledger': canUseSupplierPayables,
     subcontractors: canUseVendorsSubcontractors,
     'subcontractor-add': canUseVendorsSubcontractors,
-    'subcontractor-payment': canUseSupplierPayables,
-    'subcontractor-ledger': canUseSupplierPayables,
+    'subcontractor-contracts': canUseVendorsSubcontractors,
+    'subcontractor-payment': canUseVendorsSubcontractors,
+    'subcontractor-ledger': canUseVendorsSubcontractors,
     equipment: canUseEquipment,
     employees: canUseEmployees,
     'labour-payroll': canUseLabourPayroll,
@@ -314,6 +364,7 @@ export function AdminShell() {
   const currentViewAllowed = viewAccess[view];
   const fallbackView = WORKSPACE_VIEW_ORDER.find((candidate) => viewAccess[candidate]) ?? null;
   const activeView = currentViewAllowed ? view : fallbackView;
+  const activeViewMeta = activeView ? WORKSPACE_VIEW_META[activeView] : null;
 
   /** Sign out without putting authentication details inside the button callback. */
   function handleSignOut(): void {
@@ -361,19 +412,17 @@ export function AdminShell() {
             <span aria-hidden="true">☰</span>
           </button>
           <div className="topbar-title">
-            <p className="eyebrow">Construction ERP</p>
-            <strong>{webConfig.appName}</strong>
+            <p className="topbar-breadcrumb">
+              <span>{activeViewMeta?.section ?? 'Construction ERP'}</span>
+              <i aria-hidden="true">/</i>
+              <strong>{activeViewMeta?.label ?? webConfig.appName}</strong>
+            </p>
+            <small>{webConfig.appName}</small>
           </div>
         </div>
 
         <div className="topbar-right">
-          <div className="user-chip">
-            <span className="user-avatar" aria-hidden="true">{auth.identity.user.name.slice(0, 1).toUpperCase()}</span>
-            <span className="user-copy">
-              <strong>{auth.identity.user.name}</strong>
-              <small>{auth.identity.user.email}</small>
-            </span>
-          </div>
+          <span className="user-avatar" aria-hidden="true">{auth.identity.user.name.slice(0, 1).toUpperCase()}</span>
           <button type="button" className="secondary-button" onClick={handleSignOut} disabled={auth.isSigningOut}>
             {auth.isSigningOut ? 'Signing out…' : 'Sign out'}
           </button>
@@ -387,6 +436,14 @@ export function AdminShell() {
             <span className="brand-copy">
               <strong>Construction ERP</strong>
               <small>Operations workspace</small>
+            </span>
+          </div>
+
+          <div className="sidebar-scope">
+            <span className="sidebar-scope-icon" aria-hidden="true">P</span>
+            <span className="sidebar-scope-copy">
+              <small>Project scope</small>
+              <strong>{auth.identity.projectScope.kind === 'all' ? 'All projects' : `${auth.identity.projectScope.projectIds.length} assigned project(s)`}</strong>
             </span>
           </div>
 
@@ -430,8 +487,9 @@ export function AdminShell() {
               <div className="nav-group-links">
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractors')} onClick={() => selectView('subcontractors')}>Subcontractor List</button>}
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-add')} onClick={() => selectView('subcontractor-add')}>Add New</button>}
-                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-payment')} onClick={() => selectView('subcontractor-payment')}>New Payment</button>}
-                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-ledger')} onClick={() => selectView('subcontractor-ledger')}>Ledger</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-contracts')} onClick={() => selectView('subcontractor-contracts')}>Contracts</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-payment')} onClick={() => selectView('subcontractor-payment')}>New Payment</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-ledger')} onClick={() => selectView('subcontractor-ledger')}>Ledger</button>}
               </div>
             </details>
 
@@ -463,6 +521,9 @@ export function AdminShell() {
               <div className="nav-group-links">
                 {canUseFinance && (
                   <button type="button" className={navigationButtonClass(activeView, 'finance')} onClick={() => selectView('finance')}>Finance Core</button>
+                )}
+                {canReadFinance && (
+                  <button type="button" className={navigationButtonClass(activeView, 'account-ledger')} onClick={() => selectView('account-ledger')}>Account Ledger</button>
                 )}
                 {canUseBudgets && (
                   <button type="button" className={navigationButtonClass(activeView, 'budgets-job-cost')} onClick={() => selectView('budgets-job-cost')}>Budget & Cost Tracking</button>
@@ -523,8 +584,11 @@ export function AdminShell() {
           </div>
 
           <div className="sidebar-footer">
-            <span>Project scope</span>
-            <strong>{auth.identity.projectScope.kind === 'all' ? 'All projects' : `${auth.identity.projectScope.projectIds.length} assigned project(s)`}</strong>
+            <span className="sidebar-user-avatar" aria-hidden="true">{auth.identity.user.name.slice(0, 1).toUpperCase()}</span>
+            <span className="sidebar-user-copy">
+              <strong>{auth.identity.user.name}</strong>
+              <small>{auth.identity.user.email}</small>
+            </span>
           </div>
         </aside>
 
@@ -547,6 +611,7 @@ export function AdminShell() {
           {activeView === 'project-stages' && <ProjectStagesPage />}
           {activeView === 'project-team' && <ProjectTeamPage />}
           {activeView === 'finance' && <FinancePage />}
+          {activeView === 'account-ledger' && <FinancePage view="ledger" />}
           {activeView === 'budgets-job-cost' && <BudgetsJobCostPage />}
           {activeView === 'procurement' && <ProcurementPage />}
           {activeView === 'materials' && <MaterialsPage />}
@@ -558,8 +623,9 @@ export function AdminShell() {
           {activeView === 'supplier-ledger' && <SupplierPayablesPage initialTab="aging" />}
           {activeView === 'subcontractors' && <VendorsSubcontractorsPage entity="subcontractor" />}
           {activeView === 'subcontractor-add' && <VendorsSubcontractorsPage entity="subcontractor" initialCreate />}
-          {activeView === 'subcontractor-payment' && <SupplierPayablesPage initialTab="payments" accountLabel="Subcontractor" />}
-          {activeView === 'subcontractor-ledger' && <SupplierPayablesPage initialTab="aging" accountLabel="Subcontractor" />}
+          {activeView === 'subcontractor-contracts' && <SubcontractContractsPage />}
+          {activeView === 'subcontractor-payment' && <SubcontractPaymentsPage view="payment" />}
+          {activeView === 'subcontractor-ledger' && <SubcontractPaymentsPage view="ledger" />}
           {activeView === 'equipment' && <EquipmentPage />}
           {activeView === 'employees' && <EmployeesPage />}
           {activeView === 'labour-payroll' && <LabourPayrollPage />}

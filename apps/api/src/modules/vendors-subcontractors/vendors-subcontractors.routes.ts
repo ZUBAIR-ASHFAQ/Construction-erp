@@ -5,12 +5,18 @@ import { hasPermission } from '@construction-erp/request-context';
 import { z } from 'zod';
 import { authenticateRequest } from '../../plugins/authentication.js';
 import {
+  createSubcontractContractBodySchema,
+  createSubcontractPaymentBodySchema,
   createSubcontractorBodySchema,
   createVendorBodySchema,
   createVendorContactBodySchema,
+  listSubcontractContractsQuerySchema,
+  listSubcontractLedgerQuerySchema,
+  listSubcontractPaymentsQuerySchema,
   listSubcontractorsQuerySchema,
   listVendorsQuerySchema,
   masterIdParamsSchema,
+  subcontractContractIdParamsSchema,
   updateSubcontractorBodySchema,
   updateVendorBodySchema,
   type VendorsSubcontractorsPermissionCode
@@ -54,6 +60,12 @@ const SUBCONTRACTOR_BODY_PROPERTIES = {
 } as const;
 const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['code', 'specialty'], properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
 const UPDATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
+const SUBCONTRACT_CONTRACT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
+const CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractorId', 'projectId', 'contractAmount', 'contractDate'], properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, contractAmount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, contractDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } } } as const;
+const SUBCONTRACT_PAYMENT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, subcontractContractId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['DRAFT', 'POSTED'] }, ...PAGE_PROPERTIES } } as const;
+const CREATE_SUBCONTRACT_PAYMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractContractId', 'paymentDate', 'amount', 'cashBankAccountId'], properties: { subcontractContractId: UUID_JSON_SCHEMA, paymentDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, amount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, cashBankAccountId: UUID_JSON_SCHEMA, reference: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] } } } as const;
+const SUBCONTRACT_LEDGER_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
+const IDEMPOTENCY_HEADERS_JSON_SCHEMA = { type: 'object', required: ['idempotency-key'], properties: { 'idempotency-key': { type: 'string', minLength: 1, maxLength: 200 } } } as const;
 const SUCCESS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['data'], properties: { data: { type: 'object', additionalProperties: true } } } as const;
 const ERROR_RESPONSE_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['error'],
@@ -77,6 +89,14 @@ function parseRequest<T extends z.ZodTypeAny>(schema: T, value: unknown, source:
 /** Enforce one route permission before the service repeats the business authorization check. */
 function requireRoutePermission(permission: VendorsSubcontractorsPermissionCode): void {
   if (!hasPermission(permission)) throw new AuthorizationError();
+}
+
+
+/** Read one required idempotency key for a financial write command. */
+function readIdempotencyKey(headers: Readonly<Record<string, unknown>>): string {
+  const value = headers['idempotency-key'];
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  throw new ValidationError({ code: 'INVALID_REQUEST', message: 'Idempotency-Key header is required.' });
 }
 
 /** Register the exact final Supplier & Subcontractor Management HTTP surface. */
@@ -150,4 +170,56 @@ export async function registerVendorsSubcontractorsRoutes(app: FastifyInstance, 
     const { id } = parseRequest(masterIdParamsSchema, request.params, 'params');
     return reply.send({ data: await service.updateSubcontractor(id, parseRequest(updateSubcontractorBodySchema, request.body, 'body')) });
   });
+
+  app.get('/api/v1/subcontract-contracts', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'listSubcontractContracts', summary: 'List subcontract Project contracts', security: BEARER_SECURITY, querystring: SUBCONTRACT_CONTRACT_LIST_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.read');
+    return reply.send({ data: await service.listSubcontractContracts(parseRequest(listSubcontractContractsQuerySchema, request.query, 'query')) });
+  });
+
+  app.post('/api/v1/subcontract-contracts', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'createSubcontractContract', summary: 'Assign a Project and contract amount to a subcontractor', security: BEARER_SECURITY, body: CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.manage');
+    return reply.status(201).send({ data: await service.createSubcontractContract(parseRequest(createSubcontractContractBodySchema, request.body, 'body')) });
+  });
+
+  app.post('/api/v1/subcontract-contracts/:id/finish', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'finishSubcontractContract', summary: 'Finish one active subcontract contract', security: BEARER_SECURITY, params: ID_PARAMS_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.manage');
+    const { id } = parseRequest(subcontractContractIdParamsSchema, request.params, 'params');
+    return reply.send({ data: await service.finishSubcontractContract(id) });
+  });
+
+
+  app.get('/api/v1/subcontract-payments', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'listSubcontractPayments', summary: 'List direct subcontractor payments', security: BEARER_SECURITY, querystring: SUBCONTRACT_PAYMENT_LIST_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.read');
+    return reply.send({ data: await service.listSubcontractPayments(parseRequest(listSubcontractPaymentsQuerySchema, request.query, 'query')) });
+  });
+
+  app.post('/api/v1/subcontract-payments', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'createSubcontractPayment', summary: 'Create and post one subcontractor payment', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_SUBCONTRACT_PAYMENT_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.manage');
+    const input = parseRequest(createSubcontractPaymentBodySchema, request.body, 'body');
+    return reply.status(201).send({ data: await service.createSubcontractPayment(input, readIdempotencyKey(request.headers as Readonly<Record<string, unknown>>)) });
+  });
+
+  app.get('/api/v1/subcontract-ledger', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'listSubcontractLedger', summary: 'List source-derived subcontractor contract balances', security: BEARER_SECURITY, querystring: SUBCONTRACT_LEDGER_LIST_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.read');
+    return reply.send({ data: await service.listSubcontractLedger(parseRequest(listSubcontractLedgerQuerySchema, request.query, 'query')) });
+  });
+
 }

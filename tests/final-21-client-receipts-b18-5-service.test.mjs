@@ -37,14 +37,14 @@ test('B18.5 validates Client to Project and optional Stage ownership before post
   assert.match(service, /createClientReceiptError\('RECEIPT_SCOPE_MISMATCH'\)/);
 });
 
-test('B18.5 validates the selected Cash or Bank account and its mapped asset GL', () => {
+test('B18.5 validates the selected Cash or Bank account and accepts legacy ASSET or matching Cash/Bank GL mappings', () => {
   const service = read(SERVICE);
   assert.match(service, /findCashBankAccountById\(input\.cashBankAccountId\)/);
   assert.match(service, /cashBankAccount\.status !== ACCOUNT_ACTIVE/);
   assert.match(service, /cashBankAccount\.accountType !== input\.paymentMethod/);
   assert.match(service, /cashBankAccount\.glAccount\.status !== ACCOUNT_ACTIVE/);
-  assert.match(service, /cashBankAccount\.glAccount\.accountType !== CASH_ACCOUNT_TYPE/);
-  assert.match(service, /const CASH_ACCOUNT_TYPE = 'ASSET'/);
+  assert.match(service, /cashBankGlType !== LEGACY_CASH_ACCOUNT_TYPE && cashBankGlType !== input\.paymentMethod/);
+  assert.match(service, /const LEGACY_CASH_ACCOUNT_TYPE = 'ASSET'/);
 });
 
 test('B18.5 makes the unallocated Client Advance Finance mapping explicit and validated', () => {

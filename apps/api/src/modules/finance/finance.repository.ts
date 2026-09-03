@@ -131,11 +131,56 @@ export class FinanceRepository {
     return { items, total };
   }
 
+  /** Ensure the server-owned Finance account number sequence exists for the authenticated Company. */
+  async ensureAccountNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'finance.account' } },
+      create: { companyId: scope.companyId, sequenceKey: 'finance.account', prefix: 'ACC-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
+  /** Ensure the server-owned Finance Journal number sequence exists for the authenticated Company. */
+  async ensureJournalNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'finance.journal' } },
+      create: { companyId: scope.companyId, sequenceKey: 'finance.journal', prefix: 'JE-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
   /** Create one Company-owned General Ledger account after service validation. */
   async createAccount(input: Readonly<{ accountCode: string; name: string; accountType: string; parentId?: string | null; status: string }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.glAccount.create({
       data: scope.createData({ accountCode: input.accountCode, name: input.name, accountType: input.accountType, parentId: input.parentId ?? null, status: input.status })
+    });
+  }
+
+  /** Find one General Ledger account by code only inside the authenticated Company. */
+  async findAccountByCode(accountCode: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.glAccount.findFirst({ where: scope.where({ accountCode }) });
+  }
+
+  /** Ensure the balancing equity account used only for opening-balance Journals exists. */
+  async ensureOpeningBalanceEquityAccount() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.glAccount.upsert({
+      where: { companyId_accountCode: { companyId: scope.companyId, accountCode: 'OPENING-BALANCE-EQUITY' } },
+      create: scope.createData({ accountCode: 'OPENING-BALANCE-EQUITY', name: 'Opening Balance Equity', accountType: 'EQUITY', parentId: null, status: 'ACTIVE' }),
+      update: {}
+    });
+  }
+
+  /** Find the earliest open fiscal period for a server-posted account opening balance. */
+  async findFirstOpenFiscalPeriod() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.fiscalPeriod.findFirst({
+      where: scope.where({ status: 'OPEN' }),
+      orderBy: [{ startDate: 'asc' }, { periodNo: 'asc' }, { id: 'asc' }]
     });
   }
 
@@ -291,7 +336,19 @@ export class FinanceRepository {
     const [items, total] = await Promise.all([
       this.db.journal.findMany({
         where,
-        include: { lines: { ...(hasLineFilter ? { where: lineVisibility } : {}), orderBy: [{ id: 'asc' }] } },
+        include: {
+          period: { select: { fiscalYear: true, periodNo: true, startDate: true, endDate: true, status: true } },
+          creator: { select: { name: true } },
+          lines: {
+            ...(hasLineFilter ? { where: lineVisibility } : {}),
+            include: {
+              account: { select: { accountCode: true, name: true } },
+              project: { select: { projectCode: true, name: true } },
+              stage: { select: { code: true, name: true } }
+            },
+            orderBy: [{ id: 'asc' }]
+          }
+        },
         orderBy: [{ postingDate: 'desc' }, { journalNo: 'desc' }, { id: 'asc' }],
         skip: input.skip,
         take: input.take
@@ -347,7 +404,12 @@ export class FinanceRepository {
     const [rows, total] = await Promise.all([
       this.db.journalLine.findMany({
         where,
-        include: { journal: { select: { journalNo: true, postingDate: true } }, account: { select: { accountCode: true, name: true } } },
+        include: {
+          journal: { select: { journalNo: true, postingDate: true } },
+          account: { select: { accountCode: true, name: true } },
+          project: { select: { projectCode: true, name: true } },
+          stage: { select: { code: true, name: true } }
+        },
         orderBy: [{ journal: { postingDate: 'asc' } }, { journalId: 'asc' }, { id: 'asc' }],
         skip: input.skip,
         take: input.take
@@ -364,7 +426,11 @@ export class FinanceRepository {
         accountCode: row.account.accountCode,
         accountName: row.account.name,
         projectId: row.projectId,
+        projectCode: row.project?.projectCode ?? null,
+        projectName: row.project?.name ?? null,
         stageId: row.stageId,
+        stageCode: row.stage?.code ?? null,
+        stageName: row.stage?.name ?? null,
         debit: decimalString(row.debit),
         credit: decimalString(row.credit),
         description: row.description

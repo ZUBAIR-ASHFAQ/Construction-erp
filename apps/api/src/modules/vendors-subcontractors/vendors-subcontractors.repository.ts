@@ -17,6 +17,26 @@ export type ListSubcontractorsRepositoryInput = PageWindow & Readonly<{
   status?: string;
 }>;
 
+export type ListSubcontractContractsRepositoryInput = PageWindow & Readonly<{
+  subcontractorId?: string;
+  projectId?: string;
+  status?: string;
+}>;
+
+
+export type ListSubcontractPaymentsRepositoryInput = PageWindow & Readonly<{
+  subcontractorId?: string;
+  projectId?: string;
+  subcontractContractId?: string;
+  status?: string;
+}>;
+
+export type ListSubcontractLedgerRepositoryInput = PageWindow & Readonly<{
+  subcontractorId?: string;
+  projectId?: string;
+  status?: string;
+}>;
+
 /** Reject invalid list windows before they reach Prisma. */
 function assertPageWindow(input: PageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) throw new RangeError('Repository skip must be a non-negative integer.');
@@ -173,5 +193,290 @@ export class VendorsSubcontractorsRepository {
     const result = await this.db.subcontractor.updateMany({ where: scope.where({ id: subcontractorId }), data: input });
     if (result.count === 0) return null;
     return this.findSubcontractorById(subcontractorId);
+  }
+
+  /** Find one company Project used by a subcontract assignment. */
+  async findProjectById(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.project.findFirst({
+      where: scope.where({ id: projectId }),
+      select: { id: true, projectCode: true, name: true, currency: true, status: true }
+    });
+  }
+
+  /** List company subcontract contracts with readable Project and subcontractor data. */
+  async listSubcontractContracts(input: ListSubcontractContractsRepositoryInput) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const where = scope.where({
+      ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...(input.status ? { status: input.status } : {})
+    });
+    const include = {
+      project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+      subcontractor: {
+        select: {
+          id: true,
+          code: true,
+          specialty: true,
+          status: true,
+          vendor: { select: { displayName: true } }
+        }
+      }
+    } as const;
+    const [items, total] = await Promise.all([
+      this.db.subcontractContract.findMany({
+        where,
+        include,
+        orderBy: [{ contractDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+        skip: input.skip,
+        take: input.take
+      }),
+      this.db.subcontractContract.count({ where })
+    ]);
+    return { items, total };
+  }
+
+  /** Find one company subcontract contract by identifier. */
+  async findSubcontractContractById(contractId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.subcontractContract.findFirst({
+      where: scope.where({ id: contractId }),
+      include: {
+        project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+        subcontractor: {
+          select: {
+            id: true,
+            code: true,
+            specialty: true,
+            status: true,
+            vendor: { select: { displayName: true } }
+          }
+        }
+      }
+    });
+  }
+
+  /** Create one active subcontract contract inside the current company. */
+  async createSubcontractContract(input: Readonly<{
+    subcontractorId: string;
+    projectId: string;
+    contractAmount: string;
+    contractDate: Date;
+    status: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.subcontractContract.create({
+      data: scope.createData(input),
+      include: {
+        project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+        subcontractor: {
+          select: {
+            id: true,
+            code: true,
+            specialty: true,
+            status: true,
+            vendor: { select: { displayName: true } }
+          }
+        }
+      }
+    });
+  }
+
+  /** Ensure server-owned numbering and the direct subcontract expense account exist. */
+  async ensureSubcontractPaymentSetup() {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'subcontract-payment' } },
+      create: { companyId: scope.companyId, sequenceKey: 'subcontract-payment', prefix: 'SCP-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+    return this.db.glAccount.upsert({
+      where: { companyId_accountCode: { companyId: scope.companyId, accountCode: 'SUBCONTRACT-EXPENSE' } },
+      create: scope.createData({ accountCode: 'SUBCONTRACT-EXPENSE', name: 'Subcontract Expense', accountType: 'EXPENSE', parentId: null, status: 'ACTIVE' }),
+      update: {}
+    });
+  }
+
+  /** Find one same-company Cash/Bank account with its mapped General Ledger account. */
+  async findCashBankAccountById(cashBankAccountId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.cashBankAccount.findFirst({
+      where: scope.where({ id: cashBankAccountId }),
+      include: { glAccount: true }
+    });
+  }
+
+  /** Lock one subcontract contract before checking its remaining payable contract balance. */
+  async lockSubcontractContractForPayment(contractId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{
+      id: string;
+      projectId: string;
+      subcontractorId: string;
+      contractAmount: { toString(): string };
+      status: string;
+    }>>`
+      SELECT id,
+             project_id AS "projectId",
+             subcontractor_id AS "subcontractorId",
+             contract_amount AS "contractAmount",
+             status
+      FROM subcontract_contracts
+      WHERE id = ${contractId}::uuid
+        AND company_id = ${scope.companyId}::uuid
+      FOR UPDATE
+    `;
+    return rows[0] ?? null;
+  }
+
+  /** Sum already POSTED direct payments for one subcontract contract. */
+  async sumPostedSubcontractPayments(contractId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.subcontractPayment.aggregate({
+      where: scope.where({ subcontractContractId: contractId, status: 'POSTED' }),
+      _sum: { amount: true }
+    });
+    return result._sum.amount;
+  }
+
+  /** Create one server-numbered DRAFT subcontract payment after dependency validation. */
+  async createSubcontractPayment(input: Readonly<{
+    subcontractContractId: string;
+    paymentNo: string;
+    paymentDate: Date;
+    amount: string;
+    cashBankAccountId: string;
+    reference?: string | null;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.subcontractPayment.create({
+      data: scope.createData({ ...input, reference: input.reference ?? null, status: 'DRAFT' }),
+      include: {
+        subcontractContract: {
+          include: {
+            project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+            subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+          }
+        },
+        cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
+      }
+    });
+  }
+
+  /** Mark one DRAFT subcontract payment POSTED after its Finance and Cost Actual sources are written. */
+  async markSubcontractPaymentPosted(paymentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.subcontractPayment.updateMany({
+      where: scope.where({ id: paymentId, status: 'DRAFT' }),
+      data: { status: 'POSTED' }
+    });
+    if (result.count !== 1) return null;
+    return this.db.subcontractPayment.findFirst({
+      where: scope.where({ id: paymentId }),
+      include: {
+        subcontractContract: {
+          include: {
+            project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+            subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+          }
+        },
+        cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
+      }
+    });
+  }
+
+  /** Upsert one source-derived subcontract actual-cost row for the posted payment. */
+  async upsertSubcontractPaymentCostActual(input: Readonly<{
+    projectId: string;
+    paymentId: string;
+    sourceKey: string;
+    postingDate: Date;
+    amount: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.upsert({
+      where: { companyId_sourceKey: { companyId: scope.companyId, sourceKey: input.sourceKey } },
+      update: {},
+      create: scope.createData({
+        projectId: input.projectId,
+        stageId: null,
+        category: 'subcontract',
+        sourceType: 'subcontract_payment',
+        sourceId: input.paymentId,
+        sourceKey: input.sourceKey,
+        postingDate: input.postingDate,
+        amount: input.amount
+      })
+    });
+  }
+
+  /** List direct subcontract payments with readable subcontractor, Project and Cash/Bank labels. */
+  async listSubcontractPayments(input: ListSubcontractPaymentsRepositoryInput) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const where = scope.where({
+      ...(input.subcontractContractId ? { subcontractContractId: input.subcontractContractId } : {}),
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.subcontractorId || input.projectId ? {
+        subcontractContract: {
+          companyId: scope.companyId,
+          ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
+          ...(input.projectId ? { projectId: input.projectId } : {})
+        }
+      } : {})
+    });
+    const include = {
+      subcontractContract: {
+        include: {
+          project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+          subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+        }
+      },
+      cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
+    } as const;
+    const [items, total] = await Promise.all([
+      this.db.subcontractPayment.findMany({ where, include, orderBy: [{ paymentDate: 'desc' }, { paymentNo: 'desc' }, { id: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.subcontractPayment.count({ where })
+    ]);
+    return { items, total };
+  }
+
+  /** List subcontract contracts with POSTED payment amounts for the source-derived ledger. */
+  async listSubcontractLedger(input: ListSubcontractLedgerRepositoryInput) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const where = scope.where({
+      ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...(input.status ? { status: input.status } : {})
+    });
+    const [items, total] = await Promise.all([
+      this.db.subcontractContract.findMany({
+        where,
+        include: {
+          project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
+          subcontractor: { select: { id: true, code: true, specialty: true, status: true } },
+          payments: { where: { status: 'POSTED' }, select: { amount: true } }
+        },
+        orderBy: [{ contractDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],
+        skip: input.skip,
+        take: input.take
+      }),
+      this.db.subcontractContract.count({ where })
+    ]);
+    return { items, total };
+  }
+
+  /** Mark one active subcontract contract as finished without changing its agreed amount. */
+  async finishSubcontractContract(contractId: string, finishedAt: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.subcontractContract.updateMany({
+      where: scope.where({ id: contractId, status: 'ACTIVE' }),
+      data: { status: 'FINISHED', finishedAt }
+    });
+    if (result.count === 0) return null;
+    return this.findSubcontractContractById(contractId);
   }
 }

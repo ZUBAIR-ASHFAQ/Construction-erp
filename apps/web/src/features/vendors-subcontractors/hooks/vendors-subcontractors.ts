@@ -1,16 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  createSubcontractContract,
+  createSubcontractPayment,
   createSubcontractor,
   createVendor,
   createVendorContact,
+  finishSubcontractContract,
   getVendor,
+  listSubcontractContracts,
+  listSubcontractLedger,
+  listSubcontractPayments,
   listSubcontractors,
   listVendors,
   updateSubcontractor,
   updateVendor,
+  type CreateSubcontractContractInput,
+  type CreateSubcontractPaymentInput,
   type CreateSubcontractorInput,
   type CreateVendorContactInput,
   type CreateVendorInput,
+  type ListSubcontractContractsInput,
+  type ListSubcontractLedgerInput,
+  type ListSubcontractPaymentsInput,
   type ListSubcontractorsInput,
   type ListVendorsInput,
   type UpdateSubcontractorInput,
@@ -66,4 +77,46 @@ export function useCreateSubcontractor() {
 export function useUpdateSubcontractor(subcontractorId: string) {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: UpdateSubcontractorInput) => updateSubcontractor(subcontractorId, input), async onSuccess() { await queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }); } });
+}
+
+/** Load one filtered subcontract-contract page. */
+export function useSubcontractContracts(input: ListSubcontractContractsInput, enabled = true) {
+  return useQuery({ queryKey: [...MASTER_QUERY_KEY, 'subcontract-contracts', input], queryFn: () => listSubcontractContracts(input), enabled });
+}
+
+/** Create one subcontract Project contract and refresh subcontract data. */
+export function useCreateSubcontractContract() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (input: CreateSubcontractContractInput) => createSubcontractContract(input), async onSuccess() { await queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }); } });
+}
+
+/** Finish one active subcontract contract and refresh subcontract data. */
+export function useFinishSubcontractContract() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (contractId: string) => finishSubcontractContract(contractId), async onSuccess() { await queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }); } });
+}
+
+/** Load direct payments belonging to subcontract contracts, never supplier invoices. */
+export function useSubcontractPayments(input: ListSubcontractPaymentsInput, enabled = true) {
+  return useQuery({ queryKey: [...MASTER_QUERY_KEY, 'subcontract-payments', input], queryFn: () => listSubcontractPayments(input), enabled });
+}
+
+/** Load source-derived subcontract contract balances for the subcontractor ledger. */
+export function useSubcontractLedger(input: ListSubcontractLedgerInput, enabled = true) {
+  return useQuery({ queryKey: [...MASTER_QUERY_KEY, 'subcontract-ledger', input], queryFn: () => listSubcontractLedger(input), enabled });
+}
+
+/** Create one subcontract payment and refresh subcontract, Finance and Job Cost read models. */
+export function useCreateSubcontractPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateSubcontractPaymentInput) => createSubcontractPayment(input),
+    async onSuccess() {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: ['final21', 'finance'] }),
+        queryClient.invalidateQueries({ queryKey: ['module-9', 'project-budget-cost'] })
+      ]);
+    }
+  });
 }

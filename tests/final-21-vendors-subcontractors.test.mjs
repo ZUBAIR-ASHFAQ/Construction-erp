@@ -14,6 +14,9 @@ const procurementRepository = await readFile('apps/api/src/modules/procurement/p
 const procurementWebApi = await readFile('apps/web/src/features/procurement/api/procurement-api.ts', 'utf8');
 const shell = await readFile('apps/web/src/features/administration/components/admin-shell.tsx', 'utf8');
 const migration = await readFile('packages/database/prisma/migrations/20260829000900_final21_vendors_subcontractors_alignment/migration.sql', 'utf8');
+const contractMigration = await readFile('packages/database/prisma/migrations/20260903000100_subcontract_contract_assignment/migration.sql', 'utf8');
+const contractWorkspace = await readFile('apps/web/src/features/vendors-subcontractors/components/subcontract-contracts-workspace.tsx', 'utf8');
+const contractApi = await readFile('apps/web/src/features/vendors-subcontractors/api/vendors-subcontractors-api.ts', 'utf8');
 
 /** Extract one Prisma model block for focused Final-21 assertions. */
 function prismaModel(name) {
@@ -48,16 +51,21 @@ test('B4 exposes the exact final Supplier & Subcontractor permission, error, eve
     "'/api/v1/vendors/:id'",
     "'/api/v1/vendors/:id/contacts'",
     "'/api/v1/subcontractors'",
-    "'/api/v1/subcontractors/:id'"
+    "'/api/v1/subcontractors/:id'",
+    "'/api/v1/subcontract-contracts'",
+    "'/api/v1/subcontract-contracts/:id/finish'",
+    "'/api/v1/subcontract-payments'",
+    "'/api/v1/subcontract-ledger'"
   ];
   for (const route of expectedRoutes) assert.match(moduleSchema, new RegExp(route.replaceAll('/', '\\/')));
-  assert.equal((moduleSchema.match(/Object\.freeze\(\{ method:/g) ?? []).length, 8);
+  assert.equal((moduleSchema.match(/Object\.freeze\(\{ method:/g) ?? []).length, 14);
 });
 
 test('B4 Prisma master tables match final ownership and remove active operational Subcontract models', () => {
   const vendor = prismaModel('Vendor');
   const contact = prismaModel('VendorContact');
   const subcontractor = prismaModel('Subcontractor');
+  const contract = prismaModel('SubcontractContract');
 
   for (const field of ['companyId', 'code', 'legalName', 'displayName', 'taxNo', 'paymentTermsDays', 'currency', 'status', 'qualificationStatus']) {
     assert.match(vendor, new RegExp(`\\b${field}\\b`));
@@ -69,7 +77,11 @@ test('B4 Prisma master tables match final ownership and remove active operationa
   assert.match(subcontractor, /vendorId\s+String\?/);
   assert.match(subcontractor, /specialty\s+String/);
   assert.match(subcontractor, /defaultTerms\s+String\?/);
-  assert.doesNotMatch(subcontractor, /legalName|contactJson|complianceStatus|subcontracts/);
+  assert.doesNotMatch(subcontractor, /legalName|contactJson|complianceStatus/);
+  for (const field of ['companyId', 'projectId', 'subcontractorId', 'contractAmount', 'contractDate', 'status', 'finishedAt']) {
+    assert.match(contract, new RegExp(`\\b${field}\\b`));
+  }
+  assert.match(contract, /@@map\("subcontract_contracts"\)/);
   for (const removedModel of ['Subcontract', 'SubcontractItem', 'SubcontractPaymentApplication', 'SubcontractRevision', 'SubcontractRetentionRelease', 'SubcontractPaymentLine']) {
     assert.doesNotMatch(prisma, new RegExp(`model ${removedModel} \\{`));
   }
@@ -86,6 +98,11 @@ test('B4 repositories and services enforce company ownership and module-owned li
   assert.match(service, /eventType: 'vendor\.updated'/);
   assert.match(service, /eventType: 'subcontractor\.created'/);
   assert.match(service, /eventType: 'subcontractor\.updated'/);
+  assert.match(service, /eventType: 'subcontract\.created'/);
+  assert.match(service, /eventType: 'subcontract\.finished'/);
+  assert.match(repository, /subcontractContract\.findMany/);
+  assert.match(repository, /findProjectById\(projectId: string\)/);
+  assert.match(repository, /status: 'FINISHED', finishedAt/);
   assert.match(service, /SupplierPayablesService/);
   assert.match(service, /payableSummary/);
   assert.doesNotMatch(service, /payableSummaryAvailable: false/);
@@ -106,6 +123,8 @@ test('B4 removes the obsolete operational Subcontracts production modules and re
   assert.doesNotMatch(appSource, /registerSubcontractsRoutes/);
   assert.match(shell, /Suppliers & Subcontractors/);
   assert.match(shell, /vendors-subcontractors/);
+  assert.match(shell, /subcontractor-contracts/);
+  assert.match(shell, /<SubcontractContractsPage \/>/);
   assert.doesNotMatch(shell, /subcontracts\.(read|create|execute|certify|close)/);
 });
 
@@ -135,6 +154,29 @@ test('B4 route handlers are permission checked and Zod validated at the boundary
   assert.match(routes, /parseRequest\(listSubcontractorsQuerySchema/);
   assert.match(routes, /parseRequest\(createSubcontractorBodySchema/);
   assert.match(routes, /parseRequest\(updateSubcontractorBodySchema/);
+  assert.match(routes, /parseRequest\(listSubcontractContractsQuerySchema/);
+  assert.match(routes, /parseRequest\(createSubcontractContractBodySchema/);
+  assert.match(routes, /parseRequest\(subcontractContractIdParamsSchema/);
+  assert.match(routes, /parseRequest\(listSubcontractPaymentsQuerySchema/);
+  assert.match(routes, /parseRequest\(createSubcontractPaymentBodySchema/);
+  assert.match(routes, /parseRequest\(listSubcontractLedgerQuerySchema/);
+  assert.match(routes, /readIdempotencyKey\(request\.headers/);
   assert.match(routes, /requireRoutePermission\('vendors\.read'\)/);
   assert.match(routes, /requireRoutePermission\('subcontractors\.manage'\)/);
+});
+
+test('subcontract Project contracts persist amount/date/status and expose create/finish UI without restoring legacy payment-application scope', () => {
+  assert.match(contractMigration, /CREATE TABLE "subcontract_contracts"/);
+  assert.match(contractMigration, /"contract_amount" DECIMAL\(18,2\) NOT NULL/);
+  assert.match(contractMigration, /"contract_date" DATE NOT NULL/);
+  assert.match(contractMigration, /"status" IN \('ACTIVE', 'FINISHED'\)/);
+  assert.match(contractMigration, /"project_id", "company_id"/);
+  assert.match(contractMigration, /"subcontractor_id", "company_id"/);
+  assert.match(contractWorkspace, /Assign Project to subcontractor/);
+  assert.match(contractWorkspace, /Contract amount/);
+  assert.match(contractWorkspace, /Subcontract date/);
+  assert.match(contractWorkspace, /Finish subcontract/);
+  assert.match(contractWorkspace, /contract\.status === 'ACTIVE'/);
+  assert.match(contractApi, /subcontract-contracts\/\$\{contractId\}\/finish/);
+  assert.doesNotMatch(contractWorkspace, /payment application|retention|revision/i);
 });

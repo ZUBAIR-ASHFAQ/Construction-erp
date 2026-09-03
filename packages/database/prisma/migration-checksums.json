@@ -98,6 +98,8 @@
     "20260901000100_stage_cost_plus_percentage": "ce78c95c2e60316a0e73bf7a0bcea22eab78ab0033fdde25789bdbd870c17027",
     "20260901000200_final21_project_stage_create_repair": "b49c10deac3c4eebfdc41bd5dcdac2ff75e6299d1bae88d4f322667f9ab1ba5a",
     "20260901000300_final21_procurement_requisition_sequence_repair": "3aa7c9db63e67534a860a78391ff4f59fa3d40f9bf4916ea5e79252ab925bc2c",
-    "20260901000400_final21_procurement_material_trigger_repair": "5ee89ef06bb5cb64af674d5a5046a76040432339cdec125b05862e46dcb940e0"
+    "20260901000400_final21_procurement_material_trigger_repair": "5ee89ef06bb5cb64af674d5a5046a76040432339cdec125b05862e46dcb940e0",
+    "20260903000100_subcontract_contract_assignment": "493cefb529dab73f869be91c7beb7821e142f7361c73630552bdea5928bccc89",
+    "20260903000200_subcontract_payment_ledger": "85b304f8faebfb693069f6e7c6a6e0b96644395aa723c5196f73ec602bf8b0b5"
   }
 }

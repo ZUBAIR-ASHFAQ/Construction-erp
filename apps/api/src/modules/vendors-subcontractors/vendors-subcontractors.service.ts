@@ -1,15 +1,23 @@
 import { recordAudit } from '@construction-erp/audit';
-import { withTransaction, type DatabaseClient } from '@construction-erp/database';
-import { AuthorizationError } from '@construction-erp/errors';
+import { withTransaction, type DatabaseClient, type TransactionClient } from '@construction-erp/database';
+import { AuthorizationError, ConflictError, ValidationError } from '@construction-erp/errors';
+import { executeIdempotentCommand } from '@construction-erp/idempotency';
+import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { recordOutboxEvent } from '@construction-erp/outbox';
 import { hasPermission } from '@construction-erp/request-context';
+import { FinanceService } from '../finance/finance.service.js';
 import { SupplierPayablesService } from '../supplier-payables/supplier-payables.service.js';
 import { VendorsSubcontractorsRepository } from './vendors-subcontractors.repository.js';
 import {
   createVendorsSubcontractorsError,
+  type CreateSubcontractContractBody,
+  type CreateSubcontractPaymentBody,
   type CreateSubcontractorBody,
   type CreateVendorBody,
   type CreateVendorContactBody,
+  type ListSubcontractContractsQuery,
+  type ListSubcontractLedgerQuery,
+  type ListSubcontractPaymentsQuery,
   type ListSubcontractorsQuery,
   type ListVendorsQuery,
   type UpdateSubcontractorBody,
@@ -18,10 +26,37 @@ import {
 } from './vendors-subcontractors.schema.js';
 
 const ACTIVE = 'ACTIVE';
+const SUBCONTRACT_PAYMENT_SEQUENCE_KEY = 'subcontract-payment';
+const SUBCONTRACT_PAYMENT_SOURCE_TYPE = 'subcontract_payment';
+const SUBCONTRACT_EXPENSE_ACCOUNT_CODE = 'SUBCONTRACT-EXPENSE';
+const ZERO_MONEY = '0.00';
 
-/** Business rules for final Supplier & Subcontractor master data. */
+/** Convert a validated decimal money value into exact minor units. */
+function moneyToMinorUnits(value: string): bigint {
+  const [whole = '0', fraction = ''] = value.split('.');
+  return (BigInt(whole) * 100n) + BigInt(`${fraction}00`.slice(0, 2));
+}
+
+/** Convert exact minor units into the stable two-decimal API form. */
+function minorUnitsToMoney(value: bigint): string {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  return `${negative ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
+}
+
+/** Normalize one Prisma decimal-like money value to the stable API form. */
+function moneyString(value: { toString(): string } | string | null | undefined): string {
+  return minorUnitsToMoney(moneyToMinorUnits(typeof value === 'string' ? value : value?.toString() ?? '0'));
+}
+
+/** Serialize one database date as an API date-only value. */
+function dateOnly(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+/** Business rules for Supplier/Subcontractor master data and simple Project contracts. */
 export class VendorsSubcontractorsService {
-  /** Bind Supplier & Subcontractor business logic to the database. */
+  /** Bind Supplier, Subcontractor and subcontract-contract logic to the database. */
   constructor(private readonly db: DatabaseClient) {}
 
   /** Require one final master-data permission from trusted request context. */
@@ -177,7 +212,7 @@ export class VendorsSubcontractorsService {
     });
   }
 
-  /** List final subcontractor profiles without old subcontract contract/payment workflow ownership. */
+  /** List company subcontractor profiles with bounded filters. */
   async listSubcontractors(input: ListSubcontractorsQuery) {
     this.requirePermission('subcontractors.read');
     const page = input.page ?? 1;
@@ -219,7 +254,7 @@ export class VendorsSubcontractorsService {
     });
   }
 
-  /** Update one subcontractor profile and keep operational subcontract history outside this master module. */
+  /** Update one subcontractor profile without changing existing contract history. */
   async updateSubcontractor(subcontractorId: string, input: UpdateSubcontractorBody) {
     this.requirePermission('subcontractors.manage');
     return withTransaction(this.db, async (tx) => {
@@ -250,4 +285,252 @@ export class VendorsSubcontractorsService {
       return updated;
     });
   }
+
+  /** List subcontract Project assignments with bounded company-scoped filters. */
+  async listSubcontractContracts(input: ListSubcontractContractsQuery) {
+    this.requirePermission('subcontractors.read');
+    const page = input.page ?? 1;
+    const pageSize = input.pageSize ?? 25;
+    const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractContracts({
+      ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+    return { items: result.items, total: result.total, page, pageSize };
+  }
+
+  /** Assign one company Project and agreed contract amount to an active subcontractor. */
+  async createSubcontractContract(input: CreateSubcontractContractBody) {
+    this.requirePermission('subcontractors.manage');
+    return withTransaction(this.db, async (tx) => {
+      const repository = new VendorsSubcontractorsRepository(tx);
+      const subcontractor = await repository.findSubcontractorById(input.subcontractorId);
+      if (!subcontractor) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
+      if (subcontractor.status !== ACTIVE) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_ACTIVE');
+      const project = await repository.findProjectById(input.projectId);
+      if (!project) throw createVendorsSubcontractorsError('PROJECT_NOT_FOUND');
+      const contract = await repository.createSubcontractContract({
+        subcontractorId: input.subcontractorId,
+        projectId: input.projectId,
+        contractAmount: input.contractAmount,
+        contractDate: new Date(`${input.contractDate}T00:00:00.000Z`),
+        status: ACTIVE
+      });
+      await recordAudit(tx, {
+        action: 'subcontract.created',
+        entityType: 'subcontract_contract',
+        entityId: contract.id,
+        after: {
+          subcontractorId: contract.subcontractorId,
+          projectId: contract.projectId,
+          contractAmount: contract.contractAmount.toString(),
+          contractDate: input.contractDate,
+          status: contract.status
+        }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'subcontract.created',
+        resourceType: 'subcontract_contract',
+        resourceId: contract.id,
+        payload: { subcontractorId: contract.subcontractorId, projectId: contract.projectId, status: contract.status }
+      });
+      return contract;
+    });
+  }
+
+  /** List direct subcontract payments without exposing supplier-payables data. */
+  async listSubcontractPayments(input: ListSubcontractPaymentsQuery) {
+    this.requirePermission('subcontractors.read');
+    const page = input.page ?? 1;
+    const pageSize = input.pageSize ?? 25;
+    const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractPayments({
+      ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+      ...(input.subcontractContractId === undefined ? {} : { subcontractContractId: input.subcontractContractId }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+    return {
+      items: result.items.map((payment) => ({
+        id: payment.id,
+        subcontractContractId: payment.subcontractContractId,
+        paymentNo: payment.paymentNo,
+        paymentDate: dateOnly(payment.paymentDate),
+        amount: moneyString(payment.amount),
+        reference: payment.reference,
+        status: payment.status,
+        subcontractor: payment.subcontractContract.subcontractor,
+        project: payment.subcontractContract.project,
+        cashBankAccount: payment.cashBankAccount
+      })),
+      total: result.total,
+      page,
+      pageSize
+    };
+  }
+
+  /** Create and automatically post one direct subcontract payment and its Finance/Project Cost sources. */
+  async createSubcontractPayment(input: CreateSubcontractPaymentBody, idempotencyKey: string) {
+    this.requirePermission('subcontractors.manage');
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'vendors-subcontractors.subcontract-payments.create',
+      idempotencyKey,
+      fingerprintInput: input
+    }, async (tx) => this.createSubcontractPaymentOnce(tx, input));
+    return result.response.body;
+  }
+
+  /** Validate contract balance and post one subcontract payment atomically. */
+  private async createSubcontractPaymentOnce(tx: TransactionClient, input: CreateSubcontractPaymentBody) {
+    const repository = new VendorsSubcontractorsRepository(tx);
+    const contract = await repository.lockSubcontractContractForPayment(input.subcontractContractId);
+    if (!contract) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
+
+    const cashBank = await repository.findCashBankAccountById(input.cashBankAccountId);
+    if (!cashBank
+      || cashBank.status !== ACTIVE
+      || !['CASH', 'BANK'].includes(cashBank.accountType.trim().toUpperCase())
+      || cashBank.glAccount.status !== ACTIVE
+      || cashBank.glAccount.accountType.trim().toUpperCase() !== cashBank.accountType.trim().toUpperCase()) {
+      throw new ValidationError({ message: 'Subcontractor Payment requires an active same-Company Cash/Bank account.' });
+    }
+
+    const expenseAccount = await repository.ensureSubcontractPaymentSetup();
+    if (expenseAccount.status !== ACTIVE || expenseAccount.accountType.trim().toUpperCase() !== 'EXPENSE') {
+      throw new ConflictError({ message: `${SUBCONTRACT_EXPENSE_ACCOUNT_CODE} must be an active expense account.` });
+    }
+
+    const paidAmount = moneyToMinorUnits(moneyString(await repository.sumPostedSubcontractPayments(contract.id)));
+    const contractAmount = moneyToMinorUnits(moneyString(contract.contractAmount));
+    const paymentAmount = moneyToMinorUnits(input.amount);
+    if (paymentAmount > contractAmount - paidAmount) {
+      throw new ValidationError({ message: 'Subcontractor Payment cannot exceed the remaining subcontract contract balance.' });
+    }
+
+    const number = await allocateCompanyNumber(tx, { sequenceKey: SUBCONTRACT_PAYMENT_SEQUENCE_KEY });
+    const created = await repository.createSubcontractPayment({
+      subcontractContractId: contract.id,
+      paymentNo: number.formatted,
+      paymentDate: new Date(`${input.paymentDate}T00:00:00.000Z`),
+      amount: minorUnitsToMoney(paymentAmount),
+      cashBankAccountId: input.cashBankAccountId,
+      reference: input.reference?.trim() ?? null
+    });
+    const sourceKey = `subcontract_payment:${created.id}`;
+    const amount = moneyString(created.amount);
+
+    await new FinanceService(this.db).postSourceJournalInTransaction(tx, {
+      sourceType: SUBCONTRACT_PAYMENT_SOURCE_TYPE,
+      sourceId: created.id,
+      sourceKey,
+      postingDate: created.paymentDate,
+      description: `Subcontractor payment ${created.paymentNo}`,
+      lines: [
+        { accountId: expenseAccount.id, projectId: contract.projectId, stageId: null, debit: amount, credit: ZERO_MONEY, description: `Subcontract cost ${created.paymentNo}` },
+        { accountId: cashBank.glAccount.id, projectId: contract.projectId, stageId: null, debit: ZERO_MONEY, credit: amount, description: `Cash/Bank payment ${created.paymentNo}` }
+      ]
+    });
+    await repository.upsertSubcontractPaymentCostActual({
+      projectId: contract.projectId,
+      paymentId: created.id,
+      sourceKey,
+      postingDate: created.paymentDate,
+      amount
+    });
+
+    const posted = await repository.markSubcontractPaymentPosted(created.id);
+    if (!posted) throw new ConflictError({ message: 'Subcontractor Payment state changed before posting completed.' });
+    const response = {
+      id: posted.id,
+      subcontractContractId: posted.subcontractContractId,
+      paymentNo: posted.paymentNo,
+      paymentDate: dateOnly(posted.paymentDate),
+      amount: moneyString(posted.amount),
+      reference: posted.reference,
+      status: posted.status,
+      subcontractor: posted.subcontractContract.subcontractor,
+      project: posted.subcontractContract.project,
+      cashBankAccount: posted.cashBankAccount
+    };
+    await recordAudit(tx, {
+      action: 'subcontract.payment_posted',
+      entityType: 'subcontract_payment',
+      entityId: posted.id,
+      projectId: contract.projectId,
+      after: { ...response, financeSourceKey: sourceKey, costSourceKey: sourceKey }
+    });
+    await recordOutboxEvent(tx, {
+      eventType: 'subcontract.payment_posted',
+      resourceType: 'subcontract_payment',
+      resourceId: posted.id,
+      payload: { subcontractContractId: contract.id, subcontractorId: contract.subcontractorId, projectId: contract.projectId, paymentNo: posted.paymentNo, amount, financeSourceKey: sourceKey, costSourceKey: sourceKey }
+    });
+    return { statusCode: 201, body: response };
+  }
+
+  /** Return contract, paid and remaining values for the subcontractor ledger. */
+  async listSubcontractLedger(input: ListSubcontractLedgerQuery) {
+    this.requirePermission('subcontractors.read');
+    const page = input.page ?? 1;
+    const pageSize = input.pageSize ?? 25;
+    const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractLedger({
+      ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+      ...(input.status === undefined ? {} : { status: input.status }),
+      skip: (page - 1) * pageSize,
+      take: pageSize
+    });
+    return {
+      items: result.items.map((contract) => {
+        const contractAmount = moneyToMinorUnits(moneyString(contract.contractAmount));
+        const paidAmount = contract.payments.reduce((total, payment) => total + moneyToMinorUnits(moneyString(payment.amount)), 0n);
+        return {
+          subcontractContractId: contract.id,
+          contractDate: dateOnly(contract.contractDate),
+          status: contract.status,
+          finishedAt: contract.finishedAt?.toISOString() ?? null,
+          contractAmount: minorUnitsToMoney(contractAmount),
+          paidAmount: minorUnitsToMoney(paidAmount),
+          balanceAmount: minorUnitsToMoney(contractAmount - paidAmount),
+          subcontractor: contract.subcontractor,
+          project: contract.project
+        };
+      }),
+      total: result.total,
+      page,
+      pageSize
+    };
+  }
+
+  /** Finish one active subcontract contract and preserve its original Project, amount and date. */
+  async finishSubcontractContract(contractId: string) {
+    this.requirePermission('subcontractors.manage');
+    return withTransaction(this.db, async (tx) => {
+      const repository = new VendorsSubcontractorsRepository(tx);
+      const before = await repository.findSubcontractContractById(contractId);
+      if (!before) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
+      if (before.status === 'FINISHED') throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_ALREADY_FINISHED');
+      const finishedAt = new Date();
+      const finished = await repository.finishSubcontractContract(contractId, finishedAt);
+      if (!finished) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_ALREADY_FINISHED');
+      await recordAudit(tx, {
+        action: 'subcontract.finished',
+        entityType: 'subcontract_contract',
+        entityId: finished.id,
+        before: { status: before.status, finishedAt: before.finishedAt },
+        after: { status: finished.status, finishedAt: finished.finishedAt }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'subcontract.finished',
+        resourceType: 'subcontract_contract',
+        resourceId: finished.id,
+        payload: { subcontractorId: finished.subcontractorId, projectId: finished.projectId, status: finished.status }
+      });
+      return finished;
+    });
+  }
+
 }

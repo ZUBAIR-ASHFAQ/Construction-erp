@@ -137,6 +137,7 @@ test('B9 aligns Finance React API hooks and workspace to ledger Cash Bank reconc
   const hooks = read(`${web}/hooks/finance.ts`);
   const workspace = read(`${web}/components/finance-journal-workspace.tsx`);
   const page = read(`${web}/pages/finance-page.tsx`);
+  const shell = read('apps/web/src/features/administration/components/admin-shell.tsx');
   assert.match(api, /finance\/ledger/);
   assert.match(api, /finance\/cash-bank/);
   assert.match(api, /finance\/periods/);
@@ -148,14 +149,24 @@ test('B9 aligns Finance React API hooks and workspace to ledger Cash Bank reconc
   assert.doesNotMatch(api, /general-ledger|costStructureId|updateFinanceAccount|reopenFinancePeriod|createFinancePeriod/);
   assert.match(hooks, /@tanstack\/react-query/);
   assert.match(hooks, /mutationFn: \(input: ReverseFinanceJournalInput\) => reverseFinanceJournal\(input\.journalId, input\.postingDate\)/);
-  assert.match(workspace, /react-hook-form/);
-  assert.match(workspace, /zodResolver/);
+  assert.match(workspace, /<h2>Journal Records<\/h2>/);
+  assert.doesNotMatch(workspace, /react-hook-form|zodResolver|useCreateManualJournal/);
   assert.match(workspace, /journal\.status === 'POSTED' && journal\.sourceType === 'MANUAL'/);
   assert.match(workspace, /window\.prompt\('Reversal posting date \(YYYY-MM-DD\)\.[\s\S]*journal\.postingDate\)/);
   assert.match(workspace, /reverseMutation\.mutateAsync\(\{ journalId: journal\.id, postingDate \}\)/);
+  assert.match(workspace, /journal\.createdByName/);
+  assert.match(workspace, /journal\.periodLabel/);
+  assert.match(workspace, /formatAccount\(line\)/);
+  assert.match(workspace, /formatProject\(line\)/);
+  assert.match(workspace, /formatStage\(line\)/);
+  assert.doesNotMatch(workspace, /Account \{line\.accountId\}|Project \{line\.projectId|Stage \{line\.stageId|Journal \{line\.journalId/);
   assert.match(page, /Cash \/ Bank & Reconciliation/);
   assert.match(page, /useFinancePeriods/);
   assert.match(page, /<select \{\.\.\.ledgerForm\.register\('periodId'\)\}/);
+  assert.match(page, /view === 'ledger'/);
+  assert.match(page, /<h1>Account Ledger<\/h1>/);
+  assert.match(shell, /'account-ledger'/);
+  assert.match(shell, /<FinancePage view="ledger" \/>/);
   assert.doesNotMatch(page, /Fiscal period ID<input/);
 });
 

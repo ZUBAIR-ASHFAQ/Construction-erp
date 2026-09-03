@@ -11,7 +11,7 @@ export type FinanceAccount = Readonly<{
 
 export type FinanceAccountPage = Readonly<{ items: FinanceAccount[]; total: number; page: number; pageSize: number }>;
 export type ListFinanceAccountsInput = Readonly<{ page?: number; pageSize?: number }>;
-export type CreateFinanceAccountInput = Readonly<{ accountCode: string; name: string; accountType: string; parentId?: string | null }>;
+export type CreateFinanceAccountInput = Readonly<{ name: string; accountType: 'CASH' | 'BANK'; openingBalance: string }>;
 
 export type ManualJournalLineInput = Readonly<{
   accountId: string;
@@ -32,8 +32,14 @@ export type FinanceJournalLine = Readonly<{
   id: string;
   journalId: string;
   accountId: string;
+  accountCode?: string;
+  accountName?: string;
   projectId: string | null;
+  projectCode?: string | null;
+  projectName?: string | null;
   stageId: string | null;
+  stageCode?: string | null;
+  stageName?: string | null;
   debit: string;
   credit: string;
   description: string;
@@ -49,7 +55,9 @@ export type FinanceJournal = Readonly<{
   description: string;
   status: string;
   periodId: string;
+  periodLabel?: string;
   createdBy: string | null;
+  createdByName?: string | null;
   postedAt: string | null;
   totalDebit: string;
   totalCredit: string;
@@ -69,7 +77,11 @@ export type FinanceLedgerLine = Readonly<{
   accountCode: string;
   accountName: string;
   projectId: string | null;
+  projectCode: string | null;
+  projectName: string | null;
   stageId: string | null;
+  stageCode: string | null;
+  stageName: string | null;
   debit: string;
   credit: string;
   description: string;

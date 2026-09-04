@@ -163,6 +163,45 @@ export class SiteExpensesRepository {
     });
   }
 
+  /** List active Company Site Expense categories for filters and forms. */
+  async listExpenseCategories() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.expenseCategory.findMany({ where: scope.where({ status: 'ACTIVE' }), orderBy: [{ name: 'asc' }, { id: 'asc' }] });
+  }
+
+  /** Find an active category by case-insensitive name so request retries do not duplicate setup. */
+  async findExpenseCategoryByName(name: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.expenseCategory.findFirst({ where: scope.where({ name: { equals: name, mode: 'insensitive' as const }, status: 'ACTIVE' }), orderBy: [{ code: 'asc' }, { id: 'asc' }] });
+  }
+
+  /** Ensure the server-owned Site Expense category sequence exists. */
+  async ensureExpenseCategorySequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'site-expense-category' } },
+      create: { companyId: scope.companyId, sequenceKey: 'site-expense-category', prefix: 'EXP-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
+  /** Ensure Site Expense numbering exists for companies created after the original migration. */
+  async ensureSiteExpenseSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'site-expense' } },
+      create: { companyId: scope.companyId, sequenceKey: 'site-expense', prefix: 'SE-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
+  /** Create a category together with the expense GL used by posting. */
+  async createExpenseCategory(input: Readonly<{ code: string; name: string }>) {
+    const scope = requireCompanyRepositoryScope();
+    const account = await this.db.glAccount.create({ data: scope.createData({ accountCode: input.code, name: `${input.name} Expense`, accountType: 'EXPENSE', parentId: null, status: 'ACTIVE' }) });
+    return this.db.expenseCategory.create({ data: scope.createData({ code: input.code, name: input.name, defaultGlAccountId: account.id, status: 'ACTIVE' }) });
+  }
+
   /** Find one Company-owned Cash/Bank account and its mapped General Ledger account. */
   async findCashBankAccountById(cashBankAccountId: string) {
     const scope = requireCompanyRepositoryScope();

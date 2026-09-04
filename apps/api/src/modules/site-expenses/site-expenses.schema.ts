@@ -77,6 +77,12 @@ const paginationShape = {
 /** Validate one Site Expense identifier. */
 export const siteExpenseIdParamsSchema = z.object({ id: uuidSchema }).strict();
 
+/** Validate a name-only Site Expense category creation request. */
+export const createExpenseCategoryBodySchema = z.object({ name: z.string().trim().min(1).max(200) }).strict();
+
+/** Public Site Expense category selector row. */
+export const expenseCategoryResponseSchema = z.object({ id: uuidSchema, code: z.string().min(1), name: z.string().min(1), status: z.string().min(1) }).strict();
+
 /** Validate bounded Site Expense register filters. */
 export const listSiteExpensesQuerySchema = z.object({
   projectId: uuidSchema.optional(),
@@ -161,6 +167,8 @@ export const listSiteExpensesResponseSchema = z.object({
 }).strict();
 
 export type ListSiteExpensesQuery = z.infer<typeof listSiteExpensesQuerySchema>;
+export type CreateExpenseCategoryBody = z.infer<typeof createExpenseCategoryBodySchema>;
+export type ExpenseCategoryResponse = z.infer<typeof expenseCategoryResponseSchema>;
 export type CreateSiteExpenseBody = z.infer<typeof createSiteExpenseBodySchema>;
 export type UpdateSiteExpenseBody = z.infer<typeof updateSiteExpenseBodySchema>;
 export type PostSiteExpenseBody = z.infer<typeof postSiteExpenseBodySchema>;

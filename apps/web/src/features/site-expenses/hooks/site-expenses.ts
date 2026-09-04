@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createSiteExpense,
+  createExpenseCategory,
   getSiteExpense,
   listSiteExpenses,
+  listExpenseCategories,
   postSiteExpense,
   reverseSiteExpense,
   updateSiteExpense,
@@ -32,6 +34,17 @@ export function useSiteExpenses(input: ListSiteExpensesInput, enabled = true) {
     enabled,
     retry: false
   });
+}
+
+/** Load the category catalog used by Site Expense forms. */
+export function useExpenseCategories(enabled = true) {
+  return useQuery({ queryKey: [...SITE_EXPENSE_QUERY_KEY, 'categories'], queryFn: listExpenseCategories, enabled, retry: false });
+}
+
+/** Add one category and refresh every category selector. */
+export function useCreateExpenseCategory() {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (name: string) => createExpenseCategory(name), onSuccess: async () => queryClient.invalidateQueries({ queryKey: [...SITE_EXPENSE_QUERY_KEY, 'categories'] }) });
 }
 
 /** Load one selected Site Expense detail. */

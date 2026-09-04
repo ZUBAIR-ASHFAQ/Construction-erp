@@ -15,6 +15,7 @@ import {
   SITE_EXPENSE_PAYMENT_MODE_VALUES,
   createSiteExpenseError,
   type CreateSiteExpenseBody,
+  type CreateExpenseCategoryBody,
   type ListSiteExpensesQuery,
   type SiteExpensePaymentMode,
   type SiteExpensePermissionCode,
@@ -27,6 +28,7 @@ const POSTED = 'POSTED';
 const REVERSED = 'REVERSED';
 const ZERO_MONEY = '0.00';
 const SITE_EXPENSE_SEQUENCE_KEY = 'site-expense';
+const SITE_EXPENSE_CATEGORY_SEQUENCE_KEY = 'site-expense-category';
 const SITE_EXPENSE_PAYABLE_ACCOUNT_CODE = 'SITE-EXPENSE-PAYABLE';
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
@@ -245,6 +247,29 @@ export class SiteExpensesService {
     return { items: result.items.map(siteExpenseResponse), total: result.total, page: page.page, pageSize: page.pageSize };
   }
 
+  /** List the Company's active Site Expense categories for human-readable selectors. */
+  async listExpenseCategories() {
+    const administration = new AdministrationRepository(this.db);
+    if (!(await this.hasCompanyPermission(administration, 'site_expenses.read', new Date()))) throw new AuthorizationError();
+    return new SiteExpensesRepository(this.db).listExpenseCategories();
+  }
+
+  /** Create a name-only category and its server-managed expense GL atomically. */
+  async createExpenseCategory(input: CreateExpenseCategoryBody) {
+    const administration = new AdministrationRepository(this.db);
+    if (!(await this.hasCompanyPermission(administration, 'site_expenses.create', new Date()))) throw new AuthorizationError();
+    return this.db.$transaction(async (tx) => {
+      const repository = new SiteExpensesRepository(tx);
+      const existing = await repository.findExpenseCategoryByName(input.name);
+      if (existing) return existing;
+      await repository.ensureExpenseCategorySequence();
+      const allocation = await allocateCompanyNumber(tx, { sequenceKey: SITE_EXPENSE_CATEGORY_SEQUENCE_KEY });
+      const category = await repository.createExpenseCategory({ code: allocation.formatted, name: input.name });
+      await recordAudit(tx, { action: 'site_expense.category.created', entityType: 'expense_category', entityId: category.id, after: { code: category.code, name: category.name, status: category.status } });
+      return category;
+    });
+  }
+
   /** Read one Site Expense inside the actor's Company and Project scope. */
   async getSiteExpense(expenseId: string) {
     const visibility = await this.resolveVisibility(new AdministrationRepository(this.db), 'site_expenses.read', new Date());
@@ -279,6 +304,7 @@ export class SiteExpensesService {
       documentId: input.documentId ?? null
     } as const;
     await this.validateDependencies(repository, visibility, normalized, false);
+    await repository.ensureSiteExpenseSequence();
     const number = await allocateCompanyNumber(tx, { sequenceKey: SITE_EXPENSE_SEQUENCE_KEY });
     const security = requireRequestSecurityContext();
     const created = await repository.createDraftSiteExpense({

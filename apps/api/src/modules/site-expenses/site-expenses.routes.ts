@@ -5,6 +5,8 @@ import type { z } from 'zod';
 import { authenticateRequest } from '../../plugins/authentication.js';
 import {
   createSiteExpenseBodySchema,
+  createExpenseCategoryBodySchema,
+  expenseCategoryResponseSchema,
   listSiteExpensesQuerySchema,
   listSiteExpensesResponseSchema,
   postSiteExpenseBodySchema,
@@ -134,6 +136,15 @@ const COMMON_RESPONSES = {
   409: ERROR_JSON_SCHEMA,
   500: ERROR_JSON_SCHEMA
 } as const;
+const CATEGORY_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['name'], properties: { name: { type: 'string', minLength: 1, maxLength: 200 } } } as const;
+const CATEGORY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['id', 'code', 'name', 'status'],
+  properties: { id: UUID_JSON_SCHEMA, code: { type: 'string' }, name: { type: 'string' }, status: { type: 'string' } }
+} as const;
+const CATEGORY_LIST_SUCCESS_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['data'],
+  properties: { data: { type: 'array', items: CATEGORY_JSON_SCHEMA } }
+} as const;
 const IDEMPOTENCY_HEADERS_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: true,
@@ -170,9 +181,27 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return value.trim();
 }
 
+/** Remove Company and posting-account ownership fields from a public category response. */
+function serializeExpenseCategory(category: Readonly<{ id: string; code: string; name: string; status: string }>) {
+  return expenseCategoryResponseSchema.parse({ id: category.id, code: category.code, name: category.name, status: category.status });
+}
+
 /** Register the exact six Final-21 Site Expense Management routes. */
 export async function registerSiteExpensesRoutes(app: FastifyInstance, options: SiteExpensesRoutesOptions): Promise<void> {
   const service = new SiteExpensesService(options.database);
+
+  app.get('/api/v1/site-expense-categories', { schema: { tags: ['Site Expenses'], operationId: 'listSiteExpenseCategories', summary: 'List active Site Expense categories', security: BEARER_SECURITY, response: { 200: CATEGORY_LIST_SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } } }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const categories = await service.listExpenseCategories();
+    const unique = categories.filter((category, index, rows) => rows.findIndex((candidate) => candidate.name.trim().toLocaleLowerCase() === category.name.trim().toLocaleLowerCase()) === index);
+    return reply.send({ data: unique.map(serializeExpenseCategory) });
+  });
+
+  app.post('/api/v1/site-expense-categories', { schema: { tags: ['Site Expenses'], operationId: 'createSiteExpenseCategory', summary: 'Create a Site Expense category and posting account', security: BEARER_SECURITY, body: CATEGORY_BODY_JSON_SCHEMA, response: { 201: { type: 'object', additionalProperties: false, required: ['data'], properties: { data: CATEGORY_JSON_SCHEMA } }, ...COMMON_RESPONSES } } }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const body = parseRequest(createExpenseCategoryBodySchema, request.body, 'body');
+    return reply.code(201).send({ data: serializeExpenseCategory(await service.createExpenseCategory(body)) });
+  });
 
   app.get('/api/v1/site-expenses', {
     schema: {

@@ -2,6 +2,7 @@ import { authenticatedRequest } from '../../administration/api/auth-api.js';
 
 export type SiteExpensePaymentMode = 'CASH' | 'BANK' | 'PAYABLE';
 export type SiteExpenseStatus = 'DRAFT' | 'POSTED' | 'REVERSED';
+export type ExpenseCategory = Readonly<{ id: string; code: string; name: string; status: string }>;
 
 export type SiteExpense = Readonly<{
   id: string;
@@ -71,6 +72,16 @@ function siteExpenseQuery(input: ListSiteExpensesInput): string {
 /** Build the Foundation retry key required by every Site Expense write. */
 function siteExpenseCommandHeaders(): HeadersInit {
   return { 'Idempotency-Key': crypto.randomUUID() };
+}
+
+/** Load active Site Expense categories for human-readable selectors. */
+export function listExpenseCategories(): Promise<ExpenseCategory[]> {
+  return authenticatedRequest<ExpenseCategory[]>('site-expense-categories');
+}
+
+/** Create a category; its expense posting account is provisioned by the server. */
+export function createExpenseCategory(name: string): Promise<ExpenseCategory> {
+  return authenticatedRequest<ExpenseCategory>('site-expense-categories', { method: 'POST', body: JSON.stringify({ name }) });
 }
 
 /** Load one permission-scoped page of Site Expenses. */

@@ -306,6 +306,7 @@ export function AdminShell() {
   const canManageDepartments = usePermission('admin.departments.manage');
   const [view, setView] = useState<WorkspaceView>('dashboard');
   const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
+  const [linkedFinanceAccountId, setLinkedFinanceAccountId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (auth.isCheckingSession) {
@@ -395,6 +396,13 @@ export function AdminShell() {
   /** Select one workspace and close the mobile navigation drawer. */
   function selectView(nextView: WorkspaceView): void {
     setView(nextView);
+    setIsSidebarOpen(false);
+  }
+
+  /** Open the Account Ledger already filtered to the selected Finance account. */
+  function showAccountLedger(accountId: string): void {
+    setLinkedFinanceAccountId(accountId);
+    setView('account-ledger');
     setIsSidebarOpen(false);
   }
 
@@ -610,8 +618,9 @@ export function AdminShell() {
           {activeView === 'projects' && <ProjectsPage key={`projects-${linkedClientId ?? 'all'}`} initialClientId={linkedClientId} />}
           {activeView === 'project-stages' && <ProjectStagesPage />}
           {activeView === 'project-team' && <ProjectTeamPage />}
-          {activeView === 'finance' && <FinancePage />}
-          {activeView === 'account-ledger' && <FinancePage view="ledger" />}
+          {activeView === 'finance' && <FinancePage onOpenLedger={showAccountLedger} />}
+          {/* The Account Ledger remains compatible with its standalone <FinancePage view="ledger" /> form while accepting an optional row link. */}
+          {activeView === 'account-ledger' && <FinancePage view="ledger" initialAccountId={linkedFinanceAccountId} />}
           {activeView === 'budgets-job-cost' && <BudgetsJobCostPage />}
           {activeView === 'procurement' && <ProcurementPage />}
           {activeView === 'materials' && <MaterialsPage />}

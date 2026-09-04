@@ -5185,3 +5185,132 @@ body,
     min-height: 42px;
   }
 }
+/* Finance account and journal drill-downs use a centered, accessible modal surface. */
+.finance-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.58);
+  backdrop-filter: blur(3px);
+}
+
+.finance-modal {
+  width: min(680px, 100%);
+  max-height: min(84vh, 760px);
+  overflow: hidden;
+  border: 1px solid #dbe4f0;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(15, 23, 42, 0.28);
+}
+
+.finance-modal-wide {
+  width: min(1040px, 100%);
+}
+
+.finance-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid #e5eaf1;
+}
+
+.finance-modal-header h2,
+.finance-modal-header p {
+  margin: 0;
+}
+
+.finance-modal-header .eyebrow {
+  margin-bottom: 5px;
+}
+
+.finance-modal-close {
+  display: grid;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #dbe4f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #334155;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.finance-modal-body {
+  max-height: calc(84vh - 104px);
+  overflow: auto;
+  padding: 24px;
+}
+
+.finance-modal-body .table-wrap {
+  margin: 0;
+}
+
+.finance-modal-state {
+  margin: 20px 0;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .finance-modal-backdrop {
+    padding: 12px;
+  }
+
+  .finance-modal-header,
+  .finance-modal-body {
+    padding: 18px;
+  }
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.expense-category-list {
+  display: grid;
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.expense-category-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #f8fafc;
+  color: #0f172a;
+  text-align: left;
+}
+
+.expense-category-row span:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.expense-category-row small {
+  color: #64748b;
+}
+
+.expense-category-add {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid #e2e8f0;
+}

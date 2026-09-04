@@ -41,12 +41,11 @@ export type VendorDetails = Readonly<{
 
 export type Subcontractor = Readonly<{
   id: string;
-  vendorId: string | null;
-  code: string;
+  name: string;
+  phone: string;
   specialty: string;
+  address: string;
   status: SubcontractorStatus;
-  defaultTerms: string | null;
-  vendor: Readonly<{ id: string; code: string; displayName: string; status: string }> | null;
 }>;
 
 export type SubcontractContract = Readonly<{
@@ -62,10 +61,9 @@ export type SubcontractContract = Readonly<{
   project: Readonly<{ id: string; projectCode: string; name: string; currency: string; status: string }>;
   subcontractor: Readonly<{
     id: string;
-    code: string;
+    name: string;
     specialty: string;
     status: string;
-    vendor: Readonly<{ displayName: string }> | null;
   }>;
 }>;
 
@@ -77,7 +75,7 @@ export type SubcontractPayment = Readonly<{
   amount: string;
   reference: string | null;
   status: SubcontractPaymentStatus;
-  subcontractor: Readonly<{ id: string; code: string; specialty: string; status: string }>;
+  subcontractor: Readonly<{ id: string; name: string; specialty: string; status: string }>;
   project: Readonly<{ id: string; projectCode: string; name: string; currency: string; status: string }>;
   cashBankAccount: Readonly<{ id: string; code: string; name: string; accountType: string; status: string }>;
 }>;
@@ -90,7 +88,7 @@ export type SubcontractLedgerRow = Readonly<{
   contractAmount: string;
   paidAmount: string;
   balanceAmount: string;
-  subcontractor: Readonly<{ id: string; code: string; specialty: string; status: string }>;
+  subcontractor: Readonly<{ id: string; name: string; specialty: string; status: string }>;
   project: Readonly<{ id: string; projectCode: string; name: string; currency: string; status: string }>;
 }>;
 
@@ -131,10 +129,10 @@ export type ListSubcontractorsInput = Readonly<{
 }>;
 
 export type CreateSubcontractorInput = Readonly<{
-  vendorId?: string | null;
-  code: string;
+  name: string;
+  phone: string;
   specialty: string;
-  defaultTerms?: string | null;
+  address: string;
 }>;
 
 export type UpdateSubcontractorInput = Partial<CreateSubcontractorInput> & Readonly<{ status?: SubcontractorStatus }>;

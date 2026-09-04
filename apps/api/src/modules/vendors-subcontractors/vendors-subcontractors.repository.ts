@@ -144,7 +144,8 @@ export class VendorsSubcontractorsRepository {
       ...(input.status ? { status: input.status } : {}),
       ...(search ? {
         OR: [
-          { code: { contains: search, mode: 'insensitive' as const } },
+          { name: { contains: search, mode: 'insensitive' as const } },
+          { phone: { contains: search, mode: 'insensitive' as const } },
           { specialty: { contains: search, mode: 'insensitive' as const } }
         ]
       } : {})
@@ -153,8 +154,7 @@ export class VendorsSubcontractorsRepository {
     const [items, total] = await Promise.all([
       this.db.subcontractor.findMany({
         where,
-        include: { vendor: { select: { id: true, code: true, displayName: true, status: true } } },
-        orderBy: [{ code: 'asc' }, { id: 'asc' }],
+        orderBy: [{ name: 'asc' }, { id: 'asc' }],
         skip: input.skip,
         take: input.take
       }),
@@ -168,22 +168,31 @@ export class VendorsSubcontractorsRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.subcontractor.findFirst({
       where: scope.where({ id: subcontractorId }),
-      include: { vendor: { select: { id: true, code: true, displayName: true, status: true } } }
     });
   }
 
   /** Create one active company subcontractor profile. */
   async createSubcontractor(input: Readonly<{
-    vendorId?: string | null;
     code: string;
+    name: string;
+    phone: string;
     specialty: string;
-    defaultTerms?: string | null;
+    address: string;
     status: string;
   }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.subcontractor.create({
       data: scope.createData(input),
-      include: { vendor: { select: { id: true, code: true, displayName: true, status: true } } }
+    });
+  }
+
+  /** Ensure the server-owned subcontractor code sequence exists for this Company. */
+  async ensureSubcontractorNumbering(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'subcontractor' } },
+      create: { companyId: scope.companyId, sequenceKey: 'subcontractor', prefix: 'SUB-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
     });
   }
 
@@ -218,10 +227,9 @@ export class VendorsSubcontractorsRepository {
       subcontractor: {
         select: {
           id: true,
-          code: true,
+          name: true,
           specialty: true,
-          status: true,
-          vendor: { select: { displayName: true } }
+          status: true
         }
       }
     } as const;
@@ -248,10 +256,9 @@ export class VendorsSubcontractorsRepository {
         subcontractor: {
           select: {
             id: true,
-            code: true,
+            name: true,
             specialty: true,
-            status: true,
-            vendor: { select: { displayName: true } }
+            status: true
           }
         }
       }
@@ -274,10 +281,9 @@ export class VendorsSubcontractorsRepository {
         subcontractor: {
           select: {
             id: true,
-            code: true,
+            name: true,
             specialty: true,
-            status: true,
-            vendor: { select: { displayName: true } }
+            status: true
           }
         }
       }
@@ -357,7 +363,7 @@ export class VendorsSubcontractorsRepository {
         subcontractContract: {
           include: {
             project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
-            subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+            subcontractor: { select: { id: true, name: true, specialty: true, status: true } }
           }
         },
         cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
@@ -379,7 +385,7 @@ export class VendorsSubcontractorsRepository {
         subcontractContract: {
           include: {
             project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
-            subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+            subcontractor: { select: { id: true, name: true, specialty: true, status: true } }
           }
         },
         cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
@@ -431,7 +437,7 @@ export class VendorsSubcontractorsRepository {
       subcontractContract: {
         include: {
           project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
-          subcontractor: { select: { id: true, code: true, specialty: true, status: true } }
+          subcontractor: { select: { id: true, name: true, specialty: true, status: true } }
         }
       },
       cashBankAccount: { select: { id: true, code: true, name: true, accountType: true, status: true } }
@@ -457,7 +463,7 @@ export class VendorsSubcontractorsRepository {
         where,
         include: {
           project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
-          subcontractor: { select: { id: true, code: true, specialty: true, status: true } },
+          subcontractor: { select: { id: true, name: true, specialty: true, status: true } },
           payments: { where: { status: 'POSTED' }, select: { amount: true } }
         },
         orderBy: [{ contractDate: 'desc' }, { createdAt: 'desc' }, { id: 'asc' }],

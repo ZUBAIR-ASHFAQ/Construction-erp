@@ -70,7 +70,7 @@ export function SubcontractContractsWorkspace(props: WorkspaceProps) {
                   <option value="">Select subcontractor</option>
                   {(subcontractors.data?.items ?? []).map((subcontractor) => (
                     <option key={subcontractor.id} value={subcontractor.id}>
-                      {subcontractor.vendor?.displayName ? `${subcontractor.vendor.displayName} (${subcontractor.code})` : `${subcontractor.code} · ${subcontractor.specialty}`}
+                      {subcontractor.name} · {subcontractor.specialty}
                     </option>
                   ))}
                 </select>
@@ -116,7 +116,7 @@ export function SubcontractContractsWorkspace(props: WorkspaceProps) {
               <tbody>
                 {(contracts.data?.items ?? []).map((contract) => (
                   <tr key={contract.id}>
-                    <td>{contract.subcontractor.vendor?.displayName ?? contract.subcontractor.code}</td>
+                    <td>{contract.subcontractor.name} · {contract.subcontractor.specialty}</td>
                     <td>{contract.project.projectCode} · {contract.project.name}</td>
                     <td>{contract.contractAmount} {contract.project.currency}</td>
                     <td>{contract.contractDate.slice(0, 10)}</td>

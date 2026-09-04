@@ -100,8 +100,13 @@ export const listFinanceAccountsQuerySchema = z.object({ ...paginationQueryShape
 export const createFinanceAccountBodySchema = z.object({
   name: accountNameSchema,
   accountType: z.enum(['CASH', 'BANK']),
-  openingBalance: nonNegativeMoneySchema
-}).strict();
+  openingBalance: nonNegativeMoneySchema,
+  bankName: z.string().trim().min(1).max(200).optional(),
+  accountReference: z.string().trim().min(1).max(200).optional()
+}).strict().superRefine((value, context) => {
+  if (value.accountType === 'BANK' && !value.bankName) context.addIssue({ code: z.ZodIssueCode.custom, path: ['bankName'], message: 'Bank name is required for a Bank account.' });
+  if (value.accountType === 'BANK' && !value.accountReference) context.addIssue({ code: z.ZodIssueCode.custom, path: ['accountReference'], message: 'Bank account number is required.' });
+});
 
 /** One manual Journal line using only Final-21 Project and optional Stage dimensions. */
 export const manualJournalLineInputSchema = z.object({
@@ -166,6 +171,14 @@ export const listCashBankAccountsQuerySchema = z.object({
   ...paginationQueryShape,
   status: tokenSchema.optional()
 }).strict();
+
+/** Edit Cash/Bank display and lifecycle fields without accepting balances. */
+export const updateCashBankAccountBodySchema = z.object({
+  name: accountNameSchema.optional(),
+  bankName: z.string().trim().min(1).max(200).nullable().optional(),
+  accountReference: z.string().trim().min(1).max(200).nullable().optional(),
+  status: z.enum(['ACTIVE', 'ARCHIVED']).optional()
+}).strict().refine((value) => Object.keys(value).length > 0, { message: 'At least one editable account field is required.' });
 
 /** Reconciliation captures only the account and statement date; the balance is derived server-side. */
 export const createBankReconciliationBodySchema = z.object({
@@ -295,6 +308,7 @@ export const cashBankAccountResponseSchema = z.object({
   bankName: z.string().trim().min(1).max(200).nullable(),
   accountReference: z.string().trim().min(1).max(200).nullable(),
   status: tokenSchema,
+  openingBalance: moneySchema,
   balance: moneySchema
 }).strict();
 
@@ -348,6 +362,7 @@ export type ListFinanceJournalsQuery = z.infer<typeof listFinanceJournalsQuerySc
 export type FinanceLedgerQuery = z.infer<typeof financeLedgerQuerySchema>;
 export type TrialBalanceQuery = z.infer<typeof trialBalanceQuerySchema>;
 export type ListCashBankAccountsQuery = z.infer<typeof listCashBankAccountsQuerySchema>;
+export type UpdateCashBankAccountBody = z.infer<typeof updateCashBankAccountBodySchema>;
 export type CreateBankReconciliationBody = z.infer<typeof createBankReconciliationBodySchema>;
 export type CloseFiscalPeriodBody = z.infer<typeof closeFiscalPeriodBodySchema>;
 export type FinanceAccountResponse = z.infer<typeof financeAccountResponseSchema>;

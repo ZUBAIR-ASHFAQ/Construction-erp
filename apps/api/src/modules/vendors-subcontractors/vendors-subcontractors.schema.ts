@@ -68,7 +68,7 @@ const paymentTermsSchema = z.number().int().min(0).max(2_147_483_647);
 const contactNameSchema = z.string().trim().min(1).max(200);
 const contactRoleSchema = z.string().trim().min(1).max(120);
 const specialtySchema = z.string().trim().min(1).max(200);
-const defaultTermsSchema = z.string().trim().min(1).max(2000);
+const addressSchema = z.string().trim().min(1).max(1000);
 const contractAmountSchema = z.string().trim().regex(
   /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/,
   'contractAmount must be a decimal string with at most 16 whole digits and 2 decimal places'
@@ -198,20 +198,20 @@ export const listSubcontractLedgerQuerySchema = z.object({
   ...paginationQueryShape
 }).strict();
 
-/** Create one subcontractor profile, optionally linked to an existing supplier/vendor. */
+/** Create one subcontractor profile from its four user-maintained business fields. */
 export const createSubcontractorBodySchema = z.object({
-  vendorId: uuidSchema.nullable().optional(),
-  code: codeSchema,
+  name: nameSchema,
+  phone: phoneSchema,
   specialty: specialtySchema,
-  defaultTerms: defaultTermsSchema.nullable().optional()
+  address: addressSchema
 }).strict();
 
-/** Update final subcontractor master fields without creating operational subcontract ownership. */
+/** Update subcontractor contact fields or lifecycle status; code remains server-owned. */
 export const updateSubcontractorBodySchema = z.object({
-  vendorId: uuidSchema.nullable().optional(),
-  code: codeSchema.optional(),
+  name: nameSchema.optional(),
+  phone: phoneSchema.optional(),
   specialty: specialtySchema.optional(),
-  defaultTerms: defaultTermsSchema.nullable().optional(),
+  address: addressSchema.optional(),
   status: z.enum(SUBCONTRACTOR_STATUS_VALUES).optional()
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: 'At least one editable subcontractor field must be provided.'

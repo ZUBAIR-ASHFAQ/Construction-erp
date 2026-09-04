@@ -125,7 +125,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                   <select {...form.register('subcontractorId', { onChange: handleSubcontractorChange })}>
                     <option value="">Select subcontractor</option>
                     {(subcontractors.data?.items ?? []).filter((item) => item.status === 'ACTIVE').map((item) => (
-                      <option key={item.id} value={item.id}>{item.code} · {item.specialty}</option>
+                      <option key={item.id} value={item.id}>{item.name} · {item.specialty}</option>
                     ))}
                   </select>
                   <span className="field-error">{form.formState.errors.subcontractorId?.message}</span>
@@ -189,7 +189,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                 {(payments.data?.items ?? []).map((payment) => (
                   <tr key={payment.id}>
                     <td>{payment.paymentNo}</td>
-                    <td>{payment.subcontractor.code} · {payment.subcontractor.specialty}</td>
+                    <td>{payment.subcontractor.name} · {payment.subcontractor.specialty}</td>
                     <td>{payment.project.projectCode} · {payment.project.name}</td>
                     <td>{payment.paymentDate}</td>
                     <td>{formatMoney(payment.amount, payment.project.currency)}</td>
@@ -222,7 +222,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
             Subcontractor
             <select value={ledgerSubcontractorId} onChange={(event) => setLedgerSubcontractorId(event.target.value)}>
               <option value="">All subcontractors</option>
-              {(subcontractors.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.code} · {item.specialty}</option>)}
+              {(subcontractors.data?.items ?? []).map((item) => <option key={item.id} value={item.id}>{item.name} · {item.specialty}</option>)}
             </select>
           </label>
           <label>
@@ -245,7 +245,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
             <tbody>
               {(ledger.data?.items ?? []).map((row) => (
                 <tr key={row.subcontractContractId}>
-                  <td>{row.subcontractor.code} · {row.subcontractor.specialty}</td>
+                  <td>{row.subcontractor.name} · {row.subcontractor.specialty}</td>
                   <td>{row.project.projectCode} · {row.project.name}</td>
                   <td>{row.contractDate}</td>
                   <td>{row.status}</td>
@@ -270,7 +270,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
               {(payments.data?.items ?? []).map((payment) => (
                 <tr key={payment.id}>
                   <td>{payment.paymentNo}</td>
-                  <td>{payment.subcontractor.code} · {payment.subcontractor.specialty}</td>
+                  <td>{payment.subcontractor.name} · {payment.subcontractor.specialty}</td>
                   <td>{payment.project.projectCode} · {payment.project.name}</td>
                   <td>{payment.paymentDate}</td>
                   <td>{formatMoney(payment.amount, payment.project.currency)}</td>

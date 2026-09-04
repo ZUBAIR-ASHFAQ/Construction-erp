@@ -26,6 +26,7 @@ import {
 } from './vendors-subcontractors.schema.js';
 
 const ACTIVE = 'ACTIVE';
+const SUBCONTRACTOR_SEQUENCE_KEY = 'subcontractor';
 const SUBCONTRACT_PAYMENT_SEQUENCE_KEY = 'subcontract-payment';
 const SUBCONTRACT_PAYMENT_SOURCE_TYPE = 'subcontract_payment';
 const SUBCONTRACT_EXPENSE_ACCOUNT_CODE = 'SUBCONTRACT-EXPENSE';
@@ -226,25 +227,24 @@ export class VendorsSubcontractorsService {
     return { items: result.items, total: result.total, page, pageSize };
   }
 
-  /** Create one subcontractor profile after validating its optional same-company vendor link. */
+  /** Create one subcontractor with a server-generated code and four user-maintained fields. */
   async createSubcontractor(input: CreateSubcontractorBody) {
     this.requirePermission('subcontractors.manage');
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
-      if (input.vendorId) {
-        const vendor = await repository.findVendorById(input.vendorId);
-        if (!vendor || vendor.status !== ACTIVE) throw createVendorsSubcontractorsError('VENDOR_LINK_INVALID');
-      }
+      await repository.ensureSubcontractorNumbering();
+      const number = await allocateCompanyNumber(tx, { sequenceKey: SUBCONTRACTOR_SEQUENCE_KEY });
       const subcontractor = await repository.createSubcontractor({
-        ...(input.vendorId === undefined ? {} : { vendorId: input.vendorId }),
-        code: input.code,
+        code: number.formatted,
+        name: input.name,
+        phone: input.phone,
         specialty: input.specialty,
-        ...(input.defaultTerms === undefined ? {} : { defaultTerms: input.defaultTerms }),
+        address: input.address,
         status: ACTIVE
       });
       await recordAudit(tx, {
         action: 'subcontractor.created', entityType: 'subcontractor', entityId: subcontractor.id,
-        after: { vendorId: subcontractor.vendorId, code: subcontractor.code, specialty: subcontractor.specialty, status: subcontractor.status }
+        after: { code: subcontractor.code, name: subcontractor.name, specialty: subcontractor.specialty, status: subcontractor.status }
       });
       await recordOutboxEvent(tx, {
         eventType: 'subcontractor.created', resourceType: 'subcontractor', resourceId: subcontractor.id,
@@ -254,29 +254,25 @@ export class VendorsSubcontractorsService {
     });
   }
 
-  /** Update one subcontractor profile without changing existing contract history. */
+  /** Update subcontractor contact data or status without changing its server-owned code. */
   async updateSubcontractor(subcontractorId: string, input: UpdateSubcontractorBody) {
     this.requirePermission('subcontractors.manage');
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
       const before = await repository.findSubcontractorById(subcontractorId);
       if (!before) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
-      if (input.vendorId) {
-        const vendor = await repository.findVendorById(input.vendorId);
-        if (!vendor || vendor.status !== ACTIVE) throw createVendorsSubcontractorsError('VENDOR_LINK_INVALID');
-      }
       const updated = await repository.updateSubcontractor(subcontractorId, {
-        ...(input.vendorId === undefined ? {} : { vendorId: input.vendorId }),
-        ...(input.code === undefined ? {} : { code: input.code }),
+        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(input.phone === undefined ? {} : { phone: input.phone }),
         ...(input.specialty === undefined ? {} : { specialty: input.specialty }),
-        ...(input.defaultTerms === undefined ? {} : { defaultTerms: input.defaultTerms }),
+        ...(input.address === undefined ? {} : { address: input.address }),
         ...(input.status === undefined ? {} : { status: input.status })
       });
       if (!updated) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
       await recordAudit(tx, {
         action: 'subcontractor.updated', entityType: 'subcontractor', entityId: updated.id,
-        before: { vendorId: before.vendorId, code: before.code, specialty: before.specialty, status: before.status },
-        after: { vendorId: updated.vendorId, code: updated.code, specialty: updated.specialty, status: updated.status }
+        before: { name: before.name, phone: before.phone, specialty: before.specialty, address: before.address, status: before.status },
+        after: { name: updated.name, phone: updated.phone, specialty: updated.specialty, address: updated.address, status: updated.status }
       });
       await recordOutboxEvent(tx, {
         eventType: 'subcontractor.updated', resourceType: 'subcontractor', resourceId: updated.id,

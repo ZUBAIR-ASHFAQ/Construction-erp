@@ -358,6 +358,29 @@ export class FinanceRepository {
     return { items, total };
   }
 
+  /** Read one journal with all visible double-entry lines for the detail dialog. */
+  async findJournalForRead(journalId: string, visibility: FinanceProjectVisibilityRepositoryInput) {
+    const scope = requireCompanyRepositoryScope();
+    const lineVisibility = buildProjectLineVisibilityWhere(visibility);
+    const hasLineFilter = Object.keys(lineVisibility).length > 0;
+    return this.db.journal.findFirst({
+      where: scope.where({ id: journalId, ...(hasLineFilter ? { lines: { some: lineVisibility } } : {}) }),
+      include: {
+        period: { select: { fiscalYear: true, periodNo: true, startDate: true, endDate: true, status: true } },
+        creator: { select: { name: true } },
+        lines: {
+          ...(hasLineFilter ? { where: lineVisibility } : {}),
+          include: {
+            account: { select: { accountCode: true, name: true } },
+            project: { select: { projectCode: true, name: true } },
+            stage: { select: { code: true, name: true } }
+          },
+          orderBy: [{ id: 'asc' }]
+        }
+      }
+    });
+  }
+
   /** Lock one Company Journal before posting or reversal-sensitive work. */
   async lockJournalForWrite(journalId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -489,19 +512,32 @@ export class FinanceRepository {
       },
       _sum: { debit: true, credit: true }
     });
+    const openingGroups = accountIds.length === 0 ? [] : await this.db.journalLine.groupBy({
+      by: ['accountId'],
+      where: {
+        accountId: { in: accountIds },
+        journal: { companyId: scope.companyId, status: { in: [...input.journalStatuses] }, sourceType: 'ACCOUNT_OPENING_BALANCE' }
+      },
+      _sum: { debit: true, credit: true }
+    });
     const balanceByAccount = new Map(groups.map((group) => {
       const debit = moneyToMinorUnits(decimalString(group._sum.debit));
       const credit = moneyToMinorUnits(decimalString(group._sum.credit));
       return [group.accountId, minorUnitsToMoney(debit - credit)];
     }));
+    const openingByAccount = new Map(openingGroups.map((group) => {
+      const debit = moneyToMinorUnits(decimalString(group._sum.debit));
+      const credit = moneyToMinorUnits(decimalString(group._sum.credit));
+      return [group.accountId, minorUnitsToMoney(debit - credit)];
+    }));
     return {
-      items: items.map((item) => ({ ...item, balance: balanceByAccount.get(item.glAccountId) ?? '0.00' })),
+      items: items.map((item) => ({ ...item, openingBalance: openingByAccount.get(item.glAccountId) ?? '0.00', balance: balanceByAccount.get(item.glAccountId) ?? '0.00' })),
       total
     };
   }
 
   /** Create the minimal Cash/Bank master for a GL account whose type is CASH or BANK. */
-  async createCashBankAccountForGl(input: Readonly<{ code: string; name: string; accountType: string; glAccountId: string; status: string }>) {
+  async createCashBankAccountForGl(input: Readonly<{ code: string; name: string; accountType: string; glAccountId: string; bankName?: string | null; accountReference?: string | null; status: string }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.cashBankAccount.create({
       data: scope.createData({
@@ -509,8 +545,8 @@ export class FinanceRepository {
         name: input.name,
         accountType: input.accountType,
         glAccountId: input.glAccountId,
-        bankName: null,
-        accountReference: null,
+        bankName: input.bankName ?? null,
+        accountReference: input.accountReference ?? null,
         status: input.status
       })
     });
@@ -520,6 +556,18 @@ export class FinanceRepository {
   async findCashBankAccountById(cashBankAccountId: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.cashBankAccount.findFirst({ where: scope.where({ id: cashBankAccountId }) });
+  }
+
+  /** Update one Cash/Bank master and its mapped GL display/lifecycle fields atomically. */
+  async updateCashBankAccount(cashBankAccountId: string, input: Readonly<{ name?: string; bankName?: string | null; accountReference?: string | null; status?: string }>) {
+    const scope = requireCompanyRepositoryScope();
+    const account = await this.findCashBankAccountById(cashBankAccountId);
+    if (!account) return null;
+    await this.db.cashBankAccount.updateMany({ where: scope.where({ id: cashBankAccountId }), data: input });
+    if (input.name !== undefined || input.status !== undefined) {
+      await this.db.glAccount.updateMany({ where: scope.where({ id: account.glAccountId }), data: { ...(input.name === undefined ? {} : { name: input.name }), ...(input.status === undefined ? {} : { status: input.status }) } });
+    }
+    return this.findCashBankAccountById(cashBankAccountId);
   }
 
   /** Derive one Cash/Bank GL balance through the requested statement date. */

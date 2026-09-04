@@ -11,7 +11,7 @@ export type FinanceAccount = Readonly<{
 
 export type FinanceAccountPage = Readonly<{ items: FinanceAccount[]; total: number; page: number; pageSize: number }>;
 export type ListFinanceAccountsInput = Readonly<{ page?: number; pageSize?: number }>;
-export type CreateFinanceAccountInput = Readonly<{ name: string; accountType: 'CASH' | 'BANK'; openingBalance: string }>;
+export type CreateFinanceAccountInput = Readonly<{ name: string; accountType: 'CASH' | 'BANK'; openingBalance: string; bankName?: string; accountReference?: string }>;
 
 export type ManualJournalLineInput = Readonly<{
   accountId: string;
@@ -109,8 +109,10 @@ export type CashBankAccount = Readonly<{
   bankName: string | null;
   accountReference: string | null;
   status: string;
+  openingBalance: string;
   balance: string;
 }>;
+export type UpdateCashBankAccountInput = Readonly<{ name?: string; bankName?: string | null; accountReference?: string | null; status?: 'ACTIVE' | 'ARCHIVED' }>;
 
 export type CashBankAccountPage = Readonly<{ items: CashBankAccount[]; total: number; page: number; pageSize: number }>;
 export type ListCashBankAccountsInput = Readonly<{ page?: number; pageSize?: number; status?: string }>;
@@ -208,6 +210,16 @@ export function listCashBankAccounts(input: ListCashBankAccountsInput = {}): Pro
   if (input.pageSize !== undefined) query.set('pageSize', String(input.pageSize));
   if (input.status) query.set('status', input.status);
   return authenticatedRequest<CashBankAccountPage>(`finance/cash-bank${query.size ? `?${query}` : ''}`);
+}
+
+/** Load the complete visible debit/credit lines for one Journal. */
+export function getFinanceJournal(journalId: string): Promise<FinanceJournal> {
+  return authenticatedRequest<FinanceJournal>(`finance/journals/${encodeURIComponent(journalId)}`);
+}
+
+/** Update Cash/Bank display fields without accepting browser-owned balances. */
+export function updateCashBankAccount(accountId: string, input: UpdateCashBankAccountInput): Promise<CashBankAccount> {
+  return authenticatedRequest<CashBankAccount>(`finance/cash-bank/${encodeURIComponent(accountId)}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 
 

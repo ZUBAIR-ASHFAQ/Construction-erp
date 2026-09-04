@@ -19,6 +19,7 @@ import {
   financePeriodParamsSchema,
   financePeriodResponseSchema,
   listCashBankAccountsQuerySchema,
+  updateCashBankAccountBodySchema,
   listCashBankAccountsResponseSchema,
   listFinanceAccountsQuerySchema,
   listFinanceAccountsResponseSchema,
@@ -53,7 +54,9 @@ const CREATE_ACCOUNT_BODY_JSON_SCHEMA = {
   properties: {
     name: { type: 'string', minLength: 1, maxLength: 300 },
     accountType: { type: 'string', enum: ['CASH', 'BANK'] },
-    openingBalance: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }
+    openingBalance: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' },
+    bankName: { type: 'string', minLength: 1, maxLength: 200 },
+    accountReference: { type: 'string', minLength: 1, maxLength: 200 }
   }
 } as const;
 const JOURNAL_LINE_BODY_JSON_SCHEMA = {
@@ -96,6 +99,15 @@ const TRIAL_BALANCE_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: 
 const CASH_BANK_QUERY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false,
   properties: { ...PAGINATION_PROPERTIES, status: { type: 'string', minLength: 1, maxLength: 100 } }
+} as const;
+const UPDATE_CASH_BANK_BODY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, minProperties: 1,
+  properties: {
+    name: { type: 'string', minLength: 1, maxLength: 300 },
+    bankName: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] },
+    accountReference: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] },
+    status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }
+  }
 } as const;
 const RECONCILIATION_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['cashBankAccountId', 'statementDate'],
@@ -160,6 +172,7 @@ function serializeCashBankAccount(account: Awaited<ReturnType<FinanceService['li
     bankName: account.bankName,
     accountReference: account.accountReference,
     status: account.status,
+    openingBalance: account.openingBalance,
     balance: account.balance
   });
 }
@@ -304,6 +317,29 @@ export async function registerFinanceRoutes(app: FastifyInstance, options: Finan
     const query = parseRequest(listCashBankAccountsQuerySchema, request.query, 'query');
     const result = await service.listCashBankAccounts(query);
     return reply.send({ data: listCashBankAccountsResponseSchema.parse({ ...result, items: result.items.map((item) => serializeCashBankAccount(item)) }) });
+  });
+
+  app.get('/api/v1/finance/journals/:id', {
+    schema: { tags: tag, operationId: 'financeGetJournal', summary: 'Get one Journal with visible debit and credit lines', security: BEARER_SECURITY, params: JOURNAL_PARAMS_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRouteAccess('finance.read', true);
+    const { id } = parseRequest(financeJournalParamsSchema, request.params, 'params');
+    return reply.send({ data: serializeJournal(await service.getJournal(id)) });
+  });
+
+  app.patch('/api/v1/finance/cash-bank/:id', {
+    schema: { tags: tag, operationId: 'financeUpdateCashBank', summary: 'Update Cash or Bank account details', security: BEARER_SECURITY, params: JOURNAL_PARAMS_JSON_SCHEMA, body: UPDATE_CASH_BANK_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRouteAccess('finance.accounts.manage');
+    const { id } = parseRequest(financeJournalParamsSchema, request.params, 'params');
+    const body = parseRequest(updateCashBankAccountBodySchema, request.body, 'body');
+    await service.updateCashBankAccount(id, body);
+    const result = await service.listCashBankAccounts({ page: 1, pageSize: 100 });
+    const account = result.items.find((item) => item.id === id);
+    if (!account) throw new ValidationError({ message: 'Account was not found after update.' });
+    return reply.send({ data: serializeCashBankAccount(account) });
   });
 
 

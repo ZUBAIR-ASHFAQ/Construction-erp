@@ -1488,7 +1488,10 @@ model Subcontractor {
   companyId    String  @map("company_id") @db.Uuid
   vendorId     String? @map("vendor_id") @db.Uuid
   code         String  @db.VarChar(100)
+  name         String  @db.VarChar(300)
+  phone        String  @db.VarChar(50)
   specialty    String  @db.VarChar(200)
+  address      String  @db.VarChar(1000)
   status       String  @db.VarChar(32)
   defaultTerms String? @map("default_terms") @db.Text
 

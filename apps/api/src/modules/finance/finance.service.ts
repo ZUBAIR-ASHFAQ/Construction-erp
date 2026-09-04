@@ -24,6 +24,7 @@ import {
   type FinancePeriodResponse,
   type FinancePermissionCode,
   type ListCashBankAccountsQuery,
+  type UpdateCashBankAccountBody,
   type ListFinanceAccountsQuery,
   type ListFinancePeriodsQuery,
   type ListFinanceJournalsQuery,
@@ -349,7 +350,15 @@ export class FinanceService {
     if (!(accountType === 'CASH' || accountType === 'BANK')) throw createFinanceError('GL_ACCOUNT_INVALID');
     const accountCode = await this.allocateAccountCode(tx, repository);
     const account = await repository.createAccount({ accountCode, name: input.name, accountType, parentId: null, status: ACCOUNT_ACTIVE });
-    await repository.createCashBankAccountForGl({ code: account.accountCode, name: account.name, accountType, glAccountId: account.id, status: account.status });
+    await repository.createCashBankAccountForGl({
+      code: account.accountCode,
+      name: account.name,
+      accountType,
+      glAccountId: account.id,
+      ...(input.bankName === undefined ? {} : { bankName: input.bankName }),
+      ...(input.accountReference === undefined ? {} : { accountReference: input.accountReference }),
+      status: account.status
+    });
 
     if (moneyToMinorUnits(input.openingBalance) > 0n) {
       const period = await repository.findFirstOpenFiscalPeriod();
@@ -388,6 +397,14 @@ export class FinanceService {
       visibility
     });
     return { ...result, page, pageSize };
+  }
+
+  /** Read one journal for a ledger drill-down under the caller's Project visibility. */
+  async getJournal(journalId: string) {
+    const visibility = await this.resolveReadVisibility(new AdministrationRepository(this.db), new Date());
+    const journal = await new FinanceRepository(this.db).findJournalForRead(journalId, visibility);
+    if (!journal) throw createFinanceNotFoundError();
+    return journal;
   }
 
   /** Create and post one balanced manual Journal exactly once. */
@@ -712,6 +729,24 @@ export class FinanceService {
       journalStatuses: [JOURNAL_POSTED, JOURNAL_REVERSED]
     });
     return { ...result, page, pageSize };
+  }
+
+  /** Update Cash/Bank master presentation fields while balances remain journal-derived. */
+  async updateCashBankAccount(accountId: string, input: UpdateCashBankAccountBody) {
+    this.requirePermission('finance.accounts.manage');
+    return this.db.$transaction(async (tx) => {
+      const repository = new FinanceRepository(tx);
+      const update = {
+        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(input.bankName === undefined ? {} : { bankName: input.bankName }),
+        ...(input.accountReference === undefined ? {} : { accountReference: input.accountReference }),
+        ...(input.status === undefined ? {} : { status: input.status })
+      };
+      const updated = await repository.updateCashBankAccount(accountId, update);
+      if (!updated) throw createFinanceError('GL_ACCOUNT_INVALID');
+      await recordAudit(tx, { action: 'finance.account.updated', entityType: 'cash_bank_account', entityId: accountId, after: input });
+      return { ...updated, openingBalance: '0.00', balance: '0.00' };
+    });
   }
 
   /** Create one audited reconciliation snapshot exactly once. */

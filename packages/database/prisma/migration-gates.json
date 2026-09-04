@@ -793,6 +793,14 @@
       "migrations": [
         "20260903000200_subcontract_payment_ledger"
       ]
+    },
+    {
+      "stage": 65,
+      "gate": "subcontractor-contact-profile",
+      "description": "Adds required subcontractor name, phone, specialty and address fields while retaining a server-owned internal code and preserving existing records.",
+      "migrations": [
+        "20260903000300_subcontractor_contact_profile"
+      ]
     }
   ]
 }

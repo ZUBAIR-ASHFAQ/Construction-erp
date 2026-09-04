@@ -128,6 +128,9 @@ async function seedSiteExpenseBrowserScenario() {
   await database.fiscalPeriod.create({
     data: { id: PERIOD_ID, companyId: COMPANY_ID, fiscalYear: 2027, periodNo: 2, startDate: new Date('2026-08-01T00:00:00.000Z'), endDate: new Date('2026-08-31T00:00:00.000Z'), status: 'OPEN' }
   });
+  await database.fiscalPeriod.create({
+    data: { companyId: COMPANY_ID, fiscalYear: 2027, periodNo: 3, startDate: new Date('2026-09-01T00:00:00.000Z'), endDate: new Date('2026-09-30T00:00:00.000Z'), status: 'OPEN' }
+  });
   await database.numberSequence.createMany({
     data: [
       { companyId: COMPANY_ID, sequenceKey: 'site-expense', prefix: 'SE-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
@@ -142,7 +145,7 @@ async function signIn(page) {
   await page.getByLabel('Email').fill(EMAIL);
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.locator('.topbar')).toContainText(EMAIL);
+  await expect(page.locator('.topbar').getByRole('button', { name: 'Sign out' })).toBeVisible();
 }
 
 /** Capture Site Expense browser calls so the frozen six-route authority boundary can be verified. */
@@ -187,17 +190,15 @@ test('Final-21 Site Expense create, post and reverse browser workflow preserves 
   await form.getByLabel('Project').selectOption(PROJECT_ID);
   await form.getByLabel('Stage (optional)').selectOption(STAGE_ID);
   await form.getByLabel('Expense date').fill('2026-08-29');
-  await form.getByLabel('Expense category ID').fill(CATEGORY_ID);
+  await form.getByLabel('Expense category').selectOption(CATEGORY_ID);
   await form.getByLabel('Description').fill('Diesel for site generator');
   await form.getByLabel('Amount').fill('12500.00');
   await form.getByLabel('Payment treatment').selectOption('BANK');
   await form.getByLabel('Cash / Bank account').selectOption(BANK_ID);
-  await form.getByRole('button', { name: 'Create Draft Expense' }).click();
+  await form.getByRole('button', { name: 'Create & Post Expense' }).click();
 
   const detail = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'SE-00001' }) });
   await expect(detail).toBeVisible();
-  await expect(detail.getByText('DRAFT', { exact: true })).toBeVisible();
-  await detail.getByRole('button', { name: 'Post Expense' }).click();
   await expect(detail.getByText('POSTED', { exact: true })).toBeVisible();
   await detail.getByRole('button', { name: 'Reverse Expense' }).click();
   await expect(detail.getByText('REVERSED', { exact: true })).toBeVisible();

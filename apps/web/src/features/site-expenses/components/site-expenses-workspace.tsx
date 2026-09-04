@@ -14,6 +14,8 @@ import type {
 } from '../api/site-expenses-api.js';
 import {
   useCreateSiteExpense,
+  useCreateExpenseCategory,
+  useExpenseCategories,
   usePostSiteExpense,
   useReverseSiteExpense,
   useSiteExpense,
@@ -87,7 +89,7 @@ const EMPTY_FILTERS: FilterState = {
 const EMPTY_FORM: SiteExpenseFormValues = {
   projectId: '',
   stageId: '',
-  expenseDate: '',
+  expenseDate: new Date().toISOString().slice(0, 10),
   categoryId: '',
   description: '',
   amount: '',
@@ -327,10 +329,16 @@ function SiteExpenseForm(props: Readonly<{
   canReadStages: boolean;
   canReadFinance: boolean;
   canReadDocuments: boolean;
+  canPost: boolean;
   knownCategoryIds: string[];
   onSaved?: (expenseId: string) => void;
 }>) {
   const createMutation = useCreateSiteExpense();
+  const postMutation = usePostSiteExpense();
+  const categories = useExpenseCategories(true);
+  const createCategory = useCreateExpenseCategory();
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
   const updateMutation = useUpdateSiteExpense(props.expense?.id ?? '00000000-0000-0000-0000-000000000000');
   const form = useForm<SiteExpenseFormValues>({
     resolver: zodResolver(siteExpenseFormSchema),
@@ -358,7 +366,17 @@ function SiteExpenseForm(props: Readonly<{
   /** Change payment treatment and clear a direct-settlement account for PAYABLE expenses. */
   function changePaymentMode(nextMode: SiteExpensePaymentMode): void {
     form.setValue('paymentMode', nextMode, { shouldValidate: true });
-    if (nextMode === 'PAYABLE') form.setValue('cashBankAccountId', '', { shouldValidate: true });
+    form.setValue('cashBankAccountId', '', { shouldValidate: nextMode === 'PAYABLE' });
+  }
+
+  /** Add and select a category, then close the centered catalog popup. */
+  async function addCategory(): Promise<void> {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    const category = await createCategory.mutateAsync(name);
+    form.setValue('categoryId', category.id, { shouldValidate: true });
+    setNewCategoryName('');
+    setCategoryModalOpen(false);
   }
 
   /** Persist one validated Site Expense draft using only browser-editable business fields. */
@@ -367,13 +385,14 @@ function SiteExpenseForm(props: Readonly<{
     const saved = props.mode === 'create'
       ? await createMutation.mutateAsync(input)
       : await updateMutation.mutateAsync(input);
+    if (props.mode === 'create' && props.canPost) await postMutation.mutateAsync(saved.id);
     if (props.mode === 'create') form.reset(EMPTY_FORM);
     props.onSaved?.(saved.id);
   }
 
   return (
     <section className="admin-card">
-      <h2>{props.mode === 'create' ? 'New Site Expense' : `Edit ${props.expense?.expenseNo ?? 'Site Expense'}`}</h2>
+      <div className="section-heading-row"><h2>{props.mode === 'create' ? 'New Site Expense' : `Edit ${props.expense?.expenseNo ?? 'Site Expense'}`}</h2><button type="button" className="secondary-button" onClick={() => setCategoryModalOpen(true)}>Categories</button></div>
       <form className="admin-stack" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
         <label>Project
           <Controller
@@ -390,10 +409,7 @@ function SiteExpenseForm(props: Readonly<{
           />
         </label>
         <label>Expense date<input type="date" {...form.register('expenseDate')} /></label>
-        <label>Configured expense category
-          <input list="site-expense-form-category-ids" placeholder="Configured expense category UUID" {...form.register('categoryId')} />
-        </label>
-        <p className="muted">The frozen Module 14 API has no separate category-catalog route, so this field uses a configured expense category UUID already observed from authorized Site Expense records without inventing an unsupported endpoint.</p>
+        <label>Expense category<select {...form.register('categoryId')} disabled={!categories.data}><option value="">{categories.data ? 'Select category' : 'Loading categories…'}</option>{(categories.data ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
         <label>Description<textarea rows={3} {...form.register('description')} /></label>
         <label>Amount<input inputMode="decimal" placeholder="0.00" {...form.register('amount')} /></label>
         <label>Payment treatment
@@ -418,7 +434,7 @@ function SiteExpenseForm(props: Readonly<{
               render={({ field }) => (
                 <select value={field.value} onChange={field.onChange} disabled={!props.canReadFinance || !cashBankAccounts.data}>
                   <option value="">{!props.canReadFinance ? 'Finance read permission required' : cashBankAccounts.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>
-                  {(cashBankAccounts.data?.items ?? []).map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · {account.balance}</option>)}
+                  {(cashBankAccounts.data?.items ?? []).filter((account) => account.accountType === paymentMode).map((account) => <option key={account.id} value={account.id}>{account.name}{account.bankName ? ` · ${account.bankName}` : ''} · Balance ${account.balance}</option>)}
                 </select>
               )}
             />
@@ -444,12 +460,12 @@ function SiteExpenseForm(props: Readonly<{
         {errorMessage(documents.error) && <div className="form-error">{errorMessage(documents.error)}</div>}
         {Object.values(form.formState.errors).map((error, index) => error?.message && <div key={index} className="form-error">{String(error.message)}</div>)}
         {errorMessage(mutation.error) && <div className="form-error" role="alert">{errorMessage(mutation.error)}</div>}
-        <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : props.mode === 'create' ? 'Create Draft Expense' : 'Save Draft Changes'}</button>
+        {errorMessage(postMutation.error) && <div className="form-error" role="alert">{errorMessage(postMutation.error)}</div>}
+        <button type="submit" disabled={mutation.isPending || postMutation.isPending}>{mutation.isPending || postMutation.isPending ? 'Saving…' : props.mode === 'create' ? props.canPost ? 'Create & Post Expense' : 'Create Draft Expense' : 'Save Draft Changes'}</button>
       </form>
 
-      <datalist id="site-expense-form-category-ids">
-        {props.knownCategoryIds.map((categoryId) => <option key={categoryId} value={categoryId} />)}
-      </datalist>
+      {categoryModalOpen && <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="expense-category-title"><header className="finance-modal-header"><div><p className="eyebrow">Site expense setup</p><h2 id="expense-category-title">Expense Categories</h2></div><button type="button" className="finance-modal-close" aria-label="Close categories" onClick={() => setCategoryModalOpen(false)}>×</button></header><div className="finance-modal-body"><div className="expense-category-list">{(categories.data ?? []).map((category) => <button key={category.id} type="button" className="expense-category-row" onClick={() => { form.setValue('categoryId', category.id, { shouldValidate: true }); setCategoryModalOpen(false); }}><span><strong>{category.name}</strong><small>{category.code}</small></span><span>Select</span></button>)}{categories.data?.length === 0 && <p className="muted">No categories have been added yet.</p>}</div><div className="expense-category-add"><label>New category name<input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="e.g. Site utilities" /></label><button type="button" onClick={() => void addCategory()} disabled={!newCategoryName.trim() || createCategory.isPending}>{createCategory.isPending ? 'Adding…' : 'Add Category'}</button>{errorMessage(createCategory.error) && <div className="form-error" role="alert">{errorMessage(createCategory.error)}</div>}</div></div></section></div>}
+
     </section>
   );
 }
@@ -546,6 +562,7 @@ export function SiteExpensesWorkspace(props: SiteExpensesWorkspaceProps) {
           canReadStages={props.canReadStages}
           canReadFinance={props.canReadFinance}
           canReadDocuments={props.canReadDocuments}
+          canPost={props.canPost}
           knownCategoryIds={mergedCategoryIds}
           onSaved={setSelectedId}
         />
@@ -565,6 +582,7 @@ export function SiteExpensesWorkspace(props: SiteExpensesWorkspaceProps) {
               canReadStages={props.canReadStages}
               canReadFinance={props.canReadFinance}
               canReadDocuments={props.canReadDocuments}
+              canPost={props.canPost}
               knownCategoryIds={mergedCategoryIds}
             />
           )}

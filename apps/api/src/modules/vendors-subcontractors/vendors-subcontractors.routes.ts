@@ -52,13 +52,13 @@ const CONTACT_BODY_JSON_SCHEMA = {
 } as const;
 const SUBCONTRACTOR_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { search: { type: 'string', minLength: 1, maxLength: 200 }, status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }, ...PAGE_PROPERTIES } } as const;
 const SUBCONTRACTOR_BODY_PROPERTIES = {
-  vendorId: NULLABLE_UUID_JSON_SCHEMA,
-  code: { type: 'string', minLength: 1, maxLength: 100 },
+  name: { type: 'string', minLength: 1, maxLength: 300 },
+  phone: { type: 'string', minLength: 7, maxLength: 50 },
   specialty: { type: 'string', minLength: 1, maxLength: 200 },
-  defaultTerms: { anyOf: [{ type: 'string', minLength: 1, maxLength: 2000 }, { type: 'null' }] },
+  address: { type: 'string', minLength: 1, maxLength: 1000 },
   status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }
 } as const;
-const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['code', 'specialty'], properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
+const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['name', 'phone', 'specialty', 'address'], properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
 const UPDATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
 const SUBCONTRACT_CONTRACT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
 const CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractorId', 'projectId', 'contractAmount', 'contractDate'], properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, contractAmount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, contractDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } } } as const;

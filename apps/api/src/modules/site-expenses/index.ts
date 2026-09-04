@@ -7,6 +7,8 @@ export {
   SITE_EXPENSE_SERVER_OWNED_REQUEST_FIELDS,
   SITE_EXPENSE_STATUS_VALUES,
   createSiteExpenseBodySchema,
+  createExpenseCategoryBodySchema,
+  expenseCategoryResponseSchema,
   createSiteExpenseError,
   listSiteExpensesQuerySchema,
   listSiteExpensesResponseSchema,
@@ -18,6 +20,8 @@ export {
 } from './site-expenses.schema.js';
 export type {
   CreateSiteExpenseBody,
+  CreateExpenseCategoryBody,
+  ExpenseCategoryResponse,
   ListSiteExpensesQuery,
   PostSiteExpenseBody,
   ReverseSiteExpenseBody,

@@ -60,7 +60,7 @@ export default defineConfig({
       }
     },
     {
-      command: 'pnpm --filter @construction-erp/web dev -- --host 127.0.0.1 --port 5173 --strictPort',
+      command: 'pnpm --filter @construction-erp/web dev --host 127.0.0.1 --port 5173 --strictPort',
       url: webUrl,
       reuseExistingServer: false,
       timeout: 120_000,

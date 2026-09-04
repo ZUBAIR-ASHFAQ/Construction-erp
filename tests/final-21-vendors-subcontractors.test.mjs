@@ -61,7 +61,7 @@ test('B4 exposes the exact final Supplier & Subcontractor permission, error, eve
   assert.equal((moduleSchema.match(/Object\.freeze\(\{ method:/g) ?? []).length, 14);
 });
 
-test('B4 Prisma master tables match final ownership and remove active operational Subcontract models', () => {
+test('B4 Prisma masters include the requested subcontractor contact profile and current contract ownership', () => {
   const vendor = prismaModel('Vendor');
   const contact = prismaModel('VendorContact');
   const subcontractor = prismaModel('Subcontractor');
@@ -74,9 +74,9 @@ test('B4 Prisma master tables match final ownership and remove active operationa
   assert.match(contact, /email\s+String\?/);
   assert.match(contact, /phone\s+String\?/);
   assert.match(contact, /role\s+String\?/);
-  assert.match(subcontractor, /vendorId\s+String\?/);
-  assert.match(subcontractor, /specialty\s+String/);
-  assert.match(subcontractor, /defaultTerms\s+String\?/);
+  for (const field of ['name', 'phone', 'specialty', 'address', 'status']) {
+    assert.match(subcontractor, new RegExp(`\\b${field}\\b`));
+  }
   assert.doesNotMatch(subcontractor, /legalName|contactJson|complianceStatus/);
   for (const field of ['companyId', 'projectId', 'subcontractorId', 'contractAmount', 'contractDate', 'status', 'finishedAt']) {
     assert.match(contract, new RegExp(`\\b${field}\\b`));
@@ -92,8 +92,8 @@ test('B4 repositories and services enforce company ownership and module-owned li
   assert.match(repository, /scope\.where\(\{ id: vendorId \}\)/);
   assert.match(repository, /scope\.createData\(input\)/);
   assert.match(repository, /purchaseOrder\.aggregate/);
-  assert.match(service, /vendor\.status !== ACTIVE/);
-  assert.match(service, /createVendorsSubcontractorsError\('VENDOR_LINK_INVALID'\)/);
+  assert.match(service, /allocateCompanyNumber\(tx, \{ sequenceKey: SUBCONTRACTOR_SEQUENCE_KEY \}\)/);
+  assert.match(service, /code: number\.formatted/);
   assert.match(service, /eventType: 'vendor\.created'/);
   assert.match(service, /eventType: 'vendor\.updated'/);
   assert.match(service, /eventType: 'subcontractor\.created'/);

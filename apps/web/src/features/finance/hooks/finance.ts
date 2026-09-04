@@ -5,6 +5,7 @@ import {
   createFinanceAccount,
   createManualJournal,
   getFinanceLedger,
+  getFinanceJournal,
   getFinanceTrialBalance,
   listCashBankAccounts,
   listFinanceAccounts,
@@ -12,6 +13,7 @@ import {
   listFinancePeriods,
   postFinanceJournal,
   reverseFinanceJournal,
+  updateCashBankAccount,
   type CreateBankReconciliationInput,
   type CreateFinanceAccountInput,
   type CreateManualJournalInput,
@@ -20,7 +22,8 @@ import {
   type ListFinanceAccountsInput,
   type ListFinanceJournalsInput,
   type ListFinancePeriodsInput,
-  type ReverseFinanceJournalInput
+  type ReverseFinanceJournalInput,
+  type UpdateCashBankAccountInput
 } from '../api/finance-api.js';
 
 const FINANCE_KEY = ['final21', 'finance'] as const;
@@ -81,6 +84,17 @@ export function useFinanceTrialBalance(periodId: string | null) {
 /** Load Cash/Bank accounts and their posted balances. */
 export function useCashBankAccounts(input: ListCashBankAccountsInput = {}, enabled = true) {
   return useQuery({ queryKey: [...FINANCE_KEY, 'cash-bank', input], queryFn: () => listCashBankAccounts(input), enabled });
+}
+
+/** Load one complete Journal only while its ledger detail dialog is open. */
+export function useFinanceJournal(journalId: string | null) {
+  return useQuery({ queryKey: [...FINANCE_KEY, 'journal', journalId], queryFn: () => getFinanceJournal(journalId!), enabled: Boolean(journalId) });
+}
+
+/** Update one Cash/Bank account and refresh account, ledger and journal views. */
+export function useUpdateCashBankAccount(accountId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (input: UpdateCashBankAccountInput) => updateCashBankAccount(accountId, input), onSuccess: () => queryClient.invalidateQueries({ queryKey: FINANCE_KEY }) });
 }
 
 /** Create a Bank Reconciliation and refresh Cash/Bank data. */

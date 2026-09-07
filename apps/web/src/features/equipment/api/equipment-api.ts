@@ -9,6 +9,10 @@ export type Equipment = Readonly<{
   defaultRate: string | null;
   rateUnit: string | null;
   status: string;
+  assignmentStatus: 'ASSIGNED' | 'UNASSIGNED';
+  activeAssignmentId: string | null;
+  assignedProjectName: string | null;
+  assignedStageName: string | null;
 }>;
 
 export type EquipmentPage = Readonly<{ items: Equipment[]; total: number; page: number; pageSize: number }>;
@@ -19,8 +23,16 @@ export type EquipmentAssignment = Readonly<{
   projectId: string;
   stageId: string | null;
   fromDate: string;
+  fromTime: string;
   toDate: string | null;
+  toTime: string | null;
+  quantity: string;
+  rate: string;
+  rateUnit: string;
+  estimatedAmount: string | null;
   status: string;
+  projectName: string | null;
+  stageName: string | null;
 }>;
 
 export type EquipmentUsage = Readonly<{
@@ -28,6 +40,8 @@ export type EquipmentUsage = Readonly<{
   assignmentId: string;
   projectId: string;
   stageId: string | null;
+  projectName: string | null;
+  stageName: string | null;
   usageDate: string;
   quantity: string;
   rate: string;
@@ -61,18 +75,21 @@ export type EquipmentHistory = Readonly<{
 
 export type ListEquipmentInput = Readonly<{ page?: number; pageSize?: number }>;
 export type CreateEquipmentInput = Readonly<{
-  code: string;
   name: string;
-  equipmentType: string;
-  ownershipType: string;
+  equipmentType?: string | null;
+  ownershipType: 'OWNED' | 'RENTED';
   defaultRate?: string | null;
-  rateUnit?: string | null;
+  rateUnit?: 'HOUR' | 'DAY' | 'MONTH' | null;
 }>;
+export type UpdateEquipmentInput = CreateEquipmentInput;
 export type AssignEquipmentInput = Readonly<{
   projectId: string;
   stageId?: string | null;
+  quantity: string;
   fromDate: string;
+  fromTime?: string;
   toDate?: string | null;
+  toTime?: string | null;
 }>;
 export type RecordEquipmentUsageInput = Readonly<{
   assignmentId: string;
@@ -110,15 +127,20 @@ export function createEquipment(input: CreateEquipmentInput): Promise<Equipment>
   return authenticatedRequest<Equipment>('equipment', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
+/** Update editable Equipment details while preserving its server-generated code. */
+export function updateEquipment(equipmentId: string, input: UpdateEquipmentInput): Promise<Equipment> {
+  return authenticatedRequest<Equipment>(`equipment/${equipmentId}`, { method: 'PATCH', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
 /** Assign Equipment to one Project and optional Stage. */
 export function assignEquipment(equipmentId: string, input: AssignEquipmentInput): Promise<EquipmentAssignment> {
   return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
 /** End one active Equipment assignment without deleting its history. */
-export function endEquipmentAssignment(equipmentId: string, assignmentId: string, endDate: string): Promise<EquipmentAssignment> {
+export function endEquipmentAssignment(equipmentId: string, assignmentId: string, endDate: string, endTime?: string): Promise<EquipmentAssignment> {
   return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments/${assignmentId}/end`, {
-    method: 'POST', headers: commandHeaders(), body: JSON.stringify({ endDate })
+    method: 'POST', headers: commandHeaders(), body: JSON.stringify({ endDate, ...(endTime ? { endTime } : {}) })
   });
 }
 

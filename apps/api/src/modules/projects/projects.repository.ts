@@ -69,6 +69,90 @@ export class ProjectsRepository {
   /** Bind Project persistence to Prisma or to an active service transaction. */
   constructor(private readonly db: RepositoryClient) {}
 
+  /** Aggregate every source-derived actual cost by category for the Project summary. */
+  async groupActualCostsByCategory(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.groupBy({
+      by: ['category'],
+      where: scope.where({ projectId }),
+      _sum: { amount: true },
+      orderBy: { category: 'asc' }
+    });
+  }
+
+  /** Aggregate posted cash settlements made to Suppliers for one Project. */
+  async readSupplierPaymentSummary(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const [direct, allocatedCompanyPayments] = await Promise.all([
+      this.db.supplierPayment.aggregate({
+        where: scope.where({ projectId, status: 'POSTED' }),
+        _sum: { amount: true },
+        _count: { _all: true }
+      }),
+      this.db.supplierPaymentAllocation.groupBy({
+        by: ['supplierPaymentId'],
+        where: {
+          supplierInvoice: { companyId: scope.companyId, projectId },
+          supplierPayment: { companyId: scope.companyId, projectId: null, status: 'POSTED' }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+    return { direct, allocatedCompanyPayments };
+  }
+
+  /** Aggregate posted Supplier Invoices and their applied posted payments for one Project. */
+  async readSupplierPayableSummary(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const [invoices, allocations] = await Promise.all([
+      this.db.supplierInvoice.aggregate({
+        where: scope.where({ projectId, status: 'POSTED' }),
+        _sum: { totalAmount: true },
+        _count: { _all: true }
+      }),
+      this.db.supplierPaymentAllocation.aggregate({
+        where: {
+          supplierInvoice: { companyId: scope.companyId, projectId, status: 'POSTED' },
+          supplierPayment: { companyId: scope.companyId, status: 'POSTED' }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+    return { invoices, allocations };
+  }
+
+  /** Read posted Supplier obligations plus Project-tagged payments without counting allocations twice. */
+  async readSupplierCostBasis(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const [invoices, directPayments, directAllocations] = await Promise.all([
+      this.db.supplierInvoice.aggregate({
+        where: scope.where({ projectId, status: 'POSTED' }),
+        _sum: { totalAmount: true }
+      }),
+      this.db.supplierPayment.aggregate({
+        where: scope.where({ projectId, status: 'POSTED' }),
+        _sum: { amount: true }
+      }),
+      this.db.supplierPaymentAllocation.aggregate({
+        where: {
+          supplierInvoice: { companyId: scope.companyId, projectId, status: 'POSTED' },
+          supplierPayment: { companyId: scope.companyId, projectId, status: 'POSTED' }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+    return { invoices, directPayments, directAllocations };
+  }
+
+  /** Sum direct Supplier Invoice actuals already present in the source-derived cost ledger. */
+  async sumSupplierInvoiceActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({
+      where: scope.where({ projectId, sourceType: 'supplier_invoice' }),
+      _sum: { amount: true }
+    });
+  }
+
   /** List authorized company Projects with bounded reviewed filters and a matching total. */
   async listProjects(input: ListProjectsRepositoryInput) {
     assertPageWindow(input);

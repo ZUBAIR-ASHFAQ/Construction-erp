@@ -149,6 +149,10 @@ test('B12 aligns Inventory permissions and React workspace with Final-21', () =>
   assert.match(adminShell, /'materials\.manage'/);
   assert.doesNotMatch(adminShell, /'inventory\.item\.manage'/);
   assert.match(workspace, /useProjectStages/);
+  assert.match(workspace, /useProjects\(\{ page: 1, pageSize: 100 \}/);
+  assert.doesNotMatch(workspace, /useProjects\([^\n]*status: 'ACTIVE'/);
+  assert.match(workspace, /Projects could not be loaded/);
+  assert.match(workspace, /project\.status\.replaceAll/);
   assert.match(workspace, /Issue material to project \/ stage/);
   assert.match(workspace, /Append-only stock ledger/);
   assert.doesNotMatch(workspace, /Create material|Add material/);

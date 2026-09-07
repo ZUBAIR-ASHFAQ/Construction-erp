@@ -1584,7 +1584,13 @@ model EquipmentAssignment {
   projectId   String    @map("project_id") @db.Uuid
   stageId     String?   @map("stage_id") @db.Uuid
   fromDate    DateTime  @map("from_date") @db.Date
+  fromMinute  Int       @default(0) @map("from_minute")
   toDate      DateTime? @map("to_date") @db.Date
+  toMinute    Int?      @map("to_minute")
+  quantity    Decimal   @default(1) @db.Decimal(18, 4)
+  rate        Decimal   @db.Decimal(18, 4)
+  rateUnit    String    @map("rate_unit") @db.VarChar(32)
+  estimatedAmount Decimal? @map("estimated_amount") @db.Decimal(18, 2)
   status      String    @db.VarChar(32)
 
   equipment Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)

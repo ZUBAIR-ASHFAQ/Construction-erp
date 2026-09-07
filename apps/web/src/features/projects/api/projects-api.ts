@@ -57,9 +57,27 @@ export type ProjectDetails = Readonly<{
     forecastCost: string;
     variance: string;
   }> | null;
+  expenseSummary: Readonly<{
+    categories: ReadonlyArray<Readonly<{ category: 'material' | 'labour' | 'security' | 'equipment' | 'subcontract' | 'site_expense' | 'other'; amount: string }>>;
+    totalExpense: string;
+    supplierCostAmount: string;
+    markupPercent: string | null;
+    markupAmount: string;
+    costPlusAmount: string | null;
+  }> | null;
   billingSummary: Readonly<{
     invoiceCount: number;
     billedAmount: string;
+  }> | null;
+  supplierPaymentSummary: Readonly<{
+    paymentCount: number;
+    paidAmount: string;
+  }> | null;
+  supplierPayableSummary: Readonly<{
+    invoiceCount: number;
+    invoicedAmount: string;
+    allocatedAmount: string;
+    outstandingAmount: string;
   }> | null;
   receiptSummary: Readonly<{
     receivedAmount: string;

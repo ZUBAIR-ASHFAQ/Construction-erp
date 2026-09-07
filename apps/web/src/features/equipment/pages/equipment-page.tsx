@@ -14,7 +14,7 @@ export function EquipmentPage() {
       <div className="section-heading">
         <p className="eyebrow">Module 12 · Resources</p>
         <h1 id="equipment-title">Equipment Management</h1>
-        <p className="muted">Track owned or rented Equipment, Project/Stage assignments, usage, maintenance and source-derived Equipment cost.</p>
+        <p className="muted">Register owned or rented equipment, assign it to project work, complete the assignment, and post its calculated cost automatically.</p>
       </div>
 
       <EquipmentWorkspace

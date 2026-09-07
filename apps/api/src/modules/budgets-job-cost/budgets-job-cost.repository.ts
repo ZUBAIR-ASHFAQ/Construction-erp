@@ -272,6 +272,38 @@ export class BudgetsJobCostRepository {
     return this.db.costActual.aggregate({ where: scope.where({ projectId }), _sum: { amount: true } });
   }
 
+  /** Sum posted Material actuals used to avoid duplicating paid Procurement cost. */
+  async sumMaterialActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({ where: scope.where({ projectId, category: 'material' }), _sum: { amount: true } });
+  }
+
+  /** Read Supplier payable/payment totals while keeping allocations from becoming duplicate cost. */
+  async readSupplierCostBasis(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const [invoices, directPayments, directAllocations] = await Promise.all([
+      this.db.supplierInvoice.aggregate({ where: scope.where({ projectId, status: 'POSTED' }), _sum: { totalAmount: true } }),
+      this.db.supplierPayment.aggregate({ where: scope.where({ projectId, status: 'POSTED' }), _sum: { amount: true } }),
+      this.db.supplierPaymentAllocation.aggregate({
+        where: {
+          supplierInvoice: { companyId: scope.companyId, projectId, status: 'POSTED' },
+          supplierPayment: { companyId: scope.companyId, projectId, status: 'POSTED' }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+    return { invoices, directPayments, directAllocations };
+  }
+
+  /** Sum Supplier Invoice cost already posted into the source-derived actual ledger. */
+  async sumSupplierInvoiceActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({
+      where: scope.where({ projectId, sourceType: 'supplier_invoice' }),
+      _sum: { amount: true }
+    });
+  }
+
   /** List bounded source-derived actual costs for one Project and selected cost categories. */
   async listActualCostSources(input: Readonly<{
     projectId: string;

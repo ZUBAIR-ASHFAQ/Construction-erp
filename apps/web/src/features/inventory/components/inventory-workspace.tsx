@@ -13,7 +13,9 @@ type InventoryWorkspaceProps = Readonly<{
 /** Render project-owned stock and stage issue controls. */
 export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const materials = useMaterials(props.canRead);
-  const projects = useProjects({ page: 1, pageSize: 100, status: 'ACTIVE' }, props.canRead || props.canIssue);
+  // Inventory history remains relevant after a Project leaves ACTIVE status, so
+  // the selector must not hide Draft, Suspended, Completed, or Closed Projects.
+  const projects = useProjects({ page: 1, pageSize: 100 }, props.canRead || props.canIssue || props.canAdjust);
   const [projectId, setProjectId] = useState('');
   const stock = useInventoryStock(projectId || undefined, props.canRead && Boolean(projectId));
   const ledger = useInventoryLedger(projectId || undefined, props.canRead && Boolean(projectId));
@@ -59,6 +61,7 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const warehouseNames = new Map((stock.data?.warehouses ?? []).map((warehouse) => [warehouse.id, warehouse.name]));
   const materialNames = new Map((materials.data?.items ?? []).map((material) => [material.id, material.name]));
   const stageNames = new Map((stages.data?.items ?? []).map((stage) => [stage.id, stage.name]));
+  const selectedProject = (projects.data?.items ?? []).find((project) => project.id === projectId);
   const readError = [materials.error, stock.error, ledger.error].find((error): error is Error => error instanceof Error);
 
   return (
@@ -67,11 +70,13 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
         <h2>Project inventory</h2>
         <p className="muted">Select a project to see its received stock and issue material to a project stage.</p>
         <label>Project
-          <select value={projectId} onChange={(event) => { setProjectId(event.target.value); setStageId(''); setIssueWarehouseId(''); setIssueMaterialId(''); }}>
-            <option value="">Select project</option>
-            {(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+          <select disabled={projects.isPending} value={projectId} onChange={(event) => { setProjectId(event.target.value); setStageId(''); setIssueWarehouseId(''); setIssueMaterialId(''); }}>
+            <option value="">{projects.isPending ? 'Loading projects...' : 'Select project'}</option>
+            {(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name} ({project.status.replaceAll('_', ' ')})</option>)}
           </select>
         </label>
+        {projects.isSuccess && projects.data.items.length === 0 && <p className="muted">No accessible projects were found. Create a project or check this user&apos;s Project permissions.</p>}
+        {projects.error instanceof Error && <div className="form-error" role="alert">Projects could not be loaded: {projects.error.message}</div>}
       </section>
       {props.canRead && projectId && (materials.isPending || stock.isPending || ledger.isPending) && <section className="admin-card"><p>Loading Inventory…</p></section>}
       {props.canRead && readError && <section className="admin-card"><div className="form-error" role="alert">Inventory could not be loaded: {readError.message}</div></section>}
@@ -96,7 +101,7 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
         </section>
       )}
 
-      {props.canIssue && projectId && (
+      {props.canIssue && projectId && selectedProject?.status === 'ACTIVE' && (
         <section className="admin-card">
           <h2>Issue material to project / stage</h2>
           <form className="form-grid" onSubmit={submitIssue}>
@@ -109,6 +114,12 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
           </form>
           {createIssue.data && <p className="muted">Issued {createIssue.data.issueNo} · {createIssue.data.status} · {createIssue.data.issueDate}</p>}
           {createIssue.error instanceof Error && <div className="form-error" role="alert">{createIssue.error.message}</div>}
+        </section>
+      )}
+
+      {props.canIssue && projectId && selectedProject && selectedProject.status !== 'ACTIVE' && (
+        <section className="admin-card">
+          <p className="muted">This project is {selectedProject.status.replaceAll('_', ' ').toLowerCase()}. Its inventory remains available for review, but material can only be issued to an active project.</p>
         </section>
       )}
 

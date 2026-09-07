@@ -186,15 +186,16 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     page: 1,
     pageSize: 100
   }, props.canRead);
-  const allocationAgingQuery = useSupplierAging({
+  const allocationInvoicesQuery = useSupplierInvoices({
     ...(selectedPayment?.vendorId ? { vendorId: selectedPayment.vendorId } : {}),
     ...(selectedPayment?.projectId ? { projectId: selectedPayment.projectId } : {}),
+    status: 'POSTED',
     page: 1,
     pageSize: 100
   }, props.canRead && selectedPayment !== null);
   const allocationInvoiceOptions = useMemo(() => (
-    (allocationAgingQuery.data?.items ?? []).filter((row) => Number(row.outstandingAmount) > 0)
-  ), [allocationAgingQuery.data?.items]);
+    (allocationInvoicesQuery.data?.items ?? []).filter((invoice) => Number(invoice.outstandingAmount) > 0)
+  ), [allocationInvoicesQuery.data?.items]);
 
   useEffect(() => {
     if (!selectedInvoiceId && invoiceQuery.data?.items[0]) setSelectedInvoiceId(invoiceQuery.data.items[0].id);
@@ -369,15 +370,15 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
             {invoiceQuery.isPending ? <p>Loading Supplier Invoices…</p> : (
               <div className="table-wrap">
                 <table>
-                  <thead><tr><th>Invoice</th><th>Date</th><th>Status</th><th>Total</th><th>Project</th><th>Action</th></tr></thead>
+                  <thead><tr><th>Invoice</th><th>Date</th><th>Status</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Project</th><th>Action</th></tr></thead>
                   <tbody>
                     {(invoiceQuery.data?.items ?? []).map((invoice) => (
                       <tr key={invoice.id}>
-                        <td>{invoice.invoiceNo}</td><td>{invoice.invoiceDate}</td><td>{invoice.status}</td><td>{displayMoney(invoice.totalAmount)}</td><td>{projectNames.get(invoice.projectId) ?? 'Unknown project'}</td>
+                        <td>{invoice.invoiceNo}</td><td>{invoice.invoiceDate}</td><td>{invoice.status}</td><td>{displayMoney(invoice.totalAmount)}</td><td>{displayMoney(invoice.allocatedAmount)}</td><td>{displayMoney(invoice.outstandingAmount)}</td><td>{projectNames.get(invoice.projectId) ?? 'Unknown project'}</td>
                         <td><button type="button" className="secondary-button" onClick={() => setSelectedInvoiceId(invoice.id)}>View</button></td>
                       </tr>
                     ))}
-                    {(invoiceQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={6} className="muted">No Supplier Invoices match the current filters.</td></tr>}
+                    {(invoiceQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No Supplier Invoices match the current filters.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -389,7 +390,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           {invoiceDetailQuery.data && (
             <section className="admin-card">
               <h2>Invoice {invoiceDetailQuery.data.invoiceNo}</h2>
-              <p><strong>Status:</strong> {invoiceDetailQuery.data.status} · <strong>Subtotal:</strong> {displayMoney(invoiceDetailQuery.data.subtotal)} · <strong>Tax:</strong> {displayMoney(invoiceDetailQuery.data.taxAmount)} · <strong>Total:</strong> {displayMoney(invoiceDetailQuery.data.totalAmount)}</p>
+              <p><strong>Status:</strong> {invoiceDetailQuery.data.status} · <strong>Subtotal:</strong> {displayMoney(invoiceDetailQuery.data.subtotal)} · <strong>Tax:</strong> {displayMoney(invoiceDetailQuery.data.taxAmount)} · <strong>Total:</strong> {displayMoney(invoiceDetailQuery.data.totalAmount)} · <strong>Allocated:</strong> {displayMoney(invoiceDetailQuery.data.allocatedAmount)} · <strong>Outstanding:</strong> {displayMoney(invoiceDetailQuery.data.outstandingAmount)}</p>
               <p className="muted">Supplier {vendorNames.get(invoiceDetailQuery.data.vendorId) ?? 'Unknown supplier'} · Project {projectNames.get(invoiceDetailQuery.data.projectId) ?? 'Unknown project'} · Invoice date {invoiceDetailQuery.data.invoiceDate} · Due {invoiceDetailQuery.data.dueDate ?? '—'} · PO {invoiceDetailQuery.data.purchaseOrderId ? purchaseOrderNames.get(invoiceDetailQuery.data.purchaseOrderId) ?? 'Unknown PO' : 'Direct invoice'} · Goods Receipt {invoiceDetailQuery.data.goodsReceiptId ? goodsReceiptNames.get(invoiceDetailQuery.data.goodsReceiptId) ?? 'Unknown receipt' : 'None'}</p>
               <div className="table-wrap">
                   <table><thead><tr><th>Description</th><th>Amount</th></tr></thead><tbody>
@@ -429,27 +430,31 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           <section className="admin-card">
             <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option></select></label></div>
             <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Amount</th><th>Reference</th><th>Action</th></tr></thead><tbody>
-              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => setSelectedPayment(payment)}>Allocate</button> : '—'}</td></tr>)}
+              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" onClick={() => { setSelectedPayment(payment); allocationForm.reset({ supplierInvoiceId: '', amount: '' }); }}>Allocate</button> : '—'}</td></tr>)}
               {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={6} className="muted">No Supplier Payments match the current filters.</td></tr>}
             </tbody></table></div>
           </section>
 
           {props.canAllocatePayment && selectedPayment && (
             <section className="admin-card">
-              <h2>Allocate {selectedPayment.paymentNo}</h2>
-              <p className="muted">Payment amount: {displayMoney(selectedPayment.amount)}. The server prevents allocations above either the remaining payment or invoice outstanding. Allocate all or part; payments from another account can also be allocated to the same invoice.</p>
-              <form className="admin-form two-column-form" onSubmit={allocationForm.handleSubmit(submitAllocation)}>
-                <label>Posted invoice with outstanding
-                  <select {...allocationForm.register('supplierInvoiceId')}>
-                    <option value="">Select invoice</option>
-                    {allocationInvoiceOptions.map((row) => <option key={row.supplierInvoiceId} value={row.supplierInvoiceId}>{row.invoiceNo} · Outstanding {displayMoney(row.outstandingAmount)}</option>)}
-                  </select>
-                </label>
-                <label>Allocation amount<input inputMode="decimal" {...allocationForm.register('amount')} /></label>
-                <button type="submit" disabled={allocatePayment.isPending}>{allocatePayment.isPending ? 'Allocating…' : 'Allocate payment'}</button>
+               <h2>Allocate {selectedPayment.paymentNo}</h2>
+               <p className="muted">Payment amount: {displayMoney(selectedPayment.amount)}. The server prevents allocations above either the remaining payment or invoice outstanding. Allocate all or part; payments from another account can also be allocated to the same invoice.</p>
+               {allocationInvoicesQuery.isPending && <p className="muted">Loading posted invoices for this supplier...</p>}
+               {allocationInvoicesQuery.error instanceof Error && <div className="form-error" role="alert">Invoices could not be loaded: {allocationInvoicesQuery.error.message}</div>}
+               {allocationInvoicesQuery.isSuccess && allocationInvoiceOptions.length === 0 && <p className="muted">No eligible invoice was found. The invoice must be POSTED, belong to this supplier and selected project, and have an outstanding balance.</p>}
+               <form className="admin-form two-column-form" onSubmit={allocationForm.handleSubmit(submitAllocation)}>
+                 <label>Posted invoice with outstanding
+                   <select {...allocationForm.register('supplierInvoiceId')} disabled={allocationInvoicesQuery.isPending || allocationInvoiceOptions.length === 0}>
+                     <option value="">Select invoice</option>
+                     {allocationInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Project {projectNames.get(invoice.projectId) ?? 'Unknown project'} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
+                   </select>
+                   <span className="field-error">{allocationForm.formState.errors.supplierInvoiceId?.message}</span>
+                 </label>
+                 <label>Allocation amount<input inputMode="decimal" {...allocationForm.register('amount')} /><span className="field-error">{allocationForm.formState.errors.amount?.message}</span></label>
+                 <button type="submit" disabled={allocatePayment.isPending || allocationInvoicesQuery.isPending || allocationInvoiceOptions.length === 0}>{allocatePayment.isPending ? 'Allocating…' : 'Allocate payment'}</button>
               </form>
               {mutationMessage(allocatePayment.error) && <p className="field-error">{mutationMessage(allocatePayment.error)}</p>}
-              {allocatePayment.data?.map((allocation) => <p className="muted" key={allocation.id}>Allocated {displayMoney(allocation.amount)} to {allocationInvoiceOptions.find((invoice) => invoice.supplierInvoiceId === allocation.supplierInvoiceId)?.invoiceNo ?? 'supplier invoice'} on {new Date(allocation.allocatedAt).toLocaleString()}</p>)}
+               {allocatePayment.data?.map((allocation) => <p className="muted" key={allocation.id}>Allocated {displayMoney(allocation.amount)} to {allocationInvoiceOptions.find((invoice) => invoice.id === allocation.supplierInvoiceId)?.invoiceNo ?? 'supplier invoice'} on {new Date(allocation.allocatedAt).toLocaleString()}</p>)}
             </section>
           )}
         </>

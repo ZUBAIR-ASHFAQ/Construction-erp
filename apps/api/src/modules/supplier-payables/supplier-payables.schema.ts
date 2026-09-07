@@ -214,6 +214,8 @@ export const supplierInvoiceResponseSchema = z.object({
   subtotal: z.string(),
   taxAmount: z.string(),
   totalAmount: z.string(),
+  allocatedAmount: z.string(),
+  outstandingAmount: z.string(),
   lines: z.array(supplierInvoiceLineResponseSchema)
 }).strict();
 

@@ -113,7 +113,12 @@ function optionalProjectScopeWhere(allowedProjectIds: readonly string[] | null) 
 /** Keep Supplier Invoice line ordering deterministic for list/detail responses. */
 function supplierInvoiceInclude() {
   return {
-    lines: { orderBy: [{ id: 'asc' as const }] }
+    lines: { orderBy: [{ id: 'asc' as const }] },
+    allocations: {
+      where: { supplierPayment: { status: 'POSTED' } },
+      select: { amount: true },
+      orderBy: [{ allocatedAt: 'asc' as const }, { id: 'asc' as const }]
+    }
   };
 }
 

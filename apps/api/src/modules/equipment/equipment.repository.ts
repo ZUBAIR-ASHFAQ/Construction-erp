@@ -33,7 +33,7 @@ export class EquipmentRepository {
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({});
     const [items, total] = await Promise.all([
-      this.db.equipment.findMany({ where, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
+      this.db.equipment.findMany({ where, include: { assignments: { where: { status: 'ACTIVE' }, select: { id: true, project: { select: { name: true } }, stage: { select: { name: true } } }, take: 1 } }, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.equipment.count({ where })
     ]);
     return { items, total };
@@ -49,6 +49,16 @@ export class EquipmentRepository {
   async findEquipmentByCode(code: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.equipment.findFirst({ where: scope.where({ code }) });
+  }
+
+  /** Ensure automatic Equipment numbering exists for every Company. */
+  async ensureEquipmentSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'equipment' } },
+      create: { companyId: scope.companyId, sequenceKey: 'equipment', prefix: 'EQ-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
   }
 
   /** Lock one Equipment master before state-sensitive assignment or usage work. */
@@ -80,6 +90,20 @@ export class EquipmentRepository {
   }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.equipment.create({ data: scope.createData(input) });
+  }
+
+  /** Update one Company-owned Equipment master without changing its code. */
+  async updateEquipment(equipmentId: string, input: Readonly<{
+    name: string;
+    equipmentType: string;
+    ownershipType: string;
+    defaultRate: string | null;
+    rateUnit: string | null;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    const updated = await this.db.equipment.updateMany({ where: scope.where({ id: equipmentId }), data: input });
+    if (updated.count !== 1) return null;
+    return this.findEquipmentById(equipmentId);
   }
 
   /** Find one Project inside the current Company. */
@@ -114,7 +138,13 @@ export class EquipmentRepository {
     projectId: string;
     stageId: string | null;
     fromDate: Date;
+    fromMinute: number;
     toDate: Date | null;
+    toMinute: number | null;
+    quantity: string;
+    rate: string;
+    rateUnit: string;
+    estimatedAmount: string | null;
     status: string;
   }>) {
     return this.db.equipmentAssignment.create({ data: input });
@@ -129,7 +159,13 @@ export class EquipmentRepository {
       projectId: string;
       stageId: string | null;
       fromDate: Date;
+      fromMinute: number;
       toDate: Date | null;
+      toMinute: number | null;
+      quantity: { toString(): string };
+      rate: { toString(): string };
+      rateUnit: string;
+      estimatedAmount: { toString(): string } | null;
       status: string;
     }>>`
       SELECT
@@ -138,7 +174,13 @@ export class EquipmentRepository {
         assignment.project_id AS "projectId",
         assignment.stage_id AS "stageId",
         assignment.from_date AS "fromDate",
+        assignment.from_minute AS "fromMinute",
         assignment.to_date AS "toDate",
+        assignment.to_minute AS "toMinute",
+        assignment.quantity,
+        assignment.rate,
+        assignment.rate_unit AS "rateUnit",
+        assignment.estimated_amount AS "estimatedAmount",
         assignment.status
       FROM equipment_assignments assignment
       JOIN equipment item ON item.id = assignment.equipment_id
@@ -167,8 +209,14 @@ export class EquipmentRepository {
     return usage?.usageDate ?? null;
   }
 
+  /** Check whether usage has already been posted for an assignment. */
+  async hasPostedUsage(equipmentId: string, assignmentId: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    return (await this.db.equipmentUsage.count({ where: { assignmentId, status: 'POSTED', assignment: { equipmentId, equipment: { companyId: scope.companyId } } } })) > 0;
+  }
+
   /** End one active Equipment assignment without deleting its history. */
-  async endAssignment(equipmentId: string, assignmentId: string, endDate: Date) {
+  async endAssignment(equipmentId: string, assignmentId: string, endDate: Date, endMinute: number) {
     const scope = requireCompanyRepositoryScope();
     const result = await this.db.equipmentAssignment.updateMany({
       where: {
@@ -178,7 +226,7 @@ export class EquipmentRepository {
         equipment: { companyId: scope.companyId },
         project: { companyId: scope.companyId }
       },
-      data: { toDate: endDate, status: 'ENDED' }
+      data: { toDate: endDate, toMinute: endMinute, status: 'ENDED' }
     });
     if (result.count !== 1) return null;
     return this.findAssignment(equipmentId, assignmentId);
@@ -262,6 +310,7 @@ export class EquipmentRepository {
           project: { companyId: scope.companyId },
           ...visibleProjects
         },
+        include: { project: { select: { name: true } }, stage: { select: { name: true } } },
         orderBy: [{ fromDate: 'desc' }, { id: 'asc' }],
         take
       }),
@@ -274,7 +323,7 @@ export class EquipmentRepository {
             ...visibleProjects
           }
         },
-        include: { assignment: true },
+        include: { assignment: { include: { project: { select: { name: true } }, stage: { select: { name: true } } } } },
         orderBy: [{ usageDate: 'desc' }, { id: 'asc' }],
         take
       }),

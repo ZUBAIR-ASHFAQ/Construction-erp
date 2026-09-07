@@ -20,5 +20,6 @@ export {
   equipmentUsageResponseSchema,
   listEquipmentQuerySchema,
   listEquipmentResponseSchema,
-  recordEquipmentUsageBodySchema
+  recordEquipmentUsageBodySchema,
+  updateEquipmentBodySchema
 } from './equipment.schema.js';

@@ -25,6 +25,8 @@ export type SupplierInvoice = Readonly<{
   subtotal: string;
   taxAmount: string;
   totalAmount: string;
+  allocatedAmount: string;
+  outstandingAmount: string;
   lines: SupplierInvoiceLine[];
 }>;
 

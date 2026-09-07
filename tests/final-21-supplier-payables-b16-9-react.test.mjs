@@ -101,6 +101,10 @@ test('B16.9 renders Supplier Payment entry and allocation using the existing com
   const workspace = read(`${FEATURE}/components/supplier-payables-workspace.tsx`);
   assert.match(workspace, /Create & post payment/);
   assert.match(workspace, /Allocate payment/);
+  assert.match(workspace, /const allocationInvoicesQuery = useSupplierInvoices/);
+  assert.match(workspace, /status: 'POSTED'/);
+  assert.match(workspace, /invoice\.outstandingAmount/);
+  assert.match(workspace, /Invoices could not be loaded/);
   assert.match(workspace, /server prevents allocations above either the remaining payment or invoice outstanding/i);
   const api = read(`${FEATURE}/api/supplier-payables-api.ts`);
   assert.doesNotMatch(api, /payments\/\$\{[^}]+\}\/post|supplier-payables\/payments\/[^'`]+\/post/);

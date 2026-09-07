@@ -18,7 +18,8 @@ import {
   equipmentUsageResponseSchema,
   listEquipmentQuerySchema,
   listEquipmentResponseSchema,
-  recordEquipmentUsageBodySchema
+  recordEquipmentUsageBodySchema,
+  updateEquipmentBodySchema
 } from './equipment.schema.js';
 import { EquipmentService } from './equipment.service.js';
 
@@ -27,6 +28,7 @@ export type EquipmentRoutesOptions = Readonly<{ database: DatabaseClient }>;
 const BEARER_SECURITY = [{ bearerAuth: [] }];
 const UUID_JSON_SCHEMA = { type: 'string', format: 'uuid' } as const;
 const DATE_JSON_SCHEMA = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } as const;
+const TIME_JSON_SCHEMA = { type: 'string', pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d$' } as const;
 const DECIMAL_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,13})(?:\\.\\d{1,4})?$' } as const;
 const MONEY_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' } as const;
 const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
@@ -38,21 +40,20 @@ const ASSIGNMENT_PARAMS_JSON_SCHEMA = { type: 'object', additionalProperties: fa
 const PAGE_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } } as const;
 const HISTORY_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { pageSize: { type: 'integer', minimum: 1, maximum: 100 } } } as const;
 const CREATE_EQUIPMENT_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['code', 'name', 'equipmentType', 'ownershipType'],
+  type: 'object', additionalProperties: false, required: ['name', 'ownershipType'],
   properties: {
-    code: { type: 'string', minLength: 1, maxLength: 100 },
     name: { type: 'string', minLength: 1, maxLength: 300 },
-    equipmentType: { type: 'string', minLength: 1, maxLength: 120 },
-    ownershipType: { type: 'string', minLength: 1, maxLength: 64 },
+    equipmentType: { anyOf: [{ type: 'string', maxLength: 120 }, { type: 'null' }] },
+    ownershipType: { type: 'string', enum: ['OWNED', 'RENTED'] },
     defaultRate: NULLABLE_DECIMAL_JSON_SCHEMA,
-    rateUnit: { anyOf: [{ type: 'string', minLength: 1, maxLength: 32 }, { type: 'null' }] }
+    rateUnit: { anyOf: [{ type: 'string', enum: ['HOUR', 'DAY', 'MONTH'] }, { type: 'null' }] }
   }
 } as const;
 const ASSIGNMENT_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['projectId', 'fromDate'],
-  properties: { projectId: UUID_JSON_SCHEMA, stageId: NULLABLE_UUID_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, toDate: NULLABLE_DATE_JSON_SCHEMA }
+  type: 'object', additionalProperties: false, required: ['projectId', 'quantity', 'fromDate'],
+  properties: { projectId: UUID_JSON_SCHEMA, stageId: NULLABLE_UUID_JSON_SCHEMA, quantity: DECIMAL_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, fromTime: TIME_JSON_SCHEMA, toDate: NULLABLE_DATE_JSON_SCHEMA, toTime: { anyOf: [TIME_JSON_SCHEMA, { type: 'null' }] } }
 } as const;
-const END_ASSIGNMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['endDate'], properties: { endDate: DATE_JSON_SCHEMA } } as const;
+const END_ASSIGNMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['endDate'], properties: { endDate: DATE_JSON_SCHEMA, endTime: TIME_JSON_SCHEMA } } as const;
 const USAGE_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['assignmentId', 'usageDate', 'quantity'],
   properties: { assignmentId: UUID_JSON_SCHEMA, usageDate: DATE_JSON_SCHEMA, quantity: DECIMAL_JSON_SCHEMA, rate: NULLABLE_DECIMAL_JSON_SCHEMA }
@@ -114,6 +115,15 @@ export async function registerEquipmentRoutes(app: FastifyInstance, options: Equ
     await authenticateRequest(request, options.database);
     const data = equipmentResponseSchema.parse(await service.createEquipment(parseRequest(createEquipmentBodySchema, request.body, 'body'), readIdempotencyKey(request)));
     return reply.code(201).send({ data });
+  });
+
+  app.patch('/api/v1/equipment/:id', {
+    schema: { tags: ['Equipment'], operationId: 'updateEquipment', summary: 'Update equipment', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: CREATE_EQUIPMENT_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(equipmentIdParamsSchema, request.params, 'params');
+    const data = equipmentResponseSchema.parse(await service.updateEquipment(params.id, parseRequest(updateEquipmentBodySchema, request.body, 'body'), readIdempotencyKey(request)));
+    return reply.send({ data });
   });
 
   app.post('/api/v1/equipment/:id/assignments', {

@@ -300,12 +300,24 @@ export class ClientBillingService {
   ): Promise<void> {
     if (project.costPlusPercent === null) throw createClientBillingError('INVALID_BILLING_BASIS');
     const gross = lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
-    const [projectCostValue, priorGrossValue, stages] = await Promise.all([
+    const [projectCostValue, materialCostValue, supplierInvoiceActualValue, supplierCostBasis, priorGrossValue, stages] = await Promise.all([
       repository.sumProjectCostActuals(project.id, visibility, periodEnd),
+      repository.sumProjectMaterialActuals(project.id, visibility, periodEnd),
+      repository.sumProjectSupplierInvoiceActuals(project.id, visibility, periodEnd),
+      repository.readProjectSupplierCostBasis(project.id, visibility, periodEnd),
       repository.sumFinalizedClaimGross(project.id, visibility),
       repository.listProjectStages(project.id, visibility)
     ]);
-    const projectCost = moneyToMinorUnits(projectCostValue ?? '0');
+    const sourceProjectCost = moneyToMinorUnits(projectCostValue ?? '0');
+    const materialCost = moneyToMinorUnits(materialCostValue ?? '0');
+    const supplierInvoiceActualCost = moneyToMinorUnits(supplierInvoiceActualValue ?? '0');
+    const supplierCost = supplierCostBasis === null
+      ? 0n
+      : moneyToMinorUnits(supplierCostBasis.invoices._sum.totalAmount ?? '0')
+        + moneyToMinorUnits(supplierCostBasis.directPayments._sum.amount ?? '0')
+        - moneyToMinorUnits(supplierCostBasis.directAllocations._sum.amount ?? '0');
+    const supplierCostAlreadyPosted = materialCost + supplierInvoiceActualCost;
+    const projectCost = sourceProjectCost + (supplierCost > supplierCostAlreadyPosted ? supplierCost - supplierCostAlreadyPosted : 0n);
     const priorGross = moneyToMinorUnits(priorGrossValue ?? '0');
     const allStageIds = stages.map((stage) => stage.id);
     const allStageCosts = await repository.sumStageCostActuals(project.id, allStageIds, visibility, periodEnd);

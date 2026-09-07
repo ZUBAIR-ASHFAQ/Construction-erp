@@ -801,6 +801,22 @@
       "migrations": [
         "20260903000300_subcontractor_contact_profile"
       ]
+    },
+    {
+      "stage": 66,
+      "gate": "equipment-assignment-pricing-lifecycle",
+      "description": "Captures assignment quantity and rate, calculates date-based estimates, and posts actual equipment cost on completion.",
+      "migrations": [
+        "20260904000100_equipment_assignment_pricing"
+      ]
+    },
+    {
+      "stage": 67,
+      "gate": "equipment-minute-billing",
+      "description": "Adds exact start and completion times so hourly equipment is billed by elapsed minutes and posted atomically on completion.",
+      "migrations": [
+        "20260907000100_equipment_minute_billing"
+      ]
     }
   ]
 }

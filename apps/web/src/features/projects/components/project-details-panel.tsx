@@ -404,6 +404,22 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
 
         <div className="project-section-heading project-section-heading-spaced">
           <div>
+            <p className="eyebrow">Actual expenses</p>
+            <h3>Project expense breakdown</h3>
+          </div>
+        </div>
+        {details.expenseSummary ? <>
+          <dl className="project-expense-grid">
+            {details.expenseSummary.categories.map((row) => <div key={row.category}><dt>{({ material: 'Material', labour: 'Labour', security: 'Security', equipment: 'Machinery / Equipment', subcontract: 'Subcontractor', site_expense: 'Site expenses', other: 'Other expenses' } as const)[row.category]}</dt><dd>{project.currency} {row.amount}</dd></div>)}
+            <div><dt>Supplier cost basis</dt><dd>{project.currency} {details.expenseSummary.supplierCostAmount}</dd><small>Posted supplier payable plus Project payments, with allocated payments counted only once.</small></div>
+            <div className="project-expense-total"><dt>Total actual project cost</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd><small>Feeds the Actual Cost calculation from posted source transactions.</small></div>
+          </dl>
+          {project.projectModel === 'COST_PLUS_PERCENTAGE' && <dl className="project-cost-plus-summary"><div><dt>Cost base</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd></div><div><dt>Profit / markup ({details.expenseSummary.markupPercent}%)</dt><dd>{project.currency} {details.expenseSummary.markupAmount}</dd></div><div><dt>Cost + percentage amount</dt><dd>{project.currency} {details.expenseSummary.costPlusAmount}</dd></div></dl>}
+          {project.projectModel === 'FIXED_PRICE' && <p className="muted">Fixed-price contract value: {project.currency} {project.projectValue}. Total expense remains source-derived and is not overwritten manually.</p>}
+        </> : <p className="muted">Expense data requires Job Cost read permission.</p>}
+
+        <div className="project-section-heading project-section-heading-spaced">
+          <div>
             <p className="eyebrow">Integrated modules</p>
             <h3>Project module summary</h3>
           </div>
@@ -424,14 +440,14 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
               : 'Team counts require Project Team read permission.'}</small>
           </div>
           <div>
-            <dt>Budget</dt>
+            <dt>Approved budget</dt>
             <dd>{details.budgetSummary ? `${details.budgetSummary.currency} ${details.budgetSummary.totalAmount}` : 'Not available'}</dd>
             <small>{details.budgetSummary
               ? `Version ${details.budgetSummary.versionNo} · ${details.budgetSummary.status}`
               : 'No readable Project budget is available.'}</small>
           </div>
           <div>
-            <dt>Actual / forecast cost</dt>
+            <dt>Actual cost / forecast</dt>
             <dd>{details.costSummary ? `${project.currency} ${details.costSummary.actualCost}` : 'Restricted'}</dd>
             <small>{details.costSummary
               ? `Budget ${details.costSummary.budgetCost} · committed ${details.costSummary.committedCost} · forecast ${details.costSummary.forecastCost} · variance ${details.costSummary.variance}`
@@ -445,11 +461,30 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
               : 'Billing totals require Client Billing read permission.'}</small>
           </div>
           <div>
-            <dt>Client receipts</dt>
+            <dt>Total supplier payable</dt>
+            <dd>{details.supplierPayableSummary ? `${project.currency} ${details.supplierPayableSummary.outstandingAmount}` : 'Restricted'}</dd>
+            <small>{details.supplierPayableSummary
+              ? `${details.supplierPayableSummary.invoiceCount} posted invoice(s) · invoiced ${details.supplierPayableSummary.invoicedAmount} · allocated payments ${details.supplierPayableSummary.allocatedAmount}`
+              : 'Payable totals require Supplier Payables read permission.'}</small>
+          </div>
+          <div>
+            <dt>Supplier payments</dt>
+            <dd>{details.supplierPaymentSummary ? `${project.currency} ${details.supplierPaymentSummary.paidAmount}` : 'Restricted'}</dd>
+            <small>{details.supplierPaymentSummary
+              ? `${details.supplierPaymentSummary.paymentCount} posted payment(s) assigned or allocated to this project. Payments are not added again to project expense.`
+              : 'Payment totals require Supplier Payables read permission.'}</small>
+          </div>
+          <div>
+            <dt>Client total paid</dt>
             <dd>{details.receiptSummary ? `${project.currency} ${details.receiptSummary.receivedAmount}` : 'Restricted'}</dd>
             <small>{details.receiptSummary
-              ? `Allocated ${details.receiptSummary.allocatedAmount} · advance ${details.receiptSummary.advanceAmount} · outstanding ${details.receiptSummary.outstandingAmount ?? 'Restricted'}`
+              ? `Allocated to invoices ${details.receiptSummary.allocatedAmount} · unallocated advance ${details.receiptSummary.advanceAmount}`
               : 'Receipt totals require Client Receipts read permission.'}</small>
+          </div>
+          <div>
+            <dt>Client remaining due</dt>
+            <dd>{details.receiptSummary?.outstandingAmount !== null && details.receiptSummary?.outstandingAmount !== undefined ? `${project.currency} ${details.receiptSummary.outstandingAmount}` : 'Restricted'}</dd>
+            <small>Issued client invoices minus receipts allocated to those invoices.</small>
           </div>
         </dl>
         {clientQuery.error instanceof Error && <div className="form-error" role="alert">{clientQuery.error.message}</div>}

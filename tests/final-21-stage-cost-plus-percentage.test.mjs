@@ -38,7 +38,9 @@ test('Client Billing applies Stage Profit / Markup to source-derived posted Stag
   const budgetRepository = read('apps/api/src/modules/budgets-job-cost/budgets-job-cost.repository.ts');
   assert.match(repository, /this\.db\.costActual\.aggregate/);
   assert.match(repository, /this\.db\.costActual\.groupBy/);
+  assert.match(repository, /readProjectSupplierCostBasis/);
   assert.match(budgetRepository, /this\.db\.costActual\.aggregate/);
+  assert.match(service, /supplierCost > supplierCostAlreadyPosted \? supplierCost - supplierCostAlreadyPosted : 0n/);
   assert.match(service, /stage\.costPlusPercent \?\? project\.costPlusPercent/);
   assert.match(service, /percentageOf\(cost, percent\)/);
   assert.match(service, /percentageOf\(untaggedCost, project\.costPlusPercent\)/);

@@ -33,6 +33,7 @@ export const MODULE_12_EVENT_TYPES = Object.freeze([
 export const MODULE_12_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/equipment' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment' }),
+  Object.freeze({ method: 'PATCH', route: '/api/v1/equipment/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/usage' }),
@@ -59,9 +60,14 @@ export type Module12ErrorCode = (typeof MODULE_12_ERROR_CODES)[number];
 
 const uuid = z.string().uuid();
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'date must use YYYY-MM-DD');
+const time = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'time must use HH:mm');
 const nonNegativeDecimal = z.string().trim().regex(
   /^(?:0|[1-9]\d{0,13})(?:\.\d{1,4})?$/,
   'value must be a non-negative decimal with at most 4 decimal places'
+);
+const positiveDecimal = z.string().trim().regex(
+  /^(?=.*[1-9])(?:0|[1-9]\d{0,13})(?:\.\d{1,4})?$/,
+  'value must be greater than zero with at most 4 decimal places'
 );
 const nonNegativeMoney = z.string().trim().regex(
   /^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/,
@@ -88,12 +94,11 @@ export const equipmentHistoryQuerySchema = z.object({
 
 /** Validate one Company-owned Equipment master. */
 export const createEquipmentBodySchema = z.object({
-  code: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(300),
-  equipmentType: z.string().trim().min(1).max(120),
-  ownershipType: z.string().trim().min(1).max(64),
+  equipmentType: z.string().trim().max(120).nullable().optional(),
+  ownershipType: z.enum(['OWNED', 'RENTED']),
   defaultRate: nonNegativeDecimal.nullable().optional(),
-  rateUnit: z.string().trim().min(1).max(32).nullable().optional()
+  rateUnit: z.enum(['HOUR', 'DAY', 'MONTH']).nullable().optional()
 }).strict().superRefine((value, context) => {
   const hasRate = value.defaultRate !== undefined && value.defaultRate !== null;
   const hasUnit = value.rateUnit !== undefined && value.rateUnit !== null;
@@ -106,12 +111,18 @@ export const createEquipmentBodySchema = z.object({
   }
 });
 
+/** Validate editable Equipment master fields. The server-owned code is immutable. */
+export const updateEquipmentBodySchema = createEquipmentBodySchema;
+
 /** Validate one Project/Stage Equipment assignment. */
 export const createEquipmentAssignmentBodySchema = z.object({
   projectId: uuid,
   stageId: uuid.nullable().optional(),
+  quantity: positiveDecimal,
   fromDate: date,
+  fromTime: time.optional(),
   toDate: date.nullable().optional()
+  , toTime: time.nullable().optional()
 }).strict().refine((value) => value.toDate == null || value.toDate >= value.fromDate, {
   path: ['toDate'],
   message: 'Assignment end date must be on or after the start date.'
@@ -119,7 +130,8 @@ export const createEquipmentAssignmentBodySchema = z.object({
 
 /** Validate the effective date used to end one active Equipment assignment. */
 export const endEquipmentAssignmentBodySchema = z.object({
-  endDate: date
+  endDate: date,
+  endTime: time.optional()
 }).strict();
 
 /** Validate one usage/rental record tied to an existing assignment. */
@@ -147,7 +159,11 @@ export const equipmentResponseSchema = z.object({
   ownershipType: z.string(),
   defaultRate: z.string().nullable(),
   rateUnit: z.string().nullable(),
-  status: z.string()
+  status: z.string(),
+  assignmentStatus: z.enum(['ASSIGNED', 'UNASSIGNED']),
+  activeAssignmentId: uuid.nullable(),
+  assignedProjectName: z.string().nullable(),
+  assignedStageName: z.string().nullable()
 }).strict();
 
 /** Safe Equipment assignment response. */
@@ -157,8 +173,16 @@ export const equipmentAssignmentResponseSchema = z.object({
   projectId: uuid,
   stageId: uuid.nullable(),
   fromDate: date,
+  fromTime: time,
   toDate: date.nullable(),
-  status: z.string()
+  toTime: time.nullable(),
+  quantity: z.string(),
+  rate: z.string(),
+  rateUnit: z.string(),
+  estimatedAmount: z.string().nullable(),
+  status: z.string(),
+  projectName: z.string().nullable(),
+  stageName: z.string().nullable()
 }).strict();
 
 /** Safe Equipment usage response. */
@@ -167,6 +191,8 @@ export const equipmentUsageResponseSchema = z.object({
   assignmentId: uuid,
   projectId: uuid,
   stageId: uuid.nullable(),
+  projectName: z.string().nullable(),
+  stageName: z.string().nullable(),
   usageDate: date,
   quantity: z.string(),
   rate: z.string(),
@@ -228,6 +254,7 @@ export function createModule12Error(code: Module12ErrorCode): AppError {
 export type ListEquipmentQuery = z.infer<typeof listEquipmentQuerySchema>;
 export type EquipmentHistoryQuery = z.infer<typeof equipmentHistoryQuerySchema>;
 export type CreateEquipmentBody = z.infer<typeof createEquipmentBodySchema>;
+export type UpdateEquipmentBody = z.infer<typeof updateEquipmentBodySchema>;
 export type CreateEquipmentAssignmentBody = z.infer<typeof createEquipmentAssignmentBodySchema>;
 export type EndEquipmentAssignmentBody = z.infer<typeof endEquipmentAssignmentBodySchema>;
 export type RecordEquipmentUsageBody = z.infer<typeof recordEquipmentUsageBodySchema>;

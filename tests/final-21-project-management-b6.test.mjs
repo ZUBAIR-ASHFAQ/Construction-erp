@@ -44,7 +44,22 @@ test('Pass B6 removes legacy Project-member ownership from active Module 6 runti
 test('Pass B6 Project detail keeps Project master plus lifecycle history and no legacy members after later summary extensions', () => {
   assert.match(schema, /projectDetailsResponseSchema = z\.object\(\{[\s\S]*project: projectResponseSchema,[\s\S]*statusHistory: z\.array\(projectStatusHistoryResponseSchema\)/);
   assert.match(service, /statusHistory/);
-  assert.match(routes, /'project', 'statusHistory', 'stageSummary', 'teamSummary', 'budgetSummary', 'costSummary',[\s\S]*'billingSummary', 'receiptSummary'/);
+  assert.match(routes, /'project', 'statusHistory', 'stageSummary', 'teamSummary', 'budgetSummary', 'costSummary',[\s\S]*'billingSummary', 'supplierPaymentSummary', 'supplierPayableSummary', 'receiptSummary'/);
+  assert.match(repository, /async readSupplierPaymentSummary\(projectId: string\)/);
+  assert.match(repository, /async readSupplierPayableSummary\(projectId: string\)/);
+  assert.match(repository, /async readSupplierCostBasis\(projectId: string\)/);
+  assert.match(repository, /projectId, status: 'POSTED'/);
+  assert.match(service, /supplierCostUplift = supplierCostAmount > supplierCostAlreadyPosted/);
+  assert.match(service, /forecastCost = \[manualForecastCost, committedCost, totalExpense\]\.reduce/);
+  assert.match(service, /percentageMoney\(totalExpense, project\.costPlusPercent\)/);
+  assert.match(service, /supplierPaymentSummary: supplierPayments === null \|\| supplierPaidAmount === null \? null/);
+  assert.match(service, /supplierPayableSummary: supplierPayables === null/);
+  assert.match(webDetails, /<dt>Supplier payments<\/dt>/);
+  assert.match(webDetails, /<dt>Total supplier payable<\/dt>/);
+  assert.match(webDetails, /<dt>Client total paid<\/dt>/);
+  assert.match(webDetails, /<dt>Client remaining due<\/dt>/);
+  assert.match(webDetails, /details\.supplierPaymentSummary\.paidAmount/);
+  assert.match(webDetails, /<dt>Supplier cost basis<\/dt>/);
   assert.doesNotMatch(routes, /members/);
   assert.doesNotMatch(webApi, /members:\s*ProjectMember\[\]/);
 });

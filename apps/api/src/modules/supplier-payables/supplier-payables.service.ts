@@ -63,6 +63,7 @@ type SupplierInvoiceRow = Readonly<{
   taxAmount: DecimalLike;
   totalAmount: DecimalLike;
   lines: readonly SupplierInvoiceLineRow[];
+  allocations: readonly Readonly<{ amount: DecimalLike }>[];
 }>;
 type SupplierPaymentRow = Readonly<{
   id: string;
@@ -176,6 +177,9 @@ function pageWindow(query: Readonly<{ page?: number | undefined; pageSize?: numb
 
 /** Serialize one Supplier Invoice and its lines without exposing Company authority. */
 function supplierInvoiceResponse(row: SupplierInvoiceRow) {
+  const totalMinorUnits = moneyToMinorUnits(row.totalAmount);
+  const allocatedMinorUnits = row.allocations.reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
+  const outstandingMinorUnits = totalMinorUnits > allocatedMinorUnits ? totalMinorUnits - allocatedMinorUnits : 0n;
   return {
     id: row.id,
     vendorId: row.vendorId,
@@ -188,7 +192,9 @@ function supplierInvoiceResponse(row: SupplierInvoiceRow) {
     status: row.status,
     subtotal: moneyString(row.subtotal),
     taxAmount: moneyString(row.taxAmount),
-    totalAmount: moneyString(row.totalAmount),
+    totalAmount: minorUnitsToMoney(totalMinorUnits),
+    allocatedAmount: minorUnitsToMoney(allocatedMinorUnits),
+    outstandingAmount: minorUnitsToMoney(outstandingMinorUnits),
     lines: row.lines.map((line) => ({
       id: line.id,
       supplierInvoiceId: line.supplierInvoiceId,

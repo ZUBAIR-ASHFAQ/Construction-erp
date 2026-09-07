@@ -134,6 +134,15 @@ test('B16.6 aging is source-derived from posted invoice and posted payment alloc
   assert.match(service, /outstandingMinorUnits = totalMinorUnits > allocatedMinorUnits \? totalMinorUnits - allocatedMinorUnits : 0n/);
 });
 
+/** Confirm invoice reads expose current posted allocations for payment-selection UI without using aging dates. */
+test('Supplier invoice reads expose source-derived allocated and outstanding balances', () => {
+  const service = read(SERVICE);
+  const repository = read(REPOSITORY);
+  assert.match(repository, /allocations:[\s\S]*supplierPayment: \{ status: 'POSTED' \}/);
+  assert.match(service, /allocatedAmount: minorUnitsToMoney\(allocatedMinorUnits\)/);
+  assert.match(service, /outstandingAmount: minorUnitsToMoney\(outstandingMinorUnits\)/);
+});
+
 /** Confirm B16.6 freezes a deterministic minimal age-days rule without inventing aging buckets. */
 test('B16.6 ageDays uses due date fallback and does not add unsupported browser formulas or buckets', () => {
   const service = read(SERVICE);

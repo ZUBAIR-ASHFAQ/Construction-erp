@@ -110,6 +110,10 @@ test('B10 service enforces Stage scope freeze immutability idempotency audit and
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);
   assert.match(repository, /listJobCostLedger/);
+  assert.match(repository, /async readSupplierCostBasis\(projectId: string\)/);
+  assert.match(repository, /supplierPayment: \{ companyId: scope\.companyId, projectId, status: 'POSTED' \}/);
+  assert.match(service, /supplierCost > supplierCostAlreadyPosted \? supplierCost - supplierCostAlreadyPosted : 0n/);
+  assert.match(service, /\[manualForecastCost, committedCost, actualCost\]\.reduce/);
   assert.doesNotMatch(repository, /createCostActual|updateCostActual|deleteCostActual/);
   assert.doesNotMatch(service, /wbsNodeId|costCodeId|costTypeId|budgetType|forecastFinalRevenue/);
 });

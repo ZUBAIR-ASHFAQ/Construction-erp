@@ -1121,7 +1121,9 @@ textarea {
 @media (max-width: 980px) {
   .project-filter-grid,
   .project-detail-grid,
-  .project-summary-grid {
+  .project-summary-grid,
+  .project-expense-grid,
+  .project-cost-plus-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
@@ -1136,6 +1138,8 @@ textarea {
   .project-form-grid,
   .project-detail-grid,
   .project-summary-grid,
+  .project-expense-grid,
+  .project-cost-plus-summary,
   .project-close-form {
     grid-template-columns: 1fr;
   }
@@ -5197,6 +5201,48 @@ body,
   backdrop-filter: blur(3px);
 }
 
+.project-expense-grid,
+.project-cost-plus-summary {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.project-expense-grid > div,
+.project-cost-plus-summary > div {
+  padding: 0.9rem 1rem;
+  border: 1px solid #dce5f1;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+
+.project-expense-grid dt,
+.project-cost-plus-summary dt {
+  color: #607087;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.project-expense-grid dd,
+.project-cost-plus-summary dd {
+  margin: 0.35rem 0 0;
+  color: #17253a;
+  font-size: 1.05rem;
+  font-weight: 750;
+}
+
+.project-expense-grid .project-expense-total,
+.project-cost-plus-summary > div:last-child {
+  border-color: #abc7f4;
+  background: #edf4ff;
+}
+
+.project-cost-plus-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 0.85rem;
+}
+
 .finance-modal {
   width: min(680px, 100%);
   max-height: min(84vh, 760px);
@@ -5258,6 +5304,106 @@ body,
   margin: 20px 0;
   color: #64748b;
   text-align: center;
+}
+
+.equipment-workflow-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff, #eef5ff);
+}
+
+.equipment-workflow-bar div {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.equipment-workflow-bar span {
+  color: #5d6b7e;
+  font-size: 0.9rem;
+}
+
+.equipment-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.equipment-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #46556a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.equipment-status.is-active,
+.equipment-status.is-unassigned {
+  background: #e8f7ef;
+  color: #147a45;
+}
+
+.equipment-status.is-assigned {
+  background: #eaf1ff;
+  color: #245fcb;
+}
+
+.equipment-cost-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.9rem 1rem;
+  border: 1px solid #bfd3f7;
+  border-radius: 12px;
+  background: #f1f6ff;
+}
+
+.equipment-cost-preview strong {
+  color: #174ea6;
+  font-size: 1.2rem;
+}
+
+.equipment-ledger-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.equipment-ledger-summary span {
+  display: grid;
+  gap: 0.3rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.equipment-ledger-summary small {
+  color: #66758a;
+}
+
+.equipment-ledger-summary strong {
+  color: #18263a;
+  font-size: 1.08rem;
+}
+
+@media (max-width: 700px) {
+  .equipment-workflow-bar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .equipment-ledger-summary {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 700px) {

@@ -1,7 +1,8 @@
 import { recordAudit } from '@construction-erp/audit';
 import { type DatabaseClient, type TransactionClient } from '@construction-erp/database';
-import { AuthorizationError, ConflictError, NotFoundError, ValidationError } from '@construction-erp/errors';
+import { AuthorizationError, NotFoundError, ValidationError } from '@construction-erp/errors';
 import { executeIdempotentCommand } from '@construction-erp/idempotency';
+import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { recordOutboxEvent } from '@construction-erp/outbox';
 import { requireRequestSecurityContext } from '@construction-erp/request-context';
 import { AdministrationRepository } from '../administration/administration.repository.js';
@@ -15,7 +16,8 @@ import {
   type EquipmentHistoryQuery,
   type ListEquipmentQuery,
   type Module12PermissionCode,
-  type RecordEquipmentUsageBody
+  type RecordEquipmentUsageBody,
+  type UpdateEquipmentBody
 } from './equipment.schema.js';
 
 const ACTIVE = 'ACTIVE';
@@ -25,6 +27,7 @@ const RECORDED = 'RECORDED';
 const DECIMAL_SCALE_4 = 10_000n;
 const PRODUCT_TO_MINOR_UNITS_DIVISOR = 1_000_000n;
 const MAX_MONEY_MINOR_UNITS = 999_999_999_999_999_999n;
+const EQUIPMENT_SEQUENCE_KEY = 'equipment';
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
 
@@ -74,9 +77,32 @@ function calculateAmount(quantity: DecimalLike, rate: DecimalLike): string {
   return `${minorUnits / 100n}.${(minorUnits % 100n).toString().padStart(2, '0')}`;
 }
 
+/** Calculate chargeable quantity from an inclusive date range and captured rate unit. */
+function datedQuantity(quantity: DecimalLike, rateUnit: string, fromDate: Date, fromMinute: number, toDate: Date, toMinute: number): string {
+  const days = BigInt(Math.floor((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1);
+  if (rateUnit === 'HOUR') {
+    const elapsedMinutes = BigInt(Math.floor((toDate.getTime() - fromDate.getTime()) / 60_000) + toMinute - fromMinute);
+    if (elapsedMinutes <= 0n) throw new ValidationError({ message: 'Hourly equipment completion time must be after its assignment start time.' });
+    return scale4ToDecimal(divideRoundHalfUp(decimalToScale4(quantity) * elapsedMinutes, 60n));
+  }
+  const periods = rateUnit === 'HOUR' ? days * 24n : rateUnit === 'MONTH' ? (days + 29n) / 30n : days;
+  return scale4ToDecimal(decimalToScale4(quantity) * periods);
+}
+
 /** Parse one validated date-only API value for database persistence. */
 function inputDate(value: string): Date {
   return new Date(`${value}T00:00:00.000Z`);
+}
+
+/** Convert a validated HH:mm value to minutes after midnight. */
+function inputMinute(value = '00:00'): number {
+  const [hours = '0', minutes = '0'] = value.split(':');
+  return Number(hours) * 60 + Number(minutes);
+}
+
+/** Serialize minutes after midnight as HH:mm. */
+function minuteTime(value: number): string {
+  return `${Math.floor(value / 60).toString().padStart(2, '0')}:${(value % 60).toString().padStart(2, '0')}`;
 }
 
 /** Serialize one database date to the API date-only format. */
@@ -101,6 +127,7 @@ function equipmentResponse(row: Readonly<{
   defaultRate: DecimalLike | null;
   rateUnit: string | null;
   status: string;
+  assignments?: ReadonlyArray<Readonly<{ id: string; project: Readonly<{ name: string }>; stage: Readonly<{ name: string }> | null }>>;
 }>) {
   return {
     id: row.id,
@@ -110,7 +137,11 @@ function equipmentResponse(row: Readonly<{
     ownershipType: row.ownershipType,
     defaultRate: row.defaultRate === null ? null : decimalString(row.defaultRate),
     rateUnit: row.rateUnit,
-    status: row.status
+    status: row.status,
+    assignmentStatus: row.assignments?.length ? 'ASSIGNED' : 'UNASSIGNED',
+    activeAssignmentId: row.assignments?.[0]?.id ?? null,
+    assignedProjectName: row.assignments?.[0]?.project.name ?? null,
+    assignedStageName: row.assignments?.[0]?.stage?.name ?? null
   };
 }
 
@@ -121,8 +152,16 @@ function assignmentResponse(row: Readonly<{
   projectId: string;
   stageId: string | null;
   fromDate: Date;
+  fromMinute: number;
   toDate: Date | null;
+  toMinute: number | null;
+  quantity: DecimalLike;
+  rate: DecimalLike;
+  rateUnit: string;
+  estimatedAmount: DecimalLike | null;
   status: string;
+  project?: Readonly<{ name: string }>;
+  stage?: Readonly<{ name: string }> | null;
 }>) {
   return {
     id: row.id,
@@ -130,8 +169,16 @@ function assignmentResponse(row: Readonly<{
     projectId: row.projectId,
     stageId: row.stageId,
     fromDate: dateOnly(row.fromDate),
+    fromTime: minuteTime(row.fromMinute),
     toDate: row.toDate ? dateOnly(row.toDate) : null,
-    status: row.status
+    toTime: row.toMinute === null ? null : minuteTime(row.toMinute),
+    quantity: decimalString(row.quantity),
+    rate: decimalString(row.rate),
+    rateUnit: row.rateUnit,
+    estimatedAmount: row.estimatedAmount === null ? null : moneyString(row.estimatedAmount),
+    status: row.status,
+    projectName: row.project?.name ?? null,
+    stageName: row.stage?.name ?? null
   };
 }
 
@@ -145,12 +192,14 @@ function usageResponse<TCostActualId extends string | null>(row: Readonly<{
   amount: DecimalLike;
   enteredBy: string;
   status: string;
-}>, assignment: Readonly<{ projectId: string; stageId: string | null }>, costActualId: TCostActualId) {
+}>, assignment: Readonly<{ projectId: string; stageId: string | null; project?: Readonly<{ name: string }>; stage?: Readonly<{ name: string }> | null }>, costActualId: TCostActualId) {
   return {
     id: row.id,
     assignmentId: row.assignmentId,
     projectId: assignment.projectId,
     stageId: assignment.stageId,
+    projectName: assignment.project?.name ?? null,
+    stageName: assignment.stage?.name ?? null,
     usageDate: dateOnly(row.usageDate),
     quantity: decimalString(row.quantity),
     rate: decimalString(row.rate),
@@ -245,13 +294,13 @@ export class EquipmentService {
     }, async (tx) => {
       await this.requireCompanyPermission(new AdministrationRepository(tx), 'equipment.manage', new Date());
       const repository = new EquipmentRepository(tx);
-      const code = token(input.code);
-      if (await repository.findEquipmentByCode(code)) throw new ConflictError({ message: 'Equipment code already exists in this company.' });
+      await repository.ensureEquipmentSequence();
+      const code = (await allocateCompanyNumber(tx, { sequenceKey: EQUIPMENT_SEQUENCE_KEY })).formatted;
       const equipment = await repository.createEquipment({
         code,
         name: input.name.trim(),
-        equipmentType: input.equipmentType.trim(),
-        ownershipType: input.ownershipType.trim(),
+        equipmentType: input.equipmentType?.trim() || 'General',
+        ownershipType: input.ownershipType,
         defaultRate: input.defaultRate ?? null,
         rateUnit: input.rateUnit?.trim() ?? null,
         status: ACTIVE
@@ -259,6 +308,30 @@ export class EquipmentService {
       const response = equipmentResponse(equipment);
       await recordAudit(tx, { action: 'equipment.created', entityType: 'equipment', entityId: equipment.id, after: response });
       return { statusCode: 201, body: response };
+    });
+    return result.response.body;
+  }
+
+  /** Update editable Equipment details exactly once while retaining its automatic code. */
+  async updateEquipment(equipmentId: string, input: UpdateEquipmentBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'equipment.update', idempotencyKey, fingerprintInput: { equipmentId, input }
+    }, async (tx) => {
+      await this.requireCompanyPermission(new AdministrationRepository(tx), 'equipment.manage', new Date());
+      const repository = new EquipmentRepository(tx);
+      const before = await repository.findEquipmentById(equipmentId);
+      if (!before) throw createModule12Error('EQUIPMENT_NOT_FOUND');
+      const equipment = await repository.updateEquipment(equipmentId, {
+        name: input.name.trim(),
+        equipmentType: input.equipmentType?.trim() || 'General',
+        ownershipType: input.ownershipType,
+        defaultRate: input.defaultRate ?? null,
+        rateUnit: input.rateUnit ?? null
+      });
+      if (!equipment) throw createModule12Error('EQUIPMENT_NOT_FOUND');
+      const response = equipmentResponse(equipment);
+      await recordAudit(tx, { action: 'equipment.updated', entityType: 'equipment', entityId: equipment.id, before: equipmentResponse(before), after: response });
+      return { statusCode: 200, body: response };
     });
     return result.response.body;
   }
@@ -285,14 +358,27 @@ export class EquipmentService {
     if (token(project.status) !== ACTIVE) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
     if (input.stageId && !(await repository.findStage(input.projectId, input.stageId))) throw createModule12Error('INVALID_EQUIPMENT_STAGE');
     const fromDate = inputDate(input.fromDate);
+    const fromMinute = inputMinute(input.fromTime);
     const toDate = input.toDate ? inputDate(input.toDate) : null;
+    const toMinute = input.toTime ? inputMinute(input.toTime) : null;
+    const rate = equipment.defaultRate?.toString() ?? null;
+    if (!rate || !equipment.rateUnit) throw new ValidationError({ message: 'Configure a default rate and rate unit before assigning this equipment.' });
+    if (equipment.rateUnit === 'HOUR' && !input.fromTime) throw new ValidationError({ fieldErrors: [{ field: 'fromTime', message: 'Start time is required for hourly equipment.' }] });
+    if (input.toTime && !toDate) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To date is required when a to time is provided.' }] });
+    if (equipment.rateUnit === 'HOUR' && toDate && !input.toTime) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To time is required for an hourly estimate.' }] });
     if (await repository.hasAssignmentOverlap(equipmentId, fromDate, toDate)) throw createModule12Error('ASSIGNMENT_OVERLAP');
     const assignment = await repository.createAssignment({
       equipmentId,
       projectId: input.projectId,
       stageId: input.stageId ?? null,
       fromDate,
+      fromMinute,
       toDate,
+      toMinute,
+      quantity: input.quantity,
+      rate,
+      rateUnit: equipment.rateUnit,
+      estimatedAmount: calculateAmount(toDate ? datedQuantity(input.quantity, equipment.rateUnit, fromDate, fromMinute, toDate, toMinute ?? 0) : input.quantity, rate),
       status: ACTIVE
     });
     const response = assignmentResponse(assignment);
@@ -315,6 +401,7 @@ export class EquipmentService {
     const current = await repository.findAssignment(equipmentId, assignmentId);
     if (!current) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
     await this.requireProjectPermission(new AdministrationRepository(tx), current.projectId, 'equipment.assign', new Date());
+    await this.requireProjectPermission(new AdministrationRepository(tx), current.projectId, 'equipment.usage.create', new Date());
 
     const equipment = await repository.lockEquipmentForWrite(equipmentId);
     if (!equipment) throw createModule12Error('EQUIPMENT_NOT_FOUND');
@@ -322,10 +409,12 @@ export class EquipmentService {
     if (!locked || token(locked.status) !== ACTIVE) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
 
     const endDate = inputDate(input.endDate);
-    if (endDate < locked.fromDate) {
+    const endMinute = inputMinute(input.endTime);
+    if (locked.rateUnit === 'HOUR' && !input.endTime) throw new ValidationError({ fieldErrors: [{ field: 'endTime', message: 'Completion time is required for hourly equipment.' }] });
+    if (endDate < locked.fromDate || (endDate.getTime() === locked.fromDate.getTime() && endMinute <= locked.fromMinute)) {
       throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede the assignment start date.' }] });
     }
-    if (locked.toDate && endDate > locked.toDate) {
+    if (locked.toDate && (endDate > locked.toDate || (endDate.getTime() === locked.toDate.getTime() && locked.toMinute !== null && endMinute > locked.toMinute))) {
       throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot extend the assignment beyond its existing end date.' }] });
     }
     const latestUsageDate = await repository.findLatestUsageDate(equipmentId, assignmentId);
@@ -333,7 +422,17 @@ export class EquipmentService {
       throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede posted Equipment usage.' }] });
     }
 
-    const updated = await repository.endAssignment(equipmentId, assignmentId, endDate);
+    if (!(await repository.hasPostedUsage(equipmentId, assignmentId))) {
+      const quantity = datedQuantity(locked.quantity, locked.rateUnit, locked.fromDate, locked.fromMinute, endDate, endMinute);
+      const amount = calculateAmount(quantity, locked.rate);
+      const usage = await repository.createUsage({ assignmentId, usageDate: endDate, quantity, rate: locked.rate.toString(), amount, enteredBy: requireRequestSecurityContext().actorUserId, status: POSTED });
+      const actual = await repository.createUsageCostActual({ projectId: locked.projectId, stageId: locked.stageId, usageId: usage.id, postingDate: endDate, amount });
+      const usageResult = usageResponse(usage, locked, actual.id);
+      await recordAudit(tx, { action: 'equipment.usage_posted', entityType: 'equipment_usage', entityId: usage.id, projectId: locked.projectId, stageId: locked.stageId, after: usageResult });
+      await recordOutboxEvent(tx, { eventType: 'equipment.usage_posted', resourceType: 'equipment_usage', resourceId: usage.id, payload: usageResult });
+    }
+
+    const updated = await repository.endAssignment(equipmentId, assignmentId, endDate, endMinute);
     if (!updated || token(updated.status) !== ENDED) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
     const response = assignmentResponse(updated);
     await recordAudit(tx, { action: 'equipment.assignment_ended', entityType: 'equipment_assignment', entityId: assignmentId, projectId: updated.projectId, stageId: updated.stageId, before: assignmentResponse(locked), after: response });

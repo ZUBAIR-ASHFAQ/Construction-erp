@@ -50,6 +50,7 @@ export type ProjectsServiceOptions = Readonly<{
 }>;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+const PROJECT_COST_CATEGORIES = ['material', 'labour', 'security', 'equipment', 'subcontract', 'site_expense', 'other'] as const;
 
 type ProjectAuditSource = Readonly<{
   projectCode: string;
@@ -74,6 +75,27 @@ function dateOnly(value: Date): string {
 /** Serialize one persisted decimal without converting it through binary floating point. */
 function storedDecimal(value: DecimalLike): string {
   return value.toString();
+}
+
+/** Convert stored money to exact minor units for summary calculations. */
+function moneyMinor(value: DecimalLike | null | undefined): bigint {
+  const [whole = '0', fraction = ''] = (value?.toString() ?? '0').split('.');
+  return BigInt(whole) * 100n + BigInt(`${fraction}00`.slice(0, 2));
+}
+
+/** Serialize exact minor units as API money. */
+function minorMoney(value: bigint): string {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  return `${negative ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
+}
+
+/** Calculate a percentage of money using four-decimal percentage precision. */
+function percentageMoney(amount: bigint, percent: DecimalLike | null): bigint {
+  if (percent === null) return 0n;
+  const [whole = '0', fraction = ''] = percent.toString().split('.');
+  const scaledPercent = BigInt(whole) * 10_000n + BigInt(`${fraction}0000`.slice(0, 4));
+  return (amount * scaledPercent + 500_000n) / 1_000_000n;
 }
 
 /** Build a compact non-secret Project master snapshot for audit history. */
@@ -291,8 +313,9 @@ export class ProjectsService {
     const canReadCost = hasPermission('job_cost.read') || effectivePermissions.includes('job_cost.read');
     const canReadBilling = hasPermission('client_billing.read') || effectivePermissions.includes('client_billing.read');
     const canReadReceipts = hasPermission('client_receipts.read') || effectivePermissions.includes('client_receipts.read');
+    const canReadSupplierPayments = hasPermission('supplier_payables.read') || effectivePermissions.includes('supplier_payables.read');
 
-    const [statusHistory, stageSummary, teamSummary, budgetSummary, jobCost, billingSummary, receipts] = await Promise.all([
+    const [statusHistory, stageSummary, teamSummary, budgetSummary, jobCost, billingSummary, receipts, categoryCosts, supplierPayments, supplierPayables, supplierCostBasis, supplierInvoiceActuals] = await Promise.all([
       repository.listProjectStatusHistory(projectId),
       canReadStages ? new ProjectStagesService(this.db).getProjectSummary(projectId) : Promise.resolve(null),
       canReadTeam ? new ProjectTeamService(this.db).getProjectSummary(projectId) : Promise.resolve(null),
@@ -301,12 +324,46 @@ export class ProjectsService {
       canReadBilling ? new ClientBillingService(this.db).getProjectSummary(projectId) : Promise.resolve(null),
       canReadReceipts
         ? new ClientReceiptsRepository(this.db).readReceiptFinancialTotals({ projectId })
-        : Promise.resolve(null)
+        : Promise.resolve(null),
+      canReadCost ? repository.groupActualCostsByCategory(projectId) : Promise.resolve(null),
+      canReadSupplierPayments ? repository.readSupplierPaymentSummary(projectId) : Promise.resolve(null),
+      canReadSupplierPayments ? repository.readSupplierPayableSummary(projectId) : Promise.resolve(null),
+      canReadCost ? repository.readSupplierCostBasis(projectId) : Promise.resolve(null),
+      canReadCost ? repository.sumSupplierInvoiceActuals(projectId) : Promise.resolve(null)
     ]);
 
     const receivedAmount = receipts?.receivedAmount?.toString() ?? null;
     const allocatedAmount = receipts?.allocatedAmount?.toString() ?? null;
     const billedAmount = billingSummary?.billedAmount ?? null;
+    const categoryByCode = new Map((categoryCosts ?? []).map((row) => [row.category, moneyMinor(row._sum.amount)]));
+    const sourceActualCost = PROJECT_COST_CATEGORIES.reduce((sum, category) => sum + (categoryByCode.get(category) ?? 0n), 0n);
+    const materialActualCost = categoryByCode.get('material') ?? 0n;
+    const supplierInvoiceActualCost = moneyMinor(supplierInvoiceActuals?._sum.amount);
+    const supplierCostAmount = supplierCostBasis === null
+      ? 0n
+      : moneyMinor(supplierCostBasis.invoices._sum.totalAmount)
+        + moneyMinor(supplierCostBasis.directPayments._sum.amount)
+        - moneyMinor(supplierCostBasis.directAllocations._sum.amount);
+    const supplierCostAlreadyPosted = materialActualCost + supplierInvoiceActualCost;
+    const supplierCostUplift = supplierCostAmount > supplierCostAlreadyPosted ? supplierCostAmount - supplierCostAlreadyPosted : 0n;
+    const adjustedMaterialCost = materialActualCost + supplierCostUplift;
+    const totalExpense = sourceActualCost + supplierCostUplift;
+    const committedCost = moneyMinor(jobCost?.totals.committedCost);
+    const manualForecastCost = moneyMinor(jobCost?.totals.forecastCost);
+    const forecastCost = [manualForecastCost, committedCost, totalExpense].reduce((highest, value) => value > highest ? value : highest, 0n);
+    const budgetCost = moneyMinor(jobCost?.totals.budgetCost);
+    const markupAmount = project.projectModel === PROJECT_MODEL_COST_PLUS_PERCENTAGE
+      ? percentageMoney(totalExpense, project.costPlusPercent)
+      : 0n;
+    const supplierPaidAmount = supplierPayments === null
+      ? null
+      : moneyMinor(supplierPayments.direct._sum.amount)
+        + supplierPayments.allocatedCompanyPayments.reduce((sum, row) => sum + moneyMinor(row._sum.amount), 0n);
+    const supplierInvoicedAmount = supplierPayables === null ? null : moneyMinor(supplierPayables.invoices._sum.totalAmount);
+    const supplierAllocatedAmount = supplierPayables === null ? null : moneyMinor(supplierPayables.allocations._sum.amount);
+    const supplierOutstandingAmount = supplierInvoicedAmount === null || supplierAllocatedAmount === null
+      ? null
+      : supplierInvoicedAmount > supplierAllocatedAmount ? supplierInvoicedAmount - supplierAllocatedAmount : 0n;
 
     return {
       project,
@@ -314,8 +371,31 @@ export class ProjectsService {
       stageSummary,
       teamSummary,
       budgetSummary,
-      costSummary: jobCost?.totals ?? null,
+      costSummary: jobCost === null ? null : {
+        ...jobCost.totals,
+        actualCost: minorMoney(totalExpense),
+        forecastCost: minorMoney(forecastCost),
+        variance: minorMoney(budgetCost - forecastCost)
+      },
+      expenseSummary: categoryCosts === null ? null : {
+        categories: PROJECT_COST_CATEGORIES.map((category) => ({ category, amount: minorMoney(category === 'material' ? adjustedMaterialCost : categoryByCode.get(category) ?? 0n) })),
+        totalExpense: minorMoney(totalExpense),
+        supplierCostAmount: minorMoney(supplierCostAmount),
+        markupPercent: project.projectModel === PROJECT_MODEL_COST_PLUS_PERCENTAGE ? project.costPlusPercent?.toString() ?? null : null,
+        markupAmount: minorMoney(markupAmount),
+        costPlusAmount: project.projectModel === PROJECT_MODEL_COST_PLUS_PERCENTAGE ? minorMoney(totalExpense + markupAmount) : null
+      },
       billingSummary,
+      supplierPaymentSummary: supplierPayments === null || supplierPaidAmount === null ? null : {
+        paymentCount: supplierPayments.direct._count._all + supplierPayments.allocatedCompanyPayments.length,
+        paidAmount: minorMoney(supplierPaidAmount)
+      },
+      supplierPayableSummary: supplierPayables === null || supplierInvoicedAmount === null || supplierAllocatedAmount === null || supplierOutstandingAmount === null ? null : {
+        invoiceCount: supplierPayables.invoices._count._all,
+        invoicedAmount: minorMoney(supplierInvoicedAmount),
+        allocatedAmount: minorMoney(supplierAllocatedAmount),
+        outstandingAmount: minorMoney(supplierOutstandingAmount)
+      },
       receiptSummary: receivedAmount === null || allocatedAmount === null
         ? null
         : {

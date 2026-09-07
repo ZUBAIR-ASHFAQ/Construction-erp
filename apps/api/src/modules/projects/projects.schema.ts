@@ -293,9 +293,27 @@ export const projectDetailsResponseSchema = z.object({
     forecastCost: projectValueSchema,
     variance: z.string().regex(/^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/)
   }).strict().nullable(),
+  expenseSummary: z.object({
+    categories: z.array(z.object({ category: z.enum(['material', 'labour', 'security', 'equipment', 'subcontract', 'site_expense', 'other']), amount: projectValueSchema }).strict()),
+    totalExpense: projectValueSchema,
+    supplierCostAmount: projectValueSchema,
+    markupPercent: costPlusPercentSchema.nullable(),
+    markupAmount: projectValueSchema,
+    costPlusAmount: projectValueSchema.nullable()
+  }).strict().nullable(),
   billingSummary: z.object({
     invoiceCount: z.number().int().min(0),
     billedAmount: projectValueSchema
+  }).strict().nullable(),
+  supplierPaymentSummary: z.object({
+    paymentCount: z.number().int().min(0),
+    paidAmount: projectValueSchema
+  }).strict().nullable(),
+  supplierPayableSummary: z.object({
+    invoiceCount: z.number().int().min(0),
+    invoicedAmount: projectValueSchema,
+    allocatedAmount: projectValueSchema,
+    outstandingAmount: projectValueSchema
   }).strict().nullable(),
   receiptSummary: z.object({
     receivedAmount: projectValueSchema,

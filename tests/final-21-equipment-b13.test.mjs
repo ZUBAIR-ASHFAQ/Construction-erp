@@ -33,6 +33,7 @@ test('B13 exposes the Final-21 Equipment routes plus controlled assignment end',
   const expected = [
     "GET', route: '/api/v1/equipment'",
     "POST', route: '/api/v1/equipment'",
+    "PATCH', route: '/api/v1/equipment/:id'",
     "POST', route: '/api/v1/equipment/:id/assignments'",
     "POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end'",
     "POST', route: '/api/v1/equipment/:id/usage'",
@@ -40,7 +41,7 @@ test('B13 exposes the Final-21 Equipment routes plus controlled assignment end',
     "GET', route: '/api/v1/equipment/:id/history'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 7);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 8);
   assert.doesNotMatch(routes, /\/api\/v1\/equipment[^'\"]*(?:transfer|archive|dispose|utilization|submit|post-cost|return)/i);
 });
 
@@ -118,8 +119,8 @@ test('B13 uses the final Equipment permission error and event vocabulary', () =>
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
     assert.ok(service.includes(event), `service does not emit ${event}`);
   }
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 5);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 5);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 6);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 6);
   assert.match(service, /executeIdempotentCommand/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);

@@ -163,7 +163,7 @@ const INVOICE_RESPONSE_JSON_SCHEMA = {
   additionalProperties: false,
   required: [
     'id', 'vendorId', 'projectId', 'invoiceNo', 'invoiceDate', 'dueDate', 'purchaseOrderId',
-    'goodsReceiptId', 'status', 'subtotal', 'taxAmount', 'totalAmount', 'lines'
+    'goodsReceiptId', 'status', 'subtotal', 'taxAmount', 'totalAmount', 'allocatedAmount', 'outstandingAmount', 'lines'
   ],
   properties: {
     id: UUID_JSON_SCHEMA,
@@ -178,6 +178,8 @@ const INVOICE_RESPONSE_JSON_SCHEMA = {
     subtotal: { type: 'string' },
     taxAmount: { type: 'string' },
     totalAmount: { type: 'string' },
+    allocatedAmount: { type: 'string' },
+    outstandingAmount: { type: 'string' },
     lines: { type: 'array', items: INVOICE_LINE_RESPONSE_JSON_SCHEMA }
   }
 } as const;

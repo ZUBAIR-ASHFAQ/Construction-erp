@@ -353,18 +353,30 @@ export class BudgetsJobCostService {
   async getJobCost(projectId: string) {
     await this.requireProjectPermission(new AdministrationRepository(this.db), projectId, 'job_cost.read', new Date());
     const repository = new BudgetsJobCostRepository(this.db);
-    const [currentBudget, commitments, actuals, forecastSums, forecasts] = await Promise.all([
+    const [currentBudget, commitments, actuals, materialActuals, supplierInvoiceActuals, supplierCostBasis, forecastSums, forecasts] = await Promise.all([
       repository.findLatestProjectBudgetByStatus(projectId, BUDGET_FROZEN),
       repository.sumCostCommitments(projectId),
       repository.sumCostActuals(projectId),
+      repository.sumMaterialActuals(projectId),
+      repository.sumSupplierInvoiceActuals(projectId),
+      repository.readSupplierCostBasis(projectId),
       repository.sumForecastLines(projectId),
       repository.listForecastLines(projectId)
     ]);
 
     const budgetCost = storedMoneyToMinorUnits(currentBudget?.totalAmount);
     const committedCost = storedMoneyToMinorUnits(commitments._sum.amount);
-    const actualCost = storedMoneyToMinorUnits(actuals._sum.amount);
-    const forecastCost = storedMoneyToMinorUnits(forecastSums._sum.forecastAmount);
+    const sourceActualCost = storedMoneyToMinorUnits(actuals._sum.amount);
+    const materialActualCost = storedMoneyToMinorUnits(materialActuals._sum.amount);
+    const supplierInvoiceActualCost = storedMoneyToMinorUnits(supplierInvoiceActuals._sum.amount);
+    const supplierCost = storedMoneyToMinorUnits(supplierCostBasis.invoices._sum.totalAmount)
+      + storedMoneyToMinorUnits(supplierCostBasis.directPayments._sum.amount)
+      - storedMoneyToMinorUnits(supplierCostBasis.directAllocations._sum.amount);
+    const supplierCostAlreadyPosted = materialActualCost + supplierInvoiceActualCost;
+    const supplierCostUplift = supplierCost > supplierCostAlreadyPosted ? supplierCost - supplierCostAlreadyPosted : 0n;
+    const actualCost = requireMoneyRange(sourceActualCost + supplierCostUplift);
+    const manualForecastCost = storedMoneyToMinorUnits(forecastSums._sum.forecastAmount);
+    const forecastCost = requireMoneyRange([manualForecastCost, committedCost, actualCost].reduce((highest, value) => value > highest ? value : highest, 0n));
     const variance = requireMoneyRange(budgetCost - forecastCost);
 
     return {

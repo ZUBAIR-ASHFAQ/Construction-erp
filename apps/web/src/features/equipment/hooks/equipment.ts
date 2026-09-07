@@ -7,11 +7,13 @@ import {
   getEquipmentHistory,
   listEquipment,
   recordEquipmentUsage,
+  updateEquipment,
   type AssignEquipmentInput,
   type CreateEquipmentInput,
   type CreateEquipmentMaintenanceInput,
   type ListEquipmentInput,
-  type RecordEquipmentUsageInput
+  type RecordEquipmentUsageInput,
+  type UpdateEquipmentInput
 } from '../api/equipment-api.js';
 
 const EQUIPMENT_QUERY_KEY = ['module-12', 'equipment'] as const;
@@ -39,6 +41,15 @@ export function useCreateEquipment() {
   });
 }
 
+/** Update Equipment and refresh its register and history. */
+export function useUpdateEquipment(equipmentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: UpdateEquipmentInput) => updateEquipment(equipmentId, input),
+    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
+  });
+}
+
 /** Assign Equipment and refresh its history. */
 export function useAssignEquipment(equipmentId: string) {
   const client = useQueryClient();
@@ -52,7 +63,7 @@ export function useAssignEquipment(equipmentId: string) {
 export function useEndEquipmentAssignment(equipmentId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (input: Readonly<{ assignmentId: string; endDate: string }>) => endEquipmentAssignment(equipmentId, input.assignmentId, input.endDate),
+    mutationFn: (input: Readonly<{ assignmentId: string; endDate: string; endTime?: string }>) => endEquipmentAssignment(equipmentId, input.assignmentId, input.endDate, input.endTime),
     onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
   });
 }

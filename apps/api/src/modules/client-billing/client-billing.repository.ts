@@ -90,6 +90,49 @@ export class ClientBillingRepository {
     return result._sum.amount;
   }
 
+  /** Sum posted Material actual cost for the Procurement-payment no-double-counting floor. */
+  async sumProjectMaterialActuals(projectId: string, visibility: ClientBillingVisibility, throughDate?: Date) {
+    if (!projectIsVisible(projectId, visibility)) return null;
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.costActual.aggregate({
+      where: scope.where({ projectId, category: 'material', ...(throughDate ? { postingDate: { lte: throughDate } } : {}) }),
+      _sum: { amount: true }
+    });
+    return result._sum.amount;
+  }
+
+  /** Read Supplier payable/payment cost through the claim period without duplicating allocations. */
+  async readProjectSupplierCostBasis(projectId: string, visibility: ClientBillingVisibility, throughDate?: Date) {
+    if (!projectIsVisible(projectId, visibility)) return null;
+    const scope = requireCompanyRepositoryScope();
+    const invoiceWhere = { projectId, status: 'POSTED', ...(throughDate ? { invoiceDate: { lte: throughDate } } : {}) } as const;
+    const paymentWhere = { projectId, status: 'POSTED', ...(throughDate ? { paymentDate: { lte: throughDate } } : {}) } as const;
+    const [invoices, directPayments, directAllocations] = await Promise.all([
+      this.db.supplierInvoice.aggregate({ where: scope.where(invoiceWhere), _sum: { totalAmount: true } }),
+      this.db.supplierPayment.aggregate({ where: scope.where(paymentWhere), _sum: { amount: true } }),
+      this.db.supplierPaymentAllocation.aggregate({
+        where: {
+          ...(throughDate ? { allocatedAt: { lte: throughDate } } : {}),
+          supplierInvoice: { companyId: scope.companyId, ...invoiceWhere },
+          supplierPayment: { companyId: scope.companyId, ...paymentWhere }
+        },
+        _sum: { amount: true }
+      })
+    ]);
+    return { invoices, directPayments, directAllocations };
+  }
+
+  /** Sum Supplier Invoice cost already included in source-derived actuals through the claim period. */
+  async sumProjectSupplierInvoiceActuals(projectId: string, visibility: ClientBillingVisibility, throughDate?: Date) {
+    if (!projectIsVisible(projectId, visibility)) return null;
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.costActual.aggregate({
+      where: scope.where({ projectId, sourceType: 'supplier_invoice', ...(throughDate ? { postingDate: { lte: throughDate } } : {}) }),
+      _sum: { amount: true }
+    });
+    return result._sum.amount;
+  }
+
   /** Sum source-derived actual costs by requested Stage through the claim period end. */
   async sumStageCostActuals(projectId: string, stageIds: readonly string[], visibility: ClientBillingVisibility, throughDate?: Date) {
     if (!projectIsVisible(projectId, visibility)) return [];

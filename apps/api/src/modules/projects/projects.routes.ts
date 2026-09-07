@@ -156,6 +156,18 @@ const PROJECT_COST_SUMMARY_JSON_SCHEMA = {
     variance: { type: 'string', pattern: '^-?(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }
   }
 } as const;
+const PROJECT_EXPENSE_SUMMARY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false,
+  required: ['categories', 'totalExpense', 'supplierCostAmount', 'markupPercent', 'markupAmount', 'costPlusAmount'],
+  properties: {
+    categories: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['category', 'amount'], properties: { category: { type: 'string', enum: ['material', 'labour', 'security', 'equipment', 'subcontract', 'site_expense', 'other'] }, amount: PROJECT_MONEY_JSON_SCHEMA } } },
+    totalExpense: PROJECT_MONEY_JSON_SCHEMA,
+    supplierCostAmount: PROJECT_MONEY_JSON_SCHEMA,
+    markupPercent: { anyOf: [COST_PLUS_PERCENT_JSON_SCHEMA, { type: 'null' }] },
+    markupAmount: PROJECT_MONEY_JSON_SCHEMA,
+    costPlusAmount: { anyOf: [PROJECT_MONEY_JSON_SCHEMA, { type: 'null' }] }
+  }
+} as const;
 const PROJECT_BILLING_SUMMARY_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -163,6 +175,26 @@ const PROJECT_BILLING_SUMMARY_JSON_SCHEMA = {
   properties: {
     invoiceCount: { type: 'integer', minimum: 0 },
     billedAmount: PROJECT_MONEY_JSON_SCHEMA
+  }
+} as const;
+const PROJECT_SUPPLIER_PAYMENT_SUMMARY_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['paymentCount', 'paidAmount'],
+  properties: {
+    paymentCount: { type: 'integer', minimum: 0 },
+    paidAmount: PROJECT_MONEY_JSON_SCHEMA
+  }
+} as const;
+const PROJECT_SUPPLIER_PAYABLE_SUMMARY_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['invoiceCount', 'invoicedAmount', 'allocatedAmount', 'outstandingAmount'],
+  properties: {
+    invoiceCount: { type: 'integer', minimum: 0 },
+    invoicedAmount: PROJECT_MONEY_JSON_SCHEMA,
+    allocatedAmount: PROJECT_MONEY_JSON_SCHEMA,
+    outstandingAmount: PROJECT_MONEY_JSON_SCHEMA
   }
 } as const;
 const PROJECT_RECEIPT_SUMMARY_JSON_SCHEMA = {
@@ -185,8 +217,8 @@ const PROJECT_DETAILS_SUCCESS_SCHEMA = {
       type: 'object',
       additionalProperties: false,
       required: [
-        'project', 'statusHistory', 'stageSummary', 'teamSummary', 'budgetSummary', 'costSummary',
-        'billingSummary', 'receiptSummary'
+        'project', 'statusHistory', 'stageSummary', 'teamSummary', 'budgetSummary', 'costSummary', 'expenseSummary',
+        'billingSummary', 'supplierPaymentSummary', 'supplierPayableSummary', 'receiptSummary'
       ],
       properties: {
         project: PROJECT_RESPONSE_JSON_SCHEMA,
@@ -195,7 +227,10 @@ const PROJECT_DETAILS_SUCCESS_SCHEMA = {
         teamSummary: { anyOf: [PROJECT_TEAM_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         budgetSummary: { anyOf: [PROJECT_BUDGET_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         costSummary: { anyOf: [PROJECT_COST_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
+        expenseSummary: { anyOf: [PROJECT_EXPENSE_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         billingSummary: { anyOf: [PROJECT_BILLING_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
+        supplierPaymentSummary: { anyOf: [PROJECT_SUPPLIER_PAYMENT_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
+        supplierPayableSummary: { anyOf: [PROJECT_SUPPLIER_PAYABLE_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         receiptSummary: { anyOf: [PROJECT_RECEIPT_SUMMARY_JSON_SCHEMA, { type: 'null' }] }
       }
     }
@@ -356,7 +391,10 @@ function serializeProjectDetails(result: ProjectDetails): ProjectDetailsResponse
     teamSummary: result.teamSummary,
     budgetSummary: result.budgetSummary,
     costSummary: result.costSummary,
+    expenseSummary: result.expenseSummary,
     billingSummary: result.billingSummary,
+    supplierPaymentSummary: result.supplierPaymentSummary,
+    supplierPayableSummary: result.supplierPayableSummary,
     receiptSummary: result.receiptSummary
   });
 }

@@ -272,7 +272,7 @@ export class BudgetsJobCostRepository {
     return this.db.costActual.aggregate({ where: scope.where({ projectId }), _sum: { amount: true } });
   }
 
-  /** Sum posted Material actuals used to avoid duplicating paid Procurement cost. */
+  /** Sum posted Material actuals used to avoid duplicating Supplier cost represented by stock issues. */
   async sumMaterialActuals(projectId: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.costActual.aggregate({ where: scope.where({ projectId, category: 'material' }), _sum: { amount: true } });

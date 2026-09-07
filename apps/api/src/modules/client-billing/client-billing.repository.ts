@@ -90,7 +90,7 @@ export class ClientBillingRepository {
     return result._sum.amount;
   }
 
-  /** Sum posted Material actual cost for the Procurement-payment no-double-counting floor. */
+  /** Sum posted Material actual cost for the Supplier-cost no-double-counting floor. */
   async sumProjectMaterialActuals(projectId: string, visibility: ClientBillingVisibility, throughDate?: Date) {
     if (!projectIsVisible(projectId, visibility)) return null;
     const scope = requireCompanyRepositoryScope();

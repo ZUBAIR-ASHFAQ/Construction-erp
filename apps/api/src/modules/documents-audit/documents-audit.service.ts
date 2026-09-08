@@ -583,9 +583,9 @@ export class DocumentsService {
         createdAt: document.createdAt.toISOString(),
         updatedAt: document.updatedAt.toISOString()
       })),
-      accessibleProjectIds: availableVisibility.allowedProjectIds === null
+      accessibleProjectIds: visibility.allowedProjectIds === null
         ? null
-        : [...availableVisibility.allowedProjectIds],
+        : [...visibility.allowedProjectIds],
       page,
       pageSize,
       total: result.total

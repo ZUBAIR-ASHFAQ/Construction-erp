@@ -31,11 +31,11 @@ test('B18.9 adds the simple four-part Client Receipts React feature', () => {
 });
 
 /** Confirm the browser client uses exactly the six Module 16 routes. */
-test('B18.9 keeps the exact six Client Receipts API operations', () => {
+test('Client Receipts exposes all browser API operations including correction', () => {
   const api = read(`${FEATURE}/api/client-receipts-api.ts`);
   for (const functionName of [
     'listClientReceipts', 'createClientReceipt', 'getClientReceipt',
-    'allocateClientReceipt', 'unallocateClientReceipt', 'reverseClientReceipt'
+    'allocateClientReceipt', 'unallocateClientReceipt', 'correctClientReceipt', 'reverseClientReceipt'
   ]) assert.match(api, new RegExp(`export function ${functionName}\\b`));
   assert.match(api, /ClientReceiptPaymentMethod = 'CASH' \| 'BANK'/);
   assert.match(api, /ClientReceiptType = 'ADVANCE' \| 'INVOICE_PAYMENT'/);
@@ -74,9 +74,25 @@ test('B18.9 displays source-derived Receipt balances and keeps cash separate fro
   assert.match(workspace, /receipt\.unallocatedAmount/);
   assert.match(workspace, /Advance \/ unallocated/);
   assert.match(workspace, /It is not profit/);
-  assert.match(workspace, /This screen does not treat cash received as profit/);
   assert.doesNotMatch(workspace, /Number\([^)]*amount[^)]*\)\s*-\s*Number\([^)]*allocatedAmount/);
   assert.doesNotMatch(workspace, /profitAmount|profitTotal|receivedAmount\s*[-+*/]/);
+});
+
+/** Confirm Client Payment evidence uses secure Documents linking and View opens a detail dialog. */
+test('Client Payment supports evidence upload download and modal detail', () => {
+  const workspace = read(`${FEATURE}/components/client-receipts-workspace.tsx`);
+  const page = read(`${FEATURE}/pages/client-receipts-page.tsx`);
+  assert.match(workspace, /Payment evidence \(optional\)/);
+  assert.match(workspace, /accept="image\/jpeg,image\/png,application\/pdf"/);
+  assert.match(workspace, /resourceType: 'client_receipt'/);
+  assert.match(workspace, /useUploadDocument/);
+  assert.match(workspace, /useCreateDocumentLink/);
+  assert.match(workspace, /getDocumentDownload/);
+  assert.match(workspace, /aria-labelledby="client-payment-detail-title"/);
+  assert.match(workspace, /Download evidence/);
+  assert.match(page, /documents\.upload/);
+  assert.match(page, /documents\.link/);
+  assert.match(page, /documents\.read/);
 });
 
 /** Confirm allocation uses issued Client Invoice selection and leaves authoritative outstanding on the server. */
@@ -140,9 +156,9 @@ test('B18.9 uses React Hook Form plus Zod for Receipt and allocation writes', ()
 });
 
 /** Confirm B18.9 is frontend-only and does not change backend routes or database migrations. */
-test('B18.9 changes no Client Receipts backend route or migration surface', () => {
+test('Client Receipts correction adds one bounded route and no migration', () => {
   const routes = read('apps/api/src/modules/client-receipts/client-receipts.routes.ts');
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/client-receipts/g) ?? []).length, 6);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/client-receipts/g) ?? []).length, 7);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   assert.equal(migrations.some((name) => /b18_9|client_receipts.*react/i.test(name)), false);
 });

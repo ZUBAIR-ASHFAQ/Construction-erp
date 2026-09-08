@@ -63,7 +63,10 @@ export type CreateClientReceiptInput = Readonly<{
   cashBankAccountId: string;
   reference?: string | null;
   receiptType: ClientReceiptType;
+  clientInvoiceId?: string | null;
 }>;
+
+export type CorrectClientReceiptInput = CreateClientReceiptInput;
 
 export type AllocateClientReceiptInput = Readonly<{
   clientInvoiceId: string;
@@ -96,6 +99,15 @@ export function listClientReceipts(input: ListClientReceiptsInput = {}): Promise
 /** Create and atomically post one Client Receipt. */
 export function createClientReceipt(input: CreateClientReceiptInput): Promise<ClientReceipt> {
   return authenticatedRequest<ClientReceipt>('client-receipts', {
+    method: 'POST',
+    headers: commandHeaders(),
+    body: JSON.stringify(input)
+  });
+}
+
+/** Correct a posted receipt through an atomic reverse-and-replace command. */
+export function correctClientReceipt(receiptId: string, input: CorrectClientReceiptInput): Promise<ClientReceipt> {
+  return authenticatedRequest<ClientReceipt>(`client-receipts/${encodeURIComponent(receiptId)}/correct`, {
     method: 'POST',
     headers: commandHeaders(),
     body: JSON.stringify(input)

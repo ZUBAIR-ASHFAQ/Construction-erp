@@ -28,6 +28,8 @@ const CLAIM_SEQUENCE_KEY = 'progress-claim';
 const INVOICE_SEQUENCE_KEY = 'client-invoice';
 const CLIENT_RECEIVABLE_ACCOUNT_CODE = 'CLIENT-RECEIVABLE';
 const CLIENT_REVENUE_ACCOUNT_CODE = 'CLIENT-REVENUE';
+const CLIENT_RECEIVABLE_ACCOUNT_NAME = 'Client Receivable';
+const CLIENT_REVENUE_ACCOUNT_NAME = 'Client Revenue';
 const ACTIVE = 'ACTIVE';
 const ZERO_MONEY = '0.00';
 const MAX_MINOR_UNITS = 999_999_999_999_999_999n;
@@ -189,8 +191,12 @@ function claimLineResponse(line: any) {
   };
 }
 
-/** Convert one persisted invoice into the API response. */
+/** Convert one persisted invoice into the API response with receipt-allocation paid and due balances. */
 function invoiceResponse(invoice: any) {
+  const total = moneyToMinorUnits(invoice.totalAmount);
+  const allocated = (invoice.receiptAllocations ?? [])
+    .reduce((sum: bigint, allocation: any) => sum + moneyToMinorUnits(allocation.amount), 0n);
+  if (allocated > total) throw new ValidationError({ message: 'Client Invoice allocations exceed the persisted invoice total.' });
   return {
     id: invoice.id,
     projectId: invoice.projectId,
@@ -202,7 +208,9 @@ function invoiceResponse(invoice: any) {
     status: invoice.status,
     subtotal: minorUnitsToMoney(moneyToMinorUnits(invoice.subtotal)),
     taxAmount: minorUnitsToMoney(moneyToMinorUnits(invoice.taxAmount)),
-    totalAmount: minorUnitsToMoney(moneyToMinorUnits(invoice.totalAmount)),
+    totalAmount: minorUnitsToMoney(total),
+    allocatedAmount: minorUnitsToMoney(allocated),
+    outstandingAmount: minorUnitsToMoney(total - allocated),
     lines: (invoice.lines ?? []).map((line: any) => ({
       id: line.id,
       stageId: line.stageId,
@@ -545,9 +553,21 @@ export class ClientBillingService {
 
   /** Resolve the configured Client receivable and revenue accounts required by invoice posting. */
   private async requireInvoicePostingAccounts(repository: ClientBillingRepository) {
-    const [receivable, revenue] = await Promise.all([
+    const [existingReceivable, existingRevenue] = await Promise.all([
       repository.findGlAccountByCode(CLIENT_RECEIVABLE_ACCOUNT_CODE),
       repository.findGlAccountByCode(CLIENT_REVENUE_ACCOUNT_CODE)
+    ]);
+    const [receivable, revenue] = await Promise.all([
+      existingReceivable ?? repository.ensureBillingControlAccount({
+        accountCode: CLIENT_RECEIVABLE_ACCOUNT_CODE,
+        name: CLIENT_RECEIVABLE_ACCOUNT_NAME,
+        accountType: 'ASSET'
+      }),
+      existingRevenue ?? repository.ensureBillingControlAccount({
+        accountCode: CLIENT_REVENUE_ACCOUNT_CODE,
+        name: CLIENT_REVENUE_ACCOUNT_NAME,
+        accountType: 'REVENUE'
+      })
     ]);
     if (!receivable || receivable.status !== ACTIVE || receivable.accountType.toUpperCase() !== 'ASSET') {
       throw new ValidationError({ message: `Configure active asset account ${CLIENT_RECEIVABLE_ACCOUNT_CODE} before issuing Client Invoices.` });
@@ -604,6 +624,36 @@ export class ClientBillingService {
       ]
     });
     return { sourceKey, alreadyPosted: Boolean(existingJournal) };
+  }
+
+  /** Ensure a direct Client Invoice is posted to Finance only when downstream cash is first allocated. */
+  async ensureDirectInvoiceFinancePostingInTransaction(tx: TransactionClient, invoice: any) {
+    if (invoice.claimId !== null) return null;
+    const repository = new ClientBillingRepository(tx);
+    const accounts = await this.requireInvoicePostingAccounts(repository);
+    const finance = await this.postInvoiceToFinance(tx, invoice, accounts.receivable.id, accounts.revenue.id);
+    if (!finance.alreadyPosted) {
+      await recordAudit(tx, {
+        action: 'client_invoice.posted',
+        entityType: 'client_invoice',
+        entityId: invoice.id,
+        after: { status: invoice.status, financeSourceKey: finance.sourceKey }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'client_invoice.posted',
+        resourceType: 'client_invoice',
+        resourceId: invoice.id,
+        payload: {
+          invoiceId: invoice.id,
+          claimId: null,
+          projectId: invoice.projectId,
+          clientId: invoice.clientId,
+          totalAmount: minorUnitsToMoney(moneyToMinorUnits(invoice.totalAmount)),
+          financeSourceKey: finance.sourceKey
+        }
+      });
+    }
+    return finance.sourceKey;
   }
 
   /** Create one invoice from a finalized claim exactly once. */
@@ -680,7 +730,7 @@ export class ClientBillingService {
     return result.response.body;
   }
 
-  /** Validate, persist and post one direct Client Invoice to Finance / AR atomically. */
+  /** Validate and persist one direct Client Invoice without creating a Finance / AR journal. */
   private async createDirectInvoiceOnce(tx: TransactionClient, input: CreateDirectClientInvoiceBody) {
     const now = new Date();
     const administration = new AdministrationRepository(tx);
@@ -692,7 +742,6 @@ export class ClientBillingService {
     requireWritableProject(project.status);
     await this.requireClaimStages(repository, project.id, input.lines, visibility);
 
-    const accounts = await this.requireInvoicePostingAccounts(repository);
     const invoiceDate = inputDate(input.invoiceDate);
     const dueDate = input.dueDate ? inputDate(input.dueDate) : null;
     if (dueDate) requireInvoiceDateOrder(invoiceDate, dueDate);
@@ -714,16 +763,17 @@ export class ClientBillingService {
         stageId: line.stageId ?? null,
         description: line.description.trim(),
         amount: minorUnitsToMoney(moneyToMinorUnits(line.amount)),
-        revenueAccountId: accounts.revenue.id
+        revenueAccountId: null
       }))
     });
     const response = invoiceResponse(invoice);
     await recordAudit(tx, { action: 'client_invoice.created', entityType: 'client_invoice', entityId: invoice.id, after: response });
-    const finance = await this.postInvoiceToFinance(tx, invoice, accounts.receivable.id, accounts.revenue.id);
-    await recordAudit(tx, { action: 'client_invoice.posted', entityType: 'client_invoice', entityId: invoice.id, after: { status: invoice.status, financeSourceKey: finance.sourceKey } });
-    const eventPayload = { invoiceId: invoice.id, claimId: null, projectId: project.id, clientId: project.clientId, totalAmount: response.totalAmount, financeSourceKey: finance.sourceKey };
-    await recordOutboxEvent(tx, { eventType: 'client_invoice.created', resourceType: 'client_invoice', resourceId: invoice.id, payload: eventPayload });
-    await recordOutboxEvent(tx, { eventType: 'client_invoice.posted', resourceType: 'client_invoice', resourceId: invoice.id, payload: eventPayload });
+    await recordOutboxEvent(tx, {
+      eventType: 'client_invoice.created',
+      resourceType: 'client_invoice',
+      resourceId: invoice.id,
+      payload: { invoiceId: invoice.id, claimId: null, projectId: project.id, clientId: project.clientId, totalAmount: response.totalAmount }
+    });
     return { statusCode: 201, body: response };
   }
 

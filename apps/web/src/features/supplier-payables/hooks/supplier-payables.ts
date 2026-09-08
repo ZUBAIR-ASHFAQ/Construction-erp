@@ -19,11 +19,26 @@ import {
 const SUPPLIER_PAYABLES_QUERY_KEY = ['module-17', 'supplier-payables'] as const;
 const FINANCE_QUERY_KEY = ['final21', 'finance'] as const;
 const JOB_COST_QUERY_KEY = ['module-9', 'project-budget-cost'] as const;
+const VENDOR_MASTER_QUERY_KEY = ['vendors-subcontractors'] as const;
+const PROJECTS_QUERY_KEY = ['module-6', 'projects'] as const;
+const PROJECT_PROFITABILITY_QUERY_KEY = ['module-19', 'project-profitability'] as const;
+const DASHBOARD_QUERY_KEY = ['module-1', 'dashboard'] as const;
+
+/** Refresh every browser read model whose Supplier payable balance is derived from invoice allocations. */
+async function refreshSupplierPayableReads(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ queryKey: SUPPLIER_PAYABLES_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: VENDOR_MASTER_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: PROJECT_PROFITABILITY_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY })
+  ]);
+}
 
 /** Refresh Supplier Payables and dependent Finance/Job Cost reads after a posting command. */
 async function refreshPostingReads(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
   await Promise.all([
-    queryClient.invalidateQueries({ queryKey: SUPPLIER_PAYABLES_QUERY_KEY }),
+    refreshSupplierPayableReads(queryClient),
     queryClient.invalidateQueries({ queryKey: FINANCE_QUERY_KEY }),
     queryClient.invalidateQueries({ queryKey: JOB_COST_QUERY_KEY })
   ]);
@@ -94,7 +109,7 @@ export function useAllocateSupplierPayment(paymentId: string | null) {
       if (!paymentId) throw new Error('Select a posted Supplier Payment before allocating.');
       return allocateSupplierPayment(paymentId, input);
     },
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: SUPPLIER_PAYABLES_QUERY_KEY })
+    onSuccess: async () => refreshSupplierPayableReads(queryClient)
   });
 }
 

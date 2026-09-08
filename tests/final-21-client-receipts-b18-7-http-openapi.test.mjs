@@ -11,7 +11,7 @@ function read(relativePath) {
   return readFileSync(new URL(relativePath, ROOT), 'utf8');
 }
 
-test('B18.7 publishes exactly the six Final-21 Client Receipts routes', () => {
+test('Client Receipts publishes the seven bounded HTTP routes', () => {
   const routes = read(ROUTES);
   const routeCalls = [...routes.matchAll(/app\.(get|post|patch|put|delete)\('([^']+)'/g)]
     .map((match) => `${match[1].toUpperCase()} ${match[2]}`);
@@ -21,6 +21,7 @@ test('B18.7 publishes exactly the six Final-21 Client Receipts routes', () => {
     'GET /api/v1/client-receipts/:id',
     'POST /api/v1/client-receipts/:id/allocations',
     'POST /api/v1/client-receipts/:id/unallocate',
+    'POST /api/v1/client-receipts/:id/correct',
     'POST /api/v1/client-receipts/:id/reverse'
   ]);
 });
@@ -37,25 +38,25 @@ test('B18.7 registers Client Receipts only when the database runtime dependency 
 test('B18.7 authenticates every route against the configured database', () => {
   const routes = read(ROUTES);
   assert.match(routes, /authenticateRequest\(request, options\.database\)/);
-  assert.equal((routes.match(/preHandler: \[authenticate\]/g) ?? []).length, 6);
-  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 6);
+  assert.equal((routes.match(/preHandler: \[authenticate\]/g) ?? []).length, 7);
+  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 7);
 });
 
 test('B18.7 documents unique OpenAPI operation ids and stable success envelopes', () => {
   const routes = read(ROUTES);
   const operations = [...routes.matchAll(/operationId: '([^']+)'/g)].map((match) => match[1]);
-  assert.equal(operations.length, 6);
-  assert.equal(new Set(operations).size, 6);
+  assert.equal(operations.length, 7);
+  assert.equal(new Set(operations).size, 7);
   assert.match(routes, /function dataEnvelope/);
   assert.match(routes, /200: dataEnvelope\(RECEIPT_LIST\)/);
-  assert.equal((routes.match(/201: dataEnvelope\(RECEIPT\)/g) ?? []).length, 2);
+  assert.equal((routes.match(/201: dataEnvelope\(RECEIPT\)/g) ?? []).length, 3);
   assert.ok((routes.match(/200: dataEnvelope\(RECEIPT\)/g) ?? []).length >= 3);
 });
 
 test('B18.7 documents bounded filters, params and command bodies', () => {
   const routes = read(ROUTES);
   assert.match(routes, /querystring: LIST_QUERY/);
-  assert.equal((routes.match(/params: ID_PARAMS/g) ?? []).length, 4);
+  assert.equal((routes.match(/params: ID_PARAMS/g) ?? []).length, 5);
   assert.match(routes, /body: CREATE_BODY/);
   assert.match(routes, /body: ALLOCATE_BODY/);
   assert.match(routes, /body: UNALLOCATE_BODY/);
@@ -68,6 +69,7 @@ test('B18.7 uses the authoritative Zod schemas at every request and response bou
   for (const symbol of [
     'listClientReceiptsQuerySchema',
     'createClientReceiptBodySchema',
+    'correctClientReceiptBodySchema',
     'clientReceiptIdParamsSchema',
     'allocateClientReceiptBodySchema',
     'unallocateClientReceiptBodySchema',
@@ -78,12 +80,12 @@ test('B18.7 uses the authoritative Zod schemas at every request and response bou
   assert.match(routes, /function parseRequest/);
 });
 
-test('B18.7 requires Foundation idempotency for all four write commands and not for reads', () => {
+test('Client Receipts requires Foundation idempotency for all five write commands and not for reads', () => {
   const routes = read(ROUTES);
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS/g) ?? []).length, 4);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS/g) ?? []).length, 5);
   assert.match(routes, /'idempotency-key'/);
   assert.match(routes, /maxLength: 200/);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 4);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 5);
 });
 
 test('B18.7 documents the shared error envelope and all five stable Module 16 business codes', () => {

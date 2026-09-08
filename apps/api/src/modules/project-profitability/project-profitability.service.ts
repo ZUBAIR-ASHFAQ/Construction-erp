@@ -53,7 +53,7 @@ type FinancialSourceBundle = Readonly<{
     clientInvoiceId: string;
     stageId: string | null;
     amount: DecimalLike;
-    invoice: Readonly<{ projectId: string; invoiceDate: Date }>;
+    invoice: Readonly<{ projectId: string; claimId: string | null; invoiceDate: Date }>;
   }>[];
   revenueSources: readonly Readonly<{
     projectId: string | null;
@@ -202,12 +202,16 @@ function receiptSourcesFor(
   });
 }
 
-/** Require every billed Client Invoice to have its Finance-confirmed revenue source Journal. */
+/** Require every claim-backed Client Invoice to have its Finance-confirmed revenue source Journal. */
 function requireRecognizedRevenueOwnership(
-  billedSources: readonly Readonly<{ clientInvoiceId: string }>[],
+  billedSources: readonly Readonly<{ clientInvoiceId: string; invoice: Readonly<{ claimId: string | null }> }>[],
   revenueSources: readonly Readonly<{ journal: Readonly<{ sourceType: string; sourceId: string | null }> }>[]
 ): void {
-  const billedInvoiceIds = new Set(billedSources.map((source) => source.clientInvoiceId));
+  const billedInvoiceIds = new Set(
+    billedSources
+      .filter((source) => source.invoice.claimId !== null)
+      .map((source) => source.clientInvoiceId)
+  );
   if (billedInvoiceIds.size === 0) return;
   const financeInvoiceIds = new Set(
     revenueSources
@@ -281,7 +285,7 @@ function buildFinancialValues(input: Readonly<{
 /** Derive one Project or Stage financial bucket from already-scoped source rows. */
 function calculateFinancialBucket(input: Readonly<{
   actualCostSources: readonly Readonly<{ amount: DecimalLike }>[];
-  billedSources: readonly Readonly<{ clientInvoiceId: string; amount: DecimalLike }>[];
+  billedSources: readonly Readonly<{ clientInvoiceId: string; amount: DecimalLike; invoice: Readonly<{ claimId: string | null }> }>[];
   revenueSources: readonly Readonly<{ debit: DecimalLike; credit: DecimalLike; journal: Readonly<{ sourceType: string; sourceId: string | null }> }>[];
   receiptSources: readonly ReceiptFinanceJournal[];
   supplierPayableSources: readonly Readonly<{ totalAmount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];

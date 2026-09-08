@@ -131,7 +131,8 @@ test('Final-21 Client Billing Project -> Stage -> Claim -> Invoice browser workf
 
   await page.getByRole('button', { name: 'Client Billing' }).click();
   await expect(page.getByRole('heading', { name: 'Client Billing' })).toBeVisible();
-  await page.getByLabel('Allowed Project').selectOption(PROJECT_ID);
+  await page.getByLabel('Client').selectOption(CLIENT_ID);
+  await page.getByLabel('Project').selectOption(PROJECT_ID);
   await expect(page.getByText('Fixed Price', { exact: false }).first()).toBeVisible();
 
   const settingsForm = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Billing settings' }) }).locator('form');

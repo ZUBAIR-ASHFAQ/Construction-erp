@@ -12,6 +12,7 @@ export {
   clientReceiptAllocationResponseSchema,
   clientReceiptIdParamsSchema,
   clientReceiptResponseSchema,
+  correctClientReceiptBodySchema,
   createClientReceiptBodySchema,
   createClientReceiptError,
   listClientReceiptsQuerySchema,
@@ -26,6 +27,7 @@ export type {
   ClientReceiptPermissionCode,
   ClientReceiptStatus,
   ClientReceiptType,
+  CorrectClientReceiptBody,
   CreateClientReceiptBody,
   ListClientReceiptsQuery,
   UnallocateClientReceiptBody

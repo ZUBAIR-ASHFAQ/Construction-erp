@@ -36,9 +36,20 @@ function projectIsVisible(projectId: string, visibility: ClientBillingVisibility
   return visibility.allowedProjectIds === null || visibility.allowedProjectIds.includes(projectId);
 }
 
+/** Keep invoice reads deterministic and include active receipt allocations needed for paid/due balances. */
+function invoiceInclude() {
+  return {
+    lines: { orderBy: [{ id: 'asc' as const }] },
+    receiptAllocations: {
+      where: { receipt: { status: 'POSTED' as const } },
+      select: { amount: true }
+    }
+  };
+}
+
 /** Keep claim reads deterministic and include only their business-owned lines and invoice. */
 function claimInclude() {
-  return { lines: { orderBy: [{ id: 'asc' as const }] }, invoice: { include: { lines: true } } };
+  return { lines: { orderBy: [{ id: 'asc' as const }] }, invoice: { include: invoiceInclude() } };
 }
 
 export class ClientBillingRepository {
@@ -203,6 +214,23 @@ export class ClientBillingRepository {
     });
   }
 
+  /** Ensure one server-owned Client Billing control account exists without overwriting configured accounts. */
+  async ensureBillingControlAccount(input: Readonly<{ accountCode: string; name: string; accountType: string }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.glAccount.upsert({
+      where: { companyId_accountCode: { companyId: scope.companyId, accountCode: input.accountCode } },
+      create: scope.createData({
+        accountCode: input.accountCode,
+        name: input.name,
+        accountType: input.accountType,
+        parentId: null,
+        status: 'ACTIVE'
+      }),
+      update: {},
+      select: { id: true, accountCode: true, accountType: true, status: true }
+    });
+  }
+
   /** Read issued/posted Client Invoice totals for one Client inside trusted Project visibility. */
   async readClientBillingSummary(clientId: string, visibility: ClientBillingVisibility, projectId?: string) {
     const scope = requireCompanyRepositoryScope();
@@ -362,7 +390,7 @@ export class ClientBillingRepository {
   /** Find one invoice by claim so invoice creation remains one-to-one and idempotent. */
   async findInvoiceByClaim(claimId: string, visibility: ClientBillingVisibility) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.clientInvoice.findFirst({ where: scope.where({ claimId, ...projectWhere(visibility) }), include: { lines: true } });
+    return this.db.clientInvoice.findFirst({ where: scope.where({ claimId, ...projectWhere(visibility) }), include: invoiceInclude() });
   }
 
   /** Create one issued Client Invoice from either a finalized claim or direct entry. */
@@ -398,7 +426,7 @@ export class ClientBillingRepository {
           revenueAccountId: line.revenueAccountId
         })) }
       }),
-      include: { lines: true }
+      include: invoiceInclude()
     });
   }
 
@@ -427,7 +455,7 @@ export class ClientBillingRepository {
         : {})
     });
     const [items, total] = await Promise.all([
-      this.db.clientInvoice.findMany({ where, include: { lines: true }, orderBy: [{ invoiceDate: 'desc' }, { invoiceNo: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.clientInvoice.findMany({ where, include: invoiceInclude(), orderBy: [{ invoiceDate: 'desc' }, { invoiceNo: 'desc' }], skip: input.skip, take: input.take }),
       this.db.clientInvoice.count({ where })
     ]);
     return { items, total };
@@ -436,6 +464,6 @@ export class ClientBillingRepository {
   /** Find one invoice inside company and project visibility. */
   async findInvoice(invoiceId: string, visibility: ClientBillingVisibility) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.clientInvoice.findFirst({ where: scope.where({ id: invoiceId, ...projectWhere(visibility) }), include: { lines: true } });
+    return this.db.clientInvoice.findFirst({ where: scope.where({ id: invoiceId, ...projectWhere(visibility) }), include: invoiceInclude() });
   }
 }

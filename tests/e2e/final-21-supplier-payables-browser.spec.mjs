@@ -170,7 +170,8 @@ test('Final-21 Supplier Payables invoice, payment, allocation and aging browser 
   await page.getByRole('button', { name: 'Payments' }).click();
   const paymentForm = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'New Supplier Payment' }) }).locator('form');
   await paymentForm.getByLabel('Vendor').selectOption(VENDOR_ID);
-  await paymentForm.getByLabel('Project (optional)').selectOption(PROJECT_ID);
+  await paymentForm.getByLabel('Project (optional)').selectOption('');
+  await paymentForm.getByLabel('Invoice (optional)').selectOption('');
   await paymentForm.getByLabel('Payment date').fill('2026-08-29');
   await paymentForm.getByLabel('Amount').fill('400.00');
   await paymentForm.getByLabel('Cash / Bank account').selectOption(BANK_ID);
@@ -181,9 +182,14 @@ test('Final-21 Supplier Payables invoice, payment, allocation and aging browser 
   await expect(paymentRow).toContainText('POSTED');
   await paymentRow.getByRole('button', { name: 'Allocate' }).click();
   const allocationForm = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Allocate SP-00001' }) }).locator('form');
-  await allocationForm.getByLabel('Posted invoice with outstanding').selectOption({ label: /SUP-BROWSER-001/ });
+  await allocationForm.getByLabel('Pending invoice').selectOption({ label: /SUP-BROWSER-001/ });
   await allocationForm.getByLabel('Allocation amount').fill('400.00');
   await allocationForm.getByRole('button', { name: 'Allocate payment' }).click();
+
+  await page.getByRole('button', { name: 'Invoices' }).click();
+  const allocatedInvoiceRow = page.getByRole('row').filter({ hasText: 'SUP-BROWSER-001' }).first();
+  await expect(allocatedInvoiceRow).toContainText('400.00');
+  await expect(allocatedInvoiceRow).toContainText('600.00');
 
   await page.getByRole('button', { name: 'Outstanding & Aging' }).click();
   const agingCard = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Supplier Outstanding & Aging' }) });

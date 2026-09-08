@@ -126,10 +126,10 @@ test('B18.8 adds client_receipt to Module 21 with same-Project read authorizatio
   assert.match(documentService, /document\.projectId && resource\.projectId && document\.projectId !== resource\.projectId/);
 });
 
-test('B18.8 keeps the exact six Client Receipts routes and leaves React implementation to B18.9', () => {
+test('Client Receipts keeps the bounded route surface after adding correction', () => {
   const routeCalls = [...receiptRoutes.matchAll(/app\.(get|post|patch|put|delete)\('([^']+)'/g)];
   const routePaths = routeCalls.map((match) => match[2]);
-  assert.equal(routeCalls.length, 6);
+  assert.equal(routeCalls.length, 7);
   assert.equal(routePaths.some((routePath) => /documents|summary|financials/.test(routePath)), false);
   assert.equal(read('acceptance-evidence/pass-b18-8-client-receipts-reconciliation-documents.json').includes('B18.9 Client Receipts React completion'), true);
 });

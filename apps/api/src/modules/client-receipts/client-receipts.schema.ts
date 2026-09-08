@@ -28,6 +28,7 @@ export const CLIENT_RECEIPT_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/client-receipts/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/client-receipts/:id/allocations' }),
   Object.freeze({ method: 'POST', route: '/api/v1/client-receipts/:id/unallocate' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/client-receipts/:id/correct' }),
   Object.freeze({ method: 'POST', route: '/api/v1/client-receipts/:id/reverse' })
 ] as const);
 
@@ -128,8 +129,12 @@ export const createClientReceiptBodySchema = z.object({
   paymentMethod: paymentMethodSchema,
   cashBankAccountId: uuidSchema,
   reference: referenceSchema.nullable().optional(),
-  receiptType: receiptTypeSchema
+  receiptType: receiptTypeSchema,
+  clientInvoiceId: uuidSchema.nullable().optional()
 }).strict();
+
+/** Validate an accounting-safe correction; its replacement Receipt uses the create contract. */
+export const correctClientReceiptBodySchema = createClientReceiptBodySchema;
 
 /** Validate one Invoice allocation command without accepting server-owned allocation metadata. */
 export const allocateClientReceiptBodySchema = z.object({
@@ -202,5 +207,6 @@ export function createClientReceiptError(code: ClientReceiptErrorCode): AppError
 
 export type ListClientReceiptsQuery = z.infer<typeof listClientReceiptsQuerySchema>;
 export type CreateClientReceiptBody = z.infer<typeof createClientReceiptBodySchema>;
+export type CorrectClientReceiptBody = z.infer<typeof correctClientReceiptBodySchema>;
 export type AllocateClientReceiptBody = z.infer<typeof allocateClientReceiptBodySchema>;
 export type UnallocateClientReceiptBody = z.infer<typeof unallocateClientReceiptBodySchema>;

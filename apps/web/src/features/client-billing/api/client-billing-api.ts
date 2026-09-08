@@ -41,6 +41,8 @@ export type ClientInvoice = Readonly<{
   subtotal: string;
   taxAmount: string;
   totalAmount: string;
+  allocatedAmount: string;
+  outstandingAmount: string;
   lines: ClientInvoiceLine[];
 }>;
 
@@ -134,7 +136,7 @@ export function createClientInvoice(claimId: string, input: CreateInvoiceInput, 
   });
 }
 
-/** Create, issue and Finance-post a manually entered Client Invoice. */
+/** Create and issue a manually entered Client Invoice without immediate Finance posting. */
 export function createDirectClientInvoice(input: CreateDirectClientInvoiceInput, idempotencyKey: string): Promise<ClientInvoice> {
   return authenticatedRequest<ClientInvoice>('client-billing/invoices', {
     method: 'POST', headers: commandHeaders(idempotencyKey), body: JSON.stringify(input)

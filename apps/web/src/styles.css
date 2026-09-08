@@ -5306,6 +5306,32 @@ body,
   text-align: center;
 }
 
+/* Keep Client Invoice financial facts aligned and readable inside the detail dialog. */
+.client-invoice-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.client-payment-summary-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.client-invoice-summary-grid > div:nth-last-child(-n + 3) {
+  border-color: #cbdcf7;
+  background: #f2f7ff;
+}
+
+@media (max-width: 760px) {
+  .client-invoice-summary-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .client-payment-summary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .equipment-workflow-bar {
   display: flex;
   align-items: center;

@@ -21,11 +21,11 @@ test('B18.10 freezes the simple Client Receipts module structure', () => {
   assert.deepEqual(readdirSync(path.join(ROOT, FEATURE)).sort(), ['api', 'components', 'hooks', 'pages']);
 });
 
-test('B18.10 freezes exactly six Client Receipts HTTP operations', () => {
+test('Client Receipts exposes seven bounded HTTP operations including correction', () => {
   const routes = read(`${MODULE}/client-receipts.routes.ts`);
-  assert.equal(count(routes, /app\.(?:get|post|put|patch|delete)\('/g), 6);
-  for (const operationId of ['listClientReceipts', 'createClientReceipt', 'getClientReceipt', 'allocateClientReceipt', 'unallocateClientReceipt', 'reverseClientReceipt']) assert.match(routes, new RegExp(`operationId: '${operationId}'`));
-  assert.equal(count(routes, /headers: IDEMPOTENCY_HEADERS/g), 4);
+  assert.equal(count(routes, /app\.(?:get|post|put|patch|delete)\('/g), 7);
+  for (const operationId of ['listClientReceipts', 'createClientReceipt', 'getClientReceipt', 'allocateClientReceipt', 'unallocateClientReceipt', 'correctClientReceipt', 'reverseClientReceipt']) assert.match(routes, new RegExp(`operationId: '${operationId}'`));
+  assert.equal(count(routes, /headers: IDEMPOTENCY_HEADERS/g), 5);
 });
 
 test('B18.10 freezes Client Receipts persistence and adds no migration', () => {

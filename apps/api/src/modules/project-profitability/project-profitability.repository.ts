@@ -184,7 +184,7 @@ export class ProjectProfitabilityRepository {
         clientInvoiceId: true,
         stageId: true,
         amount: true,
-        invoice: { select: { projectId: true, invoiceDate: true, status: true } }
+        invoice: { select: { projectId: true, claimId: true, invoiceDate: true, status: true } }
       },
       orderBy: [{ clientInvoiceId: 'asc' }, { id: 'asc' }]
     });

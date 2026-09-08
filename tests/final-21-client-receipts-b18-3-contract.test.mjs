@@ -43,14 +43,15 @@ test('B18.3 freezes exactly the five stable Module 16 business errors', () => {
   assert.equal((section.match(/'RECEIPT_|'ALLOCATION_/g) ?? []).length, 5);
 });
 
-test('B18.3 keeps exactly the six required Client Receipt HTTP routes', () => {
+test('Client Receipts keeps the seven bounded HTTP routes including accounting-safe correction', () => {
   const schema = read(SCHEMA);
   const routes = schema.match(/method: '(?:GET|POST|PATCH|PUT|DELETE)', route: '\/api\/v1\/client-receipts/g) ?? [];
-  assert.equal(routes.length, 6);
+  assert.equal(routes.length, 7);
   assert.match(schema, /route: '\/api\/v1\/client-receipts' \}/);
   assert.match(schema, /route: '\/api\/v1\/client-receipts\/:id' \}/);
   assert.match(schema, /route: '\/api\/v1\/client-receipts\/:id\/allocations' \}/);
   assert.match(schema, /route: '\/api\/v1\/client-receipts\/:id\/unallocate' \}/);
+  assert.match(schema, /route: '\/api\/v1\/client-receipts\/:id\/correct' \}/);
   assert.match(schema, /route: '\/api\/v1\/client-receipts\/:id\/reverse' \}/);
   assert.doesNotMatch(schema, /method: 'PATCH'|method: 'PUT'|method: 'DELETE'/);
 });
@@ -87,13 +88,13 @@ test('B18.3 receipt creation accepts only business inputs and never trusts serve
   ]) assert.equal(body.includes(forbidden), false, `receipt create must not accept ${forbidden}`);
 });
 
-test('B18.3 separates receipt posting from allocation, unallocation and reversal commands', () => {
+test('B18.3 keeps allocation, unallocation and reversal commands while receipt creation may optionally apply to one invoice', () => {
   const schema = read(SCHEMA);
   assert.match(schema, /allocateClientReceiptBodySchema = z\.object\(\{[\s\S]*clientInvoiceId: uuidSchema,[\s\S]*amount: exactPositiveMoneySchema/);
   assert.match(schema, /unallocateClientReceiptBodySchema = z\.object\(\{[\s\S]*allocationId: uuidSchema/);
   assert.match(schema, /reverseClientReceiptBodySchema = z\.object\(\{\}\)\.strict\(\)/);
   const createBody = schema.match(/createClientReceiptBodySchema = z\.object\(\{[\s\S]*?\n\}\)\.strict\(\)/)?.[0] ?? '';
-  assert.doesNotMatch(createBody, /clientInvoiceId:/);
+  assert.match(createBody, /clientInvoiceId: uuidSchema\.nullable\(\)\.optional\(\)/);
 });
 
 test('B18.3 marks authority totals and allocation metadata as server-owned fields', () => {

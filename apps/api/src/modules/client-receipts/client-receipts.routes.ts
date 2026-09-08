@@ -8,6 +8,7 @@ import {
   allocateClientReceiptBodySchema,
   clientReceiptIdParamsSchema,
   clientReceiptResponseSchema,
+  correctClientReceiptBodySchema,
   createClientReceiptBodySchema,
   listClientReceiptsQuerySchema,
   listClientReceiptsResponseSchema,
@@ -44,7 +45,8 @@ const CREATE_BODY = {
   properties: {
     clientId: UUID, projectId: UUID, stageId: NULLABLE_UUID, receiptDate: DATE, amount: POSITIVE_MONEY,
     paymentMethod: PAYMENT_METHOD, cashBankAccountId: UUID,
-    reference: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] }, receiptType: RECEIPT_TYPE
+    reference: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] }, receiptType: RECEIPT_TYPE,
+    clientInvoiceId: NULLABLE_UUID
   }
 } as const;
 const ALLOCATE_BODY = { type: 'object', additionalProperties: false, required: ['clientInvoiceId', 'amount'], properties: { clientInvoiceId: UUID, amount: POSITIVE_MONEY } } as const;
@@ -105,7 +107,7 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return key.trim();
 }
 
-/** Register exactly the six Final-21 Client Receipts routes with complete HTTP/OpenAPI contracts. */
+/** Register the bounded Client Receipts routes with complete HTTP/OpenAPI contracts. */
 export async function registerClientReceiptsRoutes(app: FastifyInstance, options: ClientReceiptsRoutesOptions): Promise<void> {
   const service = new ClientReceiptsService(options.database);
 
@@ -154,6 +156,16 @@ export async function registerClientReceiptsRoutes(app: FastifyInstance, options
     const params = parseRequest(clientReceiptIdParamsSchema, request.params, 'params');
     const body = parseRequest(unallocateClientReceiptBodySchema, request.body, 'body');
     return { data: clientReceiptResponseSchema.parse(await service.unallocateClientReceipt(params.id, body, readIdempotencyKey(request))) };
+  });
+
+  app.post('/api/v1/client-receipts/:id/correct', {
+    preHandler: [authenticate],
+    schema: { tags: ['Client Receipts'], operationId: 'correctClientReceipt', summary: 'Reverse and replace one posted Client Receipt', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS, params: ID_PARAMS, body: CREATE_BODY, response: { 201: dataEnvelope(RECEIPT), ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    const params = parseRequest(clientReceiptIdParamsSchema, request.params, 'params');
+    const body = parseRequest(correctClientReceiptBodySchema, request.body, 'body');
+    const data = clientReceiptResponseSchema.parse(await service.correctClientReceipt(params.id, body, readIdempotencyKey(request)));
+    return reply.code(201).send({ data });
   });
 
   app.post('/api/v1/client-receipts/:id/reverse', {

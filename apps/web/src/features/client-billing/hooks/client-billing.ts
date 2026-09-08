@@ -4,6 +4,7 @@ import {
   createClientInvoice,
   createDirectClientInvoice,
   finalizeBillingClaim,
+  getClientInvoice,
   getBillingSettings,
   listBillingClaims,
   listClientInvoices,
@@ -94,16 +95,31 @@ export function useCreateClientInvoice() {
   });
 }
 
-/** Create a direct Client Invoice and refresh billing, Stage and Finance reads. */
+/** Create a direct Client Invoice and refresh only source reads changed by invoice persistence. */
 export function useCreateDirectClientInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateDirectClientInvoiceInput) => createDirectClientInvoice(input, newIdempotencyKey()),
-    async onSuccess() { await invalidateInvoiceEffects(queryClient); }
+    async onSuccess() {
+      await Promise.all([
+        invalidateClientBilling(queryClient),
+        queryClient.invalidateQueries({ queryKey: PROJECT_STAGES_QUERY_KEY })
+      ]);
+    }
   });
 }
 
 /** Load Client Invoices. */
 export function useClientInvoices(input: ListBillingInput, enabled = true) {
   return useQuery({ queryKey: [...CLIENT_BILLING_QUERY_KEY, 'invoices', input], queryFn: () => listClientInvoices(input), enabled, retry: false });
+}
+
+/** Load one complete Client Invoice only while its detail dialog is open. */
+export function useClientInvoice(invoiceId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...CLIENT_BILLING_QUERY_KEY, 'invoice', invoiceId],
+    queryFn: () => getClientInvoice(invoiceId as string),
+    enabled: enabled && invoiceId !== null,
+    retry: false
+  });
 }

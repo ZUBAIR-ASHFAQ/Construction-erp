@@ -2,50 +2,18 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { useClients } from '../../clients/hooks/clients.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
-import { useClients } from '../../clients/hooks/clients.js';
-import type { Project } from '../../projects/api/projects-api.js';
-import type { BillingClaim, BillingMethod } from '../api/client-billing-api.js';
 import {
-  useBillingClaims,
-  useBillingSettings,
+  useClientInvoice,
   useClientInvoices,
-  useCreateBillingClaim,
-  useCreateClientInvoice,
-  useCreateDirectClientInvoice,
-  useFinalizeBillingClaim,
-  useUpdateBillingClaim,
-  useUpdateBillingSettings
+  useCreateDirectClientInvoice
 } from '../hooks/client-billing.js';
 
 const positiveMoneySchema = z.string().trim().regex(/^(?:[1-9]\d{0,15})(?:\.\d{1,2})?$|^0\.(?:0[1-9]|[1-9]\d?)$/, 'Enter a positive amount with up to 2 decimals.');
-const percentSchema = z.string().trim().refine((value) => value === '' || (/^(?:0|[1-9]\d{0,2})(?:\.\d{1,4})?$/.test(value) && Number(value) <= 100), 'Enter a percentage between 0 and 100.');
 const optionalUuidSchema = z.string().trim().refine((value) => value === '' || z.string().uuid().safeParse(value).success, 'Select a valid Stage or leave it at Project level.');
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Select a valid date.');
-
-const settingsFormSchema = z.object({
-  billingMethod: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
-  retentionPercent: percentSchema,
-  billingCycle: z.string().trim().max(64),
-  advanceRecoveryEnabled: z.boolean(),
-  status: z.enum(['ACTIVE', 'INACTIVE'])
-});
-
-const claimFormSchema = z.object({
-  periodEnd: dateSchema,
-  lines: z.array(z.object({
-    stageId: optionalUuidSchema,
-    description: z.string().trim().min(1, 'Description is required.').max(1000),
-    billingProgressPercent: percentSchema,
-    amount: positiveMoneySchema
-  })).min(1, 'Add at least one claim line.').max(500, 'A claim can contain at most 500 lines.')
-});
-
-const invoiceFormSchema = z.object({
-  invoiceDate: dateSchema,
-  dueDate: dateSchema
-}).refine((value) => value.dueDate >= value.invoiceDate, { path: ['dueDate'], message: 'Due date cannot be earlier than invoice date.' });
 
 const directInvoiceFormSchema = z.object({
   invoiceDate: dateSchema,
@@ -59,335 +27,149 @@ const directInvoiceFormSchema = z.object({
   if (value.dueDate && value.dueDate < value.invoiceDate) context.addIssue({ code: z.ZodIssueCode.custom, path: ['dueDate'], message: 'Due date cannot be earlier than invoice date.' });
 });
 
-type SettingsForm = z.infer<typeof settingsFormSchema>;
-type ClaimForm = z.infer<typeof claimFormSchema>;
-type InvoiceForm = z.infer<typeof invoiceFormSchema>;
 type DirectInvoiceForm = z.infer<typeof directInvoiceFormSchema>;
 
 type ClientBillingWorkspaceProps = Readonly<{
   canRead: boolean;
-  canManageSettings: boolean;
-  canCreateClaims: boolean;
-  canEditClaims: boolean;
-  canFinalizeClaims: boolean;
   canCreateInvoices: boolean;
   canReadInvoices: boolean;
   canReadStages: boolean;
 }>;
 
-const EMPTY_CLAIM_FORM: ClaimForm = {
-  periodEnd: '',
-  lines: [{ stageId: '', description: '', billingProgressPercent: '', amount: '' }]
-};
-const EMPTY_DIRECT_INVOICE_FORM: DirectInvoiceForm = {
-  invoiceDate: '', dueDate: '', lines: [{ stageId: '', description: '', amount: '' }]
-};
+/** Return today's local browser date for a date input without UTC rollover. */
+function todayDateInputValue(): string {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Build a fresh direct-invoice form with today's invoice date preselected. */
+function emptyDirectInvoiceForm(): DirectInvoiceForm {
+  return { invoiceDate: todayDateInputValue(), dueDate: '', lines: [{ stageId: '', description: '', amount: '' }] };
+}
 
 /** Return a safe message for one failed browser mutation. */
 function mutationMessage(error: unknown): string | null {
   return error instanceof Error ? error.message : null;
 }
 
-/** Convert one browser claim form into the exact API claim-line shape. */
-function claimLines(values: ClaimForm['lines']) {
-  return values.map((line) => ({
-    stageId: line.stageId || null,
-    description: line.description.trim(),
-    billingProgressPercent: line.billingProgressPercent || null,
-    amount: line.amount
-  }));
-}
-
-/** Convert one money value to a readable two-decimal display without making it authoritative. */
+/** Convert one money value to a readable two-decimal display without browser-owned totals. */
 function displayMoney(value: string): string {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : value;
 }
 
-/** Return a readable Project billing-model label. */
-function billingMethodLabel(method: BillingMethod): string {
-  return method === 'COST_PLUS_PERCENTAGE' ? 'Cost + Percentage' : 'Fixed Price';
-}
-
-/** Explain the source-owned billing basis without calculating server totals in the browser. */
-function billingBasisText(project: Project): string {
-  if (project.projectModel === 'COST_PLUS_PERCENTAGE') {
-    const percent = project.costPlusPercent ?? 'configured';
-    return `Cost + Percentage: claim amounts are validated by the server against posted actual Project/Stage cost through the claim period end plus the effective Profit / Markup rate. Each Stage uses its own override when set; otherwise it uses the Project ${percent}% fallback.`;
-  }
-  return `Fixed Price: Project value ${displayMoney(project.projectValue)} is the commercial reference. Claim amounts remain explicit billing values; physical Stage progress does not auto-create billing.`;
-}
-
-/** Render the focused Final-21 Client Billing settings, claims and invoices workspace. */
+/** Render direct Client Invoice entry, register and immutable invoice detail only. */
 export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
-  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canRead);
-  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canRead);
-  const projects = projectsQuery.data?.items ?? [];
-  const clientNames = useMemo(() => new Map((clientsQuery.data?.items ?? []).map((client) => [client.id, client.displayName])), [clientsQuery.data?.items]);
+  const [clientId, setClientId] = useState('');
   const [projectId, setProjectId] = useState('');
-  const [editingClaim, setEditingClaim] = useState<BillingClaim | null>(null);
-  const [invoiceClaim, setInvoiceClaim] = useState<BillingClaim | null>(null);
+  const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
+
+  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canRead);
+  const projectsQuery = useProjects({ ...(clientId ? { clientId } : {}), page: 1, pageSize: 100 }, props.canRead);
+  const clients = clientsQuery.data?.items ?? [];
+  const projects = projectsQuery.data?.items ?? [];
+  const clientNames = useMemo(() => new Map(clients.map((client) => [client.id, client.displayName])), [clients]);
+  const clientProjects = useMemo(() => projects.filter((project) => project.clientId === clientId), [clientId, projects]);
   const selectedProject = useMemo(() => projects.find((project) => project.id === projectId) ?? null, [projectId, projects]);
 
-  const settingsQuery = useBillingSettings(projectId || null, props.canRead && projectId !== '');
   const stagesQuery = useProjectStages(projectId || null, props.canReadStages && projectId !== '');
-  const claimsQuery = useBillingClaims({ ...(projectId ? { projectId } : {}), page: 1, pageSize: 50 }, props.canRead && projectId !== '');
-  const invoicesQuery = useClientInvoices({ ...(projectId ? { projectId } : {}), page: 1, pageSize: 50 }, props.canReadInvoices && projectId !== '');
   const stages = stagesQuery.data?.items ?? [];
   const stageNames = useMemo(() => new Map(stages.map((stage) => [stage.id, `${stage.code} · ${stage.name}`])), [stages]);
-
-  const updateSettings = useUpdateBillingSettings(projectId || null);
-  const createClaim = useCreateBillingClaim();
-  const updateClaim = useUpdateBillingClaim();
-  const finalizeClaim = useFinalizeBillingClaim();
-  const createInvoice = useCreateClientInvoice();
+  const invoicesQuery = useClientInvoices({ ...(projectId ? { projectId } : {}), page: 1, pageSize: 100 }, props.canReadInvoices && projectId !== '');
+  const selectedInvoiceQuery = useClientInvoice(selectedInvoiceId, props.canReadInvoices && selectedInvoiceId !== null);
   const createDirectInvoice = useCreateDirectClientInvoice();
 
-  const settingsForm = useForm<SettingsForm>({ resolver: zodResolver(settingsFormSchema), defaultValues: { billingMethod: 'FIXED_PRICE', retentionPercent: '', billingCycle: '', advanceRecoveryEnabled: false, status: 'ACTIVE' } });
-  const claimForm = useForm<ClaimForm>({ resolver: zodResolver(claimFormSchema), defaultValues: EMPTY_CLAIM_FORM });
-  const fields = useFieldArray({ control: claimForm.control, name: 'lines' });
-  const invoiceForm = useForm<InvoiceForm>({ resolver: zodResolver(invoiceFormSchema), defaultValues: { invoiceDate: '', dueDate: '' } });
-  const directInvoiceForm = useForm<DirectInvoiceForm>({ resolver: zodResolver(directInvoiceFormSchema), defaultValues: EMPTY_DIRECT_INVOICE_FORM });
-  const directInvoiceFields = useFieldArray({ control: directInvoiceForm.control, name: 'lines' });
+  const invoiceForm = useForm<DirectInvoiceForm>({ resolver: zodResolver(directInvoiceFormSchema), defaultValues: emptyDirectInvoiceForm() });
+  const invoiceLines = useFieldArray({ control: invoiceForm.control, name: 'lines' });
 
   useEffect(() => {
-    if (!settingsQuery.data || !selectedProject) return;
-    settingsForm.reset({
-      billingMethod: selectedProject.projectModel,
-      retentionPercent: settingsQuery.data.retentionPercent ?? '',
-      billingCycle: settingsQuery.data.billingCycle ?? '',
-      advanceRecoveryEnabled: settingsQuery.data.advanceRecoveryEnabled,
-      status: settingsQuery.data.status
-    });
-  }, [selectedProject, settingsQuery.data, settingsForm]);
+    setSelectedInvoiceId(null);
+    invoiceForm.reset(emptyDirectInvoiceForm());
+  }, [projectId, invoiceForm]);
 
   useEffect(() => {
-    setEditingClaim(null);
-    setInvoiceClaim(null);
-    claimForm.reset(EMPTY_CLAIM_FORM);
-    invoiceForm.reset({ invoiceDate: '', dueDate: '' });
-    directInvoiceForm.reset(EMPTY_DIRECT_INVOICE_FORM);
-  }, [projectId, claimForm, invoiceForm, directInvoiceForm]);
+    if (!selectedInvoiceId) return undefined;
+    /** Close the active invoice dialog while preserving register filters. */
+    function closeInvoiceOnEscape(event: KeyboardEvent): void {
+      if (event.key === 'Escape') setSelectedInvoiceId(null);
+    }
+    window.addEventListener('keydown', closeInvoiceOnEscape);
+    return () => window.removeEventListener('keydown', closeInvoiceOnEscape);
+  }, [selectedInvoiceId]);
 
-  /** Return a Stage label while avoiding raw UUID display when Stage read permission is unavailable. */
+  /** Return a Stage label while avoiding raw identifiers. */
   function stageLabel(stageId: string | null): string {
     if (!stageId) return 'Project level';
-    return stageNames.get(stageId) ?? 'Linked Stage (restricted)';
+    return stageNames.get(stageId) ?? 'Linked Stage';
   }
 
-  /** Save editable billing settings while keeping Project Management authoritative for the billing model. */
-  async function submitSettings(values: SettingsForm): Promise<void> {
-    if (!projectId || !selectedProject) return;
-    await updateSettings.mutateAsync({
-      ...values,
-      billingMethod: selectedProject.projectModel,
-      retentionPercent: values.retentionPercent || null,
-      billingCycle: values.billingCycle || null
-    });
-  }
-
-  /** Create or update one draft claim from the shared Stage-aware claim editor. */
-  async function submitClaim(values: ClaimForm): Promise<void> {
+  /** Create one direct Client Invoice with server-owned numbering and totals. */
+  async function submitInvoice(values: DirectInvoiceForm): Promise<void> {
     if (!projectId) return;
-    const input = { periodEnd: values.periodEnd, lines: claimLines(values.lines) };
-    if (editingClaim) await updateClaim.mutateAsync({ claimId: editingClaim.id, input });
-    else await createClaim.mutateAsync({ projectId, ...input });
-    setEditingClaim(null);
-    claimForm.reset(EMPTY_CLAIM_FORM);
-  }
-
-  /** Load one draft claim into the shared editor without losing existing Stage attribution. */
-  function startEditingClaim(claim: BillingClaim): void {
-    setEditingClaim(claim);
-    claimForm.reset({
-      periodEnd: claim.periodEnd,
-      lines: claim.lines.map((line) => ({ stageId: line.stageId ?? '', description: line.description, billingProgressPercent: line.billingProgressPercent ?? '', amount: line.amount }))
-    });
-  }
-
-  /** Create an issued Client Invoice for the selected finalized claim. */
-  async function submitInvoice(values: InvoiceForm): Promise<void> {
-    if (!invoiceClaim) return;
-    await createInvoice.mutateAsync({ claimId: invoiceClaim.id, input: values });
-    setInvoiceClaim(null);
-    invoiceForm.reset({ invoiceDate: '', dueDate: '' });
-  }
-
-  /** Create and issue a Client Invoice directly, without requiring a Progress Claim. */
-  async function submitDirectInvoice(values: DirectInvoiceForm): Promise<void> {
-    if (!projectId) return;
-    await createDirectInvoice.mutateAsync({
+    const invoice = await createDirectInvoice.mutateAsync({
       projectId,
       invoiceDate: values.invoiceDate,
       dueDate: values.dueDate || null,
       lines: values.lines.map((line) => ({ stageId: line.stageId || null, description: line.description.trim(), amount: line.amount }))
     });
-    directInvoiceForm.reset(EMPTY_DIRECT_INVOICE_FORM);
+    invoiceForm.reset(emptyDirectInvoiceForm());
+    setSelectedInvoiceId(invoice.id);
   }
 
-  if (!props.canRead) return <section className="admin-card"><p>You do not have Client Billing read access.</p></section>;
+  if (!props.canRead) return <section className="admin-card"><p>You do not have Client Invoice read access.</p></section>;
 
   return (
     <div className="admin-stack">
       <section className="admin-card">
-        <h2>Project</h2>
-        <label>Allowed Project
-          <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
-            <option value="">Select a project</option>
-            {projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
-          </select>
-        </label>
-        {selectedProject ? (
-          <div className="admin-stack">
-            <p><strong>{billingMethodLabel(selectedProject.projectModel)}</strong> · {selectedProject.currency}</p>
-            <p className="muted">{billingBasisText(selectedProject)}</p>
-          </div>
-        ) : null}
+        <h2>Client and project</h2>
+        <div className="two-column-form">
+          <label>Client
+            <select value={clientId} onChange={(event) => { setClientId(event.target.value); setProjectId(''); }}>
+              <option value="">Select client</option>
+              {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
+            </select>
+          </label>
+          <label>Project
+            <select value={projectId} disabled={!clientId} onChange={(event) => setProjectId(event.target.value)}>
+              <option value="">Select project</option>
+              {clientProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+            </select>
+          </label>
+        </div>
       </section>
-
-      {projectId && settingsQuery.data ? (
-        <section className="admin-card">
-          <h2>Billing settings</h2>
-          <p className="muted">The commercial model is owned by Project Management. Client Billing controls retention, cycle, advance-recovery flag and billing status only.</p>
-          <p className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {selectedProject ? clientNames.get(selectedProject.clientId) ?? 'Project client' : 'Project client'}</p>
-          {props.canManageSettings ? (
-            <form className="admin-form" onSubmit={settingsForm.handleSubmit(submitSettings)}>
-              <label>Billing method
-                <input {...settingsForm.register('billingMethod')} readOnly aria-readonly="true" />
-                <small className="muted">Read-only because Project Management owns this value.</small>
-              </label>
-              <label>Retention %<input inputMode="decimal" {...settingsForm.register('retentionPercent')} /><span className="field-error">{settingsForm.formState.errors.retentionPercent?.message}</span></label>
-              <label>Billing cycle<input {...settingsForm.register('billingCycle')} /></label>
-              <label><input type="checkbox" {...settingsForm.register('advanceRecoveryEnabled')} /> Advance recovery enabled</label>
-              <label>Status<select {...settingsForm.register('status')}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
-              <button type="submit" disabled={updateSettings.isPending}>Save settings</button>
-            </form>
-          ) : (
-            <p>{billingMethodLabel(settingsQuery.data.billingMethod)} · Retention {settingsQuery.data.retentionPercent ?? '0'}% · Cycle {settingsQuery.data.billingCycle ?? '—'} · Advance recovery {settingsQuery.data.advanceRecoveryEnabled ? 'Enabled' : 'Disabled'} · {settingsQuery.data.status}</p>
-          )}
-        </section>
-      ) : null}
 
       {projectId && props.canCreateInvoices ? (
         <section className="admin-card">
-          <h2>Create & issue client invoice</h2>
-          <p className="muted">Enter billing values directly for {selectedProject?.name ?? 'the selected Project'}. The server generates the invoice number, issues the invoice, and posts Accounts Receivable. The client can then pay against this invoice in Client Payments; direct payment without an invoice remains available there too.</p>
-          <form className="admin-form" onSubmit={directInvoiceForm.handleSubmit(submitDirectInvoice)}>
+          <h2>Create client invoice</h2>
+          <p className="muted">Client {selectedProject ? clientNames.get(selectedProject.clientId) ?? 'Selected client' : 'Selected client'} · Project {selectedProject?.name ?? 'Selected project'}. Invoice number and totals are controlled by the server.</p>
+          <form className="admin-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
             <div className="two-column-form">
-              <label>Invoice date<input type="date" {...directInvoiceForm.register('invoiceDate')} /><span className="field-error">{directInvoiceForm.formState.errors.invoiceDate?.message}</span></label>
-              <label>Due date (optional)<input type="date" {...directInvoiceForm.register('dueDate')} /><span className="field-error">{directInvoiceForm.formState.errors.dueDate?.message}</span></label>
+              <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
+              <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
             </div>
-            {directInvoiceFields.fields.map((field, index) => (
+            {invoiceLines.fields.map((field, index) => (
               <div className="admin-card" key={field.id}>
                 <div className="two-column-form">
-                  <label>Description<input {...directInvoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{directInvoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
+                  <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
                   <label>Stage (optional)
-                    <select {...directInvoiceForm.register(`lines.${index}.stageId`)}>
+                    <select {...invoiceForm.register(`lines.${index}.stageId`)} disabled={!props.canReadStages}>
                       <option value="">Project level</option>
                       {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
                     </select>
                   </label>
-                  <label>Amount<input inputMode="decimal" {...directInvoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{directInvoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                  <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
                 </div>
-                {directInvoiceFields.fields.length > 1 ? <button type="button" className="secondary-button" onClick={() => directInvoiceFields.remove(index)}>Remove line</button> : null}
+                {invoiceLines.fields.length > 1 ? <button type="button" className="secondary-button" onClick={() => invoiceLines.remove(index)}>Remove line</button> : null}
               </div>
             ))}
             <div className="admin-actions">
-              <button type="button" className="secondary-button" onClick={() => directInvoiceFields.append({ stageId: '', description: '', amount: '' })}>Add invoice line</button>
-              <button type="submit" disabled={createDirectInvoice.isPending}>{createDirectInvoice.isPending ? 'Creating & posting…' : 'Create & issue invoice'}</button>
+              <button type="button" className="secondary-button" onClick={() => invoiceLines.append({ stageId: '', description: '', amount: '' })}>Add invoice line</button>
+              <button type="submit" disabled={createDirectInvoice.isPending}>{createDirectInvoice.isPending ? 'Creating…' : 'Create invoice'}</button>
             </div>
-            {mutationMessage(createDirectInvoice.error) ? <p className="field-error">{mutationMessage(createDirectInvoice.error)}</p> : null}
-          </form>
-        </section>
-      ) : null}
-
-      {projectId && (props.canCreateClaims || (props.canEditClaims && editingClaim)) ? (
-        <section className="admin-card">
-          <h2>{editingClaim ? `Edit ${editingClaim.claimNo}` : 'New progress claim'}</h2>
-          <p className="muted">Stage is selected from the current Project when permitted. Billing progress is separate from physical Stage progress, and the server remains authoritative for final certification.</p>
-          <form className="admin-form" onSubmit={claimForm.handleSubmit(submitClaim)}>
-            <label>Period end<input type="date" {...claimForm.register('periodEnd')} /><span className="field-error">{claimForm.formState.errors.periodEnd?.message}</span></label>
-            {fields.fields.map((field, index) => {
-              const currentStageId = claimForm.watch(`lines.${index}.stageId`);
-              const hasRestrictedCurrentStage = Boolean(currentStageId && !stageNames.has(currentStageId));
-              return (
-                <div className="admin-card" key={field.id}>
-                  <div className="two-column-form">
-                    <label>Description<input {...claimForm.register(`lines.${index}.description`)} /><span className="field-error">{claimForm.formState.errors.lines?.[index]?.description?.message}</span></label>
-                    <label>Stage (optional)
-                      <select {...claimForm.register(`lines.${index}.stageId`)}>
-                        <option value="">Project level</option>
-                        {hasRestrictedCurrentStage ? <option value={currentStageId}>Linked Stage (restricted)</option> : null}
-                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name} · {stage.status}{selectedProject?.projectModel === 'COST_PLUS_PERCENTAGE' ? ` · Profit / Markup ${stage.costPlusPercent ?? selectedProject.costPlusPercent ?? 'configured'}%` : ''}</option>)}
-                      </select>
-                      {!props.canReadStages ? <small className="muted">Stage choices require Project Stage read access; Project-level billing remains available.</small> : null}
-                    </label>
-                    <label>Billing progress % (optional)<input inputMode="decimal" {...claimForm.register(`lines.${index}.billingProgressPercent`)} /></label>
-                    <label>Amount<input inputMode="decimal" {...claimForm.register(`lines.${index}.amount`)} /><span className="field-error">{claimForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
-                  </div>
-                  {fields.fields.length > 1 ? <button type="button" onClick={() => fields.remove(index)}>Remove line</button> : null}
-                </div>
-              );
-            })}
-            <div className="admin-actions">
-              <button type="button" onClick={() => fields.append({ stageId: '', description: '', billingProgressPercent: '', amount: '' })}>Add line</button>
-              <button type="submit" disabled={createClaim.isPending || updateClaim.isPending}>{editingClaim ? 'Save claim' : 'Create claim'}</button>
-              {editingClaim ? <button type="button" onClick={() => { setEditingClaim(null); claimForm.reset(EMPTY_CLAIM_FORM); }}>Cancel edit</button> : null}
-            </div>
-          </form>
-        </section>
-      ) : null}
-
-      {projectId ? (
-        <section className="admin-card">
-          <h2>Claims</h2>
-          {claimsQuery.data ? <p className="muted">Total {claimsQuery.data.total} · Page {claimsQuery.data.page} · Page size {claimsQuery.data.pageSize}</p> : null}
-          {(claimsQuery.data?.items ?? []).length === 0 ? <p className="muted">No claims for this Project.</p> : null}
-          {(claimsQuery.data?.items ?? []).map((claim) => (
-            <div className="admin-card" key={claim.id}>
-              <div className="module-row">
-                <div>
-                  <strong>{claim.claimNo}</strong>
-                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(claim.clientId) ?? 'Project client'}</div>
-                  <div className="muted">{claim.periodEnd} · {claim.status} · Gross {displayMoney(claim.grossValue)} · Deductions {displayMoney(claim.deductions)} · Retention {displayMoney(claim.retention)} · Net {displayMoney(claim.netCertified)}</div>
-                </div>
-                <div className="admin-actions">
-                  {claim.status === 'DRAFT' && props.canEditClaims ? <button type="button" onClick={() => startEditingClaim(claim)}>Edit</button> : null}
-                  {claim.status === 'DRAFT' && props.canFinalizeClaims ? <button type="button" disabled={finalizeClaim.isPending} onClick={() => finalizeClaim.mutate(claim.id)}>Finalize</button> : null}
-                  {claim.status === 'FINALIZED' && !claim.invoice && props.canCreateInvoices ? <button type="button" onClick={() => setInvoiceClaim(claim)}>Create invoice</button> : null}
-                </div>
-              </div>
-              <table>
-                <thead><tr><th>Description</th><th>Stage</th><th>Billing progress</th><th>Amount</th></tr></thead>
-                <tbody>{claim.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{line.billingProgressPercent ?? '—'}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
-              </table>
-              {claim.invoice ? (
-                <div className="admin-card">
-                  <strong>Linked invoice {claim.invoice.invoiceNo}</strong>
-                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(claim.invoice.clientId) ?? 'Project client'} · Claim {claim.claimNo}</div>
-                  <div className="muted">{claim.invoice.invoiceDate} · Due {claim.invoice.dueDate ?? '—'} · {claim.invoice.status} · Subtotal {displayMoney(claim.invoice.subtotal)} · Tax {displayMoney(claim.invoice.taxAmount)} · Billed {displayMoney(claim.invoice.totalAmount)}</div>
-                  <table>
-                    <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
-                    <tbody>{claim.invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
-                  </table>
-                </div>
-              ) : <p className="muted">Linked invoice —</p>}
-            </div>
-          ))}
-        </section>
-      ) : null}
-
-      {invoiceClaim ? (
-        <section className="admin-card">
-          <h2>Create invoice for {invoiceClaim.claimNo}</h2>
-          <p className="muted">The issued invoice preserves the finalized Claim lines and their optional Stage attribution. Invoice totals and Finance / AR posting are server-owned.</p>
-          <form className="admin-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
-            <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /></label>
-            <label>Due date<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
-            <div className="admin-actions">
-              <button type="submit" disabled={createInvoice.isPending}>Create invoice</button>
-              <button type="button" onClick={() => setInvoiceClaim(null)}>Cancel</button>
-            </div>
+            {mutationMessage(createDirectInvoice.error) ? <div className="form-error" role="alert">{mutationMessage(createDirectInvoice.error)}</div> : null}
           </form>
         </section>
       ) : null}
@@ -395,25 +177,49 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
       {projectId && props.canReadInvoices ? (
         <section className="admin-card">
           <h2>Client invoices</h2>
-          <p className="muted">Invoice total is the billed source. Received, advance and outstanding values are intentionally not calculated here; Module 16 Client Receipts / Payments owns cash receipt and allocation history.</p>
+          <p className="muted">Paid and outstanding values are calculated by the server from posted Client Payment allocations.</p>
           {invoicesQuery.data ? <p className="muted">Total {invoicesQuery.data.total} · Page {invoicesQuery.data.page} · Page size {invoicesQuery.data.pageSize}</p> : null}
-          {(invoicesQuery.data?.items ?? []).length === 0 ? <p className="muted">No Client Invoices for this Project.</p> : null}
-          {(invoicesQuery.data?.items ?? []).map((invoice) => (
-            <div className="admin-card" key={invoice.id}>
-              <div className="module-row">
-                <div>
-                  <strong>{invoice.invoiceNo}</strong>
-                  <div className="muted">Project {selectedProject?.name ?? 'Selected project'} · Client {clientNames.get(invoice.clientId) ?? 'Project client'} · Claim {(claimsQuery.data?.items ?? []).find((claim) => claim.id === invoice.claimId)?.claimNo ?? 'Direct billing'}</div>
-                  <div>{invoice.invoiceDate} · Due {invoice.dueDate ?? '—'} · {invoice.status} · Subtotal {displayMoney(invoice.subtotal)} · Tax {displayMoney(invoice.taxAmount)} · Billed {displayMoney(invoice.totalAmount)}</div>
-                </div>
-              </div>
-              <table>
-                <thead><tr><th>Description</th><th>Stage</th><th>Amount</th></tr></thead>
-                <tbody>{invoice.lines.map((line) => <tr key={line.id}><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{displayMoney(line.amount)}</td></tr>)}</tbody>
-              </table>
-            </div>
-          ))}
+          <div className="table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Invoice</th><th>Date</th><th>Status</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Project</th><th>Action</th></tr></thead>
+              <tbody>
+                {(invoicesQuery.data?.items ?? []).map((invoice) => (
+                  <tr key={invoice.id}>
+                    <td><strong>{invoice.invoiceNo}</strong><br /><small>{clientNames.get(invoice.clientId) ?? 'Project client'}</small></td>
+                    <td>{invoice.invoiceDate}</td><td>{invoice.status}</td><td>{displayMoney(invoice.totalAmount)}</td><td>{displayMoney(invoice.allocatedAmount)}</td><td>{displayMoney(invoice.outstandingAmount)}</td><td>{selectedProject?.name ?? 'Selected project'}</td>
+                    <td><button type="button" className="secondary-button" onClick={() => setSelectedInvoiceId(invoice.id)}>View</button></td>
+                  </tr>
+                ))}
+                {(invoicesQuery.data?.items.length ?? 0) === 0 ? <tr><td colSpan={8} className="muted">No Client Invoices for this Project.</td></tr> : null}
+              </tbody>
+            </table>
+          </div>
         </section>
+      ) : null}
+
+      {selectedInvoiceId ? (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSelectedInvoiceId(null); }}>
+          <section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="client-invoice-detail-title">
+            <header className="finance-modal-header">
+              <div><p className="eyebrow">Client invoice</p><h2 id="client-invoice-detail-title">{selectedInvoiceQuery.data ? `Invoice ${selectedInvoiceQuery.data.invoiceNo}` : 'Invoice details'}</h2>{selectedInvoiceQuery.data ? <p>{clientNames.get(selectedInvoiceQuery.data.clientId) ?? 'Project client'} · {selectedProject?.name ?? 'Selected project'}</p> : null}</div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close invoice details" onClick={() => setSelectedInvoiceId(null)}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              {selectedInvoiceQuery.isPending ? <p className="finance-modal-state">Loading invoice details…</p> : null}
+              {selectedInvoiceQuery.error instanceof Error ? <div className="form-error" role="alert">{selectedInvoiceQuery.error.message}</div> : null}
+              {selectedInvoiceQuery.data ? (
+                <div className="admin-stack">
+                  <dl className="summary-grid client-invoice-summary-grid">
+                    <div><dt>Invoice date</dt><dd>{selectedInvoiceQuery.data.invoiceDate}</dd></div><div><dt>Due date</dt><dd>{selectedInvoiceQuery.data.dueDate ?? 'No due date'}</dd></div><div><dt>Status</dt><dd>{selectedInvoiceQuery.data.status}</dd></div>
+                    <div><dt>Source</dt><dd>{selectedInvoiceQuery.data.claimId ? 'Historical claim invoice' : 'Direct invoice'}</dd></div><div><dt>Subtotal</dt><dd>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.subtotal)}</dd></div><div><dt>Tax</dt><dd>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.taxAmount)}</dd></div>
+                    <div><dt>Invoice total</dt><dd>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.totalAmount)}</dd></div><div><dt>Paid / allocated</dt><dd>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.allocatedAmount)}</dd></div><div><dt>Outstanding</dt><dd>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.outstandingAmount)}</dd></div>
+                  </dl>
+                  <div><h3>Invoice lines</h3><div className="table-wrap"><table className="admin-table"><thead><tr><th>#</th><th>Description</th><th>Stage</th><th>Amount</th></tr></thead><tbody>{selectedInvoiceQuery.data.lines.map((line, index) => <tr key={line.id}><td>{index + 1}</td><td>{line.description}</td><td>{stageLabel(line.stageId)}</td><td>{selectedProject?.currency ?? ''} {displayMoney(line.amount)}</td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Invoice total</th><th>{selectedProject?.currency ?? ''} {displayMoney(selectedInvoiceQuery.data.totalAmount)}</th></tr></tfoot></table></div></div>
+                </div>
+              ) : null}
+            </div>
+          </section>
+        </div>
       ) : null}
     </div>
   );

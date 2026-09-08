@@ -199,6 +199,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const createPayment = useCreateSupplierPayment();
   const allocatePayment = useAllocateSupplierPayment(selectedPayment?.id ?? null);
   const allocationForm = useForm<AllocationFormValues>({ resolver: zodResolver(allocationFormSchema), defaultValues: { supplierInvoiceId: '', amount: '' } });
+  const watchedAllocationInvoiceId = allocationForm.watch('supplierInvoiceId');
 
   const agingQuery = useSupplierAging({
     ...(vendorFilter ? { vendorId: vendorFilter } : {}),
@@ -223,10 +224,13 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     status: 'POSTED',
     page: 1,
     pageSize: 100
-  }, props.canRead && watchedPaymentVendorId !== '' && watchedPaymentProjectId !== '');
+  }, props.canRead && watchedPaymentVendorId !== '');
   const payableInvoiceOptions = useMemo(() => (
     (payableInvoicesQuery.data?.items ?? []).filter((invoice) => Number(invoice.outstandingAmount) > 0)
   ), [payableInvoicesQuery.data?.items]);
+  const selectedAllocationInvoice = useMemo(() => (
+    allocationInvoiceOptions.find((invoice) => invoice.id === watchedAllocationInvoiceId) ?? null
+  ), [allocationInvoiceOptions, watchedAllocationInvoiceId]);
 
   useEffect(() => {
     if (!selectedInvoiceId && invoiceQuery.data?.items[0]) setSelectedInvoiceId(invoiceQuery.data.items[0].id);
@@ -350,9 +354,12 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   /** Append one allocation from the selected posted Supplier Payment to one posted Supplier Invoice. */
   async function submitAllocation(values: AllocationFormValues): Promise<void> {
     if (!selectedPayment) return;
+    const paymentId = selectedPayment.id;
     await allocatePayment.mutateAsync({ allocations: [{ supplierInvoiceId: values.supplierInvoiceId, amount: values.amount }] });
+    const refreshedPayments = await paymentQuery.refetch();
+    const refreshedPayment = refreshedPayments.data?.items.find((payment) => payment.id === paymentId) ?? null;
     allocationForm.reset({ supplierInvoiceId: '', amount: '' });
-    setSelectedPayment(null);
+    setSelectedPayment(refreshedPayment && Number(refreshedPayment.remainingAmount) > 0 ? refreshedPayment : null);
   }
 
   /** Resolve the linked document and force a local browser download without removing the action. */
@@ -561,11 +568,11 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                   <label>Vendor<select {...paymentForm.register('vendorId')} onChange={(event) => { paymentForm.setValue('vendorId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); paymentForm.setValue('projectId', ''); }}><option value="">Select vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select><span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span></label>
                   <label>Project (optional)<select {...paymentForm.register('projectId')} onChange={(event) => { paymentForm.setValue('projectId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); }}><option value="">Company-level direct payment</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select><small className="muted">Select a project to load that project&apos;s supplier invoices.</small></label>
                   <label>Invoice (optional)
-                    <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || !watchedPaymentProjectId || payableInvoicesQuery.isPending}>
+                    <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
                       <option value="">Direct payment (no invoice)</option>
                       {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
                     </select>
-                    <small className="muted">Only posted invoices with an outstanding balance for the selected supplier and project are shown.</small>
+                    <small className="muted">Only posted invoices with an outstanding balance for the selected supplier are shown; selecting a project narrows the list.</small>
                     <span className="field-error">{paymentForm.formState.errors.supplierInvoiceId?.message}</span>
                   </label>
                   <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /></label>
@@ -595,14 +602,14 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                {allocationInvoicesQuery.error instanceof Error && <div className="form-error" role="alert">Invoices could not be loaded: {allocationInvoicesQuery.error.message}</div>}
                {allocationInvoicesQuery.isSuccess && allocationInvoiceOptions.length === 0 && <p className="muted">No eligible invoice was found. The invoice must be POSTED, belong to this supplier and selected project, and have an outstanding balance.</p>}
                <form className="admin-form two-column-form" onSubmit={allocationForm.handleSubmit(submitAllocation)}>
-                 <label>Posted invoice with outstanding
+                 <label>Pending invoice
                    <select {...allocationForm.register('supplierInvoiceId')} disabled={allocationInvoicesQuery.isPending || allocationInvoiceOptions.length === 0}>
                      <option value="">Select invoice</option>
                      {allocationInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Project {projectNames.get(invoice.projectId) ?? 'Unknown project'} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
                    </select>
                    <span className="field-error">{allocationForm.formState.errors.supplierInvoiceId?.message}</span>
                  </label>
-                 <label>Allocation amount<input inputMode="decimal" {...allocationForm.register('amount')} /><span className="field-error">{allocationForm.formState.errors.amount?.message}</span></label>
+                 <label>Allocation amount<input inputMode="decimal" {...allocationForm.register('amount')} /><small className="muted">{selectedAllocationInvoice ? `Invoice outstanding: ${displayMoney(selectedAllocationInvoice.outstandingAmount)} · Payment remaining: ${displayMoney(selectedPayment.remainingAmount)}` : 'Enter the amount to apply from this payment.'}</small><span className="field-error">{allocationForm.formState.errors.amount?.message}</span></label>
                  <button type="submit" disabled={allocatePayment.isPending || allocationInvoicesQuery.isPending || allocationInvoiceOptions.length === 0}>{allocatePayment.isPending ? 'Allocating…' : 'Allocate payment'}</button>
               </form>
               {mutationMessage(allocatePayment.error) && <p className="field-error">{mutationMessage(allocatePayment.error)}</p>}

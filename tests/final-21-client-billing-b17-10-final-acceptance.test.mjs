@@ -116,10 +116,12 @@ test('B17.10 freezes the Client Billing React workflow', () => {
   }
   assert.match(workspace, /useProjectStages/);
   assert.match(workspace, /physical Stage progress does not auto-create billing/);
-  assert.match(workspace, /Module 16 Client Receipts \/ Payments owns cash receipt and allocation history/);
+  assert.match(workspace, /Total paid and due are calculated by the server from posted Client Receipt allocations/);
+  assert.match(workspace, /invoice\.allocatedAmount/);
+  assert.match(workspace, /invoice\.outstandingAmount/);
   assert.match(api, /Idempotency-Key/);
   assert.match(hooks, /invalidateInvoiceEffects/);
-  assert.doesNotMatch(workspace, /receivedAmount|advanceAmount|outstandingAmount/);
+  assert.doesNotMatch(workspace, /receivedAmount|advanceAmount/);
 });
 
 /** Require executable live API and browser gates for the final Client Billing workflow. */

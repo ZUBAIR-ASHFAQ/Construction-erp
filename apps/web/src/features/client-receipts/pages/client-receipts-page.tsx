@@ -6,6 +6,7 @@ export function ClientReceiptsPage({ view = 'ledger' }: Readonly<{ view?: 'payme
   const auth = useAuth();
   const hasRestrictedProjects = auth.identity?.projectScope.kind === 'restricted' && auth.identity.projectScope.projectIds.length > 0;
   const canRead = usePermission('client_receipts.read') || Boolean(hasRestrictedProjects);
+  const canReadDocuments = usePermission('documents.read');
 
   return (
     <section className="admin-stack" aria-labelledby="client-receipts-title">
@@ -25,6 +26,9 @@ export function ClientReceiptsPage({ view = 'ledger' }: Readonly<{ view?: 'payme
         canReadStages={usePermission('stages.read') || Boolean(hasRestrictedProjects)}
         canReadFinance={usePermission('finance.read') || Boolean(hasRestrictedProjects)}
         canReadInvoices={usePermission('client_invoices.read') || Boolean(hasRestrictedProjects)}
+        canUploadDocuments={usePermission('documents.upload') || Boolean(hasRestrictedProjects)}
+        canLinkDocuments={usePermission('documents.link') || Boolean(hasRestrictedProjects)}
+        canReadDocuments={canRead || canReadDocuments || Boolean(hasRestrictedProjects)}
       />
     </section>
   );

@@ -8,11 +8,13 @@ import { requireRequestSecurityContext } from '@construction-erp/request-context
 import { AdministrationRepository } from '../administration/administration.repository.js';
 import { FinanceRepository } from '../finance/finance.repository.js';
 import { FinanceService } from '../finance/finance.service.js';
+import { ClientBillingService } from '../client-billing/client-billing.service.js';
 import { ClientReceiptsRepository, type ClientReceiptsRepositoryVisibility } from './client-receipts.repository.js';
 import {
   createClientReceiptError,
   type AllocateClientReceiptBody,
   type ClientReceiptPermissionCode,
+  type CorrectClientReceiptBody,
   type CreateClientReceiptBody,
   type ListClientReceiptsQuery,
   type UnallocateClientReceiptBody
@@ -419,6 +421,18 @@ export class ClientReceiptsService {
         financeSourceKey
       }
     });
+
+    if (input.clientInvoiceId) {
+      if (input.receiptType !== 'INVOICE_PAYMENT') {
+        throw new ValidationError({ message: 'A Client Invoice can only be selected for payment against invoice.' });
+      }
+      const allocated = await this.allocateClientReceiptOnce(tx, receipt.id, {
+        clientInvoiceId: input.clientInvoiceId,
+        amount: input.amount
+      }, visibility);
+      return { statusCode: 201, body: allocated.body };
+    }
+
     return { statusCode: 201, body: response };
   }
 
@@ -433,10 +447,15 @@ export class ClientReceiptsService {
   }
 
   /** Lock both sides, enforce remaining balances and reclassify Client Advance to Client Receivable atomically. */
-  private async allocateClientReceiptOnce(tx: TransactionClient, receiptId: string, input: AllocateClientReceiptBody) {
+  private async allocateClientReceiptOnce(
+    tx: TransactionClient,
+    receiptId: string,
+    input: AllocateClientReceiptBody,
+    authorizedVisibility?: ClientReceiptsRepositoryVisibility
+  ) {
     const now = new Date();
-    const users = new AdministrationRepository(tx);
-    const visibility = await this.resolveVisibility(users, 'client_receipts.allocate', now);
+    const visibility = authorizedVisibility
+      ?? await this.resolveVisibility(new AdministrationRepository(tx), 'client_receipts.allocate', now);
     const repository = new ClientReceiptsRepository(tx);
     const receipt = await repository.lockClientReceiptForWrite(receiptId, visibility);
     if (!receipt) throw createClientReceiptError('RECEIPT_NOT_FOUND');
@@ -468,6 +487,7 @@ export class ClientReceiptsService {
     }
 
     const accounts = await this.validateAllocationAccounts(repository);
+    await new ClientBillingService(this.db).ensureDirectInvoiceFinancePostingInTransaction(tx, invoiceDetail);
     const security = requireRequestSecurityContext();
     const allocation = await repository.createAllocation({
       receiptId: receipt.id,
@@ -541,6 +561,68 @@ export class ClientReceiptsService {
       fingerprintInput: { receiptId, ...input }
     }, async (tx) => this.unallocateClientReceiptOnce(tx, receiptId, input));
     return result.response.body;
+  }
+
+  /** Correct a posted receipt by reversing its complete accounting trail and posting a replacement atomically. */
+  async correctClientReceipt(receiptId: string, input: CorrectClientReceiptBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'client-receipts.correct',
+      idempotencyKey,
+      fingerprintInput: { receiptId, ...input }
+    }, async (tx) => this.correctClientReceiptOnce(tx, receiptId, input));
+    return result.response.body;
+  }
+
+  /** Preserve immutable posted history while applying every edited field through compensating Journals. */
+  private async correctClientReceiptOnce(tx: TransactionClient, receiptId: string, input: CorrectClientReceiptBody) {
+    const now = new Date();
+    const users = new AdministrationRepository(tx);
+    const reverseVisibility = await this.resolveVisibility(users, 'client_receipts.reverse', now);
+    const repository = new ClientReceiptsRepository(tx);
+    const locked = await repository.lockClientReceiptForWrite(receiptId, reverseVisibility);
+    if (!locked) throw createClientReceiptError('RECEIPT_NOT_FOUND');
+    if (locked.status !== 'POSTED') throw createClientReceiptError('RECEIPT_LOCKED');
+
+    await this.requireProjectPermission(users, input.projectId, 'client_receipts.create', now);
+    const original = await repository.findClientReceiptById(receiptId, reverseVisibility);
+    if (!original) throw createClientReceiptError('RECEIPT_NOT_FOUND');
+
+    if (original.allocations.length > 0 || input.clientInvoiceId) {
+      await this.requireProjectPermission(users, original.projectId, 'client_receipts.allocate', now);
+      if (input.projectId !== original.projectId) {
+        await this.requireProjectPermission(users, input.projectId, 'client_receipts.allocate', now);
+      }
+    }
+
+    for (const allocation of original.allocations) {
+      await this.unallocateClientReceiptOnce(tx, receiptId, { allocationId: allocation.id });
+    }
+    await this.reverseClientReceiptOnce(tx, receiptId);
+    const replacement = await this.createClientReceiptOnce(tx, input);
+
+    await recordAudit(tx, {
+      action: 'client_receipt.corrected',
+      entityType: 'client_receipt',
+      entityId: receiptId,
+      projectId: original.projectId,
+      stageId: original.stageId,
+      before: receiptResponse(original),
+      after: { replacementReceiptId: replacement.body.id, replacementReceiptNo: replacement.body.receiptNo }
+    });
+    await recordOutboxEvent(tx, {
+      eventType: 'client_receipt.corrected',
+      resourceType: 'client_receipt',
+      resourceId: receiptId,
+      payload: {
+        originalReceiptId: receiptId,
+        originalReceiptNo: original.receiptNo,
+        replacementReceiptId: replacement.body.id,
+        replacementReceiptNo: replacement.body.receiptNo,
+        originalProjectId: original.projectId,
+        replacementProjectId: replacement.body.projectId
+      }
+    });
+    return replacement;
   }
 
   /** Compensate the allocation Journal, remove the active allocation link and preserve audit evidence atomically. */

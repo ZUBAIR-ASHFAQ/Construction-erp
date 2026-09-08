@@ -1,12 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   allocateClientReceipt,
+  correctClientReceipt,
   createClientReceipt,
   getClientReceipt,
   listClientReceipts,
   reverseClientReceipt,
   unallocateClientReceipt,
   type AllocateClientReceiptInput,
+  type CorrectClientReceiptInput,
   type CreateClientReceiptInput,
   type ListClientReceiptsInput,
   type UnallocateClientReceiptInput
@@ -54,6 +56,18 @@ export function useCreateClientReceipt() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateClientReceiptInput) => createClientReceipt(input),
+    onSuccess: async () => refreshReceiptEffects(queryClient)
+  });
+}
+
+/** Atomically reverse and replace one posted Client Receipt after an edit. */
+export function useCorrectClientReceipt(receiptId: string | null) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CorrectClientReceiptInput) => {
+      if (!receiptId) throw new Error('Select a posted Client Receipt before editing.');
+      return correctClientReceipt(receiptId, input);
+    },
     onSuccess: async () => refreshReceiptEffects(queryClient)
   });
 }

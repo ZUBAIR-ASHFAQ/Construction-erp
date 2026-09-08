@@ -30,12 +30,13 @@ test('B17.9 keeps the simple four-part Client Billing React feature', () => {
   assert.deepEqual(entries, ['api', 'components', 'hooks', 'pages']);
 });
 
-/** Confirm the browser client remains on the exact nine-route Module 15 contract. */
-test('B17.9 keeps the exact nine Client Billing API operations and typed status vocabulary', () => {
+/** Confirm the browser client exposes the current Client Billing API operations and typed status vocabulary. */
+test('B17.9 keeps the current Client Billing API operations and typed status vocabulary', () => {
   const api = read(`${FEATURE}/api/client-billing-api.ts`);
   for (const functionName of [
     'getBillingSettings', 'updateBillingSettings', 'listBillingClaims', 'createBillingClaim',
-    'updateBillingClaim', 'finalizeBillingClaim', 'createClientInvoice', 'listClientInvoices', 'getClientInvoice'
+    'updateBillingClaim', 'finalizeBillingClaim', 'createClientInvoice', 'createDirectClientInvoice',
+    'listClientInvoices', 'getClientInvoice'
   ]) assert.match(api, new RegExp(`export function ${functionName}\\b`));
   assert.match(api, /BillingMethod = 'FIXED_PRICE' \| 'COST_PLUS_PERCENTAGE'/);
   assert.match(api, /BillingClaimStatus = 'DRAFT' \| 'FINALIZED'/);
@@ -43,48 +44,47 @@ test('B17.9 keeps the exact nine Client Billing API operations and typed status 
   assert.doesNotMatch(api, /client-billing\/contracts|client-receipts|method:\s*'DELETE'/);
 });
 
-/** Confirm Project Stage selection replaces raw UUID entry and is permission-aware. */
-test('B17.9 selects only permitted Project Stages instead of asking for raw Stage IDs', () => {
+/** Confirm direct Invoice lines select permitted Project Stages instead of raw IDs. */
+test('Client Invoice entry selects only permitted Project Stages', () => {
   const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
   const page = read(`${FEATURE}/pages/client-billing-page.tsx`);
   assert.match(workspace, /useProjectStages\(projectId \|\| null, props\.canReadStages/);
-  assert.match(workspace, /<select \{\.\.\.claimForm\.register\(`lines\.\$\{index\}\.stageId`\)\}>/);
+  assert.match(workspace, /<select \{\.\.\.invoiceForm\.register\(`lines\.\$\{index\}\.stageId`\)\}/);
   assert.match(workspace, /Project level/);
-  assert.match(workspace, /Linked Stage \(restricted\)/);
-  assert.match(workspace, /stage\.code} · \{stage\.name} · \{stage\.status}/);
+  assert.match(workspace, /stage\.code} · \{stage\.name}/);
   assert.doesNotMatch(workspace, /Stage ID \(optional\)|placeholder="UUID|Enter a valid UUID/);
   assert.match(page, /canReadStages=\{usePermission\('stages\.read'\) \|\| Boolean\(hasRestrictedProjects\)\}/);
 });
 
-/** Confirm billing-basis visibility follows Project ownership without a browser-owned formula. */
-test('B17.9 makes Fixed Price and Cost + Percentage basis visible but server-owned', () => {
+/** Confirm Billing Settings and Progress Claim workflows are absent from the Client Invoice page. */
+test('Client Invoice page contains only direct Invoice functionality', () => {
   const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
-  assert.match(workspace, /selectedProject\.projectModel/);
-  assert.match(workspace, /Project value/);
-  assert.match(workspace, /physical Stage progress does not auto-create billing/);
-  assert.match(workspace, /posted actual Project\/Stage cost through the claim period end plus/);
-  assert.match(workspace, /project\.costPlusPercent/);
-  assert.match(workspace, /billingMethod: selectedProject\.projectModel/);
-  assert.match(workspace, /readOnly aria-readonly="true"/);
-  assert.doesNotMatch(workspace, /actualCost\s*\*|projectValue\s*\*|Number\([^)]*costPlusPercent[^)]*\)/);
+  const page = read(`${FEATURE}/pages/client-billing-page.tsx`);
+  assert.match(workspace, /useCreateDirectClientInvoice/);
+  assert.match(workspace, /Create client invoice/);
+  assert.doesNotMatch(workspace, /Billing settings|New progress claim|Claims<\/h2>|claimForm|settingsForm/);
+  assert.doesNotMatch(page, /canManageSettings|canCreateClaims|canEditClaims|canFinalizeClaims/);
 });
 
-/** Confirm Claim and Client Invoice views preserve Stage attribution. */
-test('B17.9 renders Stage-aware Claim and immutable Client Invoice line detail', () => {
+/** Confirm Client Invoice entry and detail preserve Stage attribution. */
+test('Client Invoice entry and detail preserve Stage attribution', () => {
   const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
   assert.match(workspace, /function stageLabel\(stageId: string \| null\)/);
-  assert.match(workspace, /claim\.lines\.map/);
+  assert.match(workspace, /selectedInvoiceQuery\.data\.lines\.map/);
   assert.match(workspace, /stageLabel\(line\.stageId\)/);
-  assert.match(workspace, /invoice\.lines\.map/);
-  assert.match(workspace, /The issued invoice preserves the finalized Claim lines and their optional Stage attribution/);
+  assert.match(workspace, /Invoice lines/);
 });
 
-/** Confirm Client Receipt and outstanding values are not fabricated before Module 16. */
-test('B17.9 leaves received advance and outstanding ownership to Module 16', () => {
+/** Confirm Client Invoice paid/due values come from server-owned receipt allocations instead of browser arithmetic. */
+test('B17.9 renders server-derived Client Invoice paid and due balances', () => {
   const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
-  assert.match(workspace, /Received, advance and outstanding values are intentionally not calculated here/);
-  assert.match(workspace, /Module 16 Client Receipts \/ Payments owns cash receipt and allocation history/);
-  assert.doesNotMatch(workspace, /receivedAmount|advanceAmount|outstandingAmount|totalAmount\s*-\s*received/);
+  const api = read(`${FEATURE}/api/client-billing-api.ts`);
+  assert.match(workspace, /Paid and outstanding values are calculated by the server from posted Client Payment allocations/);
+  assert.match(workspace, /invoice\.allocatedAmount/);
+  assert.match(workspace, /invoice\.outstandingAmount/);
+  assert.match(api, /allocatedAmount: string/);
+  assert.match(api, /outstandingAmount: string/);
+  assert.doesNotMatch(workspace, /receivedAmount|advanceAmount|totalAmount\s*-\s*allocatedAmount/);
 });
 
 /** Confirm issued invoices invalidate Stage and Finance reads affected by the same source transaction. */
@@ -97,22 +97,35 @@ test('B17.9 refreshes Client Billing Stage and Finance query state after invoice
   assert.match(hooks, /queryClient\.invalidateQueries\(\{ queryKey: FINANCE_QUERY_KEY \}\)/);
 });
 
-/** Confirm browser write forms remain React Hook Form plus Zod and match the positive Claim amount boundary. */
-test('B17.9 keeps React Hook Form plus Zod and aligns Claim amount validation', () => {
+/** Confirm direct Invoice writes remain React Hook Form plus Zod and bounded. */
+test('Client Invoice entry uses React Hook Form plus Zod with bounded lines', () => {
   const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
   assert.match(workspace, /zodResolver/);
   assert.match(workspace, /useFieldArray/);
   assert.match(workspace, /positiveMoneySchema/);
-  assert.match(workspace, /max\(500, 'A claim can contain at most 500 lines\.'\)/);
+  assert.match(workspace, /max\(500\)/);
   assert.doesNotMatch(workspace, /amount: '0\.00'/);
 });
 
-/** Confirm B17.9 is frontend-only and keeps backend persistence and route count frozen. */
+/** Confirm the current Client Billing route surface and migration boundary remain stable. */
 test('B17.9 changes no backend route or migration surface', () => {
   const routes = read('apps/api/src/modules/client-billing/client-billing.routes.ts');
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/client-billing/g) ?? []).length, 9);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/client-billing/g) ?? []).length, 10);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   assert.equal(migrations.some((name) => /b17_9|client_billing_react/i.test(name)), false);
+});
+
+/** Confirm the invoice register opens server-loaded, accessible line and balance detail. */
+test('Client Invoice register exposes a complete detail dialog', () => {
+  const workspace = read(`${FEATURE}/components/client-billing-workspace.tsx`);
+  const hooks = read(`${FEATURE}/hooks/client-billing.ts`);
+  assert.match(workspace, /<th>Invoice<\/th><th>Date<\/th><th>Status<\/th><th>Total<\/th><th>Allocated<\/th><th>Outstanding<\/th><th>Project<\/th><th>Action<\/th>/);
+  assert.match(workspace, /setSelectedInvoiceId\(invoice\.id\)/);
+  assert.match(workspace, /aria-labelledby="client-invoice-detail-title"/);
+  assert.match(workspace, /Invoice lines/);
+  assert.match(workspace, /Paid \/ allocated/);
+  assert.match(hooks, /export function useClientInvoice/);
+  assert.match(hooks, /getClientInvoice\(invoiceId as string\)/);
 });
 
 /** Confirm every named frontend function changed in B17.9 keeps a short purpose comment. */

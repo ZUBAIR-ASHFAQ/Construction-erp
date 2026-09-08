@@ -166,10 +166,6 @@ const SUPPLIER_PAYABLES_PERMISSIONS = [
 ] as const;
 const CLIENT_BILLING_PERMISSIONS = [
   'client_billing.read',
-  'client_billing.settings.manage',
-  'claims.create',
-  'claims.edit',
-  'claims.finalize',
   'client_invoices.create',
   'client_invoices.read'
 ] as const;
@@ -475,7 +471,7 @@ export function AdminShell() {
                 {canReadClients && <button type="button" className={navigationButtonClass(activeView, 'client-add')} onClick={() => selectView('client-add')}>Add New</button>}
                 {canUseClientReceipts && <button type="button" className={navigationButtonClass(activeView, 'client-payment')} onClick={() => selectView('client-payment')}>New Payment</button>}
                 {canUseClientReceipts && <button type="button" className={navigationButtonClass(activeView, 'client-ledger')} onClick={() => selectView('client-ledger')}>Ledger</button>}
-                {canUseClientBilling && <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => selectView('client-billing')}>Invoices / Billing</button>}
+                {canUseClientBilling && <button type="button" className={navigationButtonClass(activeView, 'client-billing')} onClick={() => selectView('client-billing')}>Client Invoices</button>}
               </div>
             </details>
 

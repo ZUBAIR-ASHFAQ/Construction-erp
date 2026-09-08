@@ -185,8 +185,12 @@ test('B18.10 live invoice payment is idempotent and reconciles Receipt, allocati
     assert.equal(response.statusCode, 201, response.body);
     assert.equal(response.json().data.allocatedAmount, '400.00');
     assert.equal(response.json().data.unallocatedAmount, '600.00');
-    const receiptJournal = await client.journal.findFirstOrThrow({ where: { companyId: COMPANY_A_ID, sourceKey: `client_receipt:${receipt.id}` } });
     const allocationId = response.json().data.allocations[0].id;
+    response = await app.inject({ method: 'GET', url: `/api/v1/client-billing/invoices/${INVOICE_A_ID}`, headers: { authorization: `Bearer ${token}` } });
+    assert.equal(response.statusCode, 200, response.body);
+    assert.equal(response.json().data.allocatedAmount, '400.00');
+    assert.equal(response.json().data.outstandingAmount, '600.00');
+    const receiptJournal = await client.journal.findFirstOrThrow({ where: { companyId: COMPANY_A_ID, sourceKey: `client_receipt:${receipt.id}` } });
     const allocationJournal = await client.journal.findFirstOrThrow({ where: { companyId: COMPANY_A_ID, sourceKey: `client_receipt_allocation:${allocationId}` } });
     assert.equal(Number(receiptJournal.totalDebit), 1000); assert.equal(Number(receiptJournal.totalCredit), 1000);
     assert.equal(Number(allocationJournal.totalDebit), 400); assert.equal(Number(allocationJournal.totalCredit), 400);
@@ -275,7 +279,7 @@ test('B18.10 live closed Finance period rolls Receipt and Journal back atomicall
   });
 });
 
-test('B18.10 live OpenAPI exposes exactly six Client Receipts operations and four idempotent writes', { skip: !live }, async () => {
+test('live OpenAPI exposes seven Client Receipts operations and five idempotent writes', { skip: !live }, async () => {
   await withApi(async ({ app }) => {
     const response = await app.inject({ method: 'GET', url: '/openapi.json' });
     assert.equal(response.statusCode, 200, response.body);
@@ -283,12 +287,13 @@ test('B18.10 live OpenAPI exposes exactly six Client Receipts operations and fou
     const expected = [
       ['get', '/api/v1/client-receipts', 'listClientReceipts'], ['post', '/api/v1/client-receipts', 'createClientReceipt'],
       ['get', '/api/v1/client-receipts/{id}', 'getClientReceipt'], ['post', '/api/v1/client-receipts/{id}/allocations', 'allocateClientReceipt'],
-      ['post', '/api/v1/client-receipts/{id}/unallocate', 'unallocateClientReceipt'], ['post', '/api/v1/client-receipts/{id}/reverse', 'reverseClientReceipt']
+      ['post', '/api/v1/client-receipts/{id}/unallocate', 'unallocateClientReceipt'], ['post', '/api/v1/client-receipts/{id}/correct', 'correctClientReceipt'],
+      ['post', '/api/v1/client-receipts/{id}/reverse', 'reverseClientReceipt']
     ];
     for (const [method, path, operationId] of expected) { assert.equal(spec.paths[path][method].operationId, operationId); assert.deepEqual(spec.paths[path][method].security, [{ bearerAuth: [] }]); }
-    for (const path of ['/api/v1/client-receipts', '/api/v1/client-receipts/{id}/allocations', '/api/v1/client-receipts/{id}/unallocate', '/api/v1/client-receipts/{id}/reverse']) {
+    for (const path of ['/api/v1/client-receipts', '/api/v1/client-receipts/{id}/allocations', '/api/v1/client-receipts/{id}/unallocate', '/api/v1/client-receipts/{id}/correct', '/api/v1/client-receipts/{id}/reverse']) {
       assert.ok(spec.paths[path].post.parameters.some((parameter) => parameter.name === 'idempotency-key' && parameter.required === true));
     }
-    assert.equal(Object.keys(spec.paths).filter((path) => path.startsWith('/api/v1/client-receipts')).length, 5);
+    assert.equal(Object.keys(spec.paths).filter((path) => path.startsWith('/api/v1/client-receipts')).length, 6);
   });
 });

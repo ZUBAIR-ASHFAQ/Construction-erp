@@ -29,16 +29,18 @@ test('local development provides private S3-compatible storage and creates the i
   assert.equal(rootPackage.scripts['storage:up'], 'docker compose up -d minio minio-init');
 });
 
-test('direct Client Invoice command derives ownership and totals server-side then posts AR atomically', () => {
+test('direct Client Invoice command derives ownership and totals server-side without posting AR', () => {
   const schema = read('apps/api/src/modules/client-billing/client-billing.schema.ts');
   const routes = read('apps/api/src/modules/client-billing/client-billing.routes.ts');
   const service = read('apps/api/src/modules/client-billing/client-billing.service.ts');
+  const direct = service.slice(service.indexOf('private async createDirectInvoiceOnce'), service.indexOf('/** List permission-visible Client Invoices. */'));
   assert.match(schema, /createDirectClientInvoiceBodySchema/);
   assert.match(routes, /app\.post\('\/api\/v1\/client-billing\/invoices'/);
   assert.match(service, /requireProjectPermission\(administration, input\.projectId, 'client_invoices\.create'/);
-  assert.match(service, /claimId: null/);
-  assert.match(service, /input\.lines\.reduce\(\(sum, line\) => sum \+ moneyToMinorUnits\(line\.amount\)/);
-  assert.match(service, /postInvoiceToFinance\(tx, invoice/);
+  assert.match(direct, /claimId: null/);
+  assert.match(direct, /input\.lines\.reduce\(\(sum, line\) => sum \+ moneyToMinorUnits\(line\.amount\)/);
+  assert.match(direct, /revenueAccountId: null/);
+  assert.doesNotMatch(direct, /requireInvoicePostingAccounts|postInvoiceToFinance|client_invoice\.posted|financeSourceKey/);
   assert.match(service, /operation: 'client-billing\.direct-invoice-create'/);
 });
 

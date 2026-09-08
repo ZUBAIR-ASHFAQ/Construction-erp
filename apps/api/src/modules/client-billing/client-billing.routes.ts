@@ -107,11 +107,11 @@ const INVOICE_LINE_JSON_SCHEMA = {
 } as const;
 const INVOICE_JSON_SCHEMA = {
   type: 'object', additionalProperties: false,
-  required: ['id', 'projectId', 'clientId', 'claimId', 'invoiceNo', 'invoiceDate', 'dueDate', 'status', 'subtotal', 'taxAmount', 'totalAmount', 'lines'],
+  required: ['id', 'projectId', 'clientId', 'claimId', 'invoiceNo', 'invoiceDate', 'dueDate', 'status', 'subtotal', 'taxAmount', 'totalAmount', 'allocatedAmount', 'outstandingAmount', 'lines'],
   properties: {
     id: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, clientId: UUID_JSON_SCHEMA, claimId: NULLABLE_UUID_JSON_SCHEMA,
     invoiceNo: { type: 'string' }, invoiceDate: DATE_JSON_SCHEMA, dueDate: NULLABLE_DATE_JSON_SCHEMA, status: INVOICE_STATUS_JSON_SCHEMA,
-    subtotal: MONEY_JSON_SCHEMA, taxAmount: MONEY_JSON_SCHEMA, totalAmount: MONEY_JSON_SCHEMA,
+    subtotal: MONEY_JSON_SCHEMA, taxAmount: MONEY_JSON_SCHEMA, totalAmount: MONEY_JSON_SCHEMA, allocatedAmount: MONEY_JSON_SCHEMA, outstandingAmount: MONEY_JSON_SCHEMA,
     lines: { type: 'array', items: INVOICE_LINE_JSON_SCHEMA }
   }
 } as const;
@@ -237,7 +237,7 @@ export async function registerClientBillingRoutes(app: FastifyInstance, options:
 
   app.post('/api/v1/client-billing/invoices', {
     preHandler: [authenticate],
-    schema: { tags: ['Client Billing'], operationId: 'createDirectClientBillingInvoice', summary: 'Create, issue and post a directly entered Client Invoice', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_DIRECT_INVOICE_BODY_JSON_SCHEMA, response: { 201: dataEnvelope(INVOICE_JSON_SCHEMA), ...COMMON_RESPONSES } }
+    schema: { tags: ['Client Billing'], operationId: 'createDirectClientBillingInvoice', summary: 'Create and issue a directly entered Client Invoice without immediate Finance posting', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_DIRECT_INVOICE_BODY_JSON_SCHEMA, response: { 201: dataEnvelope(INVOICE_JSON_SCHEMA), ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     const body = parseRequest(createDirectClientInvoiceBodySchema, request.body, 'body');
     const data = clientInvoiceResponseSchema.parse(await service.createDirectInvoice(body, readIdempotencyKey(request)));

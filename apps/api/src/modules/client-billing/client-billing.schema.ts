@@ -230,6 +230,8 @@ export const clientInvoiceResponseSchema: z.ZodTypeAny = z.object({
   subtotal: exactNonNegativeMoneySchema,
   taxAmount: exactNonNegativeMoneySchema,
   totalAmount: exactNonNegativeMoneySchema,
+  allocatedAmount: exactNonNegativeMoneySchema,
+  outstandingAmount: exactNonNegativeMoneySchema,
   lines: z.array(clientInvoiceLineResponseSchema)
 }).strict();
 

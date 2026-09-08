@@ -18,6 +18,7 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
   'EMPLOYEE_NOT_ASSIGNED',
   'PAYROLL_NOT_FOUND',
   'PAYROLL_LOCKED',
+  'OVERTIME_MULTIPLIER_REQUIRED',
   'PAYROLL_NOT_READY'
 ] as const);
 
@@ -73,6 +74,7 @@ const dateSchema = z.string()
   }, 'date must be a valid calendar date');
 const exactHoursSchema = z.string().trim().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,4})?$/, 'hours must be an exact non-negative decimal with up to 4 decimals');
 const exactMoneySchema = z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'money must be an exact non-negative decimal with up to 2 decimals');
+const overtimeMultiplierSchema = z.string().trim().regex(/^(?:[1-9]\d{0,2})(?:\.\d{1,4})?$/, 'overtimeMultiplier must be a positive decimal with up to 4 decimals');
 const paginationShape = {
   page: z.coerce.number().int().min(1).optional(),
   pageSize: z.coerce.number().int().min(1).max(LABOUR_PAYROLL_MAX_PAGE_SIZE).optional()
@@ -122,7 +124,14 @@ export const updateAttendanceBodySchema = z.object({
   status: z.enum(ATTENDANCE_STATUS_VALUES).optional(),
   hours: exactHoursSchema.nullable().optional(),
   overtimeHours: exactHoursSchema.nullable().optional()
-}).strict().refine((value) => Object.keys(value).length > 0, 'At least one attendance field must be supplied.');
+}).strict().refine((value) => Object.keys(value).length > 0, 'At least one attendance field must be supplied.').superRefine((value, ctx) => {
+  const hours = Number(value.hours ?? '0');
+  const overtime = Number(value.overtimeHours ?? '0');
+  if (hours + overtime > 24) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['hours'], message: 'hours plus overtimeHours cannot exceed 24.' });
+  if (value.status === 'ABSENT' && (hours > 0 || overtime > 0)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['status'], message: 'ABSENT attendance cannot contain worked hours.' });
+  }
+});
 
 /** Validate bounded Payroll Run history reads. */
 export const listPayrollRunsQuerySchema = z.object({ ...paginationShape }).strict();
@@ -136,8 +145,10 @@ export const createPayrollRunBodySchema = z.object({
   path: ['periodEnd']
 });
 
-/** Validate the bodyless Payroll calculation command. */
-export const calculatePayrollRunBodySchema = z.object({}).strict();
+/** Validate optional Payroll-run overtime policy while keeping calculation server-owned. */
+export const calculatePayrollRunBodySchema = z.object({
+  overtimeMultiplier: overtimeMultiplierSchema.optional()
+}).strict();
 
 /** Validate the bodyless Payroll finalization command. */
 export const finalizePayrollRunBodySchema = z.object({}).strict();
@@ -146,13 +157,19 @@ export const finalizePayrollRunBodySchema = z.object({}).strict();
 export const attendanceResponseSchema = z.object({
   id: uuidSchema,
   employeeId: uuidSchema,
+  employeeNo: z.string().min(1),
+  employeeName: z.string().min(1),
   projectId: uuidSchema,
+  projectCode: z.string().min(1),
+  projectName: z.string().min(1),
   stageId: uuidSchema.nullable(),
+  stageName: z.string().nullable(),
   workDate: dateSchema,
   status: z.enum(ATTENDANCE_STATUS_VALUES),
   hours: exactHoursSchema.nullable(),
   overtimeHours: exactHoursSchema.nullable(),
-  enteredBy: uuidSchema
+  enteredBy: uuidSchema,
+  enteredByName: z.string().min(1)
 }).strict();
 
 /** Validate one bounded attendance page. */
@@ -175,6 +192,8 @@ export const payrollAllocationResponseSchema = z.object({
 export const payrollLineResponseSchema = z.object({
   id: uuidSchema,
   employeeId: uuidSchema,
+  employeeNo: z.string().min(1),
+  employeeName: z.string().min(1),
   grossAmount: exactMoneySchema,
   deductions: exactMoneySchema,
   netAmount: exactMoneySchema,
@@ -193,7 +212,9 @@ export const payrollRunResponseSchema = z.object({
   periodEnd: dateSchema,
   status: z.enum(PAYROLL_RUN_STATUS_VALUES),
   createdBy: uuidSchema,
+  createdByName: z.string().min(1),
   finalizedAt: z.string().datetime({ offset: true }).nullable(),
+  overtimeMultiplier: overtimeMultiplierSchema.nullable(),
   lines: z.array(payrollLineResponseSchema)
 }).strict();
 
@@ -218,6 +239,7 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   EMPLOYEE_NOT_ASSIGNED: 'The Employee has no valid Project/Stage assignment for this work date.',
   PAYROLL_NOT_FOUND: 'Payroll Run was not found.',
   PAYROLL_LOCKED: 'Finalized Payroll is immutable and cannot be changed directly.',
+  OVERTIME_MULTIPLIER_REQUIRED: 'Hourly overtime exists in this Payroll Run. Enter an overtime multiplier before calculation.',
   PAYROLL_NOT_READY: 'Payroll cannot continue because required attendance, compensation, posting accounts or calculation state is incomplete.'
 });
 

@@ -292,6 +292,7 @@ export class InventoryService {
       prepared.push({ material, quantity, unitCost, lineCost: quantityCostToMoney(quantity, unitCost) });
     }
 
+    await repository.ensureMaterialIssueNumberSequence();
     const number = await allocateCompanyNumber(tx, { sequenceKey: MATERIAL_ISSUE_SEQUENCE });
     const issue = await repository.createMaterialIssue({
       projectId: input.projectId,
@@ -342,7 +343,7 @@ export class InventoryService {
     return { statusCode: 201, body: response };
   }
 
-  /** Transfer stock between two Warehouses with one server-derived valuation. */
+  /** Transfer stock between Warehouses or Projects with one server-derived valuation. */
   async transferMaterial(input: TransferMaterialBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'inventory.transfer', idempotencyKey, fingerprintInput: input
@@ -351,6 +352,9 @@ export class InventoryService {
       const users = new AdministrationRepository(tx);
       const visibility = await this.resolveVisibility(users, 'inventory.transfer', now);
       const repository = new InventoryRepository(tx);
+      const sourceProjectId = input.sourceProjectId ?? null;
+      const destinationProjectId = input.destinationProjectId ?? null;
+      const destinationStageId = input.destinationStageId ?? null;
       const [source, destination, material] = await Promise.all([
         repository.findWarehouseById(input.sourceWarehouseId, visibility),
         repository.findWarehouseById(input.destinationWarehouseId, visibility),
@@ -360,15 +364,47 @@ export class InventoryService {
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
       await this.requireWarehousePermission(users, source, 'inventory.transfer', now);
       await this.requireWarehousePermission(users, destination, 'inventory.transfer', now);
-      for (const warehouseId of [source.id, destination.id].sort()) await repository.lockStockKey(warehouseId, material.id);
-      const position = await repository.getStockPosition(source.id, material.id);
+      if (sourceProjectId && destinationProjectId) {
+        await this.requireProjectPermission(users, sourceProjectId, 'inventory.transfer', now);
+        await this.requireProjectPermission(users, destinationProjectId, 'inventory.transfer', now);
+        const [sourceProject, destinationProject] = await Promise.all([
+          repository.findProjectById(sourceProjectId),
+          repository.findProjectById(destinationProjectId)
+        ]);
+        if (!sourceProject) throw new NotFoundError({ message: 'Source Project was not found.' });
+        if (!destinationProject || token(destinationProject.status) !== ACTIVE) throw new ConflictError({ message: 'Destination Project must be active.' });
+        if (source.projectId && source.projectId !== sourceProjectId) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+        if (destination.projectId && destination.projectId !== destinationProjectId) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+        if (destinationStageId && !(await repository.findStage(destinationProjectId, destinationStageId))) throw createModule11Error('INVALID_STAGE_ISSUE');
+      }
+      for (const warehouseId of [...new Set([source.id, destination.id])].sort()) await repository.lockStockKey(warehouseId, material.id);
+      const position = await repository.getStockPosition(source.id, material.id, sourceProjectId);
       const quantity = decimalToScale4(input.quantity);
       if (quantity > decimalToScale4(position?.quantityOnHand ?? '0')) throw createModule11Error('INSUFFICIENT_STOCK');
       const unitCost = decimalToScale4(position?.averageCost ?? '0');
+      const lineCost = quantityCostToMoney(quantity, unitCost);
       const sourceId = requireRequestContext().requestId;
-      const outbound = await repository.createLedgerEntry({ materialId: material.id, warehouseId: source.id, projectId: source.projectId, movementType: 'TRANSFER_OUT', quantity: scale4ToDecimal(-quantity), unitCost: scale4ToDecimal(unitCost), sourceType: 'inventory_transfer', sourceId, occurredAt: now });
-      const inbound = await repository.createLedgerEntry({ materialId: material.id, warehouseId: destination.id, projectId: destination.projectId, movementType: 'TRANSFER_IN', quantity: scale4ToDecimal(quantity), unitCost: scale4ToDecimal(unitCost), sourceType: 'inventory_transfer', sourceId, occurredAt: now });
-      const response = { transactions: [ledgerResponse(outbound), ledgerResponse(inbound)] };
+      const outbound = await repository.createLedgerEntry({ materialId: material.id, warehouseId: source.id, projectId: sourceProjectId ?? source.projectId, movementType: 'TRANSFER_OUT', quantity: scale4ToDecimal(-quantity), unitCost: scale4ToDecimal(unitCost), sourceType: 'inventory_transfer', sourceId, occurredAt: now });
+      const inbound = await repository.createLedgerEntry({ materialId: material.id, warehouseId: destination.id, projectId: destinationProjectId ?? destination.projectId, stageId: destinationStageId, movementType: 'TRANSFER_IN', quantity: scale4ToDecimal(quantity), unitCost: scale4ToDecimal(unitCost), sourceType: 'inventory_transfer', sourceId, occurredAt: now });
+      if (sourceProjectId && destinationProjectId && decimalToScale4(lineCost) > 0n) {
+        await repository.createTransferCostActual({
+          projectId: sourceProjectId,
+          stageId: null,
+          sourceId: outbound.id,
+          sourceKey: `inventory_transfer:${sourceId}:${outbound.id}`,
+          postingDate: input.transferDate ? inputDate(input.transferDate) : now,
+          amount: `-${lineCost}`
+        });
+        await repository.createTransferCostActual({
+          projectId: destinationProjectId,
+          stageId: destinationStageId,
+          sourceId: inbound.id,
+          sourceKey: `inventory_transfer:${sourceId}:${inbound.id}`,
+          postingDate: input.transferDate ? inputDate(input.transferDate) : now,
+          amount: lineCost
+        });
+      }
+      const response = { transactions: [ledgerResponse(outbound), ledgerResponse(inbound)], destinationProjectId, destinationStageId, lineCost };
       await recordAudit(tx, { action: 'inventory.transferred', entityType: 'stock_ledger', entityId: outbound.id, after: response });
       await recordOutboxEvent(tx, { eventType: 'inventory.transferred', resourceType: 'stock_ledger', resourceId: outbound.id, payload: response });
       return { statusCode: 201, body: response };

@@ -80,6 +80,15 @@ export class ProjectsRepository {
     });
   }
 
+  /** Sum posted subcontract-payment actuals so contract value can replace, not duplicate, those payment costs. */
+  async sumSubcontractPaymentActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({
+      where: scope.where({ projectId, category: 'subcontract', sourceType: 'subcontract_payment' }),
+      _sum: { amount: true }
+    });
+  }
+
   /** Aggregate posted cash settlements made to Suppliers for one Project. */
   async readSupplierPaymentSummary(projectId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -149,6 +158,15 @@ export class ProjectsRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.costActual.aggregate({
       where: scope.where({ projectId, sourceType: 'supplier_invoice' }),
+      _sum: { amount: true }
+    });
+  }
+
+  /** Sum signed Inventory-transfer reclassifications separately from Supplier cost coverage. */
+  async sumInventoryTransferActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({
+      where: scope.where({ projectId, sourceType: 'inventory_transfer' }),
       _sum: { amount: true }
     });
   }

@@ -197,6 +197,15 @@ const PROJECT_SUPPLIER_PAYABLE_SUMMARY_JSON_SCHEMA = {
     outstandingAmount: PROJECT_MONEY_JSON_SCHEMA
   }
 } as const;
+const PROJECT_SUBCONTRACT_SUMMARY_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['contractCount', 'contractAmount'],
+  properties: {
+    contractCount: { type: 'integer', minimum: 0 },
+    contractAmount: PROJECT_MONEY_JSON_SCHEMA
+  }
+} as const;
 const PROJECT_RECEIPT_SUMMARY_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -218,7 +227,7 @@ const PROJECT_DETAILS_SUCCESS_SCHEMA = {
       additionalProperties: false,
       required: [
         'project', 'statusHistory', 'stageSummary', 'teamSummary', 'budgetSummary', 'costSummary', 'expenseSummary',
-        'billingSummary', 'supplierPaymentSummary', 'supplierPayableSummary', 'receiptSummary'
+        'subcontractSummary', 'billingSummary', 'supplierPaymentSummary', 'supplierPayableSummary', 'receiptSummary'
       ],
       properties: {
         project: PROJECT_RESPONSE_JSON_SCHEMA,
@@ -231,6 +240,7 @@ const PROJECT_DETAILS_SUCCESS_SCHEMA = {
         billingSummary: { anyOf: [PROJECT_BILLING_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         supplierPaymentSummary: { anyOf: [PROJECT_SUPPLIER_PAYMENT_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         supplierPayableSummary: { anyOf: [PROJECT_SUPPLIER_PAYABLE_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
+        subcontractSummary: { anyOf: [PROJECT_SUBCONTRACT_SUMMARY_JSON_SCHEMA, { type: 'null' }] },
         receiptSummary: { anyOf: [PROJECT_RECEIPT_SUMMARY_JSON_SCHEMA, { type: 'null' }] }
       }
     }
@@ -395,6 +405,7 @@ function serializeProjectDetails(result: ProjectDetails): ProjectDetailsResponse
     billingSummary: result.billingSummary,
     supplierPaymentSummary: result.supplierPaymentSummary,
     supplierPayableSummary: result.supplierPayableSummary,
+    subcontractSummary: result.subcontractSummary,
     receiptSummary: result.receiptSummary
   });
 }

@@ -26,6 +26,7 @@ const BEARER_SECURITY = [{ bearerAuth: [] }];
 const UUID_JSON_SCHEMA = { type: 'string', format: 'uuid' } as const;
 const DATE_JSON_SCHEMA = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } as const;
 const HOURS_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,2})(?:\\.\\d{1,4})?$' } as const;
+const OVERTIME_MULTIPLIER_JSON_SCHEMA = { type: 'string', pattern: '^(?:[1-9]\\d{0,2})(?:\\.\\d{1,4})?$' } as const;
 const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
 const NULLABLE_HOURS_JSON_SCHEMA = { anyOf: [HOURS_JSON_SCHEMA, { type: 'null' }] } as const;
 const ID_PARAMS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['id'], properties: { id: UUID_JSON_SCHEMA } } as const;
@@ -50,6 +51,7 @@ const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
   properties: { periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
 } as const;
+const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
 const EMPTY_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, maxProperties: 0 } as const;
 const SUCCESS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['data'], properties: { data: { type: 'object', additionalProperties: true } } } as const;
 const ERROR_JSON_SCHEMA = {
@@ -135,12 +137,12 @@ export async function registerLabourPayrollRoutes(app: FastifyInstance, options:
   });
 
   app.post('/api/v1/payroll/runs/:id/calculate', {
-    schema: { tags: ['Labour & Payroll'], operationId: 'calculatePayrollRun', summary: 'Calculate payroll from effective compensation and attendance', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: EMPTY_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+    schema: { tags: ['Labour & Payroll'], operationId: 'calculatePayrollRun', summary: 'Calculate payroll from effective compensation and attendance', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: CALCULATE_PAYROLL_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
-    parseRequest(calculatePayrollRunBodySchema, request.body ?? {}, 'body');
-    const data = payrollRunResponseSchema.parse(await service.calculatePayrollRun(params.id, readIdempotencyKey(request)));
+    const body = parseRequest(calculatePayrollRunBodySchema, request.body ?? {}, 'body');
+    const data = payrollRunResponseSchema.parse(await service.calculatePayrollRun(params.id, body, readIdempotencyKey(request)));
     return reply.send({ data });
   });
 

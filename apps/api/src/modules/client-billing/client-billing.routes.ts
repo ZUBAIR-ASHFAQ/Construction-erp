@@ -8,6 +8,7 @@ import {
   billingIdParamsSchema,
   clientInvoiceResponseSchema,
   createClaimBodySchema,
+  createDirectClientInvoiceBodySchema,
   createInvoiceBodySchema,
   finalizeClaimBodySchema,
   listClaimsQuerySchema,
@@ -79,6 +80,23 @@ const CREATE_INVOICE_BODY_JSON_SCHEMA = {
     dueDate: { ...DATE_JSON_SCHEMA, description: 'Due date in YYYY-MM-DD; the API requires it to be on or after invoiceDate.' }
   }
 } as const;
+const DIRECT_INVOICE_LINE_INPUT_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['description', 'amount'],
+  properties: {
+    stageId: NULLABLE_UUID_JSON_SCHEMA,
+    description: { type: 'string', minLength: 1, maxLength: 1000 },
+    amount: POSITIVE_MONEY_JSON_SCHEMA
+  }
+} as const;
+const CREATE_DIRECT_INVOICE_BODY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['projectId', 'invoiceDate', 'lines'],
+  properties: {
+    projectId: UUID_JSON_SCHEMA,
+    invoiceDate: DATE_JSON_SCHEMA,
+    dueDate: NULLABLE_DATE_JSON_SCHEMA,
+    lines: { type: 'array', minItems: 1, maxItems: 500, items: DIRECT_INVOICE_LINE_INPUT_JSON_SCHEMA }
+  }
+} as const;
 const CLAIM_LINE_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['id', 'stageId', 'description', 'billingProgressPercent', 'amount'],
   properties: { id: UUID_JSON_SCHEMA, stageId: NULLABLE_UUID_JSON_SCHEMA, description: { type: 'string' }, billingProgressPercent: NULLABLE_PERCENT_JSON_SCHEMA, amount: MONEY_JSON_SCHEMA }
@@ -148,7 +166,7 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return key.trim();
 }
 
-/** Register the exact nine Final-21 Client Billing routes with complete HTTP/OpenAPI contracts. */
+/** Register the Client Billing routes with complete HTTP/OpenAPI contracts. */
 export async function registerClientBillingRoutes(app: FastifyInstance, options: ClientBillingRoutesOptions): Promise<void> {
   const service = new ClientBillingService(options.database);
 
@@ -214,6 +232,15 @@ export async function registerClientBillingRoutes(app: FastifyInstance, options:
     const params = parseRequest(billingIdParamsSchema, request.params, 'params');
     const body = parseRequest(createInvoiceBodySchema, request.body, 'body');
     const data = clientInvoiceResponseSchema.parse(await service.createInvoice(params.id, body, readIdempotencyKey(request)));
+    return reply.code(201).send({ data });
+  });
+
+  app.post('/api/v1/client-billing/invoices', {
+    preHandler: [authenticate],
+    schema: { tags: ['Client Billing'], operationId: 'createDirectClientBillingInvoice', summary: 'Create, issue and post a directly entered Client Invoice', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_DIRECT_INVOICE_BODY_JSON_SCHEMA, response: { 201: dataEnvelope(INVOICE_JSON_SCHEMA), ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    const body = parseRequest(createDirectClientInvoiceBodySchema, request.body, 'body');
+    const data = clientInvoiceResponseSchema.parse(await service.createDirectInvoice(body, readIdempotencyKey(request)));
     return reply.code(201).send({ data });
   });
 

@@ -532,14 +532,25 @@ export class DocumentsService {
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const asOf = new Date();
-    const availableVisibility = await this.resolveReadVisibility(this.usersRepository, asOf);
-    const visibility = input.projectId
-      ? await this.resolveRequestedReadVisibility(input.projectId, asOf)
-      : availableVisibility;
+    let visibility: Readonly<{ includeCompanyWide: boolean; allowedProjectIds: readonly string[] | null }>;
+    if (input.resourceType === 'supplier_invoice' && input.resourceId) {
+      const resource = await this.repository.findLinkableResource('supplier_invoice', input.resourceId);
+      if (!resource?.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+      if (input.projectId && input.projectId !== resource.projectId) throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
+      await this.requireLinkedProjectPermission(this.usersRepository, resource.projectId, 'supplier_payables.read', asOf);
+      visibility = { includeCompanyWide: false, allowedProjectIds: [resource.projectId] };
+    } else {
+      const availableVisibility = await this.resolveReadVisibility(this.usersRepository, asOf);
+      visibility = input.projectId
+        ? await this.resolveRequestedReadVisibility(input.projectId, asOf)
+        : availableVisibility;
+    }
     const result = await this.repository.listDocuments({
       search: input.search,
       category: input.category,
       status: input.status,
+      resourceType: input.resourceType,
+      resourceId: input.resourceId,
       ...visibility,
       skip: (page - 1) * pageSize,
       take: pageSize
@@ -689,14 +700,19 @@ export class DocumentsService {
   async createDownloadUrl(documentId: string) {
     const document = await this.repository.findDocumentById(documentId);
     if (!document) throw createModule21Error('DOCUMENT_NOT_FOUND');
-
-    await this.requireDocumentPermission(
-      this.usersRepository,
-      document.projectId,
-      'documents.read',
-      'documents.read',
-      new Date()
-    );
+    const asOf = new Date();
+    const supplierInvoiceLink = await this.repository.findSupplierInvoiceLinkForDocument(document.id);
+    if (supplierInvoiceLink?.projectId) {
+      await this.requireLinkedProjectPermission(this.usersRepository, supplierInvoiceLink.projectId, 'supplier_payables.read', asOf);
+    } else {
+      await this.requireDocumentPermission(
+        this.usersRepository,
+        document.projectId,
+        'documents.read',
+        'documents.read',
+        asOf
+      );
+    }
 
     const currentVersion = document.currentVersion;
     if (!currentVersion) throw createModule21Error('DOCUMENT_UPLOAD_INVALID');

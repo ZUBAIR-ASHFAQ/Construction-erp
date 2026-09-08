@@ -11,6 +11,7 @@ import {
   createLabourPayrollError,
   type CreateAttendanceBody,
   type CreatePayrollRunBody,
+  type CalculatePayrollRunBody,
   type LabourPayrollPermissionCode,
   type ListAttendanceQuery,
   type ListPayrollRunsQuery,
@@ -46,7 +47,10 @@ type AttendanceLike = Readonly<{
   hours: DecimalLike | null;
   overtimeHours: DecimalLike | null;
   enteredBy: string;
-  employee?: Readonly<{ id: string; employmentType: string }>;
+  employee?: Readonly<{ id?: string; employeeNo?: string; name?: string; employmentType: string }>;
+  project?: Readonly<{ projectCode: string; name: string }>;
+  stage?: Readonly<{ name: string }> | null;
+  enteredByUser?: Readonly<{ name: string }>;
 }>;
 type PayrollAllocation = Readonly<{ projectId: string; stageId: string | null; category: 'labour' | 'security'; amount: string }>;
 type PayrollDraftLine = Readonly<{ employeeId: string; grossAmount: string; deductions: string; netAmount: string; projectAllocation: readonly PayrollAllocation[] }>;
@@ -86,6 +90,18 @@ function moneyString(cents: bigint): string {
 function multiplyToCents(quantityUnits: bigint, rateUnits: bigint): bigint {
   const product = quantityUnits * rateUnits;
   return (product + 500_000n) / 1_000_000n;
+}
+
+/** Multiply four-decimal quantity, rate and multiplier values and half-up round to cents. */
+function multiplyWithMultiplierToCents(quantityUnits: bigint, rateUnits: bigint, multiplierUnits: bigint): bigint {
+  const product = quantityUnits * rateUnits * multiplierUnits;
+  return (product + 5_000_000_000n) / 10_000_000_000n;
+}
+
+/** Prorate exact money cents by an attendance-day ratio using half-up rounding. */
+function prorateCents(totalCents: bigint, earnedDays: bigint, recordedDays: bigint): bigint {
+  if (earnedDays <= 0n || recordedDays <= 0n || earnedDays > recordedDays) throw createLabourPayrollError('PAYROLL_NOT_READY');
+  return ((totalCents * earnedDays) + (recordedDays / 2n)) / recordedDays;
 }
 
 /** Return whether one Payroll period is exactly one complete calendar month. */
@@ -151,13 +167,19 @@ function attendanceResponse(row: AttendanceLike) {
   return {
     id: row.id,
     employeeId: row.employeeId,
+    employeeNo: row.employee?.employeeNo ?? row.employeeId,
+    employeeName: row.employee?.name ?? 'Employee',
     projectId: row.projectId,
+    projectCode: row.project?.projectCode ?? row.projectId,
+    projectName: row.project?.name ?? 'Project',
     stageId: row.stageId,
+    stageName: row.stage?.name ?? null,
     workDate: dateOnly(row.workDate),
     status: row.status,
     hours: row.hours === null ? null : row.hours.toString(),
     overtimeHours: row.overtimeHours === null ? null : row.overtimeHours.toString(),
-    enteredBy: row.enteredBy
+    enteredBy: row.enteredBy,
+    enteredByName: row.enteredByUser?.name ?? 'System user'
   };
 }
 
@@ -182,6 +204,8 @@ function payrollRunResponse(run: Readonly<{
   status: string;
   createdBy: string;
   finalizedAt: Date | null;
+  overtimeMultiplier?: DecimalLike | null;
+  creator?: Readonly<{ name: string }>;
   lines?: readonly Readonly<{
     id: string;
     employeeId: string;
@@ -189,6 +213,7 @@ function payrollRunResponse(run: Readonly<{
     deductions: DecimalLike;
     netAmount: DecimalLike;
     projectAllocationJson: unknown;
+    employee?: Readonly<{ employeeNo: string; name: string; employmentType: string }>;
     payslip?: Readonly<{ id: string; documentId: string | null; generatedAt: Date | null }> | null;
   }>[];
 }>) {
@@ -198,10 +223,14 @@ function payrollRunResponse(run: Readonly<{
     periodEnd: dateOnly(run.periodEnd),
     status: run.status,
     createdBy: run.createdBy,
+    createdByName: run.creator?.name ?? 'System user',
     finalizedAt: run.finalizedAt?.toISOString() ?? null,
+    overtimeMultiplier: run.overtimeMultiplier?.toString() ?? null,
     lines: (run.lines ?? []).map((line) => ({
       id: line.id,
       employeeId: line.employeeId,
+      employeeNo: line.employee?.employeeNo ?? line.employeeId,
+      employeeName: line.employee?.name ?? 'Employee',
       grossAmount: line.grossAmount.toString(),
       deductions: line.deductions.toString(),
       netAmount: line.netAmount.toString(),
@@ -368,7 +397,8 @@ export class LabourPayrollService {
     return {
       items: result.items.map((item) => {
         const response = payrollRunResponse(item);
-        return { id: response.id, periodStart: response.periodStart, periodEnd: response.periodEnd, status: response.status, createdBy: response.createdBy, finalizedAt: response.finalizedAt };
+        const { lines: _lines, ...summary } = response;
+        return summary;
       }),
       total: result.total,
       page: window.page,
@@ -396,7 +426,7 @@ export class LabourPayrollService {
   }
 
   /** Calculate server-owned Employee lines from attendance plus effective compensation. */
-  private async calculateDraftLines(repository: LabourPayrollRepository, periodStart: Date, periodEnd: Date): Promise<PayrollDraftLine[]> {
+  private async calculateDraftLines(repository: LabourPayrollRepository, periodStart: Date, periodEnd: Date, overtimeMultiplier: DecimalLike | null): Promise<PayrollDraftLine[]> {
     const attendance = await repository.listPayrollAttendance(periodStart, periodEnd);
     if (attendance.length === 0) throw createLabourPayrollError('PAYROLL_NOT_READY');
     const employeeIds = [...new Set(attendance.map((item) => item.employeeId))];
@@ -404,6 +434,7 @@ export class LabourPayrollService {
 
     for (const employeeId of employeeIds) {
       const rows = attendance.filter((item) => item.employeeId === employeeId);
+      const presentRows = rows.filter((item) => item.status === 'PRESENT');
       const employmentType = rows[0]?.employee?.employmentType ?? 'LABOUR';
       const category = labourCategory(employmentType);
       const compensations = await repository.listEmployeeCompensationForPeriod(employeeId, periodStart, periodEnd);
@@ -419,12 +450,16 @@ export class LabourPayrollService {
         const startComp = compensationForDate(compensations, periodStart);
         const endComp = compensationForDate(compensations, periodEnd);
         if (!startComp || !endComp || startComp.id !== endComp.id || startComp.payType !== 'SALARY' || !startComp.baseSalary) throw createLabourPayrollError('PAYROLL_NOT_READY');
-        grossCents = moneyCents(startComp.baseSalary);
-        const allocated = allocateCents(grossCents, rows);
-        rows.forEach((row, index) => addAllocation(allocationMap, row, category, allocated[index] ?? 0n));
+        const salaryAttendance = await repository.listEmployeeAttendanceForPeriod(employeeId, periodStart, periodEnd);
+        const recordedDates = new Set(salaryAttendance.map((item) => dateOnly(item.workDate)));
+        const presentDates = new Set(salaryAttendance.filter((item) => item.status === 'PRESENT').map((item) => dateOnly(item.workDate)));
+        grossCents = prorateCents(moneyCents(startComp.baseSalary), BigInt(presentDates.size), BigInt(recordedDates.size));
+        if (grossCents === 0n) continue;
+        const allocated = allocateCents(grossCents, presentRows);
+        presentRows.forEach((row, index) => addAllocation(allocationMap, row, category, allocated[index] ?? 0n));
       } else if (payType === 'DAILY') {
         const byDate = new Map<string, AttendanceLike[]>();
-        for (const row of rows) {
+        for (const row of presentRows) {
           const key = dateOnly(row.workDate);
           const group = byDate.get(key) ?? [];
           group.push(row);
@@ -439,12 +474,19 @@ export class LabourPayrollService {
           dayRows.forEach((row, index) => addAllocation(allocationMap, row, category, allocated[index] ?? 0n));
         }
       } else if (payType === 'HOURLY') {
-        for (const row of rows) {
+        for (const row of presentRows) {
           const compensation = compensationForDate(compensations, row.workDate);
           if (!compensation || compensation.payType !== 'HOURLY' || !compensation.hourlyRate) throw createLabourPayrollError('PAYROLL_NOT_READY');
-          const quantity = decimal4Units(row.hours) + decimal4Units(row.overtimeHours);
-          if (quantity <= 0n) continue;
-          const amount = multiplyToCents(quantity, decimal4Units(compensation.hourlyRate));
+          const regularHours = decimal4Units(row.hours);
+          const overtimeHours = decimal4Units(row.overtimeHours);
+          if (regularHours <= 0n && overtimeHours <= 0n) continue;
+          const rate = decimal4Units(compensation.hourlyRate);
+          const regularAmount = multiplyToCents(regularHours, rate);
+          if (overtimeHours > 0n && !overtimeMultiplier) throw createLabourPayrollError('OVERTIME_MULTIPLIER_REQUIRED');
+          const overtimeAmount = overtimeHours > 0n
+            ? multiplyWithMultiplierToCents(overtimeHours, rate, decimal4Units(overtimeMultiplier))
+            : 0n;
+          const amount = regularAmount + overtimeAmount;
           grossCents += amount;
           addAllocation(allocationMap, row, category, amount);
         }
@@ -467,9 +509,9 @@ export class LabourPayrollService {
   }
 
   /** Recalculate one DRAFT/CALCULATED Payroll Run and replace its preview lines. */
-  async calculatePayrollRun(payrollRunId: string, idempotencyKey: string) {
+  async calculatePayrollRun(payrollRunId: string, input: CalculatePayrollRunBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
-      operation: 'payroll.calculate', idempotencyKey, fingerprintInput: { payrollRunId }
+      operation: 'payroll.calculate', idempotencyKey, fingerprintInput: { payrollRunId, input }
     }, async (tx) => {
       await this.requireCompanyPermission(new AdministrationRepository(tx), 'payroll.calculate', new Date());
       const repository = new LabourPayrollRepository(tx);
@@ -477,7 +519,11 @@ export class LabourPayrollService {
       if (!locked) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
       if (locked.status === PAYROLL_FINALIZED) throw createLabourPayrollError('PAYROLL_LOCKED');
       if (![PAYROLL_DRAFT, PAYROLL_CALCULATED].includes(locked.status)) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd);
+      const overtimeMultiplier = input.overtimeMultiplier ?? locked.overtimeMultiplier?.toString() ?? null;
+      if (input.overtimeMultiplier && input.overtimeMultiplier !== locked.overtimeMultiplier?.toString()) {
+        if (!(await repository.updatePayrollRunOvertimeMultiplier(payrollRunId, input.overtimeMultiplier))) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      }
+      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier);
       await repository.clearPayrollCalculation(payrollRunId);
       for (const line of drafts) {
         await repository.createPayrollLine({
@@ -519,7 +565,7 @@ export class LabourPayrollService {
 
       const snapshot = await repository.findPayrollRunById(payrollRunId);
       if (!snapshot || snapshot.lines.length === 0) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd);
+      const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.overtimeMultiplier);
       const persistedDrafts: PayrollDraftLine[] = snapshot.lines.map((line) => ({
         employeeId: line.employeeId,
         grossAmount: line.grossAmount.toString(),
@@ -529,8 +575,10 @@ export class LabourPayrollService {
       }));
       if (payrollDraftFingerprint(recalculated) !== payrollDraftFingerprint(persistedDrafts)) throw createLabourPayrollError('PAYROLL_NOT_READY');
 
+      await repository.ensurePayrollPostingSetup();
       const accounts = await repository.findPayrollPostingAccounts(LABOUR_EXPENSE_ACCOUNT_CODE, PAYROLL_PAYABLE_ACCOUNT_CODE);
-      if (!accounts.expense || !accounts.payable) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      if (!accounts.expense || accounts.expense.accountType !== 'EXPENSE'
+        || !accounts.payable || accounts.payable.accountType !== 'LIABILITY') throw createLabourPayrollError('PAYROLL_NOT_READY');
       const postingDate = locked.periodEnd;
       let totalCents = 0n;
       const debitLines: Array<{ accountId: string; projectId: string; stageId: string | null; debit: string; credit: string; description: string }> = [];

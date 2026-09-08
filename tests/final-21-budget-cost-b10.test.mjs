@@ -10,7 +10,7 @@ const migrationPath = 'packages/database/prisma/migrations/20260829001400_final2
 /** Extract one Prisma model block for focused persistence checks. */
 function prismaModel(name) {
   const schema = read('packages/database/prisma/schema.prisma');
-  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\n]+\\)\\n\\}`))?.[0] ?? '';
+  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\r\\n]+\\)\\r?\\n\\}`))?.[0] ?? '';
 }
 
 /** Confirm Module 9 remains a simple five-file backend and follows Finance in registration order. */

@@ -1744,9 +1744,10 @@ model PayrollRun {
   companyId   String    @map("company_id") @db.Uuid
   periodStart DateTime  @map("period_start") @db.Date
   periodEnd   DateTime  @map("period_end") @db.Date
-  status      String    @db.VarChar(32)
-  createdBy   String    @map("created_by") @db.Uuid
-  finalizedAt DateTime? @map("finalized_at") @db.Timestamptz(6)
+  status             String    @db.VarChar(32)
+  overtimeMultiplier Decimal?  @map("overtime_multiplier") @db.Decimal(8, 4)
+  createdBy          String    @map("created_by") @db.Uuid
+  finalizedAt        DateTime? @map("finalized_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)

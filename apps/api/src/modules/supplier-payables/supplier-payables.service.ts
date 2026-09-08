@@ -75,6 +75,7 @@ type SupplierPaymentRow = Readonly<{
   cashBankAccountId: string;
   reference: string | null;
   status: string;
+  allocations: readonly Readonly<{ amount: DecimalLike }>[];
 }>;
 type SupplierPaymentAllocationRow = Readonly<{
   id: string;
@@ -206,15 +207,20 @@ function supplierInvoiceResponse(row: SupplierInvoiceRow) {
   };
 }
 
-/** Serialize one Supplier Payment without exposing Company authority or derived allocation balances. */
+/** Serialize one Supplier Payment with source-derived allocation and remaining balances. */
 function supplierPaymentResponse(row: SupplierPaymentRow) {
+  const amount = moneyToMinorUnits(row.amount);
+  const allocated = row.allocations.reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
+  const remaining = amount > allocated ? amount - allocated : 0n;
   return {
     id: row.id,
     vendorId: row.vendorId,
     projectId: row.projectId,
     paymentNo: row.paymentNo,
     paymentDate: dateOnly(row.paymentDate),
-    amount: moneyString(row.amount),
+    amount: minorUnitsToMoney(amount),
+    allocatedAmount: minorUnitsToMoney(allocated),
+    remainingAmount: minorUnitsToMoney(remaining),
     cashBankAccountId: row.cashBankAccountId,
     reference: row.reference,
     status: row.status
@@ -518,6 +524,9 @@ export class SupplierPayablesService {
     if (!hasStatus(locked.status, DRAFT)) throw new ConflictError({ message: 'Only DRAFT Supplier Invoices can be posted.' });
 
     await this.requireProjectPermission(users, locked.projectId, 'supplier_invoices.post', now);
+    if (!(await repository.hasSupplierInvoiceAttachment(invoiceId))) {
+      throw new ValidationError({ message: 'Attach the supplier invoice image or PDF before posting the invoice.' });
+    }
     const directVisibility: SupplierPayablesRepositoryVisibility = { allowedProjectIds: [locked.projectId] };
     const invoice = await repository.findSupplierInvoiceById(invoiceId, directVisibility);
     if (!invoice) throw createSupplierPayablesError('SUPPLIER_INVOICE_NOT_FOUND');
@@ -703,18 +712,35 @@ export class SupplierPayablesService {
     const now = new Date();
     const users = new AdministrationRepository(tx);
     const visibility = await this.resolveVisibility(users, 'supplier_payments.create', now);
-    if (input.projectId) {
-      await this.requireProjectPermission(users, input.projectId, 'supplier_payments.create', now);
-    } else if (!(await this.hasCompanyPermission(users, 'supplier_payments.create', now))) {
-      throw new AuthorizationError();
-    }
-
     const repository = new SupplierPayablesRepository(tx);
     const vendor = await repository.findVendorById(input.vendorId);
     if (!vendor) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
+    let paymentProjectId = input.projectId ?? null;
+    let linkedInvoice: Awaited<ReturnType<SupplierPayablesRepository['lockSupplierInvoiceForWrite']>> = null;
+    if (input.supplierInvoiceId) {
+      linkedInvoice = await repository.lockSupplierInvoiceForWrite(input.supplierInvoiceId, visibility);
+      if (!linkedInvoice || !hasStatus(linkedInvoice.status, POSTED) || linkedInvoice.vendorId !== input.vendorId) {
+        throw createSupplierPayablesError('PAYMENT_ALLOCATION_INVALID');
+      }
+      if (paymentProjectId && paymentProjectId !== linkedInvoice.projectId) throw createSupplierPayablesError('PAYMENT_ALLOCATION_INVALID');
+      paymentProjectId = linkedInvoice.projectId;
+      await this.requireProjectPermission(users, linkedInvoice.projectId, 'supplier_payments.allocate', now);
+      const alreadyAllocated = moneyToMinorUnits(await repository.sumAllocatedAmountForSupplierInvoice(linkedInvoice.id) ?? ZERO_MONEY);
+      if (alreadyAllocated + moneyToMinorUnits(input.amount) > moneyToMinorUnits(linkedInvoice.totalAmount)) {
+        throw createSupplierPayablesError('PAYMENT_ALLOCATION_INVALID');
+      }
+    }
+
     if (input.projectId) {
-      const project = await repository.findProjectById(input.projectId, visibility);
+      await this.requireProjectPermission(users, input.projectId, 'supplier_payments.create', now);
+    } else if (paymentProjectId) {
+      await this.requireProjectPermission(users, paymentProjectId, 'supplier_payments.create', now);
+    }
+    if (paymentProjectId) {
+      const project = await repository.findProjectById(paymentProjectId, visibility);
       if (!project || hasStatus(project.status, CLOSED)) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
+    } else if (!(await this.hasCompanyPermission(users, 'supplier_payments.create', now))) {
+      throw new AuthorizationError();
     }
 
     const cashBank = await repository.findCashBankAccountById(input.cashBankAccountId);
@@ -734,7 +760,7 @@ export class SupplierPayablesService {
     const created = await repository.createSupplierPayment({
       allowedProjectIds: visibility.allowedProjectIds,
       vendorId: input.vendorId,
-      projectId: input.projectId ?? null,
+      projectId: paymentProjectId,
       paymentNo: number.formatted,
       paymentDate: inputDate(input.paymentDate),
       amount: moneyString(input.amount),
@@ -783,7 +809,17 @@ export class SupplierPayablesService {
 
     const posted = await repository.markSupplierPaymentPosted(created.id, { allowedProjectIds: visibility.allowedProjectIds });
     if (!posted) throw new ConflictError({ message: 'Supplier Payment state changed before posting completed.' });
-    const response = supplierPaymentResponse(posted);
+    let allocationResponse: ReturnType<typeof supplierPaymentAllocationResponse> | null = null;
+    if (linkedInvoice) {
+      const allocations = await repository.createSupplierPaymentAllocations(created.id, [{ supplierInvoiceId: linkedInvoice.id, amount }], new Date(), { allowedProjectIds: visibility.allowedProjectIds });
+      if (allocations.length !== 1 || !allocations[0]) throw createSupplierPayablesError('PAYMENT_ALLOCATION_INVALID');
+      allocationResponse = supplierPaymentAllocationResponse(allocations[0]);
+      await recordAudit(tx, { action: 'supplier_payment.allocated', entityType: 'supplier_payment', entityId: posted.id, projectId: posted.projectId, after: { allocations: [allocationResponse], remainingPayment: ZERO_MONEY } });
+      await recordOutboxEvent(tx, { eventType: 'supplier_payment.allocated', resourceType: 'supplier_payment', resourceId: posted.id, payload: { supplierPaymentId: posted.id, paymentNo: posted.paymentNo, vendorId: posted.vendorId, projectId: posted.projectId, allocations: [{ supplierInvoiceId: linkedInvoice.id, amount }], remainingPayment: ZERO_MONEY } });
+    }
+    const refreshed = await repository.findSupplierPaymentById(posted.id, { allowedProjectIds: visibility.allowedProjectIds });
+    if (!refreshed) throw new ConflictError({ message: 'Supplier Payment could not be read after posting.' });
+    const response = supplierPaymentResponse(refreshed);
     await recordAudit(tx, {
       action: 'supplier_payment.posted',
       entityType: 'supplier_payment',

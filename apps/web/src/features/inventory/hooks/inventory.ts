@@ -45,7 +45,18 @@ export function useCreateMaterialIssue() {
 /** Transfer Material then refresh stock and ledger reads. */
 export function useTransferMaterial() {
   const client = useQueryClient();
-  return useMutation({ mutationFn: (input: TransferMaterialInput) => transferMaterial(input), onSuccess: async () => client.invalidateQueries({ queryKey: KEY }) });
+  return useMutation({
+    mutationFn: (input: TransferMaterialInput) => transferMaterial(input),
+    /** Refresh Inventory and downstream Project cost summaries after a transfer. */
+    async onSuccess() {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: KEY }),
+        client.invalidateQueries({ queryKey: ['module-6', 'projects'] }),
+        client.invalidateQueries({ queryKey: ['module-9', 'project-budget-cost'] }),
+        client.invalidateQueries({ queryKey: ['module-19', 'project-profitability'] })
+      ]);
+    }
+  });
 }
 
 /** Adjust stock then refresh stock and ledger reads. */

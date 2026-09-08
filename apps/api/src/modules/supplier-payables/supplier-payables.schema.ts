@@ -153,6 +153,7 @@ export const listSupplierPaymentsQuerySchema = z.object({
 export const createSupplierPaymentBodySchema = z.object({
   vendorId: uuidSchema,
   projectId: uuidSchema.nullable().optional(),
+  supplierInvoiceId: uuidSchema.nullable().optional(),
   paymentDate: dateSchema,
   amount: exactPositiveMoneySchema,
   cashBankAccountId: uuidSchema,
@@ -235,6 +236,8 @@ export const supplierPaymentResponseSchema = z.object({
   paymentNo: z.string().min(1),
   paymentDate: dateSchema,
   amount: z.string(),
+  allocatedAmount: z.string(),
+  remainingAmount: z.string(),
   cashBankAccountId: uuidSchema,
   reference: z.string().nullable(),
   status: statusTextSchema

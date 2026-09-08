@@ -8,6 +8,7 @@ import {
   listAttendance,
   listPayrollRuns,
   updateAttendance,
+  type CalculatePayrollRunInput,
   type CreateAttendanceInput,
   type CreatePayrollRunInput,
   type ListAttendanceInput,
@@ -67,7 +68,7 @@ export function useCreatePayrollRun() {
 export function useCalculatePayrollRun(payrollRunId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => calculatePayrollRun(payrollRunId),
+    mutationFn: (input: CalculatePayrollRunInput) => calculatePayrollRun(payrollRunId, input),
     onSuccess: async () => client.invalidateQueries({ queryKey: LABOUR_PAYROLL_QUERY_KEY })
   });
 }

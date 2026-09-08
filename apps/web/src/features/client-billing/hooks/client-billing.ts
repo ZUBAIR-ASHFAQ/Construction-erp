@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createBillingClaim,
   createClientInvoice,
+  createDirectClientInvoice,
   finalizeBillingClaim,
   getBillingSettings,
   listBillingClaims,
@@ -9,6 +10,7 @@ import {
   updateBillingClaim,
   updateBillingSettings,
   type CreateClaimInput,
+  type CreateDirectClientInvoiceInput,
   type CreateInvoiceInput,
   type ListBillingInput,
   type UpdateBillingSettingsInput,
@@ -88,6 +90,15 @@ export function useCreateClientInvoice() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (value: Readonly<{ claimId: string; input: CreateInvoiceInput }>) => createClientInvoice(value.claimId, value.input, newIdempotencyKey()),
+    async onSuccess() { await invalidateInvoiceEffects(queryClient); }
+  });
+}
+
+/** Create a direct Client Invoice and refresh billing, Stage and Finance reads. */
+export function useCreateDirectClientInvoice() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreateDirectClientInvoiceInput) => createDirectClientInvoice(input, newIdempotencyKey()),
     async onSuccess() { await invalidateInvoiceEffects(queryClient); }
   });
 }

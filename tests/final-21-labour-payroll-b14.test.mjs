@@ -10,7 +10,7 @@ const migrationPath = 'packages/database/prisma/migrations/20260829001800_final2
 /** Extract one Prisma model block for focused Module 13 assertions. */
 function prismaModel(name) {
   const schema = read('packages/database/prisma/schema.prisma');
-  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\n]+\\)\\n\\}`))?.[0] ?? '';
+  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\r\\n]+\\)\\r?\\n\\}`))?.[0] ?? '';
 }
 
 /** Confirm Module 13 is one simple five-file backend and replaces both legacy runtimes. */
@@ -90,12 +90,13 @@ test('B14 calculates employee salaries from effective compensation and present a
   const service = read(`${backend}/labour-payroll.service.ts`);
   const repository = read(`${backend}/labour-payroll.repository.ts`);
   assert.match(repository, /employeeCompensation\.findMany/);
-  assert.match(repository, /status: 'PRESENT'/);
+  assert.match(service, /const presentRows = rows\.filter\(\(item\) => item\.status === 'PRESENT'\)/);
   assert.match(service, /payType === 'SALARY'/);
   assert.match(service, /payType === 'DAILY'/);
   assert.match(service, /payType === 'HOURLY'/);
   assert.match(service, /moneyCents\(startComp\.baseSalary\)/);
-  assert.match(service, /multiplyToCents\(quantity, decimal4Units\(compensation\.hourlyRate\)\)/);
+  assert.match(service, /regularAmount = multiplyToCents\(regularHours, rate\)/);
+  assert.match(service, /overtimeAmount = overtimeHours > 0n[\s\S]*multiplyWithMultiplierToCents\(overtimeHours, rate, decimal4Units\(overtimeMultiplier\)\)/);
   assert.match(service, /deductions: ZERO_MONEY/);
   assert.doesNotMatch(service, /parseFloat|toFixed\(|Number\(compensation\.|Math\.round/);
 });
@@ -107,6 +108,8 @@ test('B14 finalizes payroll with idempotent Module 9 cost and Module 18 Finance 
   const finance = read('apps/api/src/modules/finance/finance.service.ts');
   assert.match(repository, /costActual\.upsert/);
   assert.match(repository, /sourceType: 'payroll'/);
+  assert.match(repository, /ensurePayrollPostingSetup/);
+  assert.match(service, /accounts\.expense\.accountType !== 'EXPENSE'/);
   assert.match(service, /postSourceJournalInTransaction\(tx/);
   assert.match(service, /PAYROLL-LABOUR-EXPENSE/);
   assert.match(service, /PAYROLL-PAYABLE/);

@@ -100,6 +100,25 @@ export class InventoryRepository {
     });
   }
 
+  /** Ensure Material Issue numbering exists for companies created before this sequence was provisioned. */
+  async ensureMaterialIssueNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'material-issue' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'material-issue',
+        prefix: 'MI-',
+        suffix: '',
+        padWidth: 5,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Find one same-Company Project. */
   async findProjectById(projectId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -229,6 +248,25 @@ export class InventoryRepository {
         stageId: input.stageId ?? null,
         category: 'material',
         sourceType: 'inventory_issue',
+        sourceId: input.sourceId,
+        sourceKey: input.sourceKey,
+        postingDate: input.postingDate,
+        amount: input.amount
+      })
+    });
+  }
+
+  /** Append one signed Project material-cost reclassification derived from an Inventory transfer. */
+  async createTransferCostActual(input: Readonly<{
+    projectId: string; stageId?: string | null; sourceId: string; sourceKey: string; postingDate: Date; amount: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.create({
+      data: scope.createData({
+        projectId: input.projectId,
+        stageId: input.stageId ?? null,
+        category: 'material',
+        sourceType: 'inventory_transfer',
         sourceId: input.sourceId,
         sourceKey: input.sourceKey,
         postingDate: input.postingDate,

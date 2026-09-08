@@ -79,6 +79,10 @@ export type ProjectDetails = Readonly<{
     allocatedAmount: string;
     outstandingAmount: string;
   }> | null;
+  subcontractSummary: Readonly<{
+    contractCount: number;
+    contractAmount: string;
+  }> | null;
   receiptSummary: Readonly<{
     receivedAmount: string;
     allocatedAmount: string;

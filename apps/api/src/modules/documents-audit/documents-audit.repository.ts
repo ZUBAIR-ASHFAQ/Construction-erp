@@ -13,6 +13,8 @@ export type ListDocumentsRepositoryInput = Readonly<{
   search?: string | undefined;
   category?: string | undefined;
   status?: string | undefined;
+  resourceType?: DocumentLinkResourceType | undefined;
+  resourceId?: string | undefined;
   includeCompanyWide: boolean;
   allowedProjectIds: readonly string[] | null;
   skip: number;
@@ -234,6 +236,9 @@ export class DocumentsRepository {
       ...buildProjectVisibilityWhere(input),
       ...(input.category ? { category: input.category } : {}),
       ...(input.status ? { status: input.status } : {}),
+      ...(input.resourceType && input.resourceId
+        ? { links: { some: { linkedResourceType: input.resourceType, linkedResourceId: input.resourceId } } }
+        : {}),
       ...(search
         ? {
             OR: [
@@ -448,6 +453,15 @@ export class DocumentsRepository {
         documentId,
         companyId: scope.companyId
       }
+    });
+  }
+
+  /** Find the trusted Supplier Invoice link used to authorize its persistent download action. */
+  async findSupplierInvoiceLinkForDocument(documentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.documentLink.findFirst({
+      where: scope.where({ documentId, linkedResourceType: 'supplier_invoice' }),
+      select: { linkedResourceId: true, projectId: true }
     });
   }
 

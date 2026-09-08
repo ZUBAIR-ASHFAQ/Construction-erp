@@ -304,6 +304,15 @@ export class BudgetsJobCostRepository {
     });
   }
 
+  /** Sum signed Inventory-transfer reclassifications separately from Supplier cost coverage. */
+  async sumInventoryTransferActuals(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.aggregate({
+      where: scope.where({ projectId, sourceType: 'inventory_transfer' }),
+      _sum: { amount: true }
+    });
+  }
+
   /** List bounded source-derived actual costs for one Project and selected cost categories. */
   async listActualCostSources(input: Readonly<{
     projectId: string;

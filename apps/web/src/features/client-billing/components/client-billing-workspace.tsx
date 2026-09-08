@@ -13,6 +13,7 @@ import {
   useClientInvoices,
   useCreateBillingClaim,
   useCreateClientInvoice,
+  useCreateDirectClientInvoice,
   useFinalizeBillingClaim,
   useUpdateBillingClaim,
   useUpdateBillingSettings
@@ -46,9 +47,22 @@ const invoiceFormSchema = z.object({
   dueDate: dateSchema
 }).refine((value) => value.dueDate >= value.invoiceDate, { path: ['dueDate'], message: 'Due date cannot be earlier than invoice date.' });
 
+const directInvoiceFormSchema = z.object({
+  invoiceDate: dateSchema,
+  dueDate: z.string().refine((value) => value === '' || dateSchema.safeParse(value).success, 'Select a valid date or leave it blank.'),
+  lines: z.array(z.object({
+    stageId: optionalUuidSchema,
+    description: z.string().trim().min(1, 'Description is required.').max(1000),
+    amount: positiveMoneySchema
+  })).min(1, 'Add at least one invoice line.').max(500)
+}).superRefine((value, context) => {
+  if (value.dueDate && value.dueDate < value.invoiceDate) context.addIssue({ code: z.ZodIssueCode.custom, path: ['dueDate'], message: 'Due date cannot be earlier than invoice date.' });
+});
+
 type SettingsForm = z.infer<typeof settingsFormSchema>;
 type ClaimForm = z.infer<typeof claimFormSchema>;
 type InvoiceForm = z.infer<typeof invoiceFormSchema>;
+type DirectInvoiceForm = z.infer<typeof directInvoiceFormSchema>;
 
 type ClientBillingWorkspaceProps = Readonly<{
   canRead: boolean;
@@ -65,6 +79,14 @@ const EMPTY_CLAIM_FORM: ClaimForm = {
   periodEnd: '',
   lines: [{ stageId: '', description: '', billingProgressPercent: '', amount: '' }]
 };
+const EMPTY_DIRECT_INVOICE_FORM: DirectInvoiceForm = {
+  invoiceDate: '', dueDate: '', lines: [{ stageId: '', description: '', amount: '' }]
+};
+
+/** Return a safe message for one failed browser mutation. */
+function mutationMessage(error: unknown): string | null {
+  return error instanceof Error ? error.message : null;
+}
 
 /** Convert one browser claim form into the exact API claim-line shape. */
 function claimLines(values: ClaimForm['lines']) {
@@ -119,11 +141,14 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
   const updateClaim = useUpdateBillingClaim();
   const finalizeClaim = useFinalizeBillingClaim();
   const createInvoice = useCreateClientInvoice();
+  const createDirectInvoice = useCreateDirectClientInvoice();
 
   const settingsForm = useForm<SettingsForm>({ resolver: zodResolver(settingsFormSchema), defaultValues: { billingMethod: 'FIXED_PRICE', retentionPercent: '', billingCycle: '', advanceRecoveryEnabled: false, status: 'ACTIVE' } });
   const claimForm = useForm<ClaimForm>({ resolver: zodResolver(claimFormSchema), defaultValues: EMPTY_CLAIM_FORM });
   const fields = useFieldArray({ control: claimForm.control, name: 'lines' });
   const invoiceForm = useForm<InvoiceForm>({ resolver: zodResolver(invoiceFormSchema), defaultValues: { invoiceDate: '', dueDate: '' } });
+  const directInvoiceForm = useForm<DirectInvoiceForm>({ resolver: zodResolver(directInvoiceFormSchema), defaultValues: EMPTY_DIRECT_INVOICE_FORM });
+  const directInvoiceFields = useFieldArray({ control: directInvoiceForm.control, name: 'lines' });
 
   useEffect(() => {
     if (!settingsQuery.data || !selectedProject) return;
@@ -141,7 +166,8 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
     setInvoiceClaim(null);
     claimForm.reset(EMPTY_CLAIM_FORM);
     invoiceForm.reset({ invoiceDate: '', dueDate: '' });
-  }, [projectId, claimForm, invoiceForm]);
+    directInvoiceForm.reset(EMPTY_DIRECT_INVOICE_FORM);
+  }, [projectId, claimForm, invoiceForm, directInvoiceForm]);
 
   /** Return a Stage label while avoiding raw UUID display when Stage read permission is unavailable. */
   function stageLabel(stageId: string | null): string {
@@ -187,6 +213,18 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
     invoiceForm.reset({ invoiceDate: '', dueDate: '' });
   }
 
+  /** Create and issue a Client Invoice directly, without requiring a Progress Claim. */
+  async function submitDirectInvoice(values: DirectInvoiceForm): Promise<void> {
+    if (!projectId) return;
+    await createDirectInvoice.mutateAsync({
+      projectId,
+      invoiceDate: values.invoiceDate,
+      dueDate: values.dueDate || null,
+      lines: values.lines.map((line) => ({ stageId: line.stageId || null, description: line.description.trim(), amount: line.amount }))
+    });
+    directInvoiceForm.reset(EMPTY_DIRECT_INVOICE_FORM);
+  }
+
   if (!props.canRead) return <section className="admin-card"><p>You do not have Client Billing read access.</p></section>;
 
   return (
@@ -227,6 +265,39 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
           ) : (
             <p>{billingMethodLabel(settingsQuery.data.billingMethod)} · Retention {settingsQuery.data.retentionPercent ?? '0'}% · Cycle {settingsQuery.data.billingCycle ?? '—'} · Advance recovery {settingsQuery.data.advanceRecoveryEnabled ? 'Enabled' : 'Disabled'} · {settingsQuery.data.status}</p>
           )}
+        </section>
+      ) : null}
+
+      {projectId && props.canCreateInvoices ? (
+        <section className="admin-card">
+          <h2>Create & issue client invoice</h2>
+          <p className="muted">Enter billing values directly for {selectedProject?.name ?? 'the selected Project'}. The server generates the invoice number, issues the invoice, and posts Accounts Receivable. The client can then pay against this invoice in Client Payments; direct payment without an invoice remains available there too.</p>
+          <form className="admin-form" onSubmit={directInvoiceForm.handleSubmit(submitDirectInvoice)}>
+            <div className="two-column-form">
+              <label>Invoice date<input type="date" {...directInvoiceForm.register('invoiceDate')} /><span className="field-error">{directInvoiceForm.formState.errors.invoiceDate?.message}</span></label>
+              <label>Due date (optional)<input type="date" {...directInvoiceForm.register('dueDate')} /><span className="field-error">{directInvoiceForm.formState.errors.dueDate?.message}</span></label>
+            </div>
+            {directInvoiceFields.fields.map((field, index) => (
+              <div className="admin-card" key={field.id}>
+                <div className="two-column-form">
+                  <label>Description<input {...directInvoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{directInvoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
+                  <label>Stage (optional)
+                    <select {...directInvoiceForm.register(`lines.${index}.stageId`)}>
+                      <option value="">Project level</option>
+                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Amount<input inputMode="decimal" {...directInvoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{directInvoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                </div>
+                {directInvoiceFields.fields.length > 1 ? <button type="button" className="secondary-button" onClick={() => directInvoiceFields.remove(index)}>Remove line</button> : null}
+              </div>
+            ))}
+            <div className="admin-actions">
+              <button type="button" className="secondary-button" onClick={() => directInvoiceFields.append({ stageId: '', description: '', amount: '' })}>Add invoice line</button>
+              <button type="submit" disabled={createDirectInvoice.isPending}>{createDirectInvoice.isPending ? 'Creating & posting…' : 'Create & issue invoice'}</button>
+            </div>
+            {mutationMessage(createDirectInvoice.error) ? <p className="field-error">{mutationMessage(createDirectInvoice.error)}</p> : null}
+          </form>
         </section>
       ) : null}
 

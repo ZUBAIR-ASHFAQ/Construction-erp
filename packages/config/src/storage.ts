@@ -55,8 +55,10 @@ export function loadStorageConfig(
     issues.push({ key: 'STORAGE_BUCKET', message: 'must be a valid S3-compatible bucket name', received: bucket });
   }
 
-  const accessKeyId = readTrimmed(env, 'STORAGE_ACCESS_KEY_ID') ?? null;
-  const secretAccessKey = readTrimmed(env, 'STORAGE_SECRET_ACCESS_KEY') ?? null;
+  // Local development uses the private MinIO service declared in docker-compose.
+  // Production and test environments never receive these development defaults.
+  const accessKeyId = readTrimmed(env, 'STORAGE_ACCESS_KEY_ID') ?? (nodeEnv === 'development' ? 'minioadmin' : null);
+  const secretAccessKey = readTrimmed(env, 'STORAGE_SECRET_ACCESS_KEY') ?? (nodeEnv === 'development' ? 'minioadmin' : null);
   if ((accessKeyId === null) !== (secretAccessKey === null)) {
     if (accessKeyId === null) issues.push({ key: 'STORAGE_ACCESS_KEY_ID', message: 'is required when STORAGE_SECRET_ACCESS_KEY is set' });
     if (secretAccessKey === null) issues.push({ key: 'STORAGE_SECRET_ACCESS_KEY', message: 'is required when STORAGE_ACCESS_KEY_ID is set' });

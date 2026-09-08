@@ -95,6 +95,8 @@ export type ListDocumentsInput = Readonly<{
   projectId?: string;
   category?: string;
   status?: string;
+  resourceType?: DocumentLinkResourceType;
+  resourceId?: string;
   page?: number;
   pageSize?: number;
 }>;
@@ -167,6 +169,8 @@ export function listDocuments(input: ListDocumentsInput = {}): Promise<DocumentP
   if (input.projectId) query.set('projectId', input.projectId);
   if (input.category) query.set('category', input.category);
   if (input.status) query.set('status', input.status);
+  if (input.resourceType) query.set('resourceType', input.resourceType);
+  if (input.resourceId) query.set('resourceId', input.resourceId);
   if (input.page !== undefined) query.set('page', String(input.page));
   if (input.pageSize !== undefined) query.set('pageSize', String(input.pageSize));
 

@@ -55,7 +55,16 @@ const ISSUE_BODY_JSON_SCHEMA = {
 } as const;
 const TRANSFER_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['sourceWarehouseId', 'destinationWarehouseId', 'materialId', 'quantity'],
-  properties: { sourceWarehouseId: UUID_JSON_SCHEMA, destinationWarehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA, quantity: POSITIVE_DECIMAL_JSON_SCHEMA }
+  properties: {
+    sourceProjectId: UUID_JSON_SCHEMA,
+    destinationProjectId: UUID_JSON_SCHEMA,
+    destinationStageId: NULLABLE_UUID_JSON_SCHEMA,
+    sourceWarehouseId: UUID_JSON_SCHEMA,
+    destinationWarehouseId: UUID_JSON_SCHEMA,
+    materialId: UUID_JSON_SCHEMA,
+    quantity: POSITIVE_DECIMAL_JSON_SCHEMA,
+    transferDate: DATE_JSON_SCHEMA
+  }
 } as const;
 const ADJUSTMENT_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['warehouseId', 'materialId', 'quantityDelta', 'reason'],
@@ -130,7 +139,7 @@ export async function registerInventoryRoutes(app: FastifyInstance, options: Inv
     return reply.code(201).send({ data });
   });
 
-  app.post('/api/v1/inventory/transfers', { schema: { tags: ['Inventory'], operationId: 'transferInventoryMaterial', summary: 'Transfer material between warehouses', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: TRANSFER_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } } }, async (request, reply) => {
+  app.post('/api/v1/inventory/transfers', { schema: { tags: ['Inventory'], operationId: 'transferInventoryMaterial', summary: 'Transfer material between warehouses or Projects', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: TRANSFER_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } } }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     const data = transferMaterialResponseSchema.parse(await service.transferMaterial(parseRequest(transferMaterialBodySchema, request.body, 'body'), readIdempotencyKey(request)));
     return reply.code(201).send({ data });

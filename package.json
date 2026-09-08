@@ -28,6 +28,8 @@
     "db:migrate:deploy": "pnpm --filter @construction-erp/database prisma:migrate:deploy",
     "db:studio": "pnpm --filter @construction-erp/database prisma:studio",
     "db:up": "docker compose up -d postgres",
+    "storage:up": "docker compose up -d minio minio-init",
+    "dev:services:up": "docker compose up -d postgres minio minio-init",
     "db:down": "docker compose down",
     "db:migrations:check": "node scripts/migrations/check-migrations.mjs",
     "db:migrations:checksums:update": "node scripts/migrations/update-checksums.mjs",

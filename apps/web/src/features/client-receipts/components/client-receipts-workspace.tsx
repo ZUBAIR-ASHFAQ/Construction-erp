@@ -251,9 +251,10 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
                 </select>
                 <span className="field-error">{receiptForm.formState.errors.cashBankAccountId?.message}</span>
               </label>
-              <label>Receipt type<select {...receiptForm.register('receiptType')}><option value="ADVANCE">Advance / unallocated</option><option value="INVOICE_PAYMENT">Invoice payment</option></select></label>
+              <label>Payment treatment<select {...receiptForm.register('receiptType')}><option value="ADVANCE">Direct payment (no invoice)</option><option value="INVOICE_PAYMENT">Payment against invoice</option></select></label>
               <label>Reference (optional)<input {...receiptForm.register('reference')} /></label>
             </div>
+            <p className="muted">For payment against an invoice, receive and post the money first, then use Allocate to apply all or part of it to the selected Client Invoice. Direct payments remain unapplied until you choose to allocate them later.</p>
             <button type="submit" disabled={createReceipt.isPending || !props.canReadProjects || !props.canReadFinance}>{createReceipt.isPending ? 'Posting receipt…' : 'Create & post receipt'}</button>
             {!props.canReadProjects || !props.canReadFinance ? <p className="muted">Project and Finance read access are required for safe selectors; raw IDs are not accepted by this UI.</p> : null}
             {mutationMessage(createReceipt.error) && <p className="field-error">{mutationMessage(createReceipt.error)}</p>}
@@ -271,7 +272,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
         </div>
         <div className="table-wrap">
           <table>
-            <thead><tr><th>Receipt</th><th>Date</th><th>Client</th><th>Project</th><th>Type</th><th>Received</th><th>Allocated</th><th>Advance</th><th>Status</th><th>Action</th></tr></thead>
+            <thead><tr><th>Receipt</th><th>Date</th><th>Client</th><th>Project</th><th>Type</th><th>Received</th><th>Allocated</th><th>Unapplied / direct</th><th>Status</th><th>Action</th></tr></thead>
             <tbody>
               {(receiptQuery.data?.items ?? []).map((receipt) => (
                 <tr key={receipt.id}>

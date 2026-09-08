@@ -40,6 +40,8 @@ export type SupplierPayment = Readonly<{
   cashBankAccountId: string;
   reference: string | null;
   status: SupplierPaymentStatus;
+  allocatedAmount: string;
+  remainingAmount: string;
 }>;
 
 export type SupplierPaymentAllocation = Readonly<{
@@ -113,6 +115,7 @@ export type CreateSupplierPaymentInput = Readonly<{
   amount: string;
   cashBankAccountId: string;
   reference?: string | null;
+  supplierInvoiceId?: string | null;
 }>;
 
 export type AllocateSupplierPaymentInput = Readonly<{

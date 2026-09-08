@@ -33,6 +33,7 @@ export const CLIENT_BILLING_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/client-billing/claims/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/client-billing/claims/:id/finalize' }),
   Object.freeze({ method: 'POST', route: '/api/v1/client-billing/claims/:id/invoice' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/client-billing/invoices' }),
   Object.freeze({ method: 'GET', route: '/api/v1/client-billing/invoices' }),
   Object.freeze({ method: 'GET', route: '/api/v1/client-billing/invoices/:id' })
 ] as const);
@@ -163,6 +164,25 @@ export const createInvoiceBodySchema = z.object({
   path: ['dueDate']
 });
 
+/** Validate one manually entered Client Invoice line. */
+export const directClientInvoiceLineInputSchema = z.object({
+  stageId: uuidSchema.nullable().optional(),
+  description: descriptionSchema,
+  amount: exactPositiveMoneySchema
+}).strict();
+
+/** Validate a direct Client Invoice while Client, number, totals and posting remain server-owned. */
+export const createDirectClientInvoiceBodySchema = z.object({
+  projectId: uuidSchema,
+  invoiceDate: dateSchema,
+  dueDate: dateSchema.nullable().optional(),
+  lines: z.array(directClientInvoiceLineInputSchema).min(1).max(500)
+}).strict().superRefine((value, context) => {
+  if (value.dueDate && value.dueDate < value.invoiceDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['dueDate'], message: 'dueDate cannot precede invoiceDate.' });
+  }
+});
+
 /** Validate bounded Client Invoice register filters. */
 export const listInvoicesQuerySchema = z.object({
   projectId: uuidSchema.optional(),
@@ -266,5 +286,6 @@ export type ListClaimsQuery = z.infer<typeof listClaimsQuerySchema>;
 export type CreateClaimBody = z.infer<typeof createClaimBodySchema>;
 export type UpdateClaimBody = z.infer<typeof updateClaimBodySchema>;
 export type CreateInvoiceBody = z.infer<typeof createInvoiceBodySchema>;
+export type CreateDirectClientInvoiceBody = z.infer<typeof createDirectClientInvoiceBodySchema>;
 export type ListInvoicesQuery = z.infer<typeof listInvoicesQuerySchema>;
 export type ClaimLineInput = z.infer<typeof claimLineInputSchema>;

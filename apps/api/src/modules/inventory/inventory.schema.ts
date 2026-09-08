@@ -96,15 +96,30 @@ export const createMaterialIssueBodySchema = z.object({
   items: z.array(materialIssueItemInputSchema).min(1).max(100)
 }).strict();
 
-/** Validate one warehouse-to-warehouse transfer command. */
+/** Validate one warehouse transfer, optionally reclassifying stock between Projects. */
 export const transferMaterialBodySchema = z.object({
+  sourceProjectId: uuid.optional(),
+  destinationProjectId: uuid.optional(),
+  destinationStageId: uuid.nullable().optional(),
   sourceWarehouseId: uuid,
   destinationWarehouseId: uuid,
   materialId: uuid,
-  quantity: positiveDecimal
-}).strict().refine((value) => value.sourceWarehouseId !== value.destinationWarehouseId, {
-  path: ['destinationWarehouseId'],
-  message: 'Source and destination warehouses must be different.'
+  quantity: positiveDecimal,
+  transferDate: date.optional()
+}).strict().superRefine((value, ctx) => {
+  const projectTransfer = Boolean(value.sourceProjectId || value.destinationProjectId);
+  if (projectTransfer && (!value.sourceProjectId || !value.destinationProjectId)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['destinationProjectId'], message: 'Both source and destination Projects are required.' });
+  }
+  if (value.sourceProjectId && value.sourceProjectId === value.destinationProjectId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['destinationProjectId'], message: 'Destination Project must be different from source Project.' });
+  }
+  if (!projectTransfer && value.sourceWarehouseId === value.destinationWarehouseId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['destinationWarehouseId'], message: 'Source and destination warehouses must be different.' });
+  }
+  if (value.destinationStageId && !value.destinationProjectId) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['destinationStageId'], message: 'Destination Project is required when a Stage is selected.' });
+  }
 });
 
 /** Validate one controlled stock adjustment command. */
@@ -216,8 +231,13 @@ export const listLedgerResponseSchema = z.object({
   items: z.array(stockLedgerResponseSchema), total: z.number().int().min(0), page: z.number().int().min(1), pageSize: z.number().int().min(1).max(MODULE_11_MAX_PAGE_SIZE)
 }).strict();
 
-/** Two-ledger-row warehouse transfer response. */
-export const transferMaterialResponseSchema = z.object({ transactions: z.array(stockLedgerResponseSchema).length(2) }).strict();
+/** Two-ledger-row transfer response with receiving-Project cost when applicable. */
+export const transferMaterialResponseSchema = z.object({
+  transactions: z.array(stockLedgerResponseSchema).length(2),
+  destinationProjectId: uuid.nullable(),
+  destinationStageId: uuid.nullable(),
+  lineCost: z.string()
+}).strict();
 
 /** Controlled adjustment response includes the required reason for audit readability. */
 export const adjustStockResponseSchema = stockLedgerResponseSchema.extend({ reason: z.string() }).strict();

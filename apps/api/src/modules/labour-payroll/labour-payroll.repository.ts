@@ -6,6 +6,13 @@ type RepositoryClient = DatabaseClient | TransactionClient;
 export type LabourPayrollPageWindow = Readonly<{ skip: number; take: number }>;
 export type LabourPayrollProjectVisibility = Readonly<{ allowedProjectIds: readonly string[] | null }>;
 
+const attendanceInclude = {
+  employee: { select: { employeeNo: true, name: true, employmentType: true } },
+  project: { select: { projectCode: true, name: true } },
+  stage: { select: { name: true } },
+  enteredByUser: { select: { name: true } }
+} as const;
+
 /** Reject invalid pagination before a repository query reaches Prisma. */
 function assertPageWindow(input: LabourPayrollPageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) throw new RangeError('Repository skip must be a non-negative integer.');
@@ -41,7 +48,7 @@ export class LabourPayrollRepository {
       ...(input.fromDate || input.toDate ? { workDate: { ...(input.fromDate ? { gte: input.fromDate } : {}), ...(input.toDate ? { lte: input.toDate } : {}) } } : {})
     });
     const [items, total] = await Promise.all([
-      this.db.attendanceEntry.findMany({ where, orderBy: [{ workDate: 'desc' }, { employeeId: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
+      this.db.attendanceEntry.findMany({ where, include: attendanceInclude, orderBy: [{ workDate: 'desc' }, { employeeId: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.attendanceEntry.count({ where })
     ]);
     return { items, total };
@@ -50,7 +57,7 @@ export class LabourPayrollRepository {
   /** Find one attendance row inside the authenticated Company. */
   async findAttendanceById(attendanceId: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.attendanceEntry.findFirst({ where: scope.where({ id: attendanceId }) });
+    return this.db.attendanceEntry.findFirst({ where: scope.where({ id: attendanceId }), include: attendanceInclude });
   }
 
   /** Find a duplicate Employee/Project/work-date attendance row. */
@@ -97,7 +104,7 @@ export class LabourPayrollRepository {
     enteredBy: string;
   }>) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.attendanceEntry.create({ data: scope.createData(input) });
+    return this.db.attendanceEntry.create({ data: scope.createData(input), include: attendanceInclude });
   }
 
   /** Update only correctable attendance fields inside the authenticated Company. */
@@ -131,7 +138,7 @@ export class LabourPayrollRepository {
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({});
     const [items, total] = await Promise.all([
-      this.db.payrollRun.findMany({ where, orderBy: [{ periodStart: 'desc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
+      this.db.payrollRun.findMany({ where, include: { creator: { select: { name: true } } }, orderBy: [{ periodStart: 'desc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.payrollRun.count({ where })
     ]);
     return { items, total };
@@ -140,15 +147,23 @@ export class LabourPayrollRepository {
   /** Find one Payroll Run and its calculated lines/payslips inside the Company. */
   async findPayrollRunById(payrollRunId: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.payrollRun.findFirst({
+    const run = await this.db.payrollRun.findFirst({
       where: scope.where({ id: payrollRunId }),
       include: {
+        creator: { select: { name: true } },
         lines: {
           include: { payslip: true, employee: { select: { employeeNo: true, name: true, employmentType: true } } },
           orderBy: [{ employeeId: 'asc' }, { id: 'asc' }]
         }
       }
     });
+    if (!run) return null;
+    const policy = await this.db.$queryRaw<Array<{ overtimeMultiplier: { toString(): string } | null }>>`
+      SELECT overtime_multiplier AS "overtimeMultiplier"
+      FROM payroll_runs
+      WHERE id = ${payrollRunId}::uuid AND company_id = ${scope.companyId}::uuid
+    `;
+    return { ...run, overtimeMultiplier: policy[0]?.overtimeMultiplier ?? null };
   }
 
   /** Lock one Payroll Run before recalculation or finalization. */
@@ -161,9 +176,10 @@ export class LabourPayrollRepository {
       status: string;
       createdBy: string;
       finalizedAt: Date | null;
+      overtimeMultiplier: { toString(): string } | null;
     }>>`
       SELECT id, period_start AS "periodStart", period_end AS "periodEnd", status,
-             created_by AS "createdBy", finalized_at AS "finalizedAt"
+             overtime_multiplier AS "overtimeMultiplier", created_by AS "createdBy", finalized_at AS "finalizedAt"
       FROM payroll_runs
       WHERE id = ${payrollRunId}::uuid AND company_id = ${scope.companyId}::uuid
       FOR UPDATE
@@ -174,7 +190,7 @@ export class LabourPayrollRepository {
   /** Create one Company-owned DRAFT Payroll Run. */
   async createPayrollRun(input: Readonly<{ periodStart: Date; periodEnd: Date; status: string; createdBy: string }>) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.payrollRun.create({ data: scope.createData({ ...input, finalizedAt: null }) });
+    return this.db.payrollRun.create({ data: scope.createData({ ...input, finalizedAt: null }), include: { creator: { select: { name: true } } } });
   }
 
   /** Find any other finalized Payroll Run that overlaps the candidate period. */
@@ -196,13 +212,35 @@ export class LabourPayrollRepository {
     await this.db.payrollLine.deleteMany({ where: { payrollRunId } });
   }
 
-  /** Read PRESENT attendance inside the Payroll period with Employee identity for calculation. */
+  /** Read all attendance states so salaried absence proration includes fully absent Employees. */
   async listPayrollAttendance(periodStart: Date, periodEnd: Date) {
     const scope = requireCompanyRepositoryScope();
     return this.db.attendanceEntry.findMany({
-      where: scope.where({ workDate: { gte: periodStart, lte: periodEnd }, status: 'PRESENT' }),
+      where: scope.where({ workDate: { gte: periodStart, lte: periodEnd } }),
       include: { employee: { select: { id: true, employmentType: true } } },
       orderBy: [{ employeeId: 'asc' }, { workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
+    });
+  }
+
+  /** Persist the explicit overtime multiplier for one mutable Payroll Run. */
+  async updatePayrollRunOvertimeMultiplier(payrollRunId: string, overtimeMultiplier: string) {
+    const scope = requireCompanyRepositoryScope();
+    const updated = await this.db.$executeRaw`
+      UPDATE payroll_runs
+      SET overtime_multiplier = ${overtimeMultiplier}::decimal
+      WHERE id = ${payrollRunId}::uuid
+        AND company_id = ${scope.companyId}::uuid
+        AND status IN ('DRAFT', 'CALCULATED')
+    `;
+    return updated === 1;
+  }
+
+  /** Read all attendance states for one Employee inside the Payroll period for salary proration. */
+  async listEmployeeAttendanceForPeriod(employeeId: string, periodStart: Date, periodEnd: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.attendanceEntry.findMany({
+      where: scope.where({ employeeId, workDate: { gte: periodStart, lte: periodEnd } }),
+      orderBy: [{ workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
     });
   }
 
@@ -258,6 +296,26 @@ export class LabourPayrollRepository {
       expense: accounts.find((item) => item.accountCode === expenseCode) ?? null,
       payable: accounts.find((item) => item.accountCode === payableCode) ?? null
     };
+  }
+
+  /** Ensure the minimal Payroll journal sequence and posting accounts exist for the Company. */
+  async ensurePayrollPostingSetup(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'finance.journal' } },
+      create: { companyId: scope.companyId, sequenceKey: 'finance.journal', prefix: 'JE-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+    for (const account of [
+      { accountCode: 'PAYROLL-LABOUR-EXPENSE', name: 'Payroll Labour Expense', accountType: 'EXPENSE' },
+      { accountCode: 'PAYROLL-PAYABLE', name: 'Payroll Payable', accountType: 'LIABILITY' }
+    ] as const) {
+      await this.db.glAccount.upsert({
+        where: { companyId_accountCode: { companyId: scope.companyId, accountCode: account.accountCode } },
+        create: scope.createData({ ...account, parentId: null, status: 'ACTIVE' }),
+        update: {}
+      });
+    }
   }
 
   /** Upsert one idempotent Payroll actual cost for Project/Stage profitability. */

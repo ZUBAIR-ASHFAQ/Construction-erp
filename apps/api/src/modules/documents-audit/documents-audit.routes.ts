@@ -13,6 +13,7 @@ import {
   documentLinkIdParamsSchema,
   listAuditLogsQuerySchema,
   listDocumentsQuerySchema,
+  DOCUMENT_LINK_RESOURCE_TYPES,
   MODULE_21_MAX_PAGE_SIZE
 } from './documents-audit.schema.js';
 import { DocumentsService, type DocumentsUploadPolicy } from './documents-audit.service.js';
@@ -136,6 +137,8 @@ export async function registerDocumentsRoutes(
           projectId: { type: 'string', format: 'uuid' },
           category: { type: 'string', minLength: 1, maxLength: 100 },
           status: { type: 'string', minLength: 1, maxLength: 100 },
+          resourceType: { type: 'string', enum: [...DOCUMENT_LINK_RESOURCE_TYPES] },
+          resourceId: { type: 'string', format: 'uuid' },
           page: { type: 'integer', minimum: 1 },
           pageSize: { type: 'integer', minimum: 1, maximum: MODULE_21_MAX_PAGE_SIZE }
         }

@@ -817,6 +817,14 @@
       "migrations": [
         "20260907000100_equipment_minute_billing"
       ]
+    },
+    {
+      "stage": 68,
+      "gate": "payroll-overtime-multiplier",
+      "description": "Adds an explicit Payroll Run overtime multiplier used only for hourly overtime calculation, preserving existing compensation authority and requiring no invented default policy.",
+      "migrations": [
+        "20260907000200_payroll_overtime_multiplier"
+      ]
     }
   ]
 }

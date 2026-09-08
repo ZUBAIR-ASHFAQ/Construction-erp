@@ -10,7 +10,7 @@ const migrationPath = 'packages/database/prisma/migrations/20260829001600_final2
 /** Extract one Prisma model block for focused Final-21 Inventory assertions. */
 function prismaModel(name) {
   const schema = read('packages/database/prisma/schema.prisma');
-  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\n]+\\)\\n\\}`))?.[0] ?? '';
+  return schema.match(new RegExp(`model ${name} \\{[\\s\\S]*?@@map\\([^\\r\\n]+\\)\\r?\\n\\}`))?.[0] ?? '';
 }
 
 /** Confirm Inventory remains the required five-file backend registered after Procurement. */
@@ -107,6 +107,10 @@ test('B12 derives stock from an append-only ledger and serializes stock-key writ
 test('B12 material issue posts Project Stage material actual cost with stable source keys', () => {
   const repository = read(`${backend}/inventory.repository.ts`);
   const service = read(`${backend}/inventory.service.ts`);
+  assert.match(repository, /ensureMaterialIssueNumberSequence/);
+  assert.match(repository, /sequenceKey: 'material-issue'/);
+  assert.match(service, /await repository\.ensureMaterialIssueNumberSequence\(\)/);
+  assert.ok(service.indexOf('ensureMaterialIssueNumberSequence()') < service.indexOf("allocateCompanyNumber(tx, { sequenceKey: MATERIAL_ISSUE_SEQUENCE })"));
   assert.match(service, /findStage\(input\.projectId, input\.stageId\)/);
   assert.match(service, /movementType: 'ISSUE'/);
   assert.match(service, /sourceType: 'material_issue'/);
@@ -114,6 +118,42 @@ test('B12 material issue posts Project Stage material actual cost with stable so
   assert.match(repository, /category: 'material'/);
   assert.match(repository, /sourceType: 'inventory_issue'/);
   assert.match(repository, /this\.db\.costActual\.create/);
+});
+
+/** Confirm Project transfers isolate source stock and recognize receiving material cost. */
+test('B12 moves unused stock between Projects and posts receiving actual cost', () => {
+  const schema = read(`${backend}/inventory.schema.ts`);
+  const repository = read(`${backend}/inventory.repository.ts`);
+  const service = read(`${backend}/inventory.service.ts`);
+  const api = read(`${web}/api/inventory-api.ts`);
+  const workspace = read(`${web}/components/inventory-workspace.tsx`);
+  const projectsRepository = read('apps/api/src/modules/projects/projects.repository.ts');
+  const projectsService = read('apps/api/src/modules/projects/projects.service.ts');
+  const jobCostRepository = read('apps/api/src/modules/budgets-job-cost/budgets-job-cost.repository.ts');
+  const jobCostService = read('apps/api/src/modules/budgets-job-cost/budgets-job-cost.service.ts');
+
+  for (const field of ['sourceProjectId', 'destinationProjectId', 'destinationStageId', 'transferDate']) {
+    assert.ok(schema.includes(`${field}:`), `transfer schema is missing ${field}`);
+    assert.ok(api.includes(`${field}`), `web transfer contract is missing ${field}`);
+  }
+  assert.match(service, /getStockPosition\(source\.id, material\.id, sourceProjectId\)/);
+  assert.match(service, /findStage\(destinationProjectId, destinationStageId\)/);
+  assert.match(service, /movementType: 'TRANSFER_OUT'/);
+  assert.match(service, /movementType: 'TRANSFER_IN'/);
+  assert.match(service, /stageId: destinationStageId/);
+  assert.match(service, /createTransferCostActual/);
+  assert.match(service, /projectId: sourceProjectId/);
+  assert.match(service, /amount: `-\$\{lineCost\}`/);
+  assert.match(service, /projectId: destinationProjectId/);
+  assert.match(service, /sourceKey: `inventory_transfer:/);
+  assert.match(repository, /sourceType: 'inventory_transfer'/);
+  assert.match(repository, /category: 'material'/);
+  assert.match(projectsRepository, /sumInventoryTransferActuals/);
+  assert.match(projectsService, /materialActualCost - inventoryTransferActualCost/);
+  assert.match(jobCostRepository, /sumInventoryTransferActuals/);
+  assert.match(jobCostService, /materialActualCost - inventoryTransferActualCost/);
+  assert.match(workspace, /Transfer unused stock to another project/);
+  assert.match(workspace, /Source expense reduced and destination expense increased/);
 });
 
 /** Confirm Procurement Goods Receipt and stock posting stay atomic and stage-aware after material rename. */

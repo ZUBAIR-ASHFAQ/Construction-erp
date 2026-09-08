@@ -128,8 +128,18 @@ export const listDocumentsQuerySchema = z.object({
   projectId: uuidSchema.optional(),
   category: shortTextSchema.optional(),
   status: shortTextSchema.optional(),
+  resourceType: z.enum(DOCUMENT_LINK_RESOURCE_TYPES).optional(),
+  resourceId: uuidSchema.optional(),
   ...paginationQueryShape
-}).strict();
+}).strict().superRefine((value, context) => {
+  if (Boolean(value.resourceType) !== Boolean(value.resourceId)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: value.resourceType ? ['resourceId'] : ['resourceType'],
+      message: 'resourceType and resourceId must be supplied together'
+    });
+  }
+});
 
 /** Bounded filters for the append-only audit read surface. */
 export const listAuditLogsQuerySchema = z.object({

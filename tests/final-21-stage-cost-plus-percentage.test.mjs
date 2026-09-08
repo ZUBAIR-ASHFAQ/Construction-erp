@@ -8,7 +8,7 @@ const read = (path) => readFileSync(new URL(`../${path}`, import.meta.url), 'utf
 test('Stage Cost + Percentage adds only an optional bounded Stage rate', () => {
   const prisma = read('packages/database/prisma/schema.prisma');
   const migration = read('packages/database/prisma/migrations/20260901000100_stage_cost_plus_percentage/migration.sql');
-  const stageModel = prisma.match(/model ProjectStage \{[\s\S]*?@@map\("project_stages"\)\n\}/)?.[0] ?? '';
+  const stageModel = prisma.match(/model ProjectStage \{[\s\S]*?@@map\("project_stages"\)\r?\n\}/)?.[0] ?? '';
   assert.match(stageModel, /costPlusPercent\s+Decimal\?\s+@map\("cost_plus_percent"\)\s+@db\.Decimal\(7, 4\)/);
   assert.match(migration, /ADD COLUMN "cost_plus_percent" DECIMAL\(7,4\)/);
   assert.match(migration, /"cost_plus_percent" IS NULL OR \("cost_plus_percent" > 0 AND "cost_plus_percent" <= 100\)/);

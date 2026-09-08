@@ -70,6 +70,15 @@ function Money({ value }: Readonly<{ value: string }>) {
   return <span>{value}</span>;
 }
 
+/** Add API money strings exactly for Payroll preview totals. */
+function sumMoney(values: readonly string[]): string {
+  const cents = values.reduce((sum, value) => {
+    const [whole = '0', fraction = ''] = value.split('.');
+    return sum + (BigInt(whole) * 100n) + BigInt(`${fraction}00`.slice(0, 2));
+  }, 0n);
+  return `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
+}
+
 /** Render the final Attendance and Payroll workflows without duplicating Employee or Project ownership. */
 export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const employees = useEmployees({ status: 'ACTIVE', pageSize: 100 }, props.canCreateAttendance || props.canReadAttendance);
@@ -80,7 +89,12 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const createRunMutation = useCreatePayrollRun();
   const [selectedAttendance, setSelectedAttendance] = useState<AttendanceEntry | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [overtimeMultiplier, setOvertimeMultiplier] = useState('');
   const selectedRun = usePayrollRun(selectedRunId, props.canReadPayroll);
+
+  useEffect(() => {
+    setOvertimeMultiplier(selectedRun.data?.overtimeMultiplier ?? '');
+  }, [selectedRun.data?.id, selectedRun.data?.overtimeMultiplier]);
 
   const attendanceForm = useForm<AttendanceFormValues>({
     resolver: zodResolver(attendanceFormSchema),
@@ -161,6 +175,12 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
     setSelectedAttendance(null);
   }
 
+  /** Confirm the irreversible accounting and Project-cost posting before finalization. */
+  function confirmFinalize(): void {
+    if (!selectedRun.data || !window.confirm(`Finalize payroll for ${selectedRun.data.periodStart} to ${selectedRun.data.periodEnd}? This posts Finance and Project costs and cannot be edited afterward.`)) return;
+    finalizeMutation.mutate();
+  }
+
   return (
     <div className="stack">
       <section className="admin-card">
@@ -191,9 +211,9 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
           <h2>Attendance register <small className="muted">({attendance.data?.total ?? 0} total · page {attendance.data?.page ?? 1} · {attendance.data?.pageSize ?? 100} per page)</small></h2>
           {attendance.isLoading && <p className="muted">Loading attendance…</p>}
           {errorMessage(attendance.error) && <p className="field-error">{errorMessage(attendance.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>ID</th><th>Date</th><th>Employee</th><th>Project</th><th>Stage</th><th>Status</th><th>Hours</th><th>Overtime</th><th>Entered by</th>{props.canCorrectAttendance && <th>Action</th>}</tr></thead><tbody>
-            {(attendance.data?.items ?? []).map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.workDate}</td><td>{employeeNames.get(row.employeeId) ?? row.employeeId}<br /><small className="muted">{row.employeeId}</small></td><td>{projectNames.get(row.projectId) ?? row.projectId}<br /><small className="muted">{row.projectId}</small></td><td>{row.stageId ?? 'Project'}</td><td>{row.status}</td><td>{row.hours ?? '0'}</td><td>{row.overtimeHours ?? '0'}</td><td>{row.enteredBy}</td>{props.canCorrectAttendance && <td><button type="button" className="secondary-button" onClick={() => chooseAttendance(row)}>Correct</button></td>}</tr>)}
-            {(attendance.data?.items.length ?? 0) === 0 && <tr><td colSpan={props.canCorrectAttendance ? 10 : 9} className="muted">No attendance records.</td></tr>}
+          <div className="table-scroll"><table><thead><tr><th>Date</th><th>Employee</th><th>Project</th><th>Stage</th><th>Status</th><th>Hours</th><th>Overtime</th><th>Entered by</th>{props.canCorrectAttendance && <th>Action</th>}</tr></thead><tbody>
+            {(attendance.data?.items ?? []).map((row) => <tr key={row.id}><td>{row.workDate}</td><td><strong>{row.employeeName}</strong><br /><small className="muted">{row.employeeNo}</small></td><td><strong>{row.projectName}</strong><br /><small className="muted">{row.projectCode}</small></td><td>{row.stageName ?? 'Project level'}</td><td>{row.status}</td><td>{row.hours ?? '0'}</td><td>{row.overtimeHours ?? '0'}</td><td>{row.enteredByName}</td>{props.canCorrectAttendance && <td><button type="button" className="secondary-button" onClick={() => chooseAttendance(row)}>Correct</button></td>}</tr>)}
+            {(attendance.data?.items.length ?? 0) === 0 && <tr><td colSpan={props.canCorrectAttendance ? 9 : 8} className="muted">No attendance records.</td></tr>}
           </tbody></table></div>
         </section>
       )}
@@ -229,9 +249,9 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         <section className="admin-card">
           <h2>Payroll runs <small className="muted">({runs.data?.total ?? 0} total · page {runs.data?.page ?? 1} · {runs.data?.pageSize ?? 50} per page)</small></h2>
           {errorMessage(runs.error) && <p className="field-error">{errorMessage(runs.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>ID</th><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
-            {(runs.data?.items ?? []).map((run) => <tr key={run.id}><td>{run.id}</td><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdBy}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
-            {(runs.data?.items.length ?? 0) === 0 && <tr><td colSpan={6} className="muted">No Payroll Runs.</td></tr>}
+          <div className="table-scroll"><table><thead><tr><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
+            {(runs.data?.items ?? []).map((run) => <tr key={run.id}><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdByName}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
+            {(runs.data?.items.length ?? 0) === 0 && <tr><td colSpan={5} className="muted">No Payroll Runs.</td></tr>}
           </tbody></table></div>
         </section>
       )}
@@ -239,15 +259,19 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
       {selectedRunId && selectedRun.data && (
         <section className="admin-card">
           <h2>Payroll calculation preview</h2>
-          <p><strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · Run {selectedRun.data.id} · {selectedRun.data.status} · Created by {selectedRun.data.createdBy} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
+          <p><strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status} · Created by {selectedRun.data.createdByName} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
+          <p><strong>Gross:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.grossAmount))} · <strong>Deductions:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.deductions))} · <strong>Net payroll:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.netAmount))}</p>
+          {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && (
+            <label>Hourly overtime multiplier <input inputMode="decimal" value={overtimeMultiplier} onChange={(event) => setOvertimeMultiplier(event.target.value)} placeholder="Required only when hourly overtime exists" /></label>
+          )}
           <div className="form-actions">
-            {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && <button type="button" onClick={() => calculateMutation.mutate()} disabled={calculateMutation.isPending}>Calculate</button>}
-            {props.canFinalizePayroll && selectedRun.data.status === 'CALCULATED' && <button type="button" onClick={() => finalizeMutation.mutate()} disabled={finalizeMutation.isPending}>Finalize & post</button>}
+            {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && <button type="button" onClick={() => calculateMutation.mutate(overtimeMultiplier ? { overtimeMultiplier } : {})} disabled={calculateMutation.isPending}>Calculate</button>}
+            {props.canFinalizePayroll && selectedRun.data.status === 'CALCULATED' && <button type="button" onClick={confirmFinalize} disabled={finalizeMutation.isPending}>Finalize & post</button>}
           </div>
           {errorMessage(calculateMutation.error) && <p className="field-error">{errorMessage(calculateMutation.error)}</p>}
           {errorMessage(finalizeMutation.error) && <p className="field-error">{errorMessage(finalizeMutation.error)}</p>}
           <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Gross</th><th>Deductions</th><th>Net</th><th>Project / Stage labour cost</th><th>Payslip</th></tr></thead><tbody>
-            {selectedRun.data.lines.map((line) => <tr key={line.id}><td>{employeeNames.get(line.employeeId) ?? line.employeeId}<br /><small className="muted">Line {line.id} · Employee {line.employeeId}</small></td><td><Money value={line.grossAmount} /></td><td><Money value={line.deductions} /></td><td><Money value={line.netAmount} /></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? allocation.projectId} / {allocation.stageId ?? 'Project'} · {allocation.category} · <Money value={allocation.amount} /><br /><small className="muted">Project {allocation.projectId}</small></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}<br /><small>Payslip {line.payslip.id} · Document {line.payslip.documentId ?? '—'}</small></> : 'Not generated'}</td></tr>)}
+            {selectedRun.data.lines.map((line) => <tr key={line.id}><td><strong>{line.employeeName}</strong><br /><small className="muted">{line.employeeNo}</small></td><td><Money value={line.grossAmount} /></td><td><Money value={line.deductions} /></td><td><Money value={line.netAmount} /></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? 'Project'} / {allocation.stageId ? 'Selected stage' : 'Project level'} · {allocation.category} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}</> : 'Not generated'}</td></tr>)}
             {selectedRun.data.lines.length === 0 && <tr><td colSpan={6} className="muted">Calculate this run to create Employee Payroll lines.</td></tr>}
           </tbody></table></div>
         </section>

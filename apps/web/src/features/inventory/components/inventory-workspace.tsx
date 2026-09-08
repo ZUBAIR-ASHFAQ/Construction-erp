@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
-import { useAdjustStock, useCreateMaterialIssue, useInventoryLedger, useInventoryStock, useMaterials } from '../hooks/inventory.js';
+import { useAdjustStock, useCreateMaterialIssue, useInventoryLedger, useInventoryStock, useMaterials, useTransferMaterial } from '../hooks/inventory.js';
 
 type InventoryWorkspaceProps = Readonly<{
   canRead: boolean;
@@ -21,6 +21,7 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const ledger = useInventoryLedger(projectId || undefined, props.canRead && Boolean(projectId));
   const createIssue = useCreateMaterialIssue();
   const addDirectStock = useAdjustStock();
+  const transferStock = useTransferMaterial();
 
   const stages = useProjectStages(projectId || null, Boolean(projectId && props.canIssue));
   const [stageId, setStageId] = useState('');
@@ -32,6 +33,14 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const [directMaterialId, setDirectMaterialId] = useState('');
   const [directQuantity, setDirectQuantity] = useState('1.0000');
   const [directReason, setDirectReason] = useState('Direct stock entry');
+  const [transferSourceWarehouseId, setTransferSourceWarehouseId] = useState('');
+  const [transferMaterialId, setTransferMaterialId] = useState('');
+  const [destinationProjectId, setDestinationProjectId] = useState('');
+  const [destinationStageId, setDestinationStageId] = useState('');
+  const [destinationWarehouseId, setDestinationWarehouseId] = useState('');
+  const [transferQuantity, setTransferQuantity] = useState('1.0000');
+  const [transferDate, setTransferDate] = useState(new Date().toISOString().slice(0, 10));
+  const destinationStages = useProjectStages(destinationProjectId || null, Boolean(destinationProjectId && props.canTransfer));
 
   /** Submit one single-line Project/Stage Material Issue from the compact UI. */
   function submitIssue(event: FormEvent<HTMLFormElement>) {
@@ -53,10 +62,31 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
     addDirectStock.mutate({ projectId, warehouseId: directWarehouseId, materialId: directMaterialId, quantityDelta: directQuantity, reason: directReason });
   }
 
+  /** Move unused stock to another Project and recognize its receiving material cost. */
+  function submitProjectTransfer(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!projectId || !destinationProjectId || !transferSourceWarehouseId || !destinationWarehouseId || !transferMaterialId || Number(transferQuantity) <= 0) return;
+    transferStock.mutate({
+      sourceProjectId: projectId,
+      destinationProjectId,
+      destinationStageId: destinationStageId || null,
+      sourceWarehouseId: transferSourceWarehouseId,
+      destinationWarehouseId,
+      materialId: transferMaterialId,
+      quantity: transferQuantity,
+      transferDate
+    });
+  }
+
   const stockedWarehouseIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0).map((row) => row.warehouseId));
   const stockedMaterialIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0 && (!issueWarehouseId || row.warehouseId === issueWarehouseId)).map((row) => row.materialId));
   const warehouseOptions = (stock.data?.warehouses ?? []).filter((warehouse) => stockedWarehouseIds.has(warehouse.id));
   const directWarehouseOptions = stock.data?.warehouses ?? [];
+  const transferMaterialIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0 && (!transferSourceWarehouseId || row.warehouseId === transferSourceWarehouseId)).map((row) => row.materialId));
+  const transferMaterialOptions = (materials.data?.items ?? []).filter((material) => transferMaterialIds.has(material.id));
+  const transferSourcePosition = (stock.data?.items ?? []).find((row) => row.warehouseId === transferSourceWarehouseId && row.materialId === transferMaterialId);
+  const destinationProjects = (projects.data?.items ?? []).filter((project) => project.id !== projectId && project.status === 'ACTIVE');
+  const destinationWarehouseOptions = (stock.data?.warehouses ?? []).filter((warehouse) => warehouse.projectId === null || warehouse.projectId === destinationProjectId);
   const materialOptions = (materials.data?.items ?? []).filter((material) => stockedMaterialIds.has(material.id));
   const warehouseNames = new Map((stock.data?.warehouses ?? []).map((warehouse) => [warehouse.id, warehouse.name]));
   const materialNames = new Map((materials.data?.items ?? []).map((material) => [material.id, material.name]));
@@ -136,6 +166,25 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
           </form>
           {addDirectStock.data && <p className="muted">Stock added successfully. The project balance and ledger have been updated.</p>}
           {addDirectStock.error instanceof Error && <div className="form-error" role="alert">{addDirectStock.error.message}</div>}
+        </section>
+      )}
+
+      {props.canTransfer && projectId && (
+        <section className="admin-card">
+          <h2>Transfer unused stock to another project</h2>
+          <p className="muted">The source Project stock and material expense decrease, while the destination Project receives the same stock and material expense at the source average unit cost.</p>
+          <form className="form-grid" onSubmit={submitProjectTransfer}>
+            <label>Source warehouse<select value={transferSourceWarehouseId} onChange={(event) => { setTransferSourceWarehouseId(event.target.value); setTransferMaterialId(''); }} required><option value="">Select source warehouse</option>{warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+            <label>Material<select value={transferMaterialId} onChange={(event) => setTransferMaterialId(event.target.value)} required><option value="">Select available material</option>{transferMaterialOptions.map((material) => { const position = (stock.data?.items ?? []).find((row) => row.warehouseId === transferSourceWarehouseId && row.materialId === material.id); return <option key={material.id} value={material.id}>{material.code} · {material.name}{position ? ` · ${position.quantityOnHand} ${position.unit} available` : ''}</option>; })}</select></label>
+            <label>Destination project<select value={destinationProjectId} onChange={(event) => { setDestinationProjectId(event.target.value); setDestinationStageId(''); setDestinationWarehouseId(''); }} required><option value="">Select destination project</option>{destinationProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
+            <label>Destination stage<select value={destinationStageId} onChange={(event) => setDestinationStageId(event.target.value)}><option value="">Project level</option>{(destinationStages.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label>
+            <label>Destination warehouse<select value={destinationWarehouseId} onChange={(event) => setDestinationWarehouseId(event.target.value)} required><option value="">Select destination warehouse</option>{destinationWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+            <label>Quantity{transferSourcePosition && <small className="muted">Available: {transferSourcePosition.quantityOnHand} {transferSourcePosition.unit}</small>}<input inputMode="decimal" min="0.0001" max={transferSourcePosition?.quantityOnHand} step="0.0001" value={transferQuantity} onChange={(event) => setTransferQuantity(event.target.value)} required /></label>
+            <label>Transfer date<input type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} required /></label>
+            <button type="submit" disabled={transferStock.isPending}>{transferStock.isPending ? 'Transferring…' : 'Transfer stock'}</button>
+          </form>
+          {transferStock.data && <p className="muted">Transfer posted successfully. Source expense reduced and destination expense increased by {transferStock.data.lineCost}.</p>}
+          {transferStock.error instanceof Error && <div className="form-error" role="alert">{transferStock.error.message}</div>}
         </section>
       )}
 

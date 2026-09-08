@@ -22,7 +22,13 @@ export type CreateMaterialIssueInput = Readonly<{
   projectId: string; stageId?: string | null; warehouseId: string; issueDate: string; description?: string | null;
   items: ReadonlyArray<Readonly<{ materialId: string; quantity: string }>>;
 }>;
-export type TransferMaterialInput = Readonly<{ sourceWarehouseId: string; destinationWarehouseId: string; materialId: string; quantity: string }>;
+export type TransferMaterialInput = Readonly<{
+  sourceProjectId?: string; destinationProjectId?: string; destinationStageId?: string | null;
+  sourceWarehouseId: string; destinationWarehouseId: string; materialId: string; quantity: string; transferDate?: string;
+}>;
+export type MaterialTransfer = Readonly<{
+  transactions: LedgerRow[]; destinationProjectId: string | null; destinationStageId: string | null; lineCost: string;
+}>;
 export type AdjustStockInput = Readonly<{ projectId?: string; warehouseId: string; materialId: string; quantityDelta: string; reason: string }>;
 
 /** Build one bounded Inventory query string. */
@@ -63,8 +69,8 @@ export function createMaterialIssue(input: CreateMaterialIssueInput): Promise<Ma
 }
 
 /** Transfer one Material between Warehouses. */
-export function transferMaterial(input: TransferMaterialInput): Promise<Readonly<{ transactions: LedgerRow[] }>> {
-  return authenticatedRequest<Readonly<{ transactions: LedgerRow[] }>>('inventory/transfers', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
+export function transferMaterial(input: TransferMaterialInput): Promise<MaterialTransfer> {
+  return authenticatedRequest<MaterialTransfer>('inventory/transfers', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
 /** Append one controlled stock adjustment. */

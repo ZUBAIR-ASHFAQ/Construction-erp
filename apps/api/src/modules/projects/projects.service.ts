@@ -17,6 +17,7 @@ import { ClientBillingService } from '../client-billing/client-billing.service.j
 import { ClientReceiptsRepository, subtractMoneyAmounts } from '../client-receipts/client-receipts.repository.js';
 import { ProjectStagesService } from '../project-stages/project-stages.service.js';
 import { ProjectTeamService } from '../project-team/project-team.service.js';
+import { VendorsSubcontractorsRepository } from '../vendors-subcontractors/vendors-subcontractors.repository.js';
 import { ProjectsRepository } from './projects.repository.js';
 import {
   createProjectError,
@@ -314,8 +315,9 @@ export class ProjectsService {
     const canReadBilling = hasPermission('client_billing.read') || effectivePermissions.includes('client_billing.read');
     const canReadReceipts = hasPermission('client_receipts.read') || effectivePermissions.includes('client_receipts.read');
     const canReadSupplierPayments = hasPermission('supplier_payables.read') || effectivePermissions.includes('supplier_payables.read');
+    const canReadSubcontractors = hasPermission('subcontractors.read') || effectivePermissions.includes('subcontractors.read');
 
-    const [statusHistory, stageSummary, teamSummary, budgetSummary, jobCost, billingSummary, receipts, categoryCosts, supplierPayments, supplierPayables, supplierCostBasis, supplierInvoiceActuals] = await Promise.all([
+    const [statusHistory, stageSummary, teamSummary, budgetSummary, jobCost, billingSummary, receipts, categoryCosts, supplierPayments, supplierPayables, supplierCostBasis, supplierInvoiceActuals, inventoryTransferActuals, subcontractPaymentActuals, subcontractSummary] = await Promise.all([
       repository.listProjectStatusHistory(projectId),
       canReadStages ? new ProjectStagesService(this.db).getProjectSummary(projectId) : Promise.resolve(null),
       canReadTeam ? new ProjectTeamService(this.db).getProjectSummary(projectId) : Promise.resolve(null),
@@ -329,7 +331,10 @@ export class ProjectsService {
       canReadSupplierPayments ? repository.readSupplierPaymentSummary(projectId) : Promise.resolve(null),
       canReadSupplierPayments ? repository.readSupplierPayableSummary(projectId) : Promise.resolve(null),
       canReadCost ? repository.readSupplierCostBasis(projectId) : Promise.resolve(null),
-      canReadCost ? repository.sumSupplierInvoiceActuals(projectId) : Promise.resolve(null)
+      canReadCost ? repository.sumSupplierInvoiceActuals(projectId) : Promise.resolve(null),
+      canReadCost ? repository.sumInventoryTransferActuals(projectId) : Promise.resolve(null),
+      canReadCost ? repository.sumSubcontractPaymentActuals(projectId) : Promise.resolve(null),
+      (canReadCost || canReadSubcontractors) ? new VendorsSubcontractorsRepository(this.db).readProjectSubcontractSummary(projectId) : Promise.resolve(null)
     ]);
 
     const receivedAmount = receipts?.receivedAmount?.toString() ?? null;
@@ -339,15 +344,23 @@ export class ProjectsService {
     const sourceActualCost = PROJECT_COST_CATEGORIES.reduce((sum, category) => sum + (categoryByCode.get(category) ?? 0n), 0n);
     const materialActualCost = categoryByCode.get('material') ?? 0n;
     const supplierInvoiceActualCost = moneyMinor(supplierInvoiceActuals?._sum.amount);
+    const inventoryTransferActualCost = moneyMinor(inventoryTransferActuals?._sum.amount);
     const supplierCostAmount = supplierCostBasis === null
       ? 0n
       : moneyMinor(supplierCostBasis.invoices._sum.totalAmount)
         + moneyMinor(supplierCostBasis.directPayments._sum.amount)
         - moneyMinor(supplierCostBasis.directAllocations._sum.amount);
-    const supplierCostAlreadyPosted = materialActualCost + supplierInvoiceActualCost;
+    const supplierCostAlreadyPosted = materialActualCost - inventoryTransferActualCost + supplierInvoiceActualCost;
     const supplierCostUplift = supplierCostAmount > supplierCostAlreadyPosted ? supplierCostAmount - supplierCostAlreadyPosted : 0n;
     const adjustedMaterialCost = materialActualCost + supplierCostUplift;
-    const totalExpense = sourceActualCost + supplierCostUplift;
+    const subcontractActualCost = categoryByCode.get('subcontract') ?? 0n;
+    const subcontractPaymentActualCost = moneyMinor(subcontractPaymentActuals?._sum.amount);
+    const subcontractContractAmount = moneyMinor(subcontractSummary?._sum.contractAmount);
+    const subcontractCostUplift = subcontractContractAmount > subcontractPaymentActualCost
+      ? subcontractContractAmount - subcontractPaymentActualCost
+      : 0n;
+    const adjustedSubcontractCost = subcontractActualCost + subcontractCostUplift;
+    const totalExpense = sourceActualCost + supplierCostUplift + subcontractCostUplift;
     const committedCost = moneyMinor(jobCost?.totals.committedCost);
     const manualForecastCost = moneyMinor(jobCost?.totals.forecastCost);
     const forecastCost = [manualForecastCost, committedCost, totalExpense].reduce((highest, value) => value > highest ? value : highest, 0n);
@@ -378,7 +391,14 @@ export class ProjectsService {
         variance: minorMoney(budgetCost - forecastCost)
       },
       expenseSummary: categoryCosts === null ? null : {
-        categories: PROJECT_COST_CATEGORIES.map((category) => ({ category, amount: minorMoney(category === 'material' ? adjustedMaterialCost : categoryByCode.get(category) ?? 0n) })),
+        categories: PROJECT_COST_CATEGORIES.map((category) => ({
+          category,
+          amount: minorMoney(category === 'material'
+            ? adjustedMaterialCost
+            : category === 'subcontract'
+              ? adjustedSubcontractCost
+              : categoryByCode.get(category) ?? 0n)
+        })),
         totalExpense: minorMoney(totalExpense),
         supplierCostAmount: minorMoney(supplierCostAmount),
         markupPercent: project.projectModel === PROJECT_MODEL_COST_PLUS_PERCENTAGE ? project.costPlusPercent?.toString() ?? null : null,
@@ -395,6 +415,10 @@ export class ProjectsService {
         invoicedAmount: minorMoney(supplierInvoicedAmount),
         allocatedAmount: minorMoney(supplierAllocatedAmount),
         outstandingAmount: minorMoney(supplierOutstandingAmount)
+      },
+      subcontractSummary: !canReadSubcontractors || subcontractSummary === null ? null : {
+        contractCount: subcontractSummary._count._all,
+        contractAmount: minorMoney(subcontractContractAmount)
       },
       receiptSummary: receivedAmount === null || allocatedAmount === null
         ? null

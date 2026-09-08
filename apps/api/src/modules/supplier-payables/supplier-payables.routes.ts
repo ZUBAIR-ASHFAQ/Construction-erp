@@ -112,6 +112,7 @@ const CREATE_PAYMENT_BODY_JSON_SCHEMA = {
   properties: {
     vendorId: UUID_JSON_SCHEMA,
     projectId: NULLABLE_UUID_JSON_SCHEMA,
+    supplierInvoiceId: NULLABLE_UUID_JSON_SCHEMA,
     paymentDate: DATE_JSON_SCHEMA,
     amount: POSITIVE_MONEY_JSON_SCHEMA,
     cashBankAccountId: UUID_JSON_SCHEMA,
@@ -186,7 +187,7 @@ const INVOICE_RESPONSE_JSON_SCHEMA = {
 const PAYMENT_RESPONSE_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['id', 'vendorId', 'projectId', 'paymentNo', 'paymentDate', 'amount', 'cashBankAccountId', 'reference', 'status'],
+  required: ['id', 'vendorId', 'projectId', 'paymentNo', 'paymentDate', 'amount', 'allocatedAmount', 'remainingAmount', 'cashBankAccountId', 'reference', 'status'],
   properties: {
     id: UUID_JSON_SCHEMA,
     vendorId: UUID_JSON_SCHEMA,
@@ -194,6 +195,8 @@ const PAYMENT_RESPONSE_JSON_SCHEMA = {
     paymentNo: { type: 'string', minLength: 1 },
     paymentDate: DATE_JSON_SCHEMA,
     amount: { type: 'string' },
+    allocatedAmount: { type: 'string' },
+    remainingAmount: { type: 'string' },
     cashBankAccountId: UUID_JSON_SCHEMA,
     reference: NULLABLE_TEXT_JSON_SCHEMA,
     status: PAYMENT_STATUS_JSON_SCHEMA

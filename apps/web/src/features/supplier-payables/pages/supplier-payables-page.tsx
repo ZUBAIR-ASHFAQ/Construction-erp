@@ -6,6 +6,7 @@ export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = '
   const auth = useAuth();
   const hasRestrictedProjects = auth.identity?.projectScope.kind === 'restricted' && auth.identity.projectScope.projectIds.length > 0;
   const canRead = usePermission('supplier_payables.read') || Boolean(hasRestrictedProjects);
+  const hasDocumentReadPermission = usePermission('documents.read');
 
   return (
     <section className="admin-stack" aria-labelledby="supplier-payables-title">
@@ -26,6 +27,9 @@ export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = '
         canReadVendors={usePermission('vendors.read')}
         canReadProcurement={usePermission('procurement.read') || Boolean(hasRestrictedProjects)}
         canReadFinance={usePermission('finance.read') || Boolean(hasRestrictedProjects)}
+        canUploadDocuments={usePermission('documents.upload') || Boolean(hasRestrictedProjects)}
+        canLinkDocuments={usePermission('documents.link') || Boolean(hasRestrictedProjects)}
+        canReadDocuments={canRead || hasDocumentReadPermission || Boolean(hasRestrictedProjects)}
       />
     </section>
   );

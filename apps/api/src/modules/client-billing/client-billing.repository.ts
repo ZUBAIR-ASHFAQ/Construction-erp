@@ -45,6 +45,16 @@ export class ClientBillingRepository {
   /** Bind Client Billing persistence to Prisma or the current transaction. */
   constructor(private readonly db: RepositoryClient) {}
 
+  /** Ensure Client Invoice numbering exists for legacy companies before allocating a number. */
+  async ensureClientInvoiceNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'client-invoice' } },
+      create: { companyId: scope.companyId, sequenceKey: 'client-invoice', prefix: 'CI-', suffix: '', padWidth: 5, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
   /** Find one project inside company and project scope. */
   async findProject(projectId: string, visibility: ClientBillingVisibility) {
     if (!projectIsVisible(projectId, visibility)) return null;
@@ -355,14 +365,14 @@ export class ClientBillingRepository {
     return this.db.clientInvoice.findFirst({ where: scope.where({ claimId, ...projectWhere(visibility) }), include: { lines: true } });
   }
 
-  /** Create one client invoice from a finalized claim. */
+  /** Create one issued Client Invoice from either a finalized claim or direct entry. */
   async createInvoice(input: {
     projectId: string;
     clientId: string;
-    claimId: string;
+    claimId: string | null;
     invoiceNo: string;
     invoiceDate: Date;
-    dueDate: Date;
+    dueDate: Date | null;
     subtotal: string;
     taxAmount: string;
     totalAmount: string;

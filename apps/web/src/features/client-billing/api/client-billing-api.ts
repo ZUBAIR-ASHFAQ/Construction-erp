@@ -65,6 +65,13 @@ export type UpdateBillingSettingsInput = Readonly<{ billingMethod: BillingMethod
 export type CreateClaimInput = Readonly<{ projectId: string; periodEnd: string; lines: BillingClaimLineInput[] }>;
 export type UpdateClaimInput = Readonly<{ periodEnd?: string; lines?: BillingClaimLineInput[] }>;
 export type CreateInvoiceInput = Readonly<{ invoiceDate: string; dueDate: string }>;
+export type DirectClientInvoiceLineInput = Readonly<{ stageId?: string | null; description: string; amount: string }>;
+export type CreateDirectClientInvoiceInput = Readonly<{
+  projectId: string;
+  invoiceDate: string;
+  dueDate?: string | null;
+  lines: DirectClientInvoiceLineInput[];
+}>;
 export type ListBillingInput = Readonly<{ projectId?: string; status?: string; page?: number; pageSize?: number }>;
 
 /** Build one bounded Client Billing list query. */
@@ -123,6 +130,13 @@ export function finalizeBillingClaim(claimId: string, idempotencyKey: string): P
 /** Create one Client Invoice from a finalized claim. */
 export function createClientInvoice(claimId: string, input: CreateInvoiceInput, idempotencyKey: string): Promise<ClientInvoice> {
   return authenticatedRequest<ClientInvoice>(`client-billing/claims/${claimId}/invoice`, {
+    method: 'POST', headers: commandHeaders(idempotencyKey), body: JSON.stringify(input)
+  });
+}
+
+/** Create, issue and Finance-post a manually entered Client Invoice. */
+export function createDirectClientInvoice(input: CreateDirectClientInvoiceInput, idempotencyKey: string): Promise<ClientInvoice> {
+  return authenticatedRequest<ClientInvoice>('client-billing/invoices', {
     method: 'POST', headers: commandHeaders(idempotencyKey), body: JSON.stringify(input)
   });
 }

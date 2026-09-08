@@ -412,7 +412,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
           <dl className="project-expense-grid">
             {details.expenseSummary.categories.map((row) => <div key={row.category}><dt>{({ material: 'Material', labour: 'Labour', security: 'Security', equipment: 'Machinery / Equipment', subcontract: 'Subcontractor', site_expense: 'Site expenses', other: 'Other expenses' } as const)[row.category]}</dt><dd>{project.currency} {row.amount}</dd></div>)}
             <div><dt>Supplier cost basis</dt><dd>{project.currency} {details.expenseSummary.supplierCostAmount}</dd><small>Posted supplier payable plus Project payments, with allocated payments counted only once.</small></div>
-            <div className="project-expense-total"><dt>Total actual project cost</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd><small>Feeds the Actual Cost calculation from posted source transactions.</small></div>
+            <div className="project-expense-total"><dt>Total actual project cost</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd><small>Includes the agreed subcontract contract amount without counting posted subcontract payments twice.</small></div>
           </dl>
           {project.projectModel === 'COST_PLUS_PERCENTAGE' && <dl className="project-cost-plus-summary"><div><dt>Cost base</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd></div><div><dt>Profit / markup ({details.expenseSummary.markupPercent}%)</dt><dd>{project.currency} {details.expenseSummary.markupAmount}</dd></div><div><dt>Cost + percentage amount</dt><dd>{project.currency} {details.expenseSummary.costPlusAmount}</dd></div></dl>}
           {project.projectModel === 'FIXED_PRICE' && <p className="muted">Fixed-price contract value: {project.currency} {project.projectValue}. Total expense remains source-derived and is not overwritten manually.</p>}
@@ -473,6 +473,13 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
             <small>{details.supplierPaymentSummary
               ? `${details.supplierPaymentSummary.paymentCount} posted payment(s) assigned or allocated to this project. Payments are not added again to project expense.`
               : 'Payment totals require Supplier Payables read permission.'}</small>
+          </div>
+          <div>
+            <dt>Subcontractor contract amount</dt>
+            <dd>{details.subcontractSummary ? `${project.currency} ${details.subcontractSummary.contractAmount}` : 'Restricted'}</dd>
+            <small>{details.subcontractSummary
+              ? `${details.subcontractSummary.contractCount} subcontract contract(s) assigned to this Project.`
+              : 'Subcontract contract totals require Subcontractor read permission.'}</small>
           </div>
           <div>
             <dt>Client total paid</dt>

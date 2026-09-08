@@ -246,6 +246,16 @@ export class VendorsSubcontractorsRepository {
     return { items, total };
   }
 
+  /** Aggregate agreed subcontract contract value for one Project. */
+  async readProjectSubcontractSummary(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.subcontractContract.aggregate({
+      where: scope.where({ projectId }),
+      _count: { _all: true },
+      _sum: { contractAmount: true }
+    });
+  }
+
   /** Find one company subcontract contract by identifier. */
   async findSubcontractContractById(contractId: string) {
     const scope = requireCompanyRepositoryScope();

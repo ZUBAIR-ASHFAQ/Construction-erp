@@ -6,13 +6,19 @@ export type PayrollRunStatus = 'DRAFT' | 'CALCULATED' | 'FINALIZED';
 export type AttendanceEntry = Readonly<{
   id: string;
   employeeId: string;
+  employeeNo: string;
+  employeeName: string;
   projectId: string;
+  projectCode: string;
+  projectName: string;
   stageId: string | null;
+  stageName: string | null;
   workDate: string;
   status: AttendanceStatus;
   hours: string | null;
   overtimeHours: string | null;
   enteredBy: string;
+  enteredByName: string;
 }>;
 
 export type AttendancePage = Readonly<{ items: AttendanceEntry[]; total: number; page: number; pageSize: number }>;
@@ -27,6 +33,8 @@ export type PayrollAllocation = Readonly<{
 export type PayrollLine = Readonly<{
   id: string;
   employeeId: string;
+  employeeNo: string;
+  employeeName: string;
   grossAmount: string;
   deductions: string;
   netAmount: string;
@@ -40,7 +48,9 @@ export type PayrollRun = Readonly<{
   periodEnd: string;
   status: PayrollRunStatus;
   createdBy: string;
+  createdByName: string;
   finalizedAt: string | null;
+  overtimeMultiplier: string | null;
   lines: PayrollLine[];
 }>;
 
@@ -75,6 +85,7 @@ export type UpdateAttendanceInput = Readonly<{
   overtimeHours?: string | null;
 }>;
 export type CreatePayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
+export type CalculatePayrollRunInput = Readonly<{ overtimeMultiplier?: string }>;
 
 /** Build one bounded attendance query without browser-owned Company scope. */
 function attendanceQuery(input: ListAttendanceInput): string {
@@ -119,8 +130,8 @@ export function createPayrollRun(input: CreatePayrollRunInput): Promise<PayrollR
 }
 
 /** Recalculate one DRAFT/CALCULATED Payroll Run from attendance and compensation. */
-export function calculatePayrollRun(payrollRunId: string): Promise<PayrollRun> {
-  return authenticatedRequest<PayrollRun>(`payroll/runs/${payrollRunId}/calculate`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify({}) });
+export function calculatePayrollRun(payrollRunId: string, input: CalculatePayrollRunInput = {}): Promise<PayrollRun> {
+  return authenticatedRequest<PayrollRun>(`payroll/runs/${payrollRunId}/calculate`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
 /** Finalize Payroll and post Project cost plus Finance accounting atomically. */

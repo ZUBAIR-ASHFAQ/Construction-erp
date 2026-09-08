@@ -315,6 +315,10 @@ export const projectDetailsResponseSchema = z.object({
     allocatedAmount: projectValueSchema,
     outstandingAmount: projectValueSchema
   }).strict().nullable(),
+  subcontractSummary: z.object({
+    contractCount: z.number().int().min(0),
+    contractAmount: projectValueSchema
+  }).strict().nullable(),
   receiptSummary: z.object({
     receivedAmount: projectValueSchema,
     allocatedAmount: projectValueSchema,

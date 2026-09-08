@@ -13,6 +13,7 @@ import {
   createClientBillingError,
   type ClientBillingPermissionCode,
   type CreateClaimBody,
+  type CreateDirectClientInvoiceBody,
   type CreateInvoiceBody,
   type ListClaimsQuery,
   type ListInvoicesQuery,
@@ -648,6 +649,7 @@ export class ClientBillingService {
     const invoiceLines = allocateCertifiedInvoiceLines(claim.lines, subtotal, accounts.revenue.id);
     const tax = 0n;
     const total = subtotal + tax;
+    await repository.ensureClientInvoiceNumberSequence();
     const number = await allocateCompanyNumber(tx, { sequenceKey: INVOICE_SEQUENCE_KEY });
     const invoice = await repository.createInvoice({
       projectId: claim.projectId,
@@ -667,6 +669,61 @@ export class ClientBillingService {
     await recordAudit(tx, { action: 'client_invoice.posted', entityType: 'client_invoice', entityId: invoice.id, after: { status: invoice.status, financeSourceKey: finance.sourceKey } });
     await recordOutboxEvent(tx, { eventType: 'client_invoice.created', resourceType: 'client_invoice', resourceId: invoice.id, payload: { invoiceId: invoice.id, claimId, projectId: claim.projectId, clientId: claim.clientId, totalAmount: response.totalAmount, financeSourceKey: finance.sourceKey } });
     await recordOutboxEvent(tx, { eventType: 'client_invoice.posted', resourceType: 'client_invoice', resourceId: invoice.id, payload: { invoiceId: invoice.id, claimId, projectId: claim.projectId, clientId: claim.clientId, totalAmount: response.totalAmount, financeSourceKey: finance.sourceKey } });
+    return { statusCode: 201, body: response };
+  }
+
+  /** Create and issue a manually entered Client Invoice exactly once. */
+  async createDirectInvoice(input: CreateDirectClientInvoiceBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'client-billing.direct-invoice-create', idempotencyKey, fingerprintInput: input
+    }, async (tx) => this.createDirectInvoiceOnce(tx, input));
+    return result.response.body;
+  }
+
+  /** Validate, persist and post one direct Client Invoice to Finance / AR atomically. */
+  private async createDirectInvoiceOnce(tx: TransactionClient, input: CreateDirectClientInvoiceBody) {
+    const now = new Date();
+    const administration = new AdministrationRepository(tx);
+    await this.requireProjectPermission(administration, input.projectId, 'client_invoices.create', now);
+    const visibility: ClientBillingVisibility = { allowedProjectIds: [input.projectId] };
+    const repository = new ClientBillingRepository(tx);
+    const project = await repository.findProject(input.projectId, visibility);
+    if (!project) throw new NotFoundError();
+    requireWritableProject(project.status);
+    await this.requireClaimStages(repository, project.id, input.lines, visibility);
+
+    const accounts = await this.requireInvoicePostingAccounts(repository);
+    const invoiceDate = inputDate(input.invoiceDate);
+    const dueDate = input.dueDate ? inputDate(input.dueDate) : null;
+    if (dueDate) requireInvoiceDateOrder(invoiceDate, dueDate);
+    const subtotal = input.lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
+    const total = minorUnitsToMoney(subtotal);
+    await repository.ensureClientInvoiceNumberSequence();
+    const number = await allocateCompanyNumber(tx, { sequenceKey: INVOICE_SEQUENCE_KEY });
+    const invoice = await repository.createInvoice({
+      projectId: project.id,
+      clientId: project.clientId,
+      claimId: null,
+      invoiceNo: number.formatted,
+      invoiceDate,
+      dueDate,
+      subtotal: total,
+      taxAmount: ZERO_MONEY,
+      totalAmount: total,
+      lines: input.lines.map((line) => ({
+        stageId: line.stageId ?? null,
+        description: line.description.trim(),
+        amount: minorUnitsToMoney(moneyToMinorUnits(line.amount)),
+        revenueAccountId: accounts.revenue.id
+      }))
+    });
+    const response = invoiceResponse(invoice);
+    await recordAudit(tx, { action: 'client_invoice.created', entityType: 'client_invoice', entityId: invoice.id, after: response });
+    const finance = await this.postInvoiceToFinance(tx, invoice, accounts.receivable.id, accounts.revenue.id);
+    await recordAudit(tx, { action: 'client_invoice.posted', entityType: 'client_invoice', entityId: invoice.id, after: { status: invoice.status, financeSourceKey: finance.sourceKey } });
+    const eventPayload = { invoiceId: invoice.id, claimId: null, projectId: project.id, clientId: project.clientId, totalAmount: response.totalAmount, financeSourceKey: finance.sourceKey };
+    await recordOutboxEvent(tx, { eventType: 'client_invoice.created', resourceType: 'client_invoice', resourceId: invoice.id, payload: eventPayload });
+    await recordOutboxEvent(tx, { eventType: 'client_invoice.posted', resourceType: 'client_invoice', resourceId: invoice.id, payload: eventPayload });
     return { statusCode: 201, body: response };
   }
 

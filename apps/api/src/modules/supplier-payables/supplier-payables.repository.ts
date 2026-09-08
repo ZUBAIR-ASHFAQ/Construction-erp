@@ -127,6 +127,19 @@ export class SupplierPayablesRepository {
   /** Bind Supplier Payables persistence to Prisma or one active service transaction. */
   constructor(private readonly db: RepositoryClient) {}
 
+  /** Confirm that a Supplier Invoice has a completed, current attachment in the same Company. */
+  async hasSupplierInvoiceAttachment(invoiceId: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    const count = await this.db.documentLink.count({
+      where: scope.where({
+        linkedResourceType: 'supplier_invoice',
+        linkedResourceId: invoiceId,
+        document: { currentVersionId: { not: null } }
+      })
+    });
+    return count > 0;
+  }
+
   /** Find one same-Company Vendor for Supplier Invoice or Payment validation. */
   async findVendorById(vendorId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -540,6 +553,7 @@ export class SupplierPayablesRepository {
     const [items, total] = await Promise.all([
       this.db.supplierPayment.findMany({
         where,
+        include: { allocations: { select: { amount: true }, orderBy: [{ allocatedAt: 'asc' }, { id: 'asc' }] } },
         orderBy: [{ paymentDate: 'desc' }, { paymentNo: 'desc' }, { id: 'desc' }],
         skip: input.skip,
         take: input.take

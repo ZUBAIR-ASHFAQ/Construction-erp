@@ -323,6 +323,12 @@ function reconciledStageField(payload, field) {
   return payload.stages.reduce((sum, stage) => sum + money(stage[field]), 0n) + money(payload.projectOnly[field]);
 }
 
+/** Sum one categorized cost field across Stage rows plus the Project-only bucket. */
+function reconciledStageCostField(payload, field) {
+  return payload.stages.reduce((sum, stage) => sum + money(stage.costBreakdown[field]), 0n)
+    + money(payload.projectOnly.costBreakdown[field]);
+}
+
 test('B19.8 live Project summary reconciles Modules 9, 15, 16, 17 and 18 without double counting', { skip: !live }, async () => {
   await withApi(async ({ app }) => {
     const token = await signIn(app, 'b19-8-admin-a@example.test');
@@ -342,7 +348,20 @@ test('B19.8 live Project summary reconciles Modules 9, 15, 16, 17 and 18 without
       allocatedAmount: '1000.00',
       advanceAmount: '500.00',
       outstandingAmount: '700.00',
-      supplierPayableAmount: '650.00'
+      supplierInvoicedAmount: '900.00',
+      supplierPaymentAmount: '250.00',
+      supplierAllocatedPaymentAmount: '250.00',
+      supplierAdvanceAmount: '0.00',
+      supplierPayableAmount: '650.00',
+      costBreakdown: {
+        materialCost: '300.00',
+        labourCost: '200.00',
+        securityCost: '0.00',
+        equipmentCost: '0.00',
+        subcontractCost: '0.00',
+        siteExpenseCost: '100.00',
+        otherCost: '0.00'
+      }
     });
   });
 });
@@ -360,8 +379,15 @@ test('B19.8 live Stage drill-down reconciles every financial field and ignores u
     assert.equal(payload.stages[1].profitAmount, '300.00');
     assert.equal(payload.projectOnly.profitAmount, '100.00');
     assert.equal(payload.projectOnly.supplierPayableAmount, '650.00');
-    for (const field of ['recognizedRevenue', 'actualCost', 'profitAmount', 'billedAmount', 'receivedAmount', 'allocatedAmount', 'advanceAmount', 'outstandingAmount', 'supplierPayableAmount']) {
+    for (const field of [
+      'recognizedRevenue', 'actualCost', 'profitAmount', 'billedAmount', 'receivedAmount',
+      'allocatedAmount', 'advanceAmount', 'outstandingAmount', 'supplierInvoicedAmount',
+      'supplierPaymentAmount', 'supplierAllocatedPaymentAmount', 'supplierAdvanceAmount', 'supplierPayableAmount'
+    ]) {
       assert.equal(reconciledStageField(payload, field), money(payload.projectTotal[field]), `Stage reconciliation failed for ${field}`);
+    }
+    for (const field of ['materialCost', 'labourCost', 'securityCost', 'equipmentCost', 'subcontractCost', 'siteExpenseCost', 'otherCost']) {
+      assert.equal(reconciledStageCostField(payload, field), money(payload.projectTotal.costBreakdown[field]), `Stage cost reconciliation failed for ${field}`);
     }
   });
 });

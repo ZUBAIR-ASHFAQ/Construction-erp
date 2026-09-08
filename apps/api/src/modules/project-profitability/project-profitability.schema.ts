@@ -163,6 +163,17 @@ export const projectProfitabilityPortfolioQuerySchema = z.object({
   ...paginationShape
 }).strict();
 
+/** Source-derived actual-cost categories; signed values preserve reversals and Project transfers. */
+export const projectProfitabilityCostBreakdownSchema = z.object({
+  materialCost: exactMoneySchema,
+  labourCost: exactMoneySchema,
+  securityCost: exactMoneySchema,
+  equipmentCost: exactMoneySchema,
+  subcontractCost: exactMoneySchema,
+  siteExpenseCost: exactMoneySchema,
+  otherCost: exactMoneySchema
+}).strict();
+
 /** Financial measures shared by Project, Stage and portfolio profitability responses. */
 export const projectProfitabilityFinancialValuesSchema = z.object({
   recognizedRevenue: exactMoneySchema,
@@ -173,7 +184,12 @@ export const projectProfitabilityFinancialValuesSchema = z.object({
   allocatedAmount: exactNonNegativeMoneySchema,
   advanceAmount: exactNonNegativeMoneySchema,
   outstandingAmount: exactNonNegativeMoneySchema,
-  supplierPayableAmount: exactNonNegativeMoneySchema
+  supplierInvoicedAmount: exactNonNegativeMoneySchema,
+  supplierPaymentAmount: exactNonNegativeMoneySchema,
+  supplierAllocatedPaymentAmount: exactNonNegativeMoneySchema,
+  supplierAdvanceAmount: exactNonNegativeMoneySchema,
+  supplierPayableAmount: exactNonNegativeMoneySchema,
+  costBreakdown: projectProfitabilityCostBreakdownSchema
 }).strict();
 
 /** Validate one Project-level profitability summary without storing a second source of truth. */
@@ -275,6 +291,7 @@ export type ProjectProfitabilityAsOfQuery = z.infer<typeof projectProfitabilityA
 export type ProjectProfitabilityTrendQuery = z.infer<typeof projectProfitabilityTrendQuerySchema>;
 export type ProjectProfitabilityPortfolioQuery = z.infer<typeof projectProfitabilityPortfolioQuerySchema>;
 export type ProjectProfitabilityFinancialValues = z.infer<typeof projectProfitabilityFinancialValuesSchema>;
+export type ProjectProfitabilityCostBreakdown = z.infer<typeof projectProfitabilityCostBreakdownSchema>;
 export type ProjectProfitabilitySummaryResponse = z.infer<typeof projectProfitabilitySummaryResponseSchema>;
 export type ProjectProfitabilityStageRowResponse = z.infer<typeof projectProfitabilityStageRowResponseSchema>;
 export type ProjectProfitabilityStagesResponse = z.infer<typeof projectProfitabilityStagesResponseSchema>;

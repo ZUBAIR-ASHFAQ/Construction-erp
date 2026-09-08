@@ -64,8 +64,13 @@ test('B19.9 uses TanStack Query for summary Stage trend and portfolio reads only
 test('B19.9 displays all Project financial measures and keeps cash separate from profit', () => {
   const workspace = read(`${FEATURE}/components/project-profitability-workspace.tsx`);
   for (const token of [
-    'Recognized revenue', 'Actual cost', 'Profit / loss', 'Billed', 'Received',
-    'Allocated receipts', 'Advance / unallocated', 'Outstanding', 'Supplier payable'
+    'Recognized revenue', 'Total expense / actual cost', 'Profit / loss', 'Client invoiced / billed',
+    'Client cash received', 'Client receipts allocated', 'Client advance / unallocated',
+    'Client receivable / outstanding', 'Supplier payable outstanding'
+  ]) assert.match(workspace, new RegExp(token.replace(/[\/]/g, '\\/')));
+  for (const token of [
+    'Material and inventory usage', 'Labour salaries / wages', 'Equipment usage', 'Subcontractor cost',
+    'Site expenses', 'Supplier invoices posted', 'Supplier cash paid'
   ]) assert.match(workspace, new RegExp(token.replace(/[\/]/g, '\\/')));
   assert.match(workspace, /Cash is separate from profit/);
   assert.match(workspace, /Profit remains recognized revenue minus actual cost/);

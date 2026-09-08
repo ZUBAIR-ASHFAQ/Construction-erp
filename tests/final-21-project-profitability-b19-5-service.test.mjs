@@ -57,7 +57,7 @@ test('B19.5 builds an inclusive UTC as-of window for business and durable postin
   assert.match(service, /postedThrough: endOfInputDate\(asOfDate\)/);
 });
 
-test('B19.5 Project summary reads all five frozen source groups in parallel', () => {
+test('B19.5 Project summary reads all operational and cash-position source groups in parallel', () => {
   const service = read(SERVICE);
   assert.match(service, /Promise\.all\(\[/);
   for (const method of [
@@ -65,7 +65,8 @@ test('B19.5 Project summary reads all five frozen source groups in parallel', ()
     'listBilledSources',
     'listRecognizedRevenueSources',
     'listClientReceiptFinanceSources',
-    'listSupplierPayableSources'
+    'listSupplierPayableSources',
+    'listSupplierPaymentSources'
   ]) assert.ok(service.includes(method), `missing source read ${method}`);
 });
 
@@ -97,15 +98,14 @@ test('B19.5 reconstructs receipt cash and allocations from durable Finance sourc
     "case 'REVERSAL':"
   ]) assert.ok(service.includes(sourceType), `missing receipt Finance behavior ${sourceType}`);
   assert.match(service, /return \{ received: -originalEffect\.received, allocated: -originalEffect\.allocated \}/);
-  assert.match(service, /calculateReceiptFinancials\(receiptSources\)/);
+  assert.match(service, /calculateReceiptFinancials\(input\.receiptSources\)/);
 });
 
 test('B19.5 keeps advance and outstanding separate and rejects impossible negative positions', () => {
   const service = read(SERVICE);
-  assert.match(service, /receiptFinancials\.allocated > receiptFinancials\.received/);
-  assert.match(service, /receiptFinancials\.allocated > billedAmount/);
-  assert.match(service, /const advanceAmount = receiptFinancials\.received - receiptFinancials\.allocated/);
-  assert.match(service, /const outstandingAmount = billedAmount - receiptFinancials\.allocated/);
+  assert.match(service, /allocatedAmount > receivedAmount \|\| allocatedAmount > billedAmount/);
+  assert.match(service, /const advanceAmount = receivedAmount - allocatedAmount/);
+  assert.match(service, /const outstandingAmount = billedAmount - allocatedAmount/);
   assert.doesNotMatch(service, /outstandingAmount\s*=\s*billedAmount\s*-\s*receiptFinancials\.received/);
 });
 
@@ -119,7 +119,7 @@ test('B19.5 derives Supplier payable from posted invoice totals less posted paym
   assert.doesNotMatch(payable, /recognizedRevenue|receiptFinancials|receivedAmount/i);
 });
 
-test('B19.5 emits the frozen response contract with all nine financial concepts kept separate', () => {
+test('B19.5 emits complete client, supplier, profit and categorized expense concepts separately', () => {
   const service = read(SERVICE);
   assert.match(service, /projectProfitabilitySummaryResponseSchema\.parse\(\{/);
   for (const field of [
@@ -131,8 +131,23 @@ test('B19.5 emits the frozen response contract with all nine financial concepts 
     'allocatedAmount',
     'advanceAmount',
     'outstandingAmount',
-    'supplierPayableAmount'
+    'supplierInvoicedAmount',
+    'supplierPaymentAmount',
+    'supplierAllocatedPaymentAmount',
+    'supplierAdvanceAmount',
+    'supplierPayableAmount',
+    'costBreakdown'
   ]) assert.ok(service.includes(`${field}:`), `missing response field ${field}`);
+});
+
+test('B19.5 reconciles categorized CostActual rows and keeps Supplier cash outside actual cost', () => {
+  const service = read(SERVICE);
+  for (const category of ['material', 'labour', 'security', 'equipment', 'subcontract', 'site_expense', 'other']) {
+    assert.match(service, new RegExp(`${category}:`));
+  }
+  assert.match(service, /categorizedActualCost !== actualCost/);
+  assert.match(service, /calculateSupplierPosition/);
+  assert.doesNotMatch(service, /actualCost[^;=]*[+=][^;]*(?:supplierPaymentAmount|supplierPosition\.paid)/);
 });
 
 test('B19.5 remains read-only and adds no profitability persistence or migration', () => {

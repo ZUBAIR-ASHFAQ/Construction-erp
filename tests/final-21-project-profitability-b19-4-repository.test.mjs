@@ -11,6 +11,13 @@ function read(relativePath) {
   return readFileSync(new URL(relativePath, ROOT), 'utf8');
 }
 
+/** Slice one repository method without depending on line endings or its next doc comment. */
+function methodSource(repository, methodName, nextMethodName) {
+  const start = repository.indexOf(`async ${methodName}`);
+  const end = nextMethodName ? repository.indexOf(`async ${nextMethodName}`, start) : repository.length;
+  return start < 0 ? '' : repository.slice(start, end < 0 ? repository.length : end);
+}
+
 test('B19.4 keeps the exact five-file backend shape and preserves its repository checkpoint after B19.7', () => {
   const files = readdirSync(new URL(MODULE, ROOT)).filter((name) => name.endsWith('.ts')).sort();
   assert.deepEqual(files, [
@@ -64,7 +71,7 @@ test('B19.4 reads Project and Stage identity only inside Company and Project sco
 
 test('B19.4 Stage context reads only latest approved physical progress through the as-of business date', () => {
   const repository = read(REPOSITORY);
-  const stages = repository.match(/async listProjectStages[\s\S]*?\n  }\n\n  \/\*\* List Module 9/)?.[0] ?? '';
+  const stages = methodSource(repository, 'listProjectStages', 'listActualCostSources');
   assert.match(stages, /status: 'APPROVED'/);
   assert.match(stages, /progressDate: \{ lte: throughDate \}/);
   assert.match(stages, /orderBy: \[\{ progressDate: 'desc' \}, \{ approvedAt: 'desc' \}, \{ id: 'desc' \}\]/);
@@ -73,7 +80,7 @@ test('B19.4 Stage context reads only latest approved physical progress through t
 
 test('B19.4 reads Module 9 CostActual history with Project Stage source identity and business dates', () => {
   const repository = read(REPOSITORY);
-  const actuals = repository.match(/async listActualCostSources[\s\S]*?\n  }\n\n  \/\*\* List issued\/posted/)?.[0] ?? '';
+  const actuals = methodSource(repository, 'listActualCostSources', 'listBilledSources');
   assert.match(actuals, /db\.costActual\.findMany/);
   assert.match(actuals, /postingDate: businessDateFilter\(window\)/);
   for (const field of ['projectId: true', 'stageId: true', 'amount: true', 'sourceType: true', 'sourceId: true', 'sourceKey: true']) {
@@ -84,7 +91,7 @@ test('B19.4 reads Module 9 CostActual history with Project Stage source identity
 test('B19.4 reads billed amount only from issued or compatible posted Client Invoice lines', () => {
   const repository = read(REPOSITORY);
   assert.match(repository, /BILLABLE_INVOICE_STATUSES = Object\.freeze\(\['ISSUED', 'POSTED'\]/);
-  const billed = repository.match(/async listBilledSources[\s\S]*?\n  }\n\n  \/\*\* List Finance-confirmed/)?.[0] ?? '';
+  const billed = methodSource(repository, 'listBilledSources', 'listRecognizedRevenueSources');
   assert.match(billed, /db\.clientInvoiceLine\.findMany/);
   assert.match(billed, /companyId: scope\.companyId/);
   assert.match(billed, /status: \{ in: \[\.\.\.BILLABLE_INVOICE_STATUSES\] \}/);
@@ -93,7 +100,7 @@ test('B19.4 reads billed amount only from issued or compatible posted Client Inv
 
 test('B19.4 recognized revenue starts from Client Invoice ownership and includes Finance compensating reversal history', () => {
   const repository = read(REPOSITORY);
-  const revenue = repository.match(/async listRecognizedRevenueSources[\s\S]*?\n  }\n\n  \/\*\* List durable Finance/)?.[0] ?? '';
+  const revenue = methodSource(repository, 'listRecognizedRevenueSources', 'listClientReceiptFinanceSources');
   assert.match(revenue, /db\.clientInvoice\.findMany/);
   assert.match(revenue, /sourceType: 'client_invoice'/);
   assert.match(revenue, /sourceId: \{ in: invoiceIds \}/);
@@ -113,7 +120,7 @@ test('B19.4 reconstructs Client receipt and allocation history from durable Fina
     'client_receipt_allocation',
     'client_receipt_allocation_reversal'
   ]) assert.ok(repository.includes(`'${sourceType}'`), `missing receipt Finance source ${sourceType}`);
-  const receipts = repository.match(/async listClientReceiptFinanceSources[\s\S]*?\n  }\n\n  \/\*\* List posted Supplier/)?.[0] ?? '';
+  const receipts = methodSource(repository, 'listClientReceiptFinanceSources', 'listSupplierPayableSources');
   assert.match(receipts, /postedAt: \{ lte: window\.postedThrough \}/);
   assert.match(receipts, /sourceType: 'REVERSAL'/);
   assert.match(receipts, /lines: \{ some: \{ projectId: \{ in: ids \} \} \}/);
@@ -123,14 +130,23 @@ test('B19.4 reconstructs Client receipt and allocation history from durable Fina
 
 test('B19.4 Supplier payable sources include only posted invoices and allocations from posted Supplier Payments', () => {
   const repository = read(REPOSITORY);
-  const payables = repository.match(/async listSupplierPayableSources[\s\S]*?\n  }\n}\n/)?.[0] ?? '';
+  const payables = methodSource(repository, 'listSupplierPayableSources', 'listSupplierPaymentSources');
   assert.match(payables, /db\.supplierInvoice\.findMany/);
   assert.match(payables, /status: 'POSTED'/);
   assert.match(payables, /invoiceDate: \{ lte: window\.throughDate \}/);
   assert.match(payables, /allocatedAt: \{ lte: window\.postedThrough \}/);
-  assert.match(payables, /supplierPayment: \{ companyId: scope\.companyId, status: 'POSTED' \}/);
+  assert.match(payables, /supplierPayment: \{[\s\S]*companyId: scope\.companyId,[\s\S]*status: 'POSTED',[\s\S]*paymentDate: \{ lte: window\.throughDate \}/);
   assert.match(payables, /stageId: true/);
   assert.match(payables, /totalAmount: true/);
+});
+
+test('B19.4 reads posted Supplier cash payments separately from Supplier Invoice expense', () => {
+  const repository = read(REPOSITORY);
+  const payments = methodSource(repository, 'listSupplierPaymentSources');
+  assert.match(payments, /db\.supplierPayment\.findMany/);
+  assert.match(payments, /status: 'POSTED'/);
+  assert.match(payments, /paymentDate: \{ lte: window\.throughDate \}/);
+  assert.match(payments, /supplierInvoice: \{[\s\S]*status: 'POSTED',[\s\S]*invoiceDate: \{ lte: window\.throughDate \}/);
 });
 
 test('B19.4 repository exposes source rows but contains no profitability or advance calculation policy', () => {

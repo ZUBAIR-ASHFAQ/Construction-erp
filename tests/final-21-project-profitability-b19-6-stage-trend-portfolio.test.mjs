@@ -11,6 +11,13 @@ function read(relativePath) {
   return readFileSync(new URL(relativePath, ROOT), 'utf8');
 }
 
+/** Slice one service method without depending on line endings or adjacent comments. */
+function methodSource(service, methodName, nextMethodName) {
+  const start = service.indexOf(`async ${methodName}`);
+  const end = nextMethodName ? service.indexOf(`async ${nextMethodName}`, start) : service.length;
+  return start < 0 ? '' : service.slice(start, end < 0 ? service.length : end);
+}
+
 test('B19.6 keeps the five-file backend shape and preserves its service checkpoint after B19.7 registration', () => {
   const files = readdirSync(new URL(MODULE, ROOT)).filter((name) => name.endsWith('.ts')).sort();
   assert.deepEqual(files, [
@@ -31,7 +38,7 @@ test('B19.6 keeps the five-file backend shape and preserves its service checkpoi
 });
 test('B19.6 Stage read keeps Stage identity progress and all financial source concepts separate', () => {
   const service = read(SERVICE);
-  const stages = service.match(/async getProjectStages[\s\S]*?\n  }\n\n  \/\*\* Return bounded revenue/)?.[0] ?? '';
+  const stages = methodSource(service, 'getProjectStages', 'getProjectTrend');
   assert.match(stages, /listProjectStages/);
   assert.match(stages, /weightPercent: stage\.weightPercent\.toString\(\)/);
   assert.match(stages, /physicalProgressPercent: stage\.progressUpdates\[0\]\?\.progressPercent\.toString\(\) \?\? '0'/);
@@ -96,7 +103,7 @@ test('B19.6 trend creates deterministic DAY WEEK and MONTH buckets including emp
 
 test('B19.6 trend uses only Finance-confirmed recognized revenue and Module 9 actual cost by business posting date', () => {
   const service = read(SERVICE);
-  const trend = service.match(/async getProjectTrend[\s\S]*?\n  }\n\n  \/\*\* Return one bounded permission/)?.[0] ?? '';
+  const trend = methodSource(service, 'getProjectTrend', 'getPortfolio');
   assert.match(trend, /listActualCostSources/);
   assert.match(trend, /listBilledSources/);
   assert.match(trend, /listRecognizedRevenueSources/);
@@ -109,7 +116,7 @@ test('B19.6 trend uses only Finance-confirmed recognized revenue and Module 9 ac
 
 test('B19.6 portfolio intersects request Project scope with all three frozen permissions', () => {
   const service = read(SERVICE);
-  const access = service.match(/private async requirePortfolioReadAccess[\s\S]*?\n  }\n\n  \/\*\* Read the five approved/)?.[0] ?? '';
+  const access = methodSource(service, 'requirePortfolioReadAccess', 'readFinancialSources');
   assert.match(access, /security\.projectScope\.kind === 'not-resolved'/);
   assert.match(access, /security\.projectScope\.kind === 'all' \? null : security\.projectScope\.projectIds/);
   for (const permission of [
@@ -122,7 +129,7 @@ test('B19.6 portfolio intersects request Project scope with all three frozen per
 
 test('B19.6 portfolio remains bounded and batch-reads financial sources for only the returned Project page', () => {
   const service = read(SERVICE);
-  const portfolio = service.match(/async getPortfolio[\s\S]*?\n  }\n}/)?.[0] ?? '';
+  const portfolio = methodSource(service, 'getPortfolio');
   assert.match(portfolio, /const page = query\.page \?\? 1/);
   assert.match(portfolio, /const pageSize = query\.pageSize \?\? DEFAULT_PORTFOLIO_PAGE_SIZE/);
   assert.match(portfolio, /listPortfolioProjects/);
@@ -133,7 +140,7 @@ test('B19.6 portfolio remains bounded and batch-reads financial sources for only
 
 test('B19.6 portfolio keeps currencies per Project and does not create unsafe cross-currency totals', () => {
   const service = read(SERVICE);
-  const portfolio = service.match(/async getPortfolio[\s\S]*?\n  }\n}/)?.[0] ?? '';
+  const portfolio = methodSource(service, 'getPortfolio');
   assert.match(portfolio, /currency: project\.currency/);
   assert.doesNotMatch(portfolio, /grandTotal|portfolioTotal|exchangeRate|currencyConversion/);
 });

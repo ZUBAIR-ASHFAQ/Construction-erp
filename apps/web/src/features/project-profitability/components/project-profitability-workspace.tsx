@@ -95,18 +95,17 @@ function portfolioProjectOption(item: ProjectProfitabilityPortfolioItem): Projec
   return { id: item.projectId, label: projectOptionLabel(item.projectCode, item.projectName) };
 }
 
-/** Render the nine source-derived financial measures without recalculating them in the browser. */
+/** Render the primary source-derived financial measures without recalculating them in the browser. */
 function FinancialGrid({ values, currency }: { values: ProjectProfitabilityFinancialValues; currency: string }) {
   const metrics = [
     ['Recognized revenue', values.recognizedRevenue],
-    ['Actual cost', values.actualCost],
+    ['Total expense / actual cost', values.actualCost],
     ['Profit / loss', values.profitAmount],
-    ['Billed', values.billedAmount],
-    ['Received', values.receivedAmount],
-    ['Allocated receipts', values.allocatedAmount],
-    ['Advance / unallocated', values.advanceAmount],
-    ['Outstanding', values.outstandingAmount],
-    ['Supplier payable', values.supplierPayableAmount]
+    ['Client invoiced / billed', values.billedAmount],
+    ['Client cash received', values.receivedAmount],
+    ['Client receipts allocated', values.allocatedAmount],
+    ['Client advance / unallocated', values.advanceAmount],
+    ['Client receivable / outstanding', values.outstandingAmount]
   ] as const;
 
   return (
@@ -119,6 +118,32 @@ function FinancialGrid({ values, currency }: { values: ProjectProfitabilityFinan
       ))}
     </dl>
   );
+}
+
+/** Render the authoritative Project cost categories that reconcile to total actual cost. */
+function CostBreakdownGrid({ values, currency }: { values: ProjectProfitabilityFinancialValues; currency: string }) {
+  const metrics = [
+    ['Material and inventory usage', values.costBreakdown.materialCost],
+    ['Labour salaries / wages', values.costBreakdown.labourCost],
+    ['Security salaries / wages', values.costBreakdown.securityCost],
+    ['Equipment usage', values.costBreakdown.equipmentCost],
+    ['Subcontractor cost', values.costBreakdown.subcontractCost],
+    ['Site expenses', values.costBreakdown.siteExpenseCost],
+    ['Other direct cost', values.costBreakdown.otherCost]
+  ] as const;
+  return <dl className="profitability-metric-grid">{metrics.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayMoney(value, currency)}</dd></div>)}</dl>;
+}
+
+/** Render Supplier AP and cash settlement independently from expense recognition. */
+function SupplierPositionGrid({ values, currency }: { values: ProjectProfitabilityFinancialValues; currency: string }) {
+  const metrics = [
+    ['Supplier invoices posted', values.supplierInvoicedAmount],
+    ['Supplier cash paid', values.supplierPaymentAmount],
+    ['Payments allocated to invoices', values.supplierAllocatedPaymentAmount],
+    ['Supplier advance / unallocated', values.supplierAdvanceAmount],
+    ['Supplier payable outstanding', values.supplierPayableAmount]
+  ] as const;
+  return <dl className="profitability-metric-grid">{metrics.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayMoney(value, currency)}</dd></div>)}</dl>;
 }
 
 /** Render the read-only Module 19 Project, Stage, trend and portfolio analytical workspace. */
@@ -299,6 +324,12 @@ export function ProjectProfitabilityWorkspace({
           <>
             <p><strong>{summaryQuery.data.projectCode} · {summaryQuery.data.projectName}</strong> <span className="muted">as of {summaryQuery.data.asOfDate}</span></p>
             <FinancialGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
+            <h3>Project expense breakdown</h3>
+            <CostBreakdownGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
+            <p className="muted">Material, payroll, equipment, subcontractor, site-expense and other posted source rows reconcile exactly to Total expense / actual cost. Inventory transfers retain their signed Project cost movement.</p>
+            <h3>Supplier position</h3>
+            <SupplierPositionGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
+            <p className="muted">Supplier cash payment is shown separately and is never added to expense a second time. Payable is posted invoices less allocated payments; direct unallocated payments remain Supplier advance.</p>
             <p className="profitability-cash-note"><strong>Cash is separate from profit.</strong> Client received cash and advances are displayed for financial position only. Profit remains recognized revenue minus actual cost.</p>
           </>
         )}
@@ -372,7 +403,7 @@ export function ProjectProfitabilityWorkspace({
             <p className="muted">Each row keeps its own currency. This UI does not create unsafe cross-currency grand totals.</p>
             <div className="table-wrap">
               <table className="admin-table profitability-table">
-                <thead><tr><th>Project</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Billed</th><th>Received</th><th>Advance</th><th>Outstanding</th><th>Supplier payable</th></tr></thead>
+                <thead><tr><th>Project</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Client billed</th><th>Client received</th><th>Client advance</th><th>Client receivable</th><th>Supplier invoiced</th><th>Supplier paid</th><th>Supplier payable</th></tr></thead>
                 <tbody>
                   {portfolioQuery.data.items.map((item) => (
                     <tr key={item.projectId}>
@@ -384,6 +415,8 @@ export function ProjectProfitabilityWorkspace({
                       <td>{displayMoney(item.receivedAmount, item.currency)}</td>
                       <td>{displayMoney(item.advanceAmount, item.currency)}</td>
                       <td>{displayMoney(item.outstandingAmount, item.currency)}</td>
+                      <td>{displayMoney(item.supplierInvoicedAmount, item.currency)}</td>
+                      <td>{displayMoney(item.supplierPaymentAmount, item.currency)}</td>
                       <td>{displayMoney(item.supplierPayableAmount, item.currency)}</td>
                     </tr>
                   ))}
@@ -399,10 +432,10 @@ export function ProjectProfitabilityWorkspace({
         )}
       </section>
 
-      <section className="admin-card profitability-contract-note">
-        <h2>Read-only contract</h2>
-        <p>Module 19 owns no browser-created financial values. Recognized revenue, actual cost, profit, billed, received, allocated, advance, outstanding and Supplier payable values are read from the four frozen GET operations and remain subject to server-side Company, Project and permission checks.</p>
-      </section>
+          <section className="admin-card profitability-contract-note">
+            <h2>Read-only contract</h2>
+            <p>Module 19 owns no browser-created financial values. Revenue, categorized actual cost, profit, Client receivable/cash, and Supplier invoice/payment/payable positions are read from the four frozen GET operations and remain subject to server-side Company, Project, as-of-date, and permission checks.</p>
+          </section>
     </div>
   );
 }

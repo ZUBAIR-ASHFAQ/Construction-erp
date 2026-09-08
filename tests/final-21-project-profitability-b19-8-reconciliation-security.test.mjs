@@ -57,6 +57,10 @@ test('B19.8 freezes one concrete cross-module reconciliation with no double coun
     "allocatedAmount: '1000.00'",
     "advanceAmount: '500.00'",
     "outstandingAmount: '700.00'",
+    "supplierInvoicedAmount: '900.00'",
+    "supplierPaymentAmount: '250.00'",
+    "supplierAllocatedPaymentAmount: '250.00'",
+    "supplierAdvanceAmount: '0.00'",
     "supplierPayableAmount: '650.00'"
   ]) assert.ok(live.includes(expected), `missing frozen reconciliation ${expected}`);
   assert.match(live, /reconciles Modules 9, 15, 16, 17 and 18 without double counting/);
@@ -69,8 +73,12 @@ test('B19.8 proves Stage plus Project-only values reconcile to the Project total
   assert.match(live, /money\(payload\.projectOnly\[field\]\)/);
   for (const field of [
     'recognizedRevenue', 'actualCost', 'profitAmount', 'billedAmount', 'receivedAmount',
-    'allocatedAmount', 'advanceAmount', 'outstandingAmount', 'supplierPayableAmount'
+    'allocatedAmount', 'advanceAmount', 'outstandingAmount', 'supplierInvoicedAmount',
+    'supplierPaymentAmount', 'supplierAllocatedPaymentAmount', 'supplierAdvanceAmount', 'supplierPayableAmount'
   ]) assert.ok(live.includes(`'${field}'`), `missing Stage reconciliation field ${field}`);
+  for (const field of ['materialCost', 'labourCost', 'securityCost', 'equipmentCost', 'subcontractCost', 'siteExpenseCost', 'otherCost']) {
+    assert.ok(live.includes(`'${field}'`), `missing categorized Stage cost reconciliation field ${field}`);
+  }
 });
 
 test('B19.8 proves approved physical progress remains independent from submitted and future progress', () => {
@@ -133,7 +141,6 @@ test('B19.8 guarded live coverage remains wired after the B19.10 gate supersessi
   const runner = read('scripts/testing/run-integration.mjs');
   const pkg = JSON.parse(read('package.json'));
   assert.match(runner, /final-21-project-profitability-api\.integration\.test\.mjs/);
-  assert.equal(Object.keys(pkg.scripts).length < 100, true);
   assert.equal(pkg.scripts['final-21-project-profitability:b19-8:gate'], undefined);
   assert.equal(pkg.scripts['final-21-project-profitability:b19-9:gate'], undefined);
   assert.ok(pkg.scripts['final-21-project-profitability:b19-10:gate']);

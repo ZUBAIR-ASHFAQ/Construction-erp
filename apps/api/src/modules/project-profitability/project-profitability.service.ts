@@ -33,8 +33,32 @@ const FINANCIAL_VALUE_FIELDS = Object.freeze([
   'allocatedAmount',
   'advanceAmount',
   'outstandingAmount',
+  'supplierInvoicedAmount',
+  'supplierPaymentAmount',
+  'supplierAllocatedPaymentAmount',
+  'supplierAdvanceAmount',
   'supplierPayableAmount'
 ] as const);
+
+const COST_BREAKDOWN_FIELDS = Object.freeze([
+  'materialCost',
+  'labourCost',
+  'securityCost',
+  'equipmentCost',
+  'subcontractCost',
+  'siteExpenseCost',
+  'otherCost'
+] as const);
+
+const COST_CATEGORY_FIELD = Object.freeze({
+  material: 'materialCost',
+  labour: 'labourCost',
+  security: 'securityCost',
+  equipment: 'equipmentCost',
+  subcontract: 'subcontractCost',
+  site_expense: 'siteExpenseCost',
+  other: 'otherCost'
+} as const);
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
 type ReceiptFinanceJournalLine = Readonly<{ projectId: string | null; stageId: string | null }>;
@@ -48,7 +72,7 @@ type ReceiptFinanceJournal = Readonly<{
 }>;
 type ReceiptFinancialEffect = Readonly<{ received: bigint; allocated: bigint }>;
 type FinancialSourceBundle = Readonly<{
-  actualCostSources: readonly Readonly<{ projectId: string; stageId: string | null; amount: DecimalLike; postingDate: Date }>[];
+  actualCostSources: readonly Readonly<{ projectId: string; stageId: string | null; category: string; sourceType: string; amount: DecimalLike; postingDate: Date }>[];
   billedSources: readonly Readonly<{
     clientInvoiceId: string;
     stageId: string | null;
@@ -67,6 +91,11 @@ type FinancialSourceBundle = Readonly<{
     projectId: string;
     totalAmount: DecimalLike;
     allocations: readonly Readonly<{ amount: DecimalLike }>[];
+  }>[];
+  supplierPaymentSources: readonly Readonly<{
+    projectId: string | null;
+    amount: DecimalLike;
+    allocations: readonly Readonly<{ amount: DecimalLike; supplierInvoice: Readonly<{ projectId: string }> }>[];
   }>[];
 }>;
 type TrendBucket = {
@@ -248,22 +277,97 @@ function calculateSupplierPayable(
   }, 0n);
 }
 
-/** Convert six independent source values into the frozen nine-value financial response. */
+/** Derive Supplier invoice, cash-payment, allocation, advance and outstanding values independently. */
+function calculateSupplierPosition(input: Readonly<{
+  invoices: readonly Readonly<{ totalAmount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];
+  payments: readonly Readonly<{ amount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];
+}>) {
+  const invoiced = requireNonNegative(sumMoney(input.invoices, (invoice) => invoice.totalAmount));
+  const invoiceAllocated = requireNonNegative(input.invoices.reduce(
+    (sum, invoice) => sum + sumMoney(invoice.allocations, (allocation) => allocation.amount),
+    0n
+  ));
+  const paid = requireNonNegative(sumMoney(input.payments, (payment) => payment.amount));
+  const paymentAllocated = requireNonNegative(input.payments.reduce(
+    (sum, payment) => sum + sumMoney(payment.allocations, (allocation) => allocation.amount),
+    0n
+  ));
+  if (invoiceAllocated > invoiced || paymentAllocated > paid || invoiceAllocated !== paymentAllocated) {
+    throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  }
+  return {
+    invoiced,
+    paid,
+    allocated: invoiceAllocated,
+    advance: paid - paymentAllocated,
+    payable: calculateSupplierPayable(input.invoices)
+  };
+}
+
+/** Reconcile every supported actual-cost category back to the authoritative total actual cost. */
+function calculateCostBreakdown(
+  rows: readonly Readonly<{ category: string; amount: DecimalLike }>[]
+) {
+  const values: Record<(typeof COST_BREAKDOWN_FIELDS)[number], bigint> = {
+    materialCost: 0n,
+    labourCost: 0n,
+    securityCost: 0n,
+    equipmentCost: 0n,
+    subcontractCost: 0n,
+    siteExpenseCost: 0n,
+    otherCost: 0n
+  };
+  for (const row of rows) {
+    const field = COST_CATEGORY_FIELD[row.category as keyof typeof COST_CATEGORY_FIELD];
+    if (!field) throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+    values[field] += moneyToMinorUnits(row.amount);
+  }
+  return Object.fromEntries(COST_BREAKDOWN_FIELDS.map((field) => [field, minorUnitsToMoney(values[field])])) as {
+    [Field in (typeof COST_BREAKDOWN_FIELDS)[number]]: string;
+  };
+}
+
+/** Attribute Project-scoped Supplier payments fully and Company-level payments by their Invoice allocations. */
+function supplierPaymentsFor(sources: FinancialSourceBundle['supplierPaymentSources'], projectId: string) {
+  return sources.flatMap((payment) => {
+    const projectAllocations = payment.allocations.filter((allocation) => allocation.supplierInvoice.projectId === projectId);
+    if (payment.projectId === projectId) return [{ amount: payment.amount, allocations: projectAllocations }];
+    if (projectAllocations.length === 0) return [];
+    return [{
+      amount: minorUnitsToMoney(sumMoney(projectAllocations, (allocation) => allocation.amount)),
+      allocations: projectAllocations
+    }];
+  });
+}
+
+/** Convert independent source values into the shared financial response. */
 function buildFinancialValues(input: Readonly<{
   recognizedRevenue: bigint;
   actualCost: bigint;
   billedAmount: bigint;
   receivedAmount: bigint;
   allocatedAmount: bigint;
-  supplierPayableAmount: bigint;
+  supplierPosition: Readonly<{ invoiced: bigint; paid: bigint; allocated: bigint; advance: bigint; payable: bigint }>;
+  costBreakdown: ProjectProfitabilityFinancialValues['costBreakdown'];
 }>): ProjectProfitabilityFinancialValues {
   const recognizedRevenue = input.recognizedRevenue;
   const actualCost = input.actualCost;
   const billedAmount = requireNonNegative(input.billedAmount);
   const receivedAmount = requireNonNegative(input.receivedAmount);
   const allocatedAmount = requireNonNegative(input.allocatedAmount);
-  const supplierPayableAmount = requireNonNegative(input.supplierPayableAmount);
+  const supplierInvoicedAmount = requireNonNegative(input.supplierPosition.invoiced);
+  const supplierPaymentAmount = requireNonNegative(input.supplierPosition.paid);
+  const supplierAllocatedPaymentAmount = requireNonNegative(input.supplierPosition.allocated);
+  const supplierAdvanceAmount = requireNonNegative(input.supplierPosition.advance);
+  const supplierPayableAmount = requireNonNegative(input.supplierPosition.payable);
+  const categorizedActualCost = COST_BREAKDOWN_FIELDS.reduce(
+    (sum, field) => sum + moneyToMinorUnits(input.costBreakdown[field]),
+    0n
+  );
   if (allocatedAmount > receivedAmount || allocatedAmount > billedAmount) {
+    throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  }
+  if (categorizedActualCost !== actualCost) {
     throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
   }
   const advanceAmount = receivedAmount - allocatedAmount;
@@ -278,27 +382,35 @@ function buildFinancialValues(input: Readonly<{
     allocatedAmount: minorUnitsToMoney(allocatedAmount),
     advanceAmount: minorUnitsToMoney(advanceAmount),
     outstandingAmount: minorUnitsToMoney(outstandingAmount),
-    supplierPayableAmount: minorUnitsToMoney(supplierPayableAmount)
+    supplierInvoicedAmount: minorUnitsToMoney(supplierInvoicedAmount),
+    supplierPaymentAmount: minorUnitsToMoney(supplierPaymentAmount),
+    supplierAllocatedPaymentAmount: minorUnitsToMoney(supplierAllocatedPaymentAmount),
+    supplierAdvanceAmount: minorUnitsToMoney(supplierAdvanceAmount),
+    supplierPayableAmount: minorUnitsToMoney(supplierPayableAmount),
+    costBreakdown: input.costBreakdown
   };
 }
 
 /** Derive one Project or Stage financial bucket from already-scoped source rows. */
 function calculateFinancialBucket(input: Readonly<{
-  actualCostSources: readonly Readonly<{ amount: DecimalLike }>[];
+  actualCostSources: readonly Readonly<{ category: string; amount: DecimalLike }>[];
   billedSources: readonly Readonly<{ clientInvoiceId: string; amount: DecimalLike; invoice: Readonly<{ claimId: string | null }> }>[];
   revenueSources: readonly Readonly<{ debit: DecimalLike; credit: DecimalLike; journal: Readonly<{ sourceType: string; sourceId: string | null }> }>[];
   receiptSources: readonly ReceiptFinanceJournal[];
   supplierPayableSources: readonly Readonly<{ totalAmount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];
+  supplierPaymentSources: readonly Readonly<{ amount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];
 }>): ProjectProfitabilityFinancialValues {
   requireRecognizedRevenueOwnership(input.billedSources, input.revenueSources);
   const receiptFinancials = calculateReceiptFinancials(input.receiptSources);
+  const supplierPosition = calculateSupplierPosition({ invoices: input.supplierPayableSources, payments: input.supplierPaymentSources });
   return buildFinancialValues({
     recognizedRevenue: calculateRecognizedRevenue(input.revenueSources),
     actualCost: sumMoney(input.actualCostSources, (source) => source.amount),
     billedAmount: sumMoney(input.billedSources, (source) => source.amount),
     receivedAmount: receiptFinancials.received,
     allocatedAmount: receiptFinancials.allocated,
-    supplierPayableAmount: calculateSupplierPayable(input.supplierPayableSources)
+    supplierPosition,
+    costBreakdown: calculateCostBreakdown(input.actualCostSources)
   });
 }
 
@@ -317,6 +429,9 @@ function financialBucketFor(
     receiptSources: receiptSourcesFor(sources.receiptSources, projectId, stageId),
     supplierPayableSources: includeSupplierPayable
       ? sources.supplierPayableSources.filter((source) => source.projectId === projectId)
+      : [],
+    supplierPaymentSources: includeSupplierPayable
+      ? supplierPaymentsFor(sources.supplierPaymentSources, projectId)
       : []
   });
 }
@@ -331,6 +446,13 @@ function requireStageReconciliation(
     const stageTotal = stages.reduce((sum, stage) => sum + moneyToMinorUnits(stage[field]), 0n);
     const reconciled = stageTotal + moneyToMinorUnits(projectOnly[field]);
     if (reconciled !== moneyToMinorUnits(projectTotal[field])) {
+      throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+    }
+  }
+  for (const field of COST_BREAKDOWN_FIELDS) {
+    const stageTotal = stages.reduce((sum, stage) => sum + moneyToMinorUnits(stage.costBreakdown[field]), 0n);
+    const reconciled = stageTotal + moneyToMinorUnits(projectOnly.costBreakdown[field]);
+    if (reconciled !== moneyToMinorUnits(projectTotal.costBreakdown[field])) {
       throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
     }
   }
@@ -433,7 +555,7 @@ export class ProjectProfitabilityService {
     return { allowedProjectIds: intersectProjectIds(projectIdSets) };
   }
 
-  /** Read the five approved/posted source groups once for one visible Project set. */
+  /** Read the approved/posted source groups once for one visible Project set. */
   private async readFinancialSources(
     repository: ProjectProfitabilityRepository,
     projectIds: readonly string[],
@@ -441,14 +563,15 @@ export class ProjectProfitabilityService {
     visibility: ProjectProfitabilityRepositoryVisibility
   ): Promise<FinancialSourceBundle> {
     const window = sourceWindow(asOfDate);
-    const [actualCostSources, billedSources, revenueSources, receiptSources, supplierPayableSources] = await Promise.all([
+    const [actualCostSources, billedSources, revenueSources, receiptSources, supplierPayableSources, supplierPaymentSources] = await Promise.all([
       repository.listActualCostSources(projectIds, window, visibility),
       repository.listBilledSources(projectIds, window, visibility),
       repository.listRecognizedRevenueSources(projectIds, window, visibility),
       repository.listClientReceiptFinanceSources(projectIds, window, visibility),
-      repository.listSupplierPayableSources(projectIds, window, visibility)
+      repository.listSupplierPayableSources(projectIds, window, visibility),
+      repository.listSupplierPaymentSources(projectIds, window, visibility)
     ]);
-    return { actualCostSources, billedSources, revenueSources, receiptSources, supplierPayableSources };
+    return { actualCostSources, billedSources, revenueSources, receiptSources, supplierPayableSources, supplierPaymentSources };
   }
 
   /** Return one Project summary derived only from approved/posted source-module history. */
@@ -460,28 +583,8 @@ export class ProjectProfitabilityService {
     const project = await repository.findProject(projectId, visibility);
     if (!project) throw createProjectProfitabilityError('PROFITABILITY_SCOPE_FORBIDDEN');
 
-    const window = sourceWindow(asOfDate);
-    const projectIds = [projectId] as const;
-    const [actualCostSources, billedSources, revenueSources, receiptSources, supplierPayableSources] = await Promise.all([
-      repository.listActualCostSources(projectIds, window, visibility),
-      repository.listBilledSources(projectIds, window, visibility),
-      repository.listRecognizedRevenueSources(projectIds, window, visibility),
-      repository.listClientReceiptFinanceSources(projectIds, window, visibility),
-      repository.listSupplierPayableSources(projectIds, window, visibility)
-    ]);
-
-    requireRecognizedRevenueOwnership(billedSources, revenueSources);
-    const actualCost = sumMoney(actualCostSources, (source) => source.amount);
-    const billedAmount = requireNonNegative(sumMoney(billedSources, (source) => source.amount));
-    const recognizedRevenue = calculateRecognizedRevenue(revenueSources);
-    const receiptFinancials = calculateReceiptFinancials(receiptSources);
-    if (receiptFinancials.allocated > receiptFinancials.received || receiptFinancials.allocated > billedAmount) {
-      throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
-    }
-    const advanceAmount = receiptFinancials.received - receiptFinancials.allocated;
-    const outstandingAmount = billedAmount - receiptFinancials.allocated;
-    const supplierPayableAmount = calculateSupplierPayable(supplierPayableSources);
-    const profitAmount = recognizedRevenue - actualCost;
+    const sources = await this.readFinancialSources(repository, [projectId], asOfDate, visibility);
+    const financials = financialBucketFor(sources, projectId);
 
     return projectProfitabilitySummaryResponseSchema.parse({
       projectId: project.id,
@@ -489,15 +592,7 @@ export class ProjectProfitabilityService {
       projectName: project.name,
       currency: project.currency,
       asOfDate,
-      recognizedRevenue: minorUnitsToMoney(recognizedRevenue),
-      actualCost: minorUnitsToMoney(actualCost),
-      profitAmount: minorUnitsToMoney(profitAmount),
-      billedAmount: minorUnitsToMoney(billedAmount),
-      receivedAmount: minorUnitsToMoney(receiptFinancials.received),
-      allocatedAmount: minorUnitsToMoney(receiptFinancials.allocated),
-      advanceAmount: minorUnitsToMoney(advanceAmount),
-      outstandingAmount: minorUnitsToMoney(outstandingAmount),
-      supplierPayableAmount: minorUnitsToMoney(supplierPayableAmount)
+      ...financials
     });
   }
 

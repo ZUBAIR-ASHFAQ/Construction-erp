@@ -60,6 +60,20 @@ const PORTFOLIO_QUERY = {
     pageSize: { type: 'integer', minimum: 1, maximum: PROJECT_PROFITABILITY_MAX_PAGE_SIZE }
   }
 } as const;
+const COST_BREAKDOWN = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['materialCost', 'labourCost', 'securityCost', 'equipmentCost', 'subcontractCost', 'siteExpenseCost', 'otherCost'],
+  properties: {
+    materialCost: MONEY,
+    labourCost: MONEY,
+    securityCost: MONEY,
+    equipmentCost: MONEY,
+    subcontractCost: MONEY,
+    siteExpenseCost: MONEY,
+    otherCost: MONEY
+  }
+} as const;
 const FINANCIAL_VALUES = {
   recognizedRevenue: MONEY,
   actualCost: MONEY,
@@ -69,7 +83,12 @@ const FINANCIAL_VALUES = {
   allocatedAmount: NON_NEGATIVE_MONEY,
   advanceAmount: NON_NEGATIVE_MONEY,
   outstandingAmount: NON_NEGATIVE_MONEY,
-  supplierPayableAmount: NON_NEGATIVE_MONEY
+  supplierInvoicedAmount: NON_NEGATIVE_MONEY,
+  supplierPaymentAmount: NON_NEGATIVE_MONEY,
+  supplierAllocatedPaymentAmount: NON_NEGATIVE_MONEY,
+  supplierAdvanceAmount: NON_NEGATIVE_MONEY,
+  supplierPayableAmount: NON_NEGATIVE_MONEY,
+  costBreakdown: COST_BREAKDOWN
 } as const;
 const FINANCIAL_VALUE_NAMES = Object.freeze(Object.keys(FINANCIAL_VALUES));
 const PROJECT_SUMMARY = {

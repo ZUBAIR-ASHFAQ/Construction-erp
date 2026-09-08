@@ -11,7 +11,20 @@ export type ProjectProfitabilityFinancialValues = Readonly<{
   allocatedAmount: string;
   advanceAmount: string;
   outstandingAmount: string;
+  supplierInvoicedAmount: string;
+  supplierPaymentAmount: string;
+  supplierAllocatedPaymentAmount: string;
+  supplierAdvanceAmount: string;
   supplierPayableAmount: string;
+  costBreakdown: Readonly<{
+    materialCost: string;
+    labourCost: string;
+    securityCost: string;
+    equipmentCost: string;
+    subcontractCost: string;
+    siteExpenseCost: string;
+    otherCost: string;
+  }>;
 }>;
 
 export type ProjectProfitabilitySummary = ProjectProfitabilityFinancialValues & Readonly<{

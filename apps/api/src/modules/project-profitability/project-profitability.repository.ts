@@ -340,7 +340,11 @@ export class ProjectProfitabilityRepository {
         allocations: {
           where: {
             allocatedAt: { lte: window.postedThrough },
-            supplierPayment: { companyId: scope.companyId, status: 'POSTED' }
+            supplierPayment: {
+              companyId: scope.companyId,
+              status: 'POSTED',
+              paymentDate: { lte: window.throughDate }
+            }
           },
           select: {
             id: true,
@@ -352,6 +356,51 @@ export class ProjectProfitabilityRepository {
         }
       },
       orderBy: [{ invoiceDate: 'asc' }, { id: 'asc' }]
+    });
+  }
+
+  /** List posted Project-scoped Supplier Payments and their active Invoice allocations through the as-of cutoff. */
+  async listSupplierPaymentSources(
+    projectIds: readonly string[],
+    window: ProjectProfitabilityRepositoryDateWindow,
+    visibility: ProjectProfitabilityRepositoryVisibility
+  ) {
+    const ids = visibleProjectIds(projectIds, visibility);
+    if (ids.length === 0) return [];
+    const scope = requireCompanyRepositoryScope();
+    return this.db.supplierPayment.findMany({
+      where: scope.where({
+        OR: [
+          { projectId: { in: ids } },
+          { allocations: { some: { supplierInvoice: { companyId: scope.companyId, projectId: { in: ids } } } } }
+        ],
+        status: 'POSTED',
+        paymentDate: { lte: window.throughDate }
+      }),
+      select: {
+        id: true,
+        projectId: true,
+        amount: true,
+        paymentDate: true,
+        allocations: {
+          where: {
+            allocatedAt: { lte: window.postedThrough },
+            supplierInvoice: {
+              companyId: scope.companyId,
+              status: 'POSTED',
+              invoiceDate: { lte: window.throughDate }
+            }
+          },
+          select: {
+            id: true,
+            amount: true,
+            allocatedAt: true,
+            supplierInvoice: { select: { projectId: true } }
+          },
+          orderBy: [{ allocatedAt: 'asc' }, { id: 'asc' }]
+        }
+      },
+      orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }]
     });
   }
 }

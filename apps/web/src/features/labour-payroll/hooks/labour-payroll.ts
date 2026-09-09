@@ -2,14 +2,21 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   calculatePayrollRun,
   createAttendance,
+  createPayrollPayment,
   createPayrollRun,
   finalizePayrollRun,
   getPayrollRun,
+  getEmployeeSalaryLedger,
   listAttendance,
+  listAttendanceAssignments,
   listPayrollRuns,
+  listPayrollCashBankAccounts,
+  listPayrollPayments,
+  reversePayrollPayment,
   updateAttendance,
   type CalculatePayrollRunInput,
   type CreateAttendanceInput,
+  type CreatePayrollPaymentInput,
   type CreatePayrollRunInput,
   type ListAttendanceInput,
   type UpdateAttendanceInput
@@ -80,4 +87,47 @@ export function useFinalizePayrollRun(payrollRunId: string) {
     mutationFn: () => finalizePayrollRun(payrollRunId),
     onSuccess: async () => client.invalidateQueries({ queryKey: LABOUR_PAYROLL_QUERY_KEY })
   });
+}
+
+/** Load the effective destinations that the attendance form is allowed to post to. */
+export function useAttendanceAssignments(employeeId: string, workDate: string, enabled = true) {
+  return useQuery({
+    queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'attendance-assignments', employeeId, workDate],
+    queryFn: () => listAttendanceAssignments(employeeId, workDate),
+    enabled: enabled && employeeId.length > 0 && workDate.length > 0,
+    retry: false
+  });
+}
+
+/** Load active Cash/Bank salary-payment choices. */
+export function usePayrollCashBankAccounts(enabled = true) {
+  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'cash-bank'], queryFn: listPayrollCashBankAccounts, enabled, retry: false });
+}
+
+/** Load salary-payment history for the optional Employee or Payroll Run scope. */
+export function usePayrollPayments(input: Readonly<{ employeeId?: string; payrollRunId?: string }> = {}, enabled = true) {
+  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'payments', input], queryFn: () => listPayrollPayments(input), enabled, retry: false });
+}
+
+/** Post one Employee salary payment and refresh Payroll, Finance and reporting reads. */
+export function useCreatePayrollPayment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: CreatePayrollPaymentInput) => createPayrollPayment(input),
+    onSuccess: async () => client.invalidateQueries()
+  });
+}
+
+/** Reverse one posted Employee salary payment and refresh every affected balance. */
+export function useReversePayrollPayment() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ paymentId: string; reversalDate: string }>) => reversePayrollPayment(input.paymentId, input.reversalDate),
+    onSuccess: async () => client.invalidateQueries()
+  });
+}
+
+/** Load one Employee salary ledger while its detail popup is open. */
+export function useEmployeeSalaryLedger(employeeId: string | null) {
+  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'employee-ledger', employeeId], queryFn: () => getEmployeeSalaryLedger(employeeId as string), enabled: employeeId !== null, retry: false });
 }

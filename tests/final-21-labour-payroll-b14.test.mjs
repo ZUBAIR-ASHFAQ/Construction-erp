@@ -27,21 +27,27 @@ test('B14 keeps Labour Attendance and Payroll in one Final-21 five-file backend'
   assert.doesNotMatch(app, /registerHrPayrollRoutes|registerWorkforceTimesheetsRoutes|modules\/hr-payroll|modules\/workforce-timesheets/);
 });
 
-/** Confirm the exact eight Final-21 Attendance/Payroll routes and no generic CRUD additions. */
-test('B14 exposes exactly the eight Final-21 Labour Payroll routes', () => {
+/** Confirm the Attendance, Payroll and Employee salary-settlement routes and no generic CRUD additions. */
+test('B14 exposes the Labour Payroll and salary-settlement routes', () => {
   const schema = read(`${backend}/labour-payroll.schema.ts`);
   const expected = [
     "GET', route: '/api/v1/attendance'",
+    "GET', route: '/api/v1/attendance/assignments'",
     "POST', route: '/api/v1/attendance'",
     "PATCH', route: '/api/v1/attendance/:id'",
     "GET', route: '/api/v1/payroll/runs'",
     "POST', route: '/api/v1/payroll/runs'",
     "POST', route: '/api/v1/payroll/runs/:id/calculate'",
     "POST', route: '/api/v1/payroll/runs/:id/finalize'",
-    "GET', route: '/api/v1/payroll/runs/:id'"
+    "GET', route: '/api/v1/payroll/runs/:id'",
+    "GET', route: '/api/v1/payroll/cash-bank-accounts'",
+    "GET', route: '/api/v1/payroll/payments'",
+    "POST', route: '/api/v1/payroll/payments'",
+    "POST', route: '/api/v1/payroll/payments/:id/reverse'",
+    "GET', route: '/api/v1/payroll/employees/:id/ledger'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 8);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 14);
   assert.doesNotMatch(schema, /timesheets|leave-requests|payslip\.self_read/i);
 });
 
@@ -94,7 +100,7 @@ test('B14 calculates employee salaries from effective compensation and present a
   assert.match(service, /payType === 'SALARY'/);
   assert.match(service, /payType === 'DAILY'/);
   assert.match(service, /payType === 'HOURLY'/);
-  assert.match(service, /moneyCents\(startComp\.baseSalary\)/);
+  assert.match(service, /moneyCents\(salaryCompensation\.baseSalary\)/);
   assert.match(service, /regularAmount = multiplyToCents\(regularHours, rate\)/);
   assert.match(service, /overtimeAmount = overtimeHours > 0n[\s\S]*multiplyWithMultiplierToCents\(overtimeHours, rate, decimal4Units\(overtimeMultiplier\)\)/);
   assert.match(service, /deductions: ZERO_MONEY/);
@@ -124,16 +130,16 @@ test('B14 uses only the Final-21 Module 13 permissions errors and events', () =>
   const schema = read(`${backend}/labour-payroll.schema.ts`);
   const routes = read(`${backend}/labour-payroll.routes.ts`);
   const service = read(`${backend}/labour-payroll.service.ts`);
-  for (const permission of ['attendance.read', 'attendance.create', 'attendance.correct', 'payroll.read', 'payroll.create', 'payroll.calculate', 'payroll.finalize']) {
+  for (const permission of ['attendance.read', 'attendance.create', 'attendance.correct', 'payroll.read', 'payroll.create', 'payroll.calculate', 'payroll.finalize', 'payroll.payments.create', 'payroll.payments.reverse']) {
     assert.ok(schema.includes(`'${permission}'`), `missing ${permission}`);
   }
   for (const code of ['ATTENDANCE_DUPLICATE', 'EMPLOYEE_NOT_ASSIGNED', 'PAYROLL_NOT_FOUND', 'PAYROLL_LOCKED', 'PAYROLL_NOT_READY']) {
     assert.ok(schema.includes(`'${code}'`), `missing ${code}`);
   }
-  for (const event of ['attendance.recorded', 'payroll.created', 'payroll.calculated', 'payroll.finalized', 'payroll.posted']) {
+  for (const event of ['attendance.recorded', 'payroll.created', 'payroll.calculated', 'payroll.finalized', 'payroll.posted', 'payroll.payment_posted', 'payroll.payment_reversed']) {
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
   }
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 5);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 7);
   assert.match(service, /executeIdempotentCommand/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);

@@ -221,17 +221,17 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
               <tbody>
                 {document.versions.map((version) => (
                   <tr key={version.id}>
-                    <td>
+                    <td data-label="Version">
                       v{version.versionNo}
                       {version.id === document.currentVersionId && <span>Current</span>}
                       <span>{version.id}</span>
                     </td>
-                    <td>{version.originalName}<span>{version.mimeType}</span></td>
-                    <td>{version.revisionCode ?? '—'}</td>
-                    <td>{version.sizeBytes.toLocaleString()} bytes</td>
-                    <td>{version.checksum}</td>
-                    <td>{version.createdBy}</td>
-                    <td>{new Date(version.createdAt).toLocaleString()}</td>
+                    <td data-label="File">{version.originalName}<span>{version.mimeType}</span></td>
+                    <td data-label="Revision">{version.revisionCode ?? '—'}</td>
+                    <td data-label="Size">{version.sizeBytes.toLocaleString()} bytes</td>
+                    <td data-label="Checksum">{version.checksum}</td>
+                    <td data-label="Created by">{version.createdBy}</td>
+                    <td data-label="Created">{new Date(version.createdAt).toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
@@ -252,15 +252,15 @@ export function DocumentDetailsPanel({ documentId }: Readonly<{ documentId: stri
               <tbody>
                 {document.links.map((link) => (
                   <tr key={link.id}>
-                    <td>{link.id}</td>
-                    <td>{link.resourceType}</td>
-                    <td>{link.resourceId}</td>
-                    <td>{link.versionId ?? 'Current document'}</td>
-                    <td>{link.projectId ?? '—'}</td>
-                    <td>{link.stageId ?? '—'}</td>
-                    <td>{new Date(link.createdAt).toLocaleString()}</td>
+                    <td data-label="Link ID">{link.id}</td>
+                    <td data-label="Resource">{link.resourceType}</td>
+                    <td data-label="Resource ID">{link.resourceId}</td>
+                    <td data-label="Version ID">{link.versionId ?? 'Current document'}</td>
+                    <td data-label="Project">{link.projectId ?? '—'}</td>
+                    <td data-label="Stage">{link.stageId ?? '—'}</td>
+                    <td data-label="Created">{new Date(link.createdAt).toLocaleString()}</td>
                     {canLink && (
-                      <td>
+                      <td data-label="Action">
                         <button
                           type="button"
                           className="secondary-button"

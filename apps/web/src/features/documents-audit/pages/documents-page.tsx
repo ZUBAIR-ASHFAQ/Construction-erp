@@ -47,7 +47,7 @@ export function DocumentsPage() {
   }
 
   return (
-    <section className="admin-stack" aria-labelledby="documents-title">
+    <section className="admin-stack documents-workspace" aria-labelledby="documents-title">
       <div className="section-heading">
         <p className="eyebrow">Module 21</p>
         <h1 id="documents-title">Documents & Audit Log</h1>
@@ -165,24 +165,24 @@ function AuditLogPanel() {
             <tbody>
               {auditQuery.data.items.map((row) => (
                 <tr key={row.id}>
-                  <td>{new Date(row.createdAt).toLocaleString()}<span>{row.id}</span></td>
-                  <td>
+                  <td data-label="Time / ID">{new Date(row.createdAt).toLocaleString()}<span>{row.id}</span></td>
+                  <td data-label="Actor">
                     {row.actor?.name ?? row.actorUserId ?? 'System'}
                     <span>{row.actor?.email ?? ''}</span>
                     <span>Actor ID: {row.actor?.id ?? '—'}</span>
                     <span>Actor user ID: {row.actorUserId ?? '—'}</span>
                   </td>
-                  <td>{row.action}</td>
-                  <td>{row.resourceType}<span>{row.resourceId}</span></td>
-                  <td>
+                  <td data-label="Action">{row.action}</td>
+                  <td data-label="Resource">{row.resourceType}<span>{row.resourceId}</span></td>
+                  <td data-label="Project / Stage">
                     {row.projectId ? (projectLabels.get(row.projectId) ?? 'Project') : 'Company-wide'}
                     <span>{row.projectId ?? ''}</span>
                     <span>{row.stageId ? (stageLabels.get(row.stageId) ?? 'Stage') : ''}</span>
                     <span>{row.stageId ?? ''}</span>
                   </td>
-                  <td>{formatAuditValue(row.before)}</td>
-                  <td>{formatAuditValue(row.after)}</td>
-                  <td>{row.requestId}</td>
+                  <td data-label="Before">{formatAuditValue(row.before)}</td>
+                  <td data-label="After">{formatAuditValue(row.after)}</td>
+                  <td data-label="Request">{row.requestId}</td>
                 </tr>
               ))}
             </tbody>

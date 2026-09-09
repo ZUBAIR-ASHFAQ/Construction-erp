@@ -15,6 +15,7 @@ export const EMPLOYEE_ERROR_CODES = Object.freeze([
   'DUPLICATE_EMPLOYEE_NUMBER',
   'DUPLICATE_EMPLOYEE_ID',
   'COMPENSATION_DATE_OVERLAP',
+  'COMPENSATION_FINALIZED_PAYROLL_LOCKED',
   'EMPLOYEE_INACTIVE'
 ] as const);
 
@@ -157,6 +158,7 @@ const ERROR_MESSAGES: Readonly<Record<EmployeeErrorCode, string>> = Object.freez
   DUPLICATE_EMPLOYEE_NUMBER: 'An Employee with this employee number already exists.',
   DUPLICATE_EMPLOYEE_ID: 'An Employee with this CNIC/identity value already exists.',
   COMPENSATION_DATE_OVERLAP: 'The compensation effective date overlaps existing compensation history.',
+  COMPENSATION_FINALIZED_PAYROLL_LOCKED: 'Compensation cannot be changed from a date that would affect finalized Payroll for this Employee.',
   EMPLOYEE_INACTIVE: 'The Employee is inactive.'
 });
 
@@ -169,6 +171,7 @@ export function createEmployeeError(code: EmployeeErrorCode): AppError {
     case 'DUPLICATE_EMPLOYEE_NUMBER':
     case 'DUPLICATE_EMPLOYEE_ID':
     case 'COMPENSATION_DATE_OVERLAP':
+    case 'COMPENSATION_FINALIZED_PAYROLL_LOCKED':
     case 'EMPLOYEE_INACTIVE':
       return new ConflictError({ code, message });
   }

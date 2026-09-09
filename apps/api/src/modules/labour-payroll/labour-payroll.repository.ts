@@ -13,6 +13,13 @@ const attendanceInclude = {
   enteredByUser: { select: { name: true } }
 } as const;
 
+const payrollPaymentInclude = {
+  employee: { select: { employeeNo: true, name: true } },
+  payrollLine: { select: { payrollRunId: true, payrollRun: { select: { periodStart: true, periodEnd: true } } } },
+  cashBankAccount: { select: { name: true, code: true, accountType: true, accountReference: true, glAccountId: true, status: true } },
+  creator: { select: { name: true } }
+} as const;
+
 /** Reject invalid pagination before a repository query reaches Prisma. */
 function assertPageWindow(input: LabourPayrollPageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) throw new RangeError('Repository skip must be a non-negative integer.');
@@ -60,11 +67,54 @@ export class LabourPayrollRepository {
     return this.db.attendanceEntry.findFirst({ where: scope.where({ id: attendanceId }), include: attendanceInclude });
   }
 
-  /** Find a duplicate Employee/Project/work-date attendance row. */
-  async findAttendanceByNaturalKey(employeeId: string, projectId: string, workDate: Date, excludeId?: string) {
+  /** Find a duplicate Employee/Project/Stage/work-date attendance row. */
+  async findAttendanceByNaturalKey(employeeId: string, projectId: string, stageId: string | null, workDate: Date, excludeId?: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.attendanceEntry.findFirst({
-      where: scope.where({ employeeId, projectId, workDate, ...(excludeId ? { id: { not: excludeId } } : {}) })
+      where: scope.where({ employeeId, projectId, stageId, workDate, ...(excludeId ? { id: { not: excludeId } } : {}) })
+    });
+  }
+
+  /** Lock one Company Employee so lifecycle and same-day hour checks are concurrency-safe. */
+  async lockEmployeeForAttendance(employeeId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{ id: string; status: string; joinDate: Date }>>`
+      SELECT id, status, joining_date AS "joinDate"
+      FROM employees
+      WHERE id = ${employeeId}::uuid
+        AND company_id = ${scope.companyId}::uuid
+      FOR UPDATE
+    `;
+    return rows[0] ?? null;
+  }
+
+  /** Sum this Employee's existing regular and overtime hours across all Projects on one work date. */
+  async sumAttendanceHoursForEmployeeDate(employeeId: string, workDate: Date, excludeAttendanceId?: string) {
+    const scope = requireCompanyRepositoryScope();
+    const totals = await this.db.attendanceEntry.aggregate({
+      where: scope.where({
+        employeeId,
+        workDate,
+        ...(excludeAttendanceId ? { id: { not: excludeAttendanceId } } : {})
+      }),
+      _sum: { hours: true, overtimeHours: true }
+    });
+    return {
+      hours: totals._sum.hours?.toString() ?? '0',
+      overtimeHours: totals._sum.overtimeHours?.toString() ?? '0'
+    };
+  }
+
+  /** Find the Employee compensation authority effective on one attendance work date. */
+  async findEffectiveEmployeeCompensation(employeeId: string, workDate: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.employeeCompensation.findFirst({
+      where: scope.where({
+        employeeId,
+        effectiveFrom: { lte: workDate },
+        OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }]
+      }),
+      orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }]
     });
   }
 
@@ -79,7 +129,7 @@ export class LabourPayrollRepository {
         fromDate: { lte: workDate },
         AND: [
           { OR: [{ toDate: null }, { toDate: { gte: workDate } }] },
-          ...(stageId ? [{ OR: [{ stageId }, { stageId: null }] }] : [])
+          ...(stageId ? [{ OR: [{ stageId }, { stageId: null }] }] : [{ stageId: null }])
         ]
       }),
       orderBy: [{ stageId: 'desc' }, { fromDate: 'desc' }, { id: 'asc' }]
@@ -152,7 +202,11 @@ export class LabourPayrollRepository {
       include: {
         creator: { select: { name: true } },
         lines: {
-          include: { payslip: true, employee: { select: { employeeNo: true, name: true, employmentType: true } } },
+          include: {
+            payslip: true,
+            employee: { select: { employeeNo: true, name: true, employmentType: true } },
+            payments: { where: { status: 'POSTED' }, select: { amount: true } }
+          },
           orderBy: [{ employeeId: 'asc' }, { id: 'asc' }]
         }
       }
@@ -235,15 +289,6 @@ export class LabourPayrollRepository {
     return updated === 1;
   }
 
-  /** Read all attendance states for one Employee inside the Payroll period for salary proration. */
-  async listEmployeeAttendanceForPeriod(employeeId: string, periodStart: Date, periodEnd: Date) {
-    const scope = requireCompanyRepositoryScope();
-    return this.db.attendanceEntry.findMany({
-      where: scope.where({ employeeId, workDate: { gte: periodStart, lte: periodEnd } }),
-      orderBy: [{ workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
-    });
-  }
-
   /** Read all compensation periods that can affect one Employee Payroll period. */
   async listEmployeeCompensationForPeriod(employeeId: string, periodStart: Date, periodEnd: Date) {
     const scope = requireCompanyRepositoryScope();
@@ -277,11 +322,24 @@ export class LabourPayrollRepository {
   /** Change one Payroll lifecycle state only when the expected status still matches. */
   async updatePayrollRunStatus(payrollRunId: string, expectedStatus: string, status: string, finalizedAt?: Date | null) {
     const scope = requireCompanyRepositoryScope();
-    const updated = await this.db.payrollRun.updateMany({
-      where: scope.where({ id: payrollRunId, status: expectedStatus }),
-      data: { status, ...(finalizedAt !== undefined ? { finalizedAt } : {}) }
-    });
-    if (updated.count !== 1) return null;
+    const updated = finalizedAt === undefined
+      ? await this.db.$queryRaw<Array<{ id: string }>>`
+          UPDATE payroll_runs
+          SET status = ${status}
+          WHERE id = ${payrollRunId}::uuid
+            AND company_id = ${scope.companyId}::uuid
+            AND status = ${expectedStatus}
+          RETURNING id
+        `
+      : await this.db.$queryRaw<Array<{ id: string }>>`
+          UPDATE payroll_runs
+          SET status = ${status}, finalized_at = ${finalizedAt}
+          WHERE id = ${payrollRunId}::uuid
+            AND company_id = ${scope.companyId}::uuid
+            AND status = ${expectedStatus}
+          RETURNING id
+        `;
+    if (updated.length !== 1) return null;
     return this.findPayrollRunById(payrollRunId);
   }
 
@@ -352,5 +410,163 @@ export class LabourPayrollRepository {
       update: {},
       create: { payrollLineId, documentId: null, generatedAt }
     });
+  }
+
+  /** Lock one finalized Payroll line before deriving its outstanding salary. */
+  async lockFinalizedPayrollLine(payrollLineId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{
+      id: string;
+      employeeId: string;
+      payrollRunId: string;
+      netAmount: { toString(): string };
+      periodStart: Date;
+      periodEnd: Date;
+    }>>`
+      SELECT line.id,
+             line.employee_id AS "employeeId",
+             line.payroll_run_id AS "payrollRunId",
+             line.net_amount AS "netAmount",
+             run.period_start AS "periodStart",
+             run.period_end AS "periodEnd"
+      FROM payroll_lines line
+      JOIN payroll_runs run ON run.id = line.payroll_run_id
+      WHERE line.id = ${payrollLineId}::uuid
+        AND run.company_id = ${scope.companyId}::uuid
+        AND run.status = 'FINALIZED'
+      FOR UPDATE OF line
+    `;
+    return rows[0] ?? null;
+  }
+
+  /** Sum active settlement rows for one Payroll line. */
+  async sumPostedPayrollPayments(payrollLineId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollPayment.aggregate({
+      where: scope.where({ payrollLineId, status: 'POSTED' }),
+      _sum: { amount: true }
+    });
+  }
+
+  /** Find one active same-Company Cash/Bank settlement account with its mapped GL account. */
+  async findPayrollCashBankAccount(cashBankAccountId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.cashBankAccount.findFirst({
+      where: scope.where({ id: cashBankAccountId }),
+      include: { glAccount: true }
+    });
+  }
+
+  /** Ensure the server-owned salary-payment number sequence exists for this Company. */
+  async ensurePayrollPaymentSequence() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'payroll-payment' } },
+      create: { companyId: scope.companyId, sequenceKey: 'payroll-payment', prefix: 'SAL-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
+  /** Persist one POSTED Employee salary payment inside the Finance posting transaction. */
+  async createPayrollPayment(input: Readonly<{
+    payrollLineId: string;
+    employeeId: string;
+    paymentNo: string;
+    paymentDate: Date;
+    amount: string;
+    cashBankAccountId: string;
+    reference: string | null;
+    createdBy: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollPayment.create({
+      data: scope.createData({ ...input, status: 'POSTED', reversalDate: null, reversedAt: null }),
+      include: payrollPaymentInclude
+    });
+  }
+
+  /** List bounded Employee salary payments with readable Employee and account labels. */
+  async listPayrollPayments(input: Readonly<{
+    employeeId?: string;
+    payrollRunId?: string;
+    status?: 'POSTED' | 'REVERSED';
+  }> & LabourPayrollPageWindow) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const where = scope.where({
+      ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+      ...(input.payrollRunId ? { payrollLine: { payrollRunId: input.payrollRunId } } : {}),
+      ...(input.status ? { status: input.status } : {})
+    });
+    const [items, total] = await Promise.all([
+      this.db.payrollPayment.findMany({ where, include: payrollPaymentInclude, orderBy: [{ paymentDate: 'desc' }, { paymentNo: 'desc' }, { id: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.payrollPayment.count({ where })
+    ]);
+    return { items, total };
+  }
+
+  /** List active Employee assignments that may receive attendance on one work date. */
+  async listEffectiveAttendanceAssignments(
+    employeeId: string,
+    workDate: Date,
+    visibility: LabourPayrollProjectVisibility
+  ) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.projectTeamAssignment.findMany({
+      where: scope.where({
+        ...projectVisibilityWhere(visibility),
+        employeeId,
+        status: 'ACTIVE',
+        fromDate: { lte: workDate },
+        OR: [{ toDate: null }, { toDate: { gte: workDate } }]
+      }),
+      select: {
+        id: true,
+        projectId: true,
+        stageId: true,
+        fromDate: true,
+        toDate: true,
+        project: { select: { projectCode: true, name: true } },
+        stage: { select: { code: true, name: true } }
+      },
+      orderBy: [{ project: { projectCode: 'asc' } }, { stageId: 'asc' }, { fromDate: 'desc' }, { id: 'asc' }]
+    });
+  }
+
+  /** Lock one posted salary payment before a compensating Finance reversal. */
+  async lockPayrollPayment(paymentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{ id: string; paymentDate: Date; paymentNo: string; status: string }>>`
+      SELECT id, payment_date AS "paymentDate", payment_no AS "paymentNo", status
+      FROM payroll_payments
+      WHERE id = ${paymentId}::uuid AND company_id = ${scope.companyId}::uuid
+      FOR UPDATE
+    `;
+    if (!rows[0]) return null;
+    return this.db.payrollPayment.findFirst({ where: scope.where({ id: paymentId }), include: payrollPaymentInclude });
+  }
+
+  /** Mark a POSTED salary payment REVERSED without deleting its settlement history. */
+  async markPayrollPaymentReversed(paymentId: string, reversalDate: Date, reversedAt: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const updated = await this.db.payrollPayment.updateMany({
+      where: scope.where({ id: paymentId, status: 'POSTED' }),
+      data: { status: 'REVERSED', reversalDate, reversedAt }
+    });
+    if (updated.count !== 1) return null;
+    return this.db.payrollPayment.findFirst({ where: scope.where({ id: paymentId }), include: payrollPaymentInclude });
+  }
+
+  /** Read finalized salary accruals and all payment history for one Employee ledger. */
+  async getEmployeeSalaryLedgerSources(employeeId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const employee = await this.db.employee.findFirst({ where: scope.where({ id: employeeId }), select: { id: true, employeeNo: true, name: true } });
+    if (!employee) return null;
+    const lines = await this.db.payrollLine.findMany({
+      where: { employeeId, payrollRun: { companyId: scope.companyId, status: 'FINALIZED' } },
+      include: { payrollRun: { select: { id: true, periodStart: true, periodEnd: true } }, payments: { orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }] } },
+      orderBy: [{ payrollRun: { periodEnd: 'asc' } }, { id: 'asc' }]
+    });
+    return { employee, lines };
   }
 }

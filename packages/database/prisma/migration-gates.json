@@ -833,6 +833,30 @@
       "migrations": [
         "20260909000100_equipment_rate_unit_normalization"
       ]
+    },
+    {
+      "stage": 70,
+      "gate": "attendance-stage-split-correctness",
+      "description": "Allows same-day Attendance to be split across distinct Project Stages while preserving one row per Project/Stage destination and preventing stage-only assignments from posting Project-level labour cost.",
+      "migrations": [
+        "20260909000200_attendance_stage_split"
+      ]
+    },
+    {
+      "stage": 71,
+      "gate": "payroll-employee-payment-ledger",
+      "description": "Adds Employee-linked partial salary settlement, Cash/Bank and Payroll Payable posting, append-only payment reversal, and source-derived Employee salary ledger history.",
+      "migrations": [
+        "20260909000300_payroll_employee_payments"
+      ]
+    },
+    {
+      "stage": 72,
+      "gate": "payroll-status-transition-trigger-fix",
+      "description": "Keeps finalized Payroll immutable while allowing Draft and Calculated Payroll lifecycle status transitions to persist.",
+      "migrations": [
+        "20260909000400_payroll_status_transition_trigger_fix"
+      ]
     }
   ]
 }

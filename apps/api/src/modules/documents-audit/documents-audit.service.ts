@@ -109,6 +109,70 @@ export class DocumentsService {
     }
   }
 
+  /** Return whether the actor may read a Document through direct ownership or one trusted Project link. */
+  private async canReadDocument(
+    repository: AdministrationRepository,
+    projectId: string | null,
+    linkedProjectIds: readonly (string | null)[],
+    asOf: Date
+  ): Promise<boolean> {
+    const security = requireRequestSecurityContext();
+    const scope = security.projectScope;
+    if (scope.kind === 'not-resolved') return false;
+
+    if (projectId === null && security.permissions.includes('documents.read')) return true;
+
+    const candidateProjectIds = [...new Set(
+      (projectId === null ? linkedProjectIds : [projectId]).filter((value): value is string => value !== null)
+    )].filter((candidateProjectId) => scope.kind === 'all' || scope.projectIds.includes(candidateProjectId));
+
+    for (const candidateProjectId of candidateProjectIds) {
+      const permissions = await repository.findEffectivePermissionCodesForProject(candidateProjectId, {
+        userId: security.actorUserId,
+        asOf,
+        assignmentStatuses: [ACTIVE],
+        roleStatuses: [ACTIVE]
+      });
+      if (permissions?.includes('documents.read')) return true;
+    }
+
+    return false;
+  }
+
+  /** Require Document read access through direct ownership or a trusted Project link. */
+  private async requireDocumentReadPermission(
+    repository: AdministrationRepository,
+    projectId: string | null,
+    linkedProjectIds: readonly (string | null)[],
+    asOf: Date
+  ): Promise<void> {
+    if (!(await this.canReadDocument(repository, projectId, linkedProjectIds, asOf))) {
+      throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
+    }
+  }
+
+  /** Return whether one business-module permission authorizes a linked Project resource. */
+  private async canReadLinkedProjectResource(
+    repository: AdministrationRepository,
+    projectId: string,
+    permission: string,
+    asOf: Date
+  ): Promise<boolean> {
+    const security = requireRequestSecurityContext();
+    const scope = security.projectScope;
+    if (scope.kind === 'not-resolved') return false;
+    if (scope.kind === 'restricted' && !scope.projectIds.includes(projectId)) return false;
+    if (security.permissions.includes(permission)) return true;
+
+    const permissions = await repository.findEffectivePermissionCodesForProject(projectId, {
+      userId: security.actorUserId,
+      asOf,
+      assignmentStatuses: [ACTIVE],
+      roleStatuses: [ACTIVE]
+    });
+    return permissions?.includes(permission) ?? false;
+  }
+
   /** Require the correct company-wide or exact-Project permission for one Document resource. */
   private async requireDocumentPermission(
     repository: AdministrationRepository,
@@ -648,11 +712,10 @@ export class DocumentsService {
     const document = await this.repository.findDocumentWithVersions(documentId);
     if (!document) throw createModule21Error('DOCUMENT_NOT_FOUND');
 
-    await this.requireDocumentPermission(
+    await this.requireDocumentReadPermission(
       this.usersRepository,
       document.projectId,
-      'documents.read',
-      'documents.read',
+      document.links.map((link) => link.projectId),
       new Date()
     );
 
@@ -701,18 +764,30 @@ export class DocumentsService {
     const document = await this.repository.findDocumentById(documentId);
     if (!document) throw createModule21Error('DOCUMENT_NOT_FOUND');
     const asOf = new Date();
-    const supplierInvoiceLink = await this.repository.findSupplierInvoiceLinkForDocument(document.id);
-    if (supplierInvoiceLink?.projectId) {
-      await this.requireLinkedProjectPermission(this.usersRepository, supplierInvoiceLink.projectId, 'supplier_payables.read', asOf);
-    } else {
-      await this.requireDocumentPermission(
-        this.usersRepository,
-        document.projectId,
-        'documents.read',
-        'documents.read',
-        asOf
-      );
+    const linkedProjectIds = document.links.map((link) => link.projectId);
+    let authorized = await this.canReadDocument(this.usersRepository, document.projectId, linkedProjectIds, asOf);
+
+    if (!authorized) {
+      for (const link of document.links) {
+        if (!link.projectId) continue;
+        if (
+          link.linkedResourceType === 'supplier_invoice'
+          && await this.canReadLinkedProjectResource(this.usersRepository, link.projectId, 'supplier_payables.read', asOf)
+        ) {
+          authorized = true;
+          break;
+        }
+        if (
+          link.linkedResourceType === 'client_receipt'
+          && await this.canReadLinkedProjectResource(this.usersRepository, link.projectId, 'client_receipts.read', asOf)
+        ) {
+          authorized = true;
+          break;
+        }
+      }
     }
+
+    if (!authorized) throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
 
     const currentVersion = document.currentVersion;
     if (!currentVersion) throw createModule21Error('DOCUMENT_UPLOAD_INVALID');

@@ -5794,3 +5794,145 @@ body,
     text-align: left;
   }
 }
+
+/* Dashboard and Documents: keep dense data inside the viewport without horizontal scrolling. */
+.dashboard-workspace,
+.documents-workspace,
+.dashboard-workspace > *,
+.documents-workspace > *,
+.dashboard-workspace .admin-card,
+.documents-workspace .admin-card,
+.dashboard-workspace .table-wrap,
+.documents-workspace .table-wrap {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.dashboard-workspace .table-wrap,
+.documents-workspace .table-wrap {
+  overflow-x: hidden;
+}
+
+.dashboard-workspace table,
+.documents-workspace table {
+  width: 100%;
+  max-width: 100%;
+}
+
+.dashboard-workspace .admin-table th,
+.dashboard-workspace .admin-table td,
+.documents-workspace .admin-table th,
+.documents-workspace .admin-table td {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.dashboard-workspace code,
+.documents-workspace code,
+.dashboard-workspace .secondary-button,
+.documents-workspace .secondary-button {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.dashboard-workspace .dashboard-alert-item > *,
+.dashboard-workspace .section-heading > *,
+.documents-workspace .document-heading > *,
+.documents-workspace .section-heading > * {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .dashboard-workspace .table-wrap,
+  .documents-workspace .table-wrap {
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .dashboard-workspace .admin-table,
+  .documents-workspace .admin-table,
+  .dashboard-workspace .admin-table tbody,
+  .documents-workspace .admin-table tbody {
+    display: block;
+    width: 100%;
+  }
+
+  .dashboard-workspace .admin-table thead,
+  .documents-workspace .admin-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .dashboard-workspace .admin-table tbody tr,
+  .documents-workspace .admin-table tbody tr {
+    display: block;
+    width: 100%;
+    margin-bottom: 0.75rem;
+    overflow: hidden;
+    border: 1px solid var(--elite-line);
+    border-radius: 10px;
+    background: #ffffff;
+  }
+
+  .dashboard-workspace .admin-table tbody tr:last-child,
+  .documents-workspace .admin-table tbody tr:last-child {
+    margin-bottom: 0;
+  }
+
+  .dashboard-workspace .admin-table td,
+  .documents-workspace .admin-table td {
+    display: block;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border-bottom: 1px solid #edf0f4;
+  }
+
+  .dashboard-workspace .admin-table td:last-child,
+  .documents-workspace .admin-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .dashboard-workspace .admin-table td::before,
+  .documents-workspace .admin-table td::before {
+    content: attr(data-label);
+    display: block;
+    margin-bottom: 0.22rem;
+    color: #667085;
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.025em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-workspace .pagination-row,
+  .documents-workspace .pagination-row,
+  .documents-workspace .document-heading,
+  .dashboard-workspace .dashboard-filter-actions {
+    align-items: stretch;
+  }
+
+  .dashboard-workspace .pagination-row,
+  .documents-workspace .pagination-row {
+    flex-direction: column;
+  }
+
+  .dashboard-workspace .pagination-row > *,
+  .documents-workspace .pagination-row > * {
+    width: 100%;
+    text-align: center;
+  }
+}

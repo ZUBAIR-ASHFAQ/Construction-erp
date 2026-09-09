@@ -10,72 +10,73 @@ datasource db {
 /// Foundation-owned tenant/company master.
 /// Every future ERP company_id foreign key must resolve to companies.id.
 model Company {
-  id             String     @id @default(uuid()) @db.Uuid
-  legalName      String     @map("legal_name") @db.VarChar(200)
-  displayName    String     @map("display_name") @db.VarChar(200)
-  status         String     @db.VarChar(32)
-  baseCurrency   String     @map("base_currency") @db.Char(3)
-  timeZone       String     @map("time_zone") @db.VarChar(100)
-  locale         String     @db.VarChar(35)
-  fiscalSettings Json       @map("fiscal_settings") @db.JsonB
-  createdAt      DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  auditLogs      AuditLog[]
-  outboxEvents   OutboxEvent[]
-  idempotencyRecords IdempotencyRecord[]
-  numberSequences NumberSequence[]
-  queueJobs QueueJob[]
-  configuration CompanyConfiguration?
-  initialBootstrapRuns InitialBootstrapRun[]
-  users          User[]
-  roles          Role[]
-  roleAssignments UserRole[]
-  userProjectScopes UserProjectScope[]
-  departments      Department[]
-  documents       Document[]
-  documentUploadIntents DocumentUploadIntent[]
-  documentLinks    DocumentLink[]
-  clients             Client[]
-  clientContacts      ClientContact[]
-  projects            Project[]
-  projectStages        ProjectStage[]
+  id                     String                  @id @default(uuid()) @db.Uuid
+  legalName              String                  @map("legal_name") @db.VarChar(200)
+  displayName            String                  @map("display_name") @db.VarChar(200)
+  status                 String                  @db.VarChar(32)
+  baseCurrency           String                  @map("base_currency") @db.Char(3)
+  timeZone               String                  @map("time_zone") @db.VarChar(100)
+  locale                 String                  @db.VarChar(35)
+  fiscalSettings         Json                    @map("fiscal_settings") @db.JsonB
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditLogs              AuditLog[]
+  outboxEvents           OutboxEvent[]
+  idempotencyRecords     IdempotencyRecord[]
+  numberSequences        NumberSequence[]
+  queueJobs              QueueJob[]
+  configuration          CompanyConfiguration?
+  initialBootstrapRuns   InitialBootstrapRun[]
+  users                  User[]
+  roles                  Role[]
+  roleAssignments        UserRole[]
+  userProjectScopes      UserProjectScope[]
+  departments            Department[]
+  documents              Document[]
+  documentUploadIntents  DocumentUploadIntent[]
+  documentLinks          DocumentLink[]
+  clients                Client[]
+  clientContacts         ClientContact[]
+  projects               Project[]
+  projectStages          ProjectStage[]
   projectTeamAssignments ProjectTeamAssignment[]
-  glAccounts           GlAccount[]
-  fiscalPeriods        FiscalPeriod[]
-  journals             Journal[]
-  cashBankAccounts      CashBankAccount[]
-  projectBudgets       ProjectBudget[]
-  costCommitments      CostCommitment[]
-  costActuals          CostActual[]
-  vendors              Vendor[]
-  purchaseRequisitions PurchaseRequisition[]
-  purchaseOrders       PurchaseOrder[]
-  materials            Material[]
-  warehouses           Warehouse[]
-  goodsReceipts        GoodsReceipt[]
-  stockLedger          StockLedger[]
-  materialIssues       MaterialIssue[]
-  subcontractors       Subcontractor[]
-  subcontractContracts SubcontractContract[]
-  subcontractPayments  SubcontractPayment[]
-  equipment             Equipment[]
-  employees                    Employee[]
-  attendanceEntries           AttendanceEntry[]
-  employeeCompensations       EmployeeCompensation[]
-  payrollRuns                  PayrollRun[]
-  expenseCategories            ExpenseCategory[]
-  siteExpenses                 SiteExpense[]
-  supplierInvoices             SupplierInvoice[]
-  supplierPayments             SupplierPayment[]
-  projectBillingSettings      ProjectBillingSetting[]
-  progressClaims               ProgressClaim[]
-  clientInvoices               ClientInvoice[]
-  clientReceipts               ClientReceipt[]
-  reportDefinitions            ReportDefinition[]
-  reportRuns                   ReportRun[]
-  savedReportFilters           SavedReportFilter[]
-  dashboardPreferences         DashboardPreference[]
-  dashboardSavedFilters        DashboardSavedFilter[]
+  glAccounts             GlAccount[]
+  fiscalPeriods          FiscalPeriod[]
+  journals               Journal[]
+  cashBankAccounts       CashBankAccount[]
+  projectBudgets         ProjectBudget[]
+  costCommitments        CostCommitment[]
+  costActuals            CostActual[]
+  vendors                Vendor[]
+  purchaseRequisitions   PurchaseRequisition[]
+  purchaseOrders         PurchaseOrder[]
+  materials              Material[]
+  warehouses             Warehouse[]
+  goodsReceipts          GoodsReceipt[]
+  stockLedger            StockLedger[]
+  materialIssues         MaterialIssue[]
+  subcontractors         Subcontractor[]
+  subcontractContracts   SubcontractContract[]
+  subcontractPayments    SubcontractPayment[]
+  equipment              Equipment[]
+  employees              Employee[]
+  attendanceEntries      AttendanceEntry[]
+  employeeCompensations  EmployeeCompensation[]
+  payrollRuns            PayrollRun[]
+  payrollPayments        PayrollPayment[]
+  expenseCategories      ExpenseCategory[]
+  siteExpenses           SiteExpense[]
+  supplierInvoices       SupplierInvoice[]
+  supplierPayments       SupplierPayment[]
+  projectBillingSettings ProjectBillingSetting[]
+  progressClaims         ProgressClaim[]
+  clientInvoices         ClientInvoice[]
+  clientReceipts         ClientReceipt[]
+  reportDefinitions      ReportDefinition[]
+  reportRuns             ReportRun[]
+  savedReportFilters     SavedReportFilter[]
+  dashboardPreferences   DashboardPreference[]
+  dashboardSavedFilters  DashboardSavedFilter[]
 
   @@index([status], map: "companies_status_idx")
   @@map("companies")
@@ -114,31 +115,30 @@ model AuditLog {
   @@map("audit_logs")
 }
 
-
 /// Foundation-owned durable transactional outbox.
 /// actor_user_id is an enforced Administration user reference.
 /// project_scope is a trusted request-context snapshot until project tables exist.
 model OutboxEvent {
-  id            String   @id @default(uuid()) @db.Uuid
-  schemaVersion Int      @default(1) @map("schema_version")
-  companyId     String   @map("company_id") @db.Uuid
-  actorUserId   String?  @map("actor_user_id") @db.Uuid
-  projectScope  Json     @map("project_scope") @db.JsonB
-  eventType     String   @map("event_type") @db.VarChar(150)
-  resourceType  String   @map("resource_type") @db.VarChar(100)
-  resourceId    String   @map("resource_id") @db.VarChar(128)
-  requestId     String   @map("request_id") @db.VarChar(128)
-  correlationId String   @map("correlation_id") @db.VarChar(128)
-  payload       Json     @default("{}") @db.JsonB
-  status        String   @default("PENDING") @db.VarChar(20)
-  availableAt   DateTime @default(now()) @map("available_at") @db.Timestamptz(6)
-  attemptCount  Int      @default(0) @map("attempt_count")
+  id            String    @id @default(uuid()) @db.Uuid
+  schemaVersion Int       @default(1) @map("schema_version")
+  companyId     String    @map("company_id") @db.Uuid
+  actorUserId   String?   @map("actor_user_id") @db.Uuid
+  projectScope  Json      @map("project_scope") @db.JsonB
+  eventType     String    @map("event_type") @db.VarChar(150)
+  resourceType  String    @map("resource_type") @db.VarChar(100)
+  resourceId    String    @map("resource_id") @db.VarChar(128)
+  requestId     String    @map("request_id") @db.VarChar(128)
+  correlationId String    @map("correlation_id") @db.VarChar(128)
+  payload       Json      @default("{}") @db.JsonB
+  status        String    @default("PENDING") @db.VarChar(20)
+  availableAt   DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  attemptCount  Int       @default(0) @map("attempt_count")
   lockedAt      DateTime? @map("locked_at") @db.Timestamptz(6)
-  lockedBy      String?  @map("locked_by") @db.VarChar(128)
-  lastErrorCode String?  @map("last_error_code") @db.VarChar(100)
+  lockedBy      String?   @map("locked_by") @db.VarChar(128)
+  lastErrorCode String?   @map("last_error_code") @db.VarChar(100)
   publishedAt   DateTime? @map("published_at") @db.Timestamptz(6)
-  occurredAt    DateTime @default(now()) @map("occurred_at") @db.Timestamptz(6)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  occurredAt    DateTime  @default(now()) @map("occurred_at") @db.Timestamptz(6)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   actor   User?   @relation("OutboxEventActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -204,32 +204,31 @@ model NumberSequence {
   @@map("number_sequences")
 }
 
-
 /// Foundation-owned durable background queue. Jobs are company-scoped and
 /// transaction-bound at enqueue time. actor_user_id becomes an enforced
 /// Administration user reference; project_scope remains a request-time authorization snapshot.
 model QueueJob {
-  id               String    @id @default(uuid()) @db.Uuid
-  schemaVersion    Int       @default(1) @map("schema_version")
-  companyId        String    @map("company_id") @db.Uuid
-  actorUserId      String?   @map("actor_user_id") @db.Uuid
-  projectScope     Json      @map("project_scope") @db.JsonB
-  queueName        String    @map("queue_name") @db.VarChar(100)
-  jobType          String    @map("job_type") @db.VarChar(150)
-  requestId        String    @map("request_id") @db.VarChar(128)
-  correlationId    String    @map("correlation_id") @db.VarChar(128)
-  payload          Json      @default("{}") @db.JsonB
-  status           String    @default("PENDING") @db.VarChar(20)
-  availableAt      DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
-  attemptCount     Int       @default(0) @map("attempt_count")
-  maxAttempts      Int       @default(5) @map("max_attempts")
-  lockedAt         DateTime? @map("locked_at") @db.Timestamptz(6)
-  lockedBy         String?   @map("locked_by") @db.VarChar(128)
-  lastErrorCode    String?   @map("last_error_code") @db.VarChar(100)
-  completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
-  deadLetteredAt   DateTime? @map("dead_lettered_at") @db.Timestamptz(6)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id             String    @id @default(uuid()) @db.Uuid
+  schemaVersion  Int       @default(1) @map("schema_version")
+  companyId      String    @map("company_id") @db.Uuid
+  actorUserId    String?   @map("actor_user_id") @db.Uuid
+  projectScope   Json      @map("project_scope") @db.JsonB
+  queueName      String    @map("queue_name") @db.VarChar(100)
+  jobType        String    @map("job_type") @db.VarChar(150)
+  requestId      String    @map("request_id") @db.VarChar(128)
+  correlationId  String    @map("correlation_id") @db.VarChar(128)
+  payload        Json      @default("{}") @db.JsonB
+  status         String    @default("PENDING") @db.VarChar(20)
+  availableAt    DateTime  @default(now()) @map("available_at") @db.Timestamptz(6)
+  attemptCount   Int       @default(0) @map("attempt_count")
+  maxAttempts    Int       @default(5) @map("max_attempts")
+  lockedAt       DateTime? @map("locked_at") @db.Timestamptz(6)
+  lockedBy       String?   @map("locked_by") @db.VarChar(128)
+  lastErrorCode  String?   @map("last_error_code") @db.VarChar(100)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+  deadLetteredAt DateTime? @map("dead_lettered_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   actor   User?   @relation("QueueJobActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -292,12 +291,12 @@ model InitialBootstrapRun {
 /// Final Module 2 company-owned user identity.
 /// Explicit project access is owned by UserProjectScope.
 model User {
-  id          String    @id @default(uuid()) @db.Uuid
-  companyId   String    @map("company_id") @db.Uuid
-  email       String    @db.VarChar(320)
-  phone       String?   @db.VarChar(50)
-  name        String    @db.VarChar(200)
-  status      String    @db.VarChar(32)
+  id                  String    @id @default(uuid()) @db.Uuid
+  companyId           String    @map("company_id") @db.Uuid
+  email               String    @db.VarChar(320)
+  phone               String?   @db.VarChar(50)
+  name                String    @db.VarChar(200)
+  status              String    @db.VarChar(32)
   passwordHash        String?   @map("password_hash") @db.VarChar(255)
   passwordChangedAt   DateTime? @map("password_changed_at") @db.Timestamptz(6)
   lastLoginAt         DateTime? @map("last_login_at") @db.Timestamptz(6)
@@ -307,43 +306,44 @@ model User {
   createdAt           DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt           DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company              Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  sessions             AuthSession[]
-  roleAssignments      UserRole[]
-  projectScopes         UserProjectScope[]
-  auditLogs             AuditLog[]               @relation("AuditLogActor")
-  outboxEvents          OutboxEvent[]             @relation("OutboxEventActor")
-  queueJobs             QueueJob[]                @relation("QueueJobActor")
-  initialBootstrapRuns  InitialBootstrapRun[]     @relation("InitialBootstrapAdministrator")
-  createdDocuments      Document[]                 @relation("DocumentCreator")
-  createdDocumentVersions DocumentVersion[]        @relation("DocumentVersionCreator")
-  documentUploadIntents    DocumentUploadIntent[]   @relation("DocumentUploadIntentActor")
-  createdDocumentLinks     DocumentLink[]           @relation("DocumentLinkCreator")
+  company                       Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sessions                      AuthSession[]
+  roleAssignments               UserRole[]
+  projectScopes                 UserProjectScope[]
+  auditLogs                     AuditLog[]                @relation("AuditLogActor")
+  outboxEvents                  OutboxEvent[]             @relation("OutboxEventActor")
+  queueJobs                     QueueJob[]                @relation("QueueJobActor")
+  initialBootstrapRuns          InitialBootstrapRun[]     @relation("InitialBootstrapAdministrator")
+  createdDocuments              Document[]                @relation("DocumentCreator")
+  createdDocumentVersions       DocumentVersion[]         @relation("DocumentVersionCreator")
+  documentUploadIntents         DocumentUploadIntent[]    @relation("DocumentUploadIntentActor")
+  createdDocumentLinks          DocumentLink[]            @relation("DocumentLinkCreator")
   managedProjects               Project[]                 @relation("ProjectManager")
-  projectTeamHistoryChanges     ProjectTeamHistory[] @relation("ProjectTeamHistoryChangedBy")
+  projectTeamHistoryChanges     ProjectTeamHistory[]      @relation("ProjectTeamHistoryChangedBy")
   projectStatusChanges          ProjectStatusHistory[]    @relation("ProjectStatusChangedBy")
-  createdJournals                Journal[]                 @relation("JournalCreatedBy")
-  createdBankReconciliations     BankReconciliation[]      @relation("BankReconciliationCreatedBy")
-  createdProjectBudgets          ProjectBudget[]           @relation("ProjectBudgetCreatedBy")
-  updatedForecastLines           ForecastLine[]             @relation("ForecastLineUpdatedBy")
-  enteredStageProgressUpdates   StageProgressUpdate[]      @relation("StageProgressEnteredBy")
-  approvedStageProgressUpdates  StageProgressUpdate[]      @relation("StageProgressApprovedBy")
-  frozenStageBaselines          StageProgressBaseline[]    @relation("StageProgressBaselineFrozenBy")
-  requestedPurchaseRequisitions  PurchaseRequisition[]      @relation("PurchaseRequisitionRequester")
-  cancelledPurchaseOrders          PurchaseOrder[]            @relation("PurchaseOrderCanceller")
-  receivedGoodsReceipts            GoodsReceipt[]              @relation("GoodsReceiptReceiver")
-  issuedMaterialIssues             MaterialIssue[]              @relation("MaterialIssueIssuedBy")
-  equipmentUsageEntries             EquipmentUsage[]              @relation("EquipmentUsageEnteredBy")
-  linkedEmployees                   Employee[]                  @relation("EmployeeLoginUser")
-  enteredAttendanceEntries          AttendanceEntry[]             @relation("AttendanceEnteredBy")
-  createdPayrollRuns                PayrollRun[]                  @relation("PayrollCreatedBy")
-  createdSiteExpenses               SiteExpense[]
-  createdClientReceipts              ClientReceipt[]           @relation("ClientReceiptCreator")
-  clientReceiptAllocations           ClientReceiptAllocation[] @relation("ClientReceiptAllocationActor")
-  requestedReportRuns                  ReportRun[]                 @relation("ReportRunRequester")
-  savedReportFilters                   SavedReportFilter[]         @relation("SavedReportFilterUser")
-  dashboardPreference                  DashboardPreference?        @relation("DashboardPreferenceUser")
-  dashboardSavedFilters                DashboardSavedFilter[]      @relation("DashboardSavedFilterUser")
+  createdJournals               Journal[]                 @relation("JournalCreatedBy")
+  createdBankReconciliations    BankReconciliation[]      @relation("BankReconciliationCreatedBy")
+  createdProjectBudgets         ProjectBudget[]           @relation("ProjectBudgetCreatedBy")
+  updatedForecastLines          ForecastLine[]            @relation("ForecastLineUpdatedBy")
+  enteredStageProgressUpdates   StageProgressUpdate[]     @relation("StageProgressEnteredBy")
+  approvedStageProgressUpdates  StageProgressUpdate[]     @relation("StageProgressApprovedBy")
+  frozenStageBaselines          StageProgressBaseline[]   @relation("StageProgressBaselineFrozenBy")
+  requestedPurchaseRequisitions PurchaseRequisition[]     @relation("PurchaseRequisitionRequester")
+  cancelledPurchaseOrders       PurchaseOrder[]           @relation("PurchaseOrderCanceller")
+  receivedGoodsReceipts         GoodsReceipt[]            @relation("GoodsReceiptReceiver")
+  issuedMaterialIssues          MaterialIssue[]           @relation("MaterialIssueIssuedBy")
+  equipmentUsageEntries         EquipmentUsage[]          @relation("EquipmentUsageEnteredBy")
+  linkedEmployees               Employee[]                @relation("EmployeeLoginUser")
+  enteredAttendanceEntries      AttendanceEntry[]         @relation("AttendanceEnteredBy")
+  createdPayrollRuns            PayrollRun[]              @relation("PayrollCreatedBy")
+  createdPayrollPayments        PayrollPayment[]          @relation("PayrollPaymentCreatedBy")
+  createdSiteExpenses           SiteExpense[]
+  createdClientReceipts         ClientReceipt[]           @relation("ClientReceiptCreator")
+  clientReceiptAllocations      ClientReceiptAllocation[] @relation("ClientReceiptAllocationActor")
+  requestedReportRuns           ReportRun[]               @relation("ReportRunRequester")
+  savedReportFilters            SavedReportFilter[]       @relation("SavedReportFilterUser")
+  dashboardPreference           DashboardPreference?      @relation("DashboardPreferenceUser")
+  dashboardSavedFilters         DashboardSavedFilter[]    @relation("DashboardSavedFilterUser")
 
   @@unique([companyId, email], map: "users_company_email_uq")
   @@unique([id, companyId], map: "users_id_company_uq")
@@ -385,7 +385,7 @@ model Role {
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  company         Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   rolePermissions RolePermission[]
   userAssignments UserRole[]
 
@@ -496,17 +496,17 @@ model Document {
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company        Company          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project        Project?         @relation("DocumentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  creator        User             @relation("DocumentCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  currentVersion DocumentVersion? @relation("DocumentCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  versions       DocumentVersion[] @relation("DocumentVersions")
-  links          DocumentLink[]
-  uploadIntents  DocumentUploadIntent[]
+  company               Company                @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project               Project?               @relation("DocumentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator               User                   @relation("DocumentCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  currentVersion        DocumentVersion?       @relation("DocumentCurrentVersion", fields: [currentVersionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  versions              DocumentVersion[]      @relation("DocumentVersions")
+  links                 DocumentLink[]
+  uploadIntents         DocumentUploadIntent[]
   stageProgressEvidence StageProgressUpdate[]
   payslips              Payslip[]
   siteExpenses          SiteExpense[]
-  reportRuns            ReportRun[]       @relation("ReportRunFile")
+  reportRuns            ReportRun[]            @relation("ReportRunFile")
 
   @@unique([id, companyId], map: "documents_id_company_uq")
   @@index([companyId, status], map: "documents_company_status_idx")
@@ -533,9 +533,9 @@ model DocumentVersion {
   createdBy    String   @map("created_by") @db.Uuid
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  document          Document  @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  creator           User      @relation("DocumentVersionCreator", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  currentForDocument Document? @relation("DocumentCurrentVersion")
+  document           Document       @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator            User           @relation("DocumentVersionCreator", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  currentForDocument Document?      @relation("DocumentCurrentVersion")
   links              DocumentLink[]
 
   @@unique([documentId, versionNo], map: "document_versions_document_version_uq")
@@ -573,8 +573,6 @@ model DocumentLink {
   @@map("document_links")
 }
 
-
-
 /// Module 21 short-lived server-owned upload session metadata.
 /// target_document_id is an opaque preallocated UUID, not a foreign key, because
 /// the first document row is created only after the object upload is verified.
@@ -599,10 +597,10 @@ model DocumentUploadIntent {
   completedAt      DateTime? @map("completed_at") @db.Timestamptz(6)
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  company Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project Project?        @relation("DocumentUploadIntentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  actor    User            @relation("DocumentUploadIntentActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  document Document?       @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  company  Company   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project  Project?  @relation("DocumentUploadIntentProject", fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  actor    User      @relation("DocumentUploadIntentActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  document Document? @relation(fields: [documentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([companyId, expiresAt], map: "document_upload_intents_company_expires_at_idx")
   @@index([companyId, projectId, expiresAt], map: "document_upload_intents_company_project_expires_at_idx")
@@ -627,9 +625,9 @@ model Client {
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company       Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  contacts      ClientContact[]
-  projects      Project[]
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  contacts       ClientContact[]
+  projects       Project[]
   progressClaims ProgressClaim[]
   clientInvoices ClientInvoice[]
   clientReceipts ClientReceipt[]
@@ -683,40 +681,40 @@ model Project {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company        Company                @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  client         Client                 @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  projectManager User?                  @relation("ProjectManager", fields: [projectManagerUserId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  statusHistory  ProjectStatusHistory[]
-  stages         ProjectStage[]
-  stageBaselines StageProgressBaseline[]
-  teamAssignments ProjectTeamAssignment[]
-  journalLines    JournalLine[]
-  userProjectScopes UserProjectScope[]
-  documents Document[] @relation("DocumentProject")
-  documentUploadIntents DocumentUploadIntent[] @relation("DocumentUploadIntentProject")
-  documentLinks        DocumentLink[] @relation("DocumentLinkProject")
-  auditLogs            AuditLog[] @relation("AuditLogProject")
-  projectBudgets ProjectBudget[]
-  costCommitments CostCommitment[]
-  costActuals CostActual[]
-  forecastLines ForecastLine[]
-  purchaseRequisitions PurchaseRequisition[]
-  purchaseOrders PurchaseOrder[]
-  warehouses Warehouse[]
-  goodsReceipts GoodsReceipt[]
-  stockLedger StockLedger[]
-  materialIssues MaterialIssue[]
-  equipmentAssignments EquipmentAssignment[]
-  attendanceEntries AttendanceEntry[]
-  projectBillingSettings ProjectBillingSetting[]
-  progressClaims ProgressClaim[]
-  clientInvoices ClientInvoice[]
-  siteExpenses  SiteExpense[]
-  supplierInvoices SupplierInvoice[]
-  supplierPayments SupplierPayment[]
-  clientReceipts ClientReceipt[]
-  dashboardDefaultPreferences DashboardPreference[] @relation("DashboardPreferenceDefaultProject")
-  subcontractContracts SubcontractContract[]
+  company                     Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client                      Client                  @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  projectManager              User?                   @relation("ProjectManager", fields: [projectManagerUserId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  statusHistory               ProjectStatusHistory[]
+  stages                      ProjectStage[]
+  stageBaselines              StageProgressBaseline[]
+  teamAssignments             ProjectTeamAssignment[]
+  journalLines                JournalLine[]
+  userProjectScopes           UserProjectScope[]
+  documents                   Document[]              @relation("DocumentProject")
+  documentUploadIntents       DocumentUploadIntent[]  @relation("DocumentUploadIntentProject")
+  documentLinks               DocumentLink[]          @relation("DocumentLinkProject")
+  auditLogs                   AuditLog[]              @relation("AuditLogProject")
+  projectBudgets              ProjectBudget[]
+  costCommitments             CostCommitment[]
+  costActuals                 CostActual[]
+  forecastLines               ForecastLine[]
+  purchaseRequisitions        PurchaseRequisition[]
+  purchaseOrders              PurchaseOrder[]
+  warehouses                  Warehouse[]
+  goodsReceipts               GoodsReceipt[]
+  stockLedger                 StockLedger[]
+  materialIssues              MaterialIssue[]
+  equipmentAssignments        EquipmentAssignment[]
+  attendanceEntries           AttendanceEntry[]
+  projectBillingSettings      ProjectBillingSetting[]
+  progressClaims              ProgressClaim[]
+  clientInvoices              ClientInvoice[]
+  siteExpenses                SiteExpense[]
+  supplierInvoices            SupplierInvoice[]
+  supplierPayments            SupplierPayment[]
+  clientReceipts              ClientReceipt[]
+  dashboardDefaultPreferences DashboardPreference[]   @relation("DashboardPreferenceDefaultProject")
+  subcontractContracts        SubcontractContract[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -747,28 +745,28 @@ model ProjectStage {
   createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company         Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project         Project               @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  progressUpdates    StageProgressUpdate[]
-  teamAssignments    ProjectTeamAssignment[]
-  budgetLines        BudgetLine[]
-  attendanceEntries  AttendanceEntry[]
-  costCommitments    CostCommitment[]
-  costActuals     CostActual[]
-  forecastLines   ForecastLine[]
-  journalLines    JournalLine[]
-  purchaseRequisitions PurchaseRequisition[] @relation("PurchaseRequisitionStage")
+  company                  Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project                  Project                   @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  progressUpdates          StageProgressUpdate[]
+  teamAssignments          ProjectTeamAssignment[]
+  budgetLines              BudgetLine[]
+  attendanceEntries        AttendanceEntry[]
+  costCommitments          CostCommitment[]
+  costActuals              CostActual[]
+  forecastLines            ForecastLine[]
+  journalLines             JournalLine[]
+  purchaseRequisitions     PurchaseRequisition[]     @relation("PurchaseRequisitionStage")
   purchaseRequisitionItems PurchaseRequisitionItem[] @relation("PurchaseRequisitionItemStage")
-  purchaseOrderItems PurchaseOrderItem[] @relation("PurchaseOrderItemStage")
-  goodsReceiptItems GoodsReceiptItem[] @relation("GoodsReceiptItemStage")
-  stockLedger       StockLedger[]
-  materialIssues    MaterialIssue[]
-  equipmentAssignments EquipmentAssignment[]
-  siteExpenses         SiteExpense[]
-  supplierInvoiceLines SupplierInvoiceLine[] @relation("SupplierInvoiceLineStage")
-  progressClaimLines    ProgressClaimLine[]   @relation("ProgressClaimLineStage")
-  clientInvoiceLines    ClientInvoiceLine[]   @relation("ClientInvoiceLineStage")
-  clientReceipts         ClientReceipt[]       @relation("ClientReceiptStage")
+  purchaseOrderItems       PurchaseOrderItem[]       @relation("PurchaseOrderItemStage")
+  goodsReceiptItems        GoodsReceiptItem[]        @relation("GoodsReceiptItemStage")
+  stockLedger              StockLedger[]
+  materialIssues           MaterialIssue[]
+  equipmentAssignments     EquipmentAssignment[]
+  siteExpenses             SiteExpense[]
+  supplierInvoiceLines     SupplierInvoiceLine[]     @relation("SupplierInvoiceLineStage")
+  progressClaimLines       ProgressClaimLine[]       @relation("ProgressClaimLineStage")
+  clientInvoiceLines       ClientInvoiceLine[]       @relation("ClientInvoiceLineStage")
+  clientReceipts           ClientReceipt[]           @relation("ClientReceiptStage")
 
   @@unique([companyId, projectId, code], map: "project_stages_company_project_code_uq")
   @@unique([companyId, projectId, sequenceNo], map: "project_stages_company_project_sequence_uq")
@@ -793,10 +791,10 @@ model StageProgressUpdate {
   status             String    @default("SUBMITTED") @db.VarChar(32)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  stage      ProjectStage @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  evidence   Document?    @relation(fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  enteredByUser  User     @relation("StageProgressEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  approvedByUser User?    @relation("StageProgressApprovedBy", fields: [approvedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage          ProjectStage @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  evidence       Document?    @relation(fields: [evidenceDocumentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  enteredByUser  User         @relation("StageProgressEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  approvedByUser User?        @relation("StageProgressApprovedBy", fields: [approvedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([stageId, status, progressDate, createdAt], map: "stage_progress_updates_stage_status_date_idx")
   @@index([evidenceDocumentId], map: "stage_progress_updates_evidence_idx")
@@ -840,10 +838,10 @@ model ProjectTeamAssignment {
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company  Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project  Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  employee Employee      @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  stage    ProjectStage? @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  company  Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project  Project              @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  employee Employee             @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage    ProjectStage?        @relation(fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   history  ProjectTeamHistory[]
 
   @@unique([id, companyId], map: "project_team_assignments_id_company_uq")
@@ -863,8 +861,8 @@ model ProjectTeamHistory {
   changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
   note         String?  @db.Text
 
-  assignment ProjectTeamAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  changedByUser User @relation("ProjectTeamHistoryChangedBy", fields: [changedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignment    ProjectTeamAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  changedByUser User                  @relation("ProjectTeamHistoryChangedBy", fields: [changedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([assignmentId, changedAt], map: "project_team_history_assignment_changed_idx")
   @@index([changedBy, changedAt], map: "project_team_history_changed_by_idx")
@@ -900,12 +898,12 @@ model GlAccount {
   parentId    String? @map("parent_id") @db.Uuid
   status      String  @db.VarChar(32)
 
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  parent           GlAccount?        @relation("GlAccountParent", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  children         GlAccount[]       @relation("GlAccountParent")
-  journalLines     JournalLine[]
-  cashBankAccounts CashBankAccount[]
-  expenseCategories ExpenseCategory[]
+  company              Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  parent               GlAccount?            @relation("GlAccountParent", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  children             GlAccount[]           @relation("GlAccountParent")
+  journalLines         JournalLine[]
+  cashBankAccounts     CashBankAccount[]
+  expenseCategories    ExpenseCategory[]
   supplierInvoiceLines SupplierInvoiceLine[] @relation("SupplierInvoiceLineAccount")
   clientInvoiceLines   ClientInvoiceLine[]   @relation("ClientInvoiceLineRevenueAccount")
 
@@ -952,9 +950,9 @@ model Journal {
   totalDebit  Decimal   @default(0) @map("total_debit") @db.Decimal(18, 2)
   totalCredit Decimal   @default(0) @map("total_credit") @db.Decimal(18, 2)
 
-  company Company      @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  period  FiscalPeriod @relation(fields: [periodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  creator User?        @relation("JournalCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  period  FiscalPeriod  @relation(fields: [periodId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  creator User?         @relation("JournalCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
   lines   JournalLine[]
 
   @@unique([companyId, journalNo], map: "journals_company_journal_no_uq")
@@ -1002,13 +1000,14 @@ model CashBankAccount {
   accountReference String? @map("account_reference") @db.VarChar(200)
   status           String  @db.VarChar(32)
 
-  company         Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  glAccount       GlAccount            @relation(fields: [glAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  reconciliations BankReconciliation[]
-  siteExpenses    SiteExpense[]
-  supplierPayments SupplierPayment[]
-  clientReceipts    ClientReceipt[]
+  company             Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  glAccount           GlAccount            @relation(fields: [glAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  reconciliations     BankReconciliation[]
+  siteExpenses        SiteExpense[]
+  supplierPayments    SupplierPayment[]
+  clientReceipts      ClientReceipt[]
   subcontractPayments SubcontractPayment[]
+  payrollPayments     PayrollPayment[]
 
   @@unique([companyId, code], map: "cash_bank_accounts_company_code_uq")
   @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
@@ -1048,9 +1047,9 @@ model ProjectBudget {
   createdBy   String    @map("created_by") @db.Uuid
   frozenAt    DateTime? @map("frozen_at") @db.Timestamptz(6)
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project Project @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  creator User    @relation("ProjectBudgetCreatedBy", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project Project      @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator User         @relation("ProjectBudgetCreatedBy", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   lines   BudgetLine[]
 
   @@unique([projectId, versionNo], map: "project_budgets_project_version_uq")
@@ -1158,11 +1157,11 @@ model Vendor {
   status              String  @db.VarChar(32)
   qualificationStatus String? @map("qualification_status") @db.VarChar(32)
 
-  company        Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  contacts       VendorContact[]
-  purchaseOrders PurchaseOrder[]
-  goodsReceipts  GoodsReceipt[]
-  subcontractors Subcontractor[]
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  contacts         VendorContact[]
+  purchaseOrders   PurchaseOrder[]
+  goodsReceipts    GoodsReceipt[]
+  subcontractors   Subcontractor[]
   supplierInvoices SupplierInvoice[]
   supplierPayments SupplierPayment[]
 
@@ -1192,20 +1191,20 @@ model VendorContact {
 /// Final-21 Company/Project-scoped material requirement header.
 /// Request number and lifecycle state remain server-owned.
 model PurchaseRequisition {
-  id            String   @id @default(uuid()) @db.Uuid
-  companyId     String   @map("company_id") @db.Uuid
-  projectId     String   @map("project_id") @db.Uuid
-  stageId       String?  @map("stage_id") @db.Uuid
-  prNo          String   @map("pr_no") @db.VarChar(100)
-  requestedBy   String   @map("requested_by") @db.Uuid
-  requiredDate  DateTime @map("required_date") @db.Date
-  status        String   @db.VarChar(32)
-  purpose       String   @db.Text
+  id           String   @id @default(uuid()) @db.Uuid
+  companyId    String   @map("company_id") @db.Uuid
+  projectId    String   @map("project_id") @db.Uuid
+  stageId      String?  @map("stage_id") @db.Uuid
+  prNo         String   @map("pr_no") @db.VarChar(100)
+  requestedBy  String   @map("requested_by") @db.Uuid
+  requiredDate DateTime @map("required_date") @db.Date
+  status       String   @db.VarChar(32)
+  purpose      String   @db.Text
 
-  company   Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project   Project                   @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  stage     ProjectStage?              @relation("PurchaseRequisitionStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  requester User                      @relation("PurchaseRequisitionRequester", fields: [requestedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company        Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project        Project                   @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage          ProjectStage?             @relation("PurchaseRequisitionStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requester      User                      @relation("PurchaseRequisitionRequester", fields: [requestedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   items          PurchaseRequisitionItem[]
   purchaseOrders PurchaseOrder[]
 
@@ -1230,7 +1229,7 @@ model PurchaseRequisitionItem {
   estimatedRate Decimal? @map("estimated_rate") @db.Decimal(18, 4)
 
   requisition        PurchaseRequisition @relation(fields: [requisitionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  inventoryItem      Material?      @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inventoryItem      Material?           @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   stage              ProjectStage?       @relation("PurchaseRequisitionItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   purchaseOrderItems PurchaseOrderItem[]
 
@@ -1241,31 +1240,31 @@ model PurchaseRequisitionItem {
 
 /// Final-21 Company/Project-scoped Purchase Order created from an approved material requirement.
 model PurchaseOrder {
-  id              String   @id @default(uuid()) @db.Uuid
-  companyId       String   @map("company_id") @db.Uuid
-  projectId       String   @map("project_id") @db.Uuid
-  poNo            String   @map("po_no") @db.VarChar(100)
-  vendorId        String   @map("vendor_id") @db.Uuid
-  requisitionId   String?  @map("requisition_id") @db.Uuid
-  cancelReason     String?  @map("cancel_reason") @db.Text
-  cancelledAt      DateTime? @map("cancelled_at") @db.Timestamptz(6)
-  cancelledBy      String?  @map("cancelled_by") @db.Uuid
-  orderDate       DateTime @map("order_date") @db.Date
-  currency        String   @db.Char(3)
-  status          String   @db.VarChar(32)
-  subtotal        Decimal  @db.Decimal(18, 2)
-  tax             Decimal  @db.Decimal(18, 2)
-  total           Decimal  @db.Decimal(18, 2)
-  deliveryAddress String   @map("delivery_address") @db.Text
-  terms           String   @db.Text
+  id              String    @id @default(uuid()) @db.Uuid
+  companyId       String    @map("company_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  poNo            String    @map("po_no") @db.VarChar(100)
+  vendorId        String    @map("vendor_id") @db.Uuid
+  requisitionId   String?   @map("requisition_id") @db.Uuid
+  cancelReason    String?   @map("cancel_reason") @db.Text
+  cancelledAt     DateTime? @map("cancelled_at") @db.Timestamptz(6)
+  cancelledBy     String?   @map("cancelled_by") @db.Uuid
+  orderDate       DateTime  @map("order_date") @db.Date
+  currency        String    @db.Char(3)
+  status          String    @db.VarChar(32)
+  subtotal        Decimal   @db.Decimal(18, 2)
+  tax             Decimal   @db.Decimal(18, 2)
+  total           Decimal   @db.Decimal(18, 2)
+  deliveryAddress String    @map("delivery_address") @db.Text
+  terms           String    @db.Text
 
-  company   Company            @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project   Project            @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  vendor    Vendor             @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  requisition PurchaseRequisition? @relation(fields: [requisitionId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
-  items     PurchaseOrderItem[]
-  canceller  User?                   @relation("PurchaseOrderCanceller", fields: [cancelledBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  goodsReceipts GoodsReceipt[]
+  company          Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project          Project              @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  vendor           Vendor               @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  requisition      PurchaseRequisition? @relation(fields: [requisitionId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
+  items            PurchaseOrderItem[]
+  canceller        User?                @relation("PurchaseOrderCanceller", fields: [cancelledBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  goodsReceipts    GoodsReceipt[]
   supplierInvoices SupplierInvoice[]
 
   @@unique([companyId, poNo], map: "purchase_orders_company_po_no_uq")
@@ -1294,10 +1293,10 @@ model PurchaseOrderItem {
   receivedQty       Decimal @default(0) @map("received_qty") @db.Decimal(18, 4)
   invoicedAmount    Decimal @default(0) @map("invoiced_amount") @db.Decimal(18, 2)
 
-  purchaseOrder   PurchaseOrder            @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  requisitionItem PurchaseRequisitionItem? @relation(fields: [requisitionItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  inventoryItem   Material?           @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stage           ProjectStage?            @relation("PurchaseOrderItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  purchaseOrder     PurchaseOrder            @relation(fields: [purchaseOrderId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  requisitionItem   PurchaseRequisitionItem? @relation(fields: [requisitionItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  inventoryItem     Material?                @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage             ProjectStage?            @relation("PurchaseOrderItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   goodsReceiptItems GoodsReceiptItem[]
 
   @@index([purchaseOrderId, stageId], map: "purchase_order_items_po_stage_idx")
@@ -1339,10 +1338,10 @@ model Warehouse {
   location  String? @db.Text
   status    String  @db.VarChar(32)
 
-  company       Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project       Project?        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  goodsReceipts GoodsReceipt[]
-  stockLedger   StockLedger[]
+  company        Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project        Project?        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  goodsReceipts  GoodsReceipt[]
+  stockLedger    StockLedger[]
   materialIssues MaterialIssue[]
 
   @@unique([companyId, code], map: "warehouses_company_code_uq")
@@ -1365,13 +1364,13 @@ model GoodsReceipt {
   status          String   @db.VarChar(32)
   receivedBy      String   @map("received_by") @db.Uuid
 
-  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  vendor        Vendor        @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  warehouse     Warehouse     @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
-  receiver      User          @relation("GoodsReceiptReceiver", fields: [receivedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  items         GoodsReceiptItem[]
+  company          Company            @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project          Project            @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  vendor           Vendor             @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  warehouse        Warehouse          @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  purchaseOrder    PurchaseOrder      @relation(fields: [purchaseOrderId, companyId, projectId], references: [id, companyId, projectId], onDelete: Restrict, onUpdate: Restrict)
+  receiver         User               @relation("GoodsReceiptReceiver", fields: [receivedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  items            GoodsReceiptItem[]
   supplierInvoices SupplierInvoice[]
 
   @@unique([companyId, receiptNo], map: "goods_receipts_company_receipt_no_uq")
@@ -1386,27 +1385,27 @@ model GoodsReceipt {
 /// Procurement-owned Goods Receipt line linked to the Final Module 11 Material master.
 /// The migration additionally checks that po_item_id belongs to the header Purchase Order and item_id belongs to the receipt Company.
 model GoodsReceiptItem {
-  id                String  @id @default(uuid()) @db.Uuid
-  goodsReceiptId    String  @map("goods_receipt_id") @db.Uuid
-  poItemId          String  @map("po_item_id") @db.Uuid
-  itemId            String  @map("item_id") @db.Uuid
-  stageId           String? @map("stage_id") @db.Uuid
-  quantity          Decimal @db.Decimal(18, 4)
-  sourceUnit        String  @map("source_unit") @db.VarChar(64)
-  conversionFactor  Decimal @map("conversion_factor") @db.Decimal(18, 4)
-  sourceUnitCost    Decimal @map("source_unit_cost") @db.Decimal(18, 4)
-  unitCost          Decimal @map("unit_cost") @db.Decimal(18, 4)
-  acceptedQty       Decimal @map("accepted_qty") @db.Decimal(18, 4)
-  rejectedQty       Decimal @map("rejected_qty") @db.Decimal(18, 4)
-  batchNo           String? @map("batch_no") @db.VarChar(120)
-  baseQuantity      Decimal @map("base_quantity") @db.Decimal(18, 4)
-  acceptedBaseQty   Decimal @map("accepted_base_qty") @db.Decimal(18, 4)
-  rejectedBaseQty   Decimal @map("rejected_base_qty") @db.Decimal(18, 4)
+  id               String  @id @default(uuid()) @db.Uuid
+  goodsReceiptId   String  @map("goods_receipt_id") @db.Uuid
+  poItemId         String  @map("po_item_id") @db.Uuid
+  itemId           String  @map("item_id") @db.Uuid
+  stageId          String? @map("stage_id") @db.Uuid
+  quantity         Decimal @db.Decimal(18, 4)
+  sourceUnit       String  @map("source_unit") @db.VarChar(64)
+  conversionFactor Decimal @map("conversion_factor") @db.Decimal(18, 4)
+  sourceUnitCost   Decimal @map("source_unit_cost") @db.Decimal(18, 4)
+  unitCost         Decimal @map("unit_cost") @db.Decimal(18, 4)
+  acceptedQty      Decimal @map("accepted_qty") @db.Decimal(18, 4)
+  rejectedQty      Decimal @map("rejected_qty") @db.Decimal(18, 4)
+  batchNo          String? @map("batch_no") @db.VarChar(120)
+  baseQuantity     Decimal @map("base_quantity") @db.Decimal(18, 4)
+  acceptedBaseQty  Decimal @map("accepted_base_qty") @db.Decimal(18, 4)
+  rejectedBaseQty  Decimal @map("rejected_base_qty") @db.Decimal(18, 4)
 
   goodsReceipt      GoodsReceipt      @relation(fields: [goodsReceiptId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   purchaseOrderItem PurchaseOrderItem @relation(fields: [poItemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   item              Material          @relation(fields: [itemId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stage             ProjectStage?      @relation("GoodsReceiptItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage             ProjectStage?     @relation("GoodsReceiptItemStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([goodsReceiptId, poItemId], map: "goods_receipt_items_receipt_po_item_idx")
   @@index([itemId], map: "goods_receipt_items_item_idx")
@@ -1453,11 +1452,11 @@ model MaterialIssue {
   issuedBy    String   @map("issued_by") @db.Uuid
   status      String   @db.VarChar(32)
 
-  company   Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  project   Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  stage     ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
-  warehouse Warehouse     @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  issuer    User          @relation("MaterialIssueIssuedBy", fields: [issuedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company   Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  project   Project             @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage     ProjectStage?       @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  warehouse Warehouse           @relation(fields: [warehouseId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  issuer    User                @relation("MaterialIssueIssuedBy", fields: [issuedBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   items     MaterialIssueItem[]
 
   @@unique([companyId, issueNo], map: "material_issues_company_issue_no_uq")
@@ -1519,9 +1518,9 @@ model SubcontractContract {
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  subcontractor Subcontractor @relation(fields: [subcontractorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company       Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project       Project              @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  subcontractor Subcontractor        @relation(fields: [subcontractorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   payments      SubcontractPayment[]
 
   @@unique([id, companyId], map: "subcontract_contracts_id_company_uq")
@@ -1579,23 +1578,23 @@ model Equipment {
 
 /// Final Module 12 effective Project/Stage assignment for one Equipment item.
 model EquipmentAssignment {
-  id          String    @id @default(uuid()) @db.Uuid
-  equipmentId String    @map("equipment_id") @db.Uuid
-  projectId   String    @map("project_id") @db.Uuid
-  stageId     String?   @map("stage_id") @db.Uuid
-  fromDate    DateTime  @map("from_date") @db.Date
-  fromMinute  Int       @default(0) @map("from_minute")
-  toDate      DateTime? @map("to_date") @db.Date
-  toMinute    Int?      @map("to_minute")
-  quantity    Decimal   @default(1) @db.Decimal(18, 4)
-  rate        Decimal   @db.Decimal(18, 4)
-  rateUnit    String    @map("rate_unit") @db.VarChar(32)
-  estimatedAmount Decimal? @map("estimated_amount") @db.Decimal(18, 2)
-  status      String    @db.VarChar(32)
+  id              String    @id @default(uuid()) @db.Uuid
+  equipmentId     String    @map("equipment_id") @db.Uuid
+  projectId       String    @map("project_id") @db.Uuid
+  stageId         String?   @map("stage_id") @db.Uuid
+  fromDate        DateTime  @map("from_date") @db.Date
+  fromMinute      Int       @default(0) @map("from_minute")
+  toDate          DateTime? @map("to_date") @db.Date
+  toMinute        Int?      @map("to_minute")
+  quantity        Decimal   @default(1) @db.Decimal(18, 4)
+  rate            Decimal   @db.Decimal(18, 4)
+  rateUnit        String    @map("rate_unit") @db.VarChar(32)
+  estimatedAmount Decimal?  @map("estimated_amount") @db.Decimal(18, 2)
+  status          String    @db.VarChar(32)
 
-  equipment Equipment     @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stage     ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  equipment Equipment        @relation(fields: [equipmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project   Project          @relation(fields: [projectId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage     ProjectStage?    @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
   usage     EquipmentUsage[]
 
   @@index([equipmentId, fromDate, toDate], map: "equipment_assignments_equipment_dates_idx")
@@ -1614,8 +1613,8 @@ model EquipmentUsage {
   enteredBy    String   @map("entered_by") @db.Uuid
   status       String   @db.VarChar(32)
 
-  assignment EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  enteredByUser User               @relation("EquipmentUsageEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  assignment    EquipmentAssignment @relation(fields: [assignmentId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  enteredByUser User                @relation("EquipmentUsageEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([assignmentId, usageDate], map: "equipment_usage_assignment_date_idx")
   @@index([enteredBy, usageDate], map: "equipment_usage_entered_by_date_idx")
@@ -1642,27 +1641,28 @@ model EquipmentMaintenance {
 /// Final Module 3 Company-owned Employee master used by Project Team and Payroll.
 /// Effective-dated salary/wage/rate history is owned only by EmployeeCompensation.
 model Employee {
-  id             String    @id @default(uuid()) @db.Uuid
-  companyId      String    @map("company_id") @db.Uuid
-  employeeNo     String    @map("employee_no") @db.VarChar(100)
-  userId         String?   @map("user_id") @db.Uuid
-  name           String    @db.VarChar(200)
-  cnicOrId       String?   @map("cnic_or_id") @db.VarChar(100)
-  phone          String?   @db.VarChar(50)
-  email          String?   @db.VarChar(320)
-  department     String    @db.VarChar(160)
-  jobTitle       String    @map("job_title") @db.VarChar(160)
-  employmentType String    @map("employee_type") @db.VarChar(64)
-  joinDate       DateTime  @map("joining_date") @db.Date
-  status         String    @db.VarChar(32)
+  id             String   @id @default(uuid()) @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  employeeNo     String   @map("employee_no") @db.VarChar(100)
+  userId         String?  @map("user_id") @db.Uuid
+  name           String   @db.VarChar(200)
+  cnicOrId       String?  @map("cnic_or_id") @db.VarChar(100)
+  phone          String?  @db.VarChar(50)
+  email          String?  @db.VarChar(320)
+  department     String   @db.VarChar(160)
+  jobTitle       String   @map("job_title") @db.VarChar(160)
+  employmentType String   @map("employee_type") @db.VarChar(64)
+  joinDate       DateTime @map("joining_date") @db.Date
+  status         String   @db.VarChar(32)
 
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  loginUser     User?          @relation("EmployeeLoginUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  projectTeamAssignments        ProjectTeamAssignment[]
-  attendanceEntries             AttendanceEntry[]
-  compensations                 EmployeeCompensation[]
-  employmentHistory             EmployeeEmploymentHistory[]
-  payrollLines                  PayrollLine[]
+  company                Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  loginUser              User?                       @relation("EmployeeLoginUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  projectTeamAssignments ProjectTeamAssignment[]
+  attendanceEntries      AttendanceEntry[]
+  compensations          EmployeeCompensation[]
+  employmentHistory      EmployeeEmploymentHistory[]
+  payrollLines           PayrollLine[]
+  payrollPayments        PayrollPayment[]
 
   @@unique([companyId, employeeNo], map: "employees_company_employee_no_uq")
   @@unique([id, companyId], map: "employees_id_company_uq")
@@ -1676,26 +1676,26 @@ model Employee {
 /// Final Module 13 daily attendance/work record.
 /// Company, Project, optional Stage and actor scope are enforced by relations plus the Final-21 migration trigger.
 model AttendanceEntry {
-  id            String    @id @default(uuid()) @db.Uuid
-  companyId     String    @map("company_id") @db.Uuid
-  employeeId    String    @map("employee_id") @db.Uuid
-  projectId     String    @map("project_id") @db.Uuid
-  stageId       String?   @map("stage_id") @db.Uuid
-  workDate      DateTime  @map("work_date") @db.Date
-  status        String    @db.VarChar(32)
-  hours         Decimal?  @db.Decimal(18, 4)
-  overtimeHours Decimal?  @map("overtime_hours") @db.Decimal(18, 4)
-  enteredBy     String    @map("entered_by") @db.Uuid
-  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id            String   @id @default(uuid()) @db.Uuid
+  companyId     String   @map("company_id") @db.Uuid
+  employeeId    String   @map("employee_id") @db.Uuid
+  projectId     String   @map("project_id") @db.Uuid
+  stageId       String?  @map("stage_id") @db.Uuid
+  workDate      DateTime @map("work_date") @db.Date
+  status        String   @db.VarChar(32)
+  hours         Decimal? @db.Decimal(18, 4)
+  overtimeHours Decimal? @map("overtime_hours") @db.Decimal(18, 4)
+  enteredBy     String   @map("entered_by") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   employee      Employee      @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   stage         ProjectStage? @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
-  enteredByUser User           @relation("AttendanceEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  enteredByUser User          @relation("AttendanceEnteredBy", fields: [enteredBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  @@unique([companyId, employeeId, projectId, workDate], map: "attendance_entries_company_employee_project_date_uq")
+  @@unique([companyId, employeeId, projectId, stageId, workDate], map: "attendance_entries_company_employee_project_stage_date_uq")
   @@index([companyId, projectId, workDate], map: "attendance_entries_company_project_date_idx")
   @@index([companyId, employeeId, workDate], map: "attendance_entries_company_employee_date_idx")
   @@index([stageId, workDate], map: "attendance_entries_stage_date_idx")
@@ -1740,15 +1740,15 @@ model EmployeeCompensation {
 /// Final Module 13 Payroll Run header.
 /// Calculation lines are replaceable until finalization; finalized history is immutable.
 model PayrollRun {
-  id          String    @id @default(uuid()) @db.Uuid
-  companyId   String    @map("company_id") @db.Uuid
-  periodStart DateTime  @map("period_start") @db.Date
-  periodEnd   DateTime  @map("period_end") @db.Date
+  id                 String    @id @default(uuid()) @db.Uuid
+  companyId          String    @map("company_id") @db.Uuid
+  periodStart        DateTime  @map("period_start") @db.Date
+  periodEnd          DateTime  @map("period_end") @db.Date
   status             String    @db.VarChar(32)
   overtimeMultiplier Decimal?  @map("overtime_multiplier") @db.Decimal(8, 4)
   createdBy          String    @map("created_by") @db.Uuid
   finalizedAt        DateTime? @map("finalized_at") @db.Timestamptz(6)
-  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   creator User          @relation("PayrollCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1770,9 +1770,10 @@ model PayrollLine {
   netAmount             Decimal @map("net_amount") @db.Decimal(18, 2)
   projectAllocationJson Json    @map("project_allocation_json") @db.JsonB
 
-  payrollRun PayrollRun @relation(fields: [payrollRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  employee   Employee   @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payrollRun PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   payslip    Payslip?
+  payments   PayrollPayment[]
 
   @@unique([payrollRunId, employeeId], map: "payroll_lines_run_employee_uq")
   @@index([employeeId, payrollRunId], map: "payroll_lines_employee_run_idx")
@@ -1793,6 +1794,38 @@ model Payslip {
   @@map("payslips")
 }
 
+/// Employee salary settlement against one finalized Payroll line.
+/// POSTED rows reduce Payroll Payable and Cash/Bank; REVERSED rows retain history while their Finance reversal restores both balances.
+model PayrollPayment {
+  id                String    @id @default(uuid()) @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  payrollLineId     String    @map("payroll_line_id") @db.Uuid
+  employeeId        String    @map("employee_id") @db.Uuid
+  paymentNo         String    @map("payment_no") @db.VarChar(100)
+  paymentDate       DateTime  @map("payment_date") @db.Date
+  amount            Decimal   @db.Decimal(18, 2)
+  cashBankAccountId String    @map("cash_bank_account_id") @db.Uuid
+  reference         String?   @db.VarChar(200)
+  status            String    @default("POSTED") @db.VarChar(32)
+  createdBy         String    @map("created_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  reversalDate      DateTime? @map("reversal_date") @db.Date
+  reversedAt        DateTime? @map("reversed_at") @db.Timestamptz(6)
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payrollLine     PayrollLine     @relation(fields: [payrollLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee        Employee        @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator         User            @relation("PayrollPaymentCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+
+  @@unique([companyId, paymentNo], map: "payroll_payments_company_payment_no_uq")
+  @@unique([id, companyId], map: "payroll_payments_id_company_uq")
+  @@index([companyId, employeeId, paymentDate], map: "payroll_payments_company_employee_date_idx")
+  @@index([payrollLineId, status], map: "payroll_payments_line_status_idx")
+  @@index([cashBankAccountId, paymentDate], map: "payroll_payments_cash_bank_date_idx")
+  @@map("payroll_payments")
+}
+
 /// Final Module 14 Company-owned Site Expense category.
 /// The optional default GL account is only a posting default; Finance remains the account owner.
 model ExpenseCategory {
@@ -1803,8 +1836,8 @@ model ExpenseCategory {
   defaultGlAccountId String? @map("default_gl_account_id") @db.Uuid
   status             String  @db.VarChar(32)
 
-  company          Company      @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  defaultGlAccount GlAccount?   @relation(fields: [defaultGlAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company          Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  defaultGlAccount GlAccount?    @relation(fields: [defaultGlAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   siteExpenses     SiteExpense[]
 
   @@unique([companyId, code], map: "expense_categories_company_code_uq")
@@ -1869,11 +1902,11 @@ model SupplierInvoice {
   taxAmount       Decimal   @map("tax_amount") @db.Decimal(18, 2)
   totalAmount     Decimal   @map("total_amount") @db.Decimal(18, 2)
 
-  company       Company        @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vendor        Vendor         @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  project       Project        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  purchaseOrder PurchaseOrder? @relation(fields: [purchaseOrderId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
-  goodsReceipt  GoodsReceipt?  @relation(fields: [goodsReceiptId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
+  company       Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor        Vendor                      @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project       Project                     @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  purchaseOrder PurchaseOrder?              @relation(fields: [purchaseOrderId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
+  goodsReceipt  GoodsReceipt?               @relation(fields: [goodsReceiptId, companyId, projectId, vendorId], references: [id, companyId, projectId, vendorId], onDelete: Restrict, onUpdate: Restrict)
   lines         SupplierInvoiceLine[]
   allocations   SupplierPaymentAllocation[]
 
@@ -1897,8 +1930,8 @@ model SupplierInvoiceLine {
   expenseOrInventoryAccountId String? @map("expense_or_inventory_account_id") @db.Uuid
 
   supplierInvoice           SupplierInvoice @relation(fields: [supplierInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stage                     ProjectStage?    @relation("SupplierInvoiceLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  expenseOrInventoryAccount GlAccount?       @relation("SupplierInvoiceLineAccount", fields: [expenseOrInventoryAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage                     ProjectStage?   @relation("SupplierInvoiceLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  expenseOrInventoryAccount GlAccount?      @relation("SupplierInvoiceLineAccount", fields: [expenseOrInventoryAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([supplierInvoiceId, stageId], map: "supplier_invoice_lines_invoice_stage_idx")
   @@index([expenseOrInventoryAccountId], map: "supplier_invoice_lines_account_idx")
@@ -1919,10 +1952,10 @@ model SupplierPayment {
   reference         String?  @db.VarChar(200)
   status            String   @default("DRAFT") @db.VarChar(32)
 
-  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vendor          Vendor          @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  project         Project?        @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company         Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor          Vendor                      @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project         Project?                    @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount             @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   allocations     SupplierPaymentAllocation[]
 
   @@unique([companyId, paymentNo], map: "supplier_payments_company_payment_no_uq")
@@ -2007,8 +2040,8 @@ model ProgressClaimLine {
   billingProgressPercent Decimal? @map("billing_progress_percent") @db.Decimal(7, 4)
   amount                 Decimal  @map("current_value") @db.Decimal(18, 2)
 
-  claim ProgressClaim  @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  stage ProjectStage?  @relation("ProgressClaimLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  claim ProgressClaim @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  stage ProjectStage? @relation("ProgressClaimLineStage", fields: [stageId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([claimId, stageId], map: "progress_claim_lines_claim_stage_idx")
   @@index([stageId], map: "progress_claim_lines_stage_idx")
@@ -2031,11 +2064,11 @@ model ClientInvoice {
   taxAmount   Decimal   @map("tax_amount") @db.Decimal(18, 2)
   totalAmount Decimal   @map("total_receivable") @db.Decimal(18, 2)
 
-  company Company             @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  project Project             @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  client  Client              @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  claim   ProgressClaim?      @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  lines   ClientInvoiceLine[]
+  company            Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project            Project                   @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  client             Client                    @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  claim              ProgressClaim?            @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  lines              ClientInvoiceLine[]
   receiptAllocations ClientReceiptAllocation[]
 
   @@index([companyId, invoiceNo], map: "client_invoices_company_invoice_no_idx")
@@ -2083,12 +2116,12 @@ model ClientReceipt {
   postedAt          DateTime? @map("posted_at") @db.Timestamptz(6)
   createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
-  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  client          Client          @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  project         Project         @relation(fields: [projectId, companyId, clientId], references: [id, companyId, clientId], onDelete: Restrict, onUpdate: Restrict)
-  stage           ProjectStage?   @relation("ClientReceiptStage", fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
-  cashBankAccount CashBankAccount @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  creator         User            @relation("ClientReceiptCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  company         Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client          Client                    @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project         Project                   @relation(fields: [projectId, companyId, clientId], references: [id, companyId, clientId], onDelete: Restrict, onUpdate: Restrict)
+  stage           ProjectStage?             @relation("ClientReceiptStage", fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount           @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator         User                      @relation("ClientReceiptCreator", fields: [createdBy, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   allocations     ClientReceiptAllocation[]
 
   @@unique([companyId, receiptNo], map: "client_receipts_company_receipt_no_uq")
@@ -2111,9 +2144,9 @@ model ClientReceiptAllocation {
   allocatedAt     DateTime @default(now()) @map("allocated_at") @db.Timestamptz(6)
   allocatedBy     String   @map("allocated_by") @db.Uuid
 
-  receipt    ClientReceipt @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  invoice    ClientInvoice @relation(fields: [clientInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  actor      User          @relation("ClientReceiptAllocationActor", fields: [allocatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  receipt ClientReceipt @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  invoice ClientInvoice @relation(fields: [clientInvoiceId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  actor   User          @relation("ClientReceiptAllocationActor", fields: [allocatedBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
   @@index([receiptId, allocatedAt], map: "client_receipt_allocations_receipt_at_idx")
   @@index([clientInvoiceId, allocatedAt], map: "client_receipt_allocations_invoice_at_idx")
@@ -2168,13 +2201,13 @@ model ReportRun {
 
 /// Final Module 20 user-owned saved report filters.
 model SavedReportFilter {
-  id         String   @id @default(uuid()) @db.Uuid
-  companyId  String   @map("company_id") @db.Uuid
-  userId     String   @map("user_id") @db.Uuid
-  reportCode String   @map("report_code") @db.VarChar(120)
-  name       String   @db.VarChar(200)
-  filtersJson Json    @map("filters_json") @db.JsonB
-  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id          String   @id @default(uuid()) @db.Uuid
+  companyId   String   @map("company_id") @db.Uuid
+  userId      String   @map("user_id") @db.Uuid
+  reportCode  String   @map("report_code") @db.VarChar(120)
+  name        String   @db.VarChar(200)
+  filtersJson Json     @map("filters_json") @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   user    User    @relation("SavedReportFilterUser", fields: [userId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)

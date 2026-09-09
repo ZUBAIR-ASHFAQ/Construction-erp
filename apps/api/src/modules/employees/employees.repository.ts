@@ -201,6 +201,20 @@ export class EmployeesRepository {
     });
   }
 
+  /** Find finalized Payroll for this Employee that a new effective rate would retroactively affect. */
+  async findFinalizedPayrollAffectedByCompensation(employeeId: string, effectiveFrom: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollRun.findFirst({
+      where: scope.where({
+        status: 'FINALIZED',
+        periodEnd: { gte: effectiveFrom },
+        lines: { some: { employeeId } }
+      }),
+      orderBy: [{ periodEnd: 'desc' }, { id: 'desc' }],
+      select: { id: true, periodStart: true, periodEnd: true }
+    });
+  }
+
   /** Close only the current open compensation record. */
   async closeEmployeeCompensation(employeeId: string, compensationId: string, effectiveTo: Date) {
     const scope = requireCompanyRepositoryScope();

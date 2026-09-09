@@ -5,17 +5,27 @@ import type { z } from 'zod';
 import { authenticateRequest } from '../../plugins/authentication.js';
 import {
   attendanceIdParamsSchema,
+  attendanceAssignmentResponseSchema,
   attendanceResponseSchema,
   calculatePayrollRunBodySchema,
   createAttendanceBodySchema,
+  createPayrollPaymentBodySchema,
   createPayrollRunBodySchema,
+  employeeSalaryLedgerResponseSchema,
   finalizePayrollRunBodySchema,
   listAttendanceQuerySchema,
+  listAttendanceAssignmentsQuerySchema,
   listAttendanceResponseSchema,
   listPayrollRunsQuerySchema,
   listPayrollRunsResponseSchema,
+  listPayrollPaymentsQuerySchema,
+  listPayrollPaymentsResponseSchema,
+  payrollCashBankAccountResponseSchema,
+  payrollEntityIdParamsSchema,
+  payrollPaymentResponseSchema,
   payrollRunIdParamsSchema,
   payrollRunResponseSchema,
+  reversePayrollPaymentBodySchema,
   updateAttendanceBodySchema
 } from './labour-payroll.schema.js';
 import { LabourPayrollService } from './labour-payroll.service.js';
@@ -36,6 +46,7 @@ const ATTENDANCE_QUERY_JSON_SCHEMA = {
   properties: { projectId: UUID_JSON_SCHEMA, employeeId: UUID_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, toDate: DATE_JSON_SCHEMA, ...PAGE_PROPERTIES }
 } as const;
 const PAYROLL_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: PAGE_PROPERTIES } as const;
+const PAYROLL_PAYMENT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { employeeId: UUID_JSON_SCHEMA, payrollRunId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['POSTED', 'REVERSED'] }, ...PAGE_PROPERTIES } } as const;
 const ATTENDANCE_BODY_PROPERTIES = {
   stageId: NULLABLE_UUID_JSON_SCHEMA,
   status: { type: 'string', enum: ['PRESENT', 'ABSENT'] },
@@ -53,7 +64,19 @@ const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
 } as const;
 const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
 const EMPTY_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, maxProperties: 0 } as const;
+const MONEY_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' } as const;
+const NULLABLE_TEXT_JSON_SCHEMA = { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] } as const;
+const CREATE_PAYROLL_PAYMENT_BODY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['payrollLineId', 'paymentDate', 'amount', 'cashBankAccountId'],
+  properties: { payrollLineId: UUID_JSON_SCHEMA, paymentDate: DATE_JSON_SCHEMA, amount: MONEY_JSON_SCHEMA, cashBankAccountId: UUID_JSON_SCHEMA, reference: NULLABLE_TEXT_JSON_SCHEMA }
+} as const;
+const ATTENDANCE_ASSIGNMENTS_QUERY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['employeeId', 'workDate'],
+  properties: { employeeId: UUID_JSON_SCHEMA, workDate: DATE_JSON_SCHEMA }
+} as const;
+const REVERSE_PAYROLL_PAYMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['reversalDate'], properties: { reversalDate: DATE_JSON_SCHEMA } } as const;
 const SUCCESS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['data'], properties: { data: { type: 'object', additionalProperties: true } } } as const;
+const SUCCESS_ARRAY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['data'], properties: { data: { type: 'array', items: { type: 'object', additionalProperties: true } } } } as const;
 const ERROR_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['error'],
   properties: { error: { type: 'object', additionalProperties: false, required: ['code', 'message', 'requestId'], properties: {
@@ -88,7 +111,7 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return value.trim();
 }
 
-/** Register the exact eight Final-21 Labour / Attendance & Payroll routes. */
+/** Register the Labour / Attendance, Payroll and Employee salary-settlement routes. */
 export async function registerLabourPayrollRoutes(app: FastifyInstance, options: LabourPayrollRoutesOptions): Promise<void> {
   const service = new LabourPayrollService(options.database);
 
@@ -162,6 +185,60 @@ export async function registerLabourPayrollRoutes(app: FastifyInstance, options:
     await authenticateRequest(request, options.database);
     const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
     const data = payrollRunResponseSchema.parse(await service.getPayrollRun(params.id));
+    return reply.send({ data });
+  });
+
+  app.get('/api/v1/attendance/assignments', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'listAttendanceAssignments', summary: 'List effective Employee Project and Stage attendance destinations', security: BEARER_SECURITY, querystring: ATTENDANCE_ASSIGNMENTS_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_ARRAY_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const query = parseRequest(listAttendanceAssignmentsQuerySchema, request.query, 'query');
+    const data = attendanceAssignmentResponseSchema.array().parse(await service.listAttendanceAssignments(query));
+    return reply.send({ data });
+  });
+
+  app.get('/api/v1/payroll/cash-bank-accounts', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'listPayrollCashBankAccounts', summary: 'List active Cash and Bank accounts for salary payment', security: BEARER_SECURITY, response: { 200: SUCCESS_ARRAY_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const data = payrollCashBankAccountResponseSchema.array().parse(await service.listPayrollCashBankAccounts());
+    return reply.send({ data });
+  });
+
+  app.get('/api/v1/payroll/payments', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'listPayrollPayments', summary: 'List Employee salary payments', security: BEARER_SECURITY, querystring: PAYROLL_PAYMENT_LIST_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const query = parseRequest(listPayrollPaymentsQuerySchema, request.query, 'query');
+    const data = listPayrollPaymentsResponseSchema.parse(await service.listPayrollPayments(query));
+    return reply.send({ data });
+  });
+
+  app.post('/api/v1/payroll/payments', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'createPayrollPayment', summary: 'Create and post a partial or full Employee salary payment', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, body: CREATE_PAYROLL_PAYMENT_BODY_JSON_SCHEMA, response: { 201: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const body = parseRequest(createPayrollPaymentBodySchema, request.body, 'body');
+    const data = payrollPaymentResponseSchema.parse(await service.createPayrollPayment(body, readIdempotencyKey(request)));
+    return reply.code(201).send({ data });
+  });
+
+  app.post('/api/v1/payroll/payments/:id/reverse', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'reversePayrollPayment', summary: 'Reverse a posted Employee salary payment', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: REVERSE_PAYROLL_PAYMENT_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(payrollEntityIdParamsSchema, request.params, 'params');
+    const body = parseRequest(reversePayrollPaymentBodySchema, request.body, 'body');
+    const data = payrollPaymentResponseSchema.parse(await service.reversePayrollPayment(params.id, body, readIdempotencyKey(request)));
+    return reply.send({ data });
+  });
+
+  app.get('/api/v1/payroll/employees/:id/ledger', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'getEmployeeSalaryLedger', summary: 'Read one Employee salary ledger', security: BEARER_SECURITY, params: ID_PARAMS_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(payrollEntityIdParamsSchema, request.params, 'params');
+    const data = employeeSalaryLedgerResponseSchema.parse(await service.getEmployeeSalaryLedger(params.id));
     return reply.send({ data });
   });
 }

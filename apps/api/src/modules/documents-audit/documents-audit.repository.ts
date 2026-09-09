@@ -109,25 +109,30 @@ function assertPageWindow(input: Readonly<{ skip: number; take: number }>): void
   }
 }
 
-/** Build the nullable Project filter shared by Document list queries. */
+/** Build Project visibility from direct ownership and trusted Project links. */
 function buildProjectVisibilityWhere(input: ProjectVisibilityRepositoryInput) {
   if (input.allowedProjectIds === null) {
-    return input.includeCompanyWide ? {} : { projectId: { not: null } };
-  }
-
-  const projectIds = [...new Set(input.allowedProjectIds)];
-  if (input.includeCompanyWide) {
+    if (input.includeCompanyWide) return {};
     return {
       AND: [{
         OR: [
-          { projectId: null },
-          { projectId: { in: projectIds } }
+          { projectId: { not: null } },
+          { links: { some: { projectId: { not: null } } } }
         ]
       }]
     };
   }
 
-  return { projectId: { in: projectIds } };
+  const projectIds = [...new Set(input.allowedProjectIds)];
+  return {
+    AND: [{
+      OR: [
+        ...(input.includeCompanyWide ? [{ projectId: null }] : []),
+        { projectId: { in: projectIds } },
+        { links: { some: { projectId: { in: projectIds } } } }
+      ]
+    }]
+  };
 }
 
 /**
@@ -210,7 +215,10 @@ export class DocumentsRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.document.findFirst({
       where: scope.where({ id }),
-      include: { currentVersion: true }
+      include: {
+        currentVersion: true,
+        links: { select: { linkedResourceType: true, projectId: true } }
+      }
     });
   }
 

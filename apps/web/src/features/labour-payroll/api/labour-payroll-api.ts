@@ -22,6 +22,17 @@ export type AttendanceEntry = Readonly<{
 }>;
 
 export type AttendancePage = Readonly<{ items: AttendanceEntry[]; total: number; page: number; pageSize: number }>;
+export type AttendanceAssignment = Readonly<{
+  id: string;
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  stageId: string | null;
+  stageCode: string | null;
+  stageName: string | null;
+  fromDate: string;
+  toDate: string | null;
+}>;
 
 export type PayrollAllocation = Readonly<{
   projectId: string;
@@ -38,6 +49,8 @@ export type PayrollLine = Readonly<{
   grossAmount: string;
   deductions: string;
   netAmount: string;
+  paidAmount: string;
+  outstandingAmount: string;
   projectAllocation: PayrollAllocation[];
   payslip: Readonly<{ id: string; documentId: string | null; generatedAt: string | null }> | null;
 }>;
@@ -86,6 +99,24 @@ export type UpdateAttendanceInput = Readonly<{
 }>;
 export type CreatePayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
 export type CalculatePayrollRunInput = Readonly<{ overtimeMultiplier?: string }>;
+export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; balance: string }>;
+export type PayrollPaymentStatus = 'POSTED' | 'REVERSED';
+export type PayrollPayment = Readonly<{
+  id: string; payrollLineId: string; payrollRunId: string; employeeId: string; employeeNo: string; employeeName: string;
+  paymentNo: string; paymentDate: string; payrollPeriod: string; amount: string; cashBankAccountId: string;
+  cashBankAccountName: string; reference: string | null; status: PayrollPaymentStatus; reversalDate: string | null;
+  createdByName: string; createdAt: string;
+}>;
+export type PayrollPaymentPage = Readonly<{ items: PayrollPayment[]; total: number; page: number; pageSize: number }>;
+export type CreatePayrollPaymentInput = Readonly<{ payrollLineId: string; paymentDate: string; amount: string; cashBankAccountId: string; reference?: string | null }>;
+export type EmployeeSalaryLedger = Readonly<{
+  employee: Readonly<{ id: string; employeeNo: string; name: string }>;
+  totalSalary: string; totalPaid: string; outstanding: string;
+  entries: ReadonlyArray<Readonly<{
+    id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL'; reference: string;
+    debit: string; credit: string; balance: string; payrollRunId: string; payrollLineId: string; paymentId: string | null;
+  }>>;
+}>;
 
 /** Build one bounded attendance query without browser-owned Company scope. */
 function attendanceQuery(input: ListAttendanceInput): string {
@@ -107,6 +138,12 @@ function commandHeaders(): HeadersInit {
 /** Load bounded attendance history. */
 export function listAttendance(input: ListAttendanceInput = {}): Promise<AttendancePage> {
   return authenticatedRequest<AttendancePage>(`attendance${attendanceQuery(input)}`);
+}
+
+/** Load effective Project/Stage destinations for one Employee attendance date. */
+export function listAttendanceAssignments(employeeId: string, workDate: string): Promise<AttendanceAssignment[]> {
+  const query = new URLSearchParams({ employeeId, workDate });
+  return authenticatedRequest<AttendanceAssignment[]>(`attendance/assignments?${query}`);
 }
 
 /** Create one authoritative daily attendance record. */
@@ -142,4 +179,33 @@ export function finalizePayrollRun(payrollRunId: string): Promise<PayrollRun> {
 /** Load one Payroll Run with its calculated Employee lines. */
 export function getPayrollRun(payrollRunId: string): Promise<PayrollRun> {
   return authenticatedRequest<PayrollRun>(`payroll/runs/${payrollRunId}`);
+}
+
+/** Load active Cash/Bank accounts available for Employee salary settlement. */
+export function listPayrollCashBankAccounts(): Promise<PayrollCashBankAccount[]> {
+  return authenticatedRequest<PayrollCashBankAccount[]>('payroll/cash-bank-accounts');
+}
+
+/** Load bounded Employee salary-payment history. */
+export function listPayrollPayments(input: Readonly<{ employeeId?: string; payrollRunId?: string; status?: PayrollPaymentStatus }> = {}): Promise<PayrollPaymentPage> {
+  const query = new URLSearchParams({ page: '1', pageSize: '100' });
+  if (input.employeeId) query.set('employeeId', input.employeeId);
+  if (input.payrollRunId) query.set('payrollRunId', input.payrollRunId);
+  if (input.status) query.set('status', input.status);
+  return authenticatedRequest<PayrollPaymentPage>(`payroll/payments?${query}`);
+}
+
+/** Post one partial or full payment against a finalized Employee Payroll line. */
+export function createPayrollPayment(input: CreatePayrollPaymentInput): Promise<PayrollPayment> {
+  return authenticatedRequest<PayrollPayment>('payroll/payments', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
+/** Reverse one posted salary payment through a compensating Finance journal. */
+export function reversePayrollPayment(paymentId: string, reversalDate: string): Promise<PayrollPayment> {
+  return authenticatedRequest<PayrollPayment>(`payroll/payments/${paymentId}/reverse`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify({ reversalDate }) });
+}
+
+/** Load one source-derived Employee salary ledger. */
+export function getEmployeeSalaryLedger(employeeId: string): Promise<EmployeeSalaryLedger> {
+  return authenticatedRequest<EmployeeSalaryLedger>(`payroll/employees/${employeeId}/ledger`);
 }

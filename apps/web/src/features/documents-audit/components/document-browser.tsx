@@ -4,8 +4,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useAuth, usePermission } from '../../administration/hooks/auth.js';
 import { useProjects } from '../../projects/hooks/projects.js';
-import { useDocuments, useUploadDocument } from '../hooks/documents.js';
-import type { ListDocumentsInput } from '../api/documents-api.js';
+import { useDocumentDownload, useDocuments, useUploadDocument } from '../hooks/documents.js';
+import type { DocumentListItem, ListDocumentsInput } from '../api/documents-api.js';
 
 const filterSchema = z.object({
   search: z.string().trim().max(200),
@@ -46,10 +46,14 @@ function buildProjectOptions(
     }));
   }
 
-  return (accessibleProjectIds ?? []).map((projectId) => ({
-    id: projectId,
-    label: `Assigned Project · ${projectId}`
-  }));
+  const projectById = new Map(namedProjects.map((project) => [project.id, project] as const));
+  return (accessibleProjectIds ?? []).map((projectId) => {
+    const project = projectById.get(projectId);
+    return {
+      id: projectId,
+      label: project ? `${project.projectCode} · ${project.name}` : `Assigned Project · ${projectId}`
+    };
+  });
 }
 
 /** Browse and upload company or Project documents without a separate folder abstraction. */
@@ -59,10 +63,12 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
   const canReadProjects = usePermission('projects.read');
   const [filters, setFilters] = useState<ListDocumentsInput>({});
   const [page, setPage] = useState(1);
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
   const documentsQuery = useDocuments({ ...filters, page, pageSize: 20 });
   const projectNamesQuery = useProjects(
     { page: 1, pageSize: 100 },
-    auth.identity?.projectScope.kind === 'all' && canReadProjects
+    (auth.identity?.projectScope.kind === 'all' || auth.identity?.projectScope.kind === 'restricted') && canReadProjects
   );
   const projectOptions = buildProjectOptions(
     documentsQuery.data?.accessibleProjectIds,
@@ -70,6 +76,7 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
   );
   const canUpload = canCompanyUpload || projectOptions.length > 0;
   const uploadMutation = useUploadDocument();
+  const downloadMutation = useDocumentDownload();
 
   const filterForm = useForm<FilterValues>({
     resolver: zodResolver(filterSchema),
@@ -99,6 +106,30 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
       ...(values.status ? { status: values.status } : {})
     });
     setPage(1);
+  }
+
+  /** Download one current document version through the existing authorized signed URL. */
+  async function downloadDocument(document: DocumentListItem): Promise<void> {
+    setDownloadError(null);
+    setDownloadingDocumentId(document.id);
+    try {
+      const download = await downloadMutation.mutateAsync(document.id);
+      const response = await fetch(download.url);
+      if (!response.ok) throw new Error(`Document download failed with status ${response.status}.`);
+
+      const objectUrl = URL.createObjectURL(await response.blob());
+      const anchor = window.document.createElement('a');
+      anchor.href = objectUrl;
+      anchor.download = download.version.originalName || document.fileName || document.title;
+      window.document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : 'The document could not be downloaded.');
+    } finally {
+      setDownloadingDocumentId(null);
+    }
   }
 
   /** Upload one file through the signed Module 21 upload flow. */
@@ -190,6 +221,7 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
 
         {documentsQuery.isPending && <p>Loading documents…</p>}
         {documentsQuery.error instanceof Error && <div className="form-error" role="alert">{documentsQuery.error.message}</div>}
+        {downloadError && <div className="form-error" role="alert">{downloadError}</div>}
         {documentsQuery.data && documentsQuery.data.items.length === 0 && <p className="muted">No documents match the current filters.</p>}
 
         {documentsQuery.data && documentsQuery.data.items.length > 0 && (
@@ -204,26 +236,27 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
                   <th>Current version</th>
                   <th>Status</th>
                   <th>Created / updated</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody>
                 {documentsQuery.data.items.map((document) => (
                   <tr key={document.id} className={props.selectedDocumentId === document.id ? 'selected-row' : undefined}>
-                    <td>
+                    <td data-label="Document">
                       <button type="button" className="link-button" onClick={() => props.onSelectDocument(document.id)}>
                         {document.title}
                       </button>
                       <span>{document.documentNo ?? 'No document number'}</span>
                       <span>{document.id}</span>
                     </td>
-                    <td>{document.projectId ?? 'Company-wide'}</td>
-                    <td>
+                    <td data-label="Project">{document.projectId ?? 'Company-wide'}</td>
+                    <td data-label="File">
                       {document.fileName}
                       <span>{document.mimeType}</span>
                       <span>{document.sizeBytes.toLocaleString()} bytes</span>
                     </td>
-                    <td>{document.category}</td>
-                    <td>
+                    <td data-label="Category">{document.category}</td>
+                    <td data-label="Current version">
                       {document.currentVersion ? `v${document.currentVersion.versionNo}` : '—'}
                       {document.currentVersion && (
                         <>
@@ -236,11 +269,21 @@ export function DocumentBrowser(props: DocumentBrowserProps) {
                         </>
                       )}
                     </td>
-                    <td>{document.status}</td>
-                    <td>
+                    <td data-label="Status">{document.status}</td>
+                    <td data-label="Created / updated">
                       {document.createdBy}
                       <span>Created: {new Date(document.createdAt).toLocaleString()}</span>
                       <span>Updated: {new Date(document.updatedAt).toLocaleString()}</span>
+                    </td>
+                    <td data-label="Action">
+                      <button
+                        type="button"
+                        className="secondary-button"
+                        disabled={!document.currentVersion || downloadingDocumentId === document.id}
+                        onClick={() => void downloadDocument(document)}
+                      >
+                        {downloadingDocumentId === document.id ? 'Downloading…' : 'Download'}
+                      </button>
                     </td>
                   </tr>
                 ))}

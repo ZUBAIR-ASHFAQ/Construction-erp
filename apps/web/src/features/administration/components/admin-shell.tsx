@@ -148,7 +148,9 @@ const LABOUR_PAYROLL_PERMISSIONS = [
   'payroll.read',
   'payroll.create',
   'payroll.calculate',
-  'payroll.finalize'
+  'payroll.finalize',
+  'payroll.payments.create',
+  'payroll.payments.reverse'
 ] as const;
 const SITE_EXPENSE_PERMISSIONS = [
   'site_expenses.read',

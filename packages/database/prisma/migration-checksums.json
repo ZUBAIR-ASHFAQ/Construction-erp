@@ -105,6 +105,9 @@
     "20260904000100_equipment_assignment_pricing": "24c780368fe42cc5f50efc7da7dda9b3eee4f57b632825f69252da20adf1c889",
     "20260907000100_equipment_minute_billing": "c2bf1d225d0f440e0e9e615e3c19606bc205ce32851d6c6fe386ab8b2a88b5c7",
     "20260907000200_payroll_overtime_multiplier": "5391e76db38cd1a64f2258002fb6f79adb81175c30ef9599898d7cd42bb32966",
-    "20260909000100_equipment_rate_unit_normalization": "d6d74569d34844a89bb2c73d4e0bd163d25cd19ba9b204db895ab4992872e7c7"
+    "20260909000100_equipment_rate_unit_normalization": "d6d74569d34844a89bb2c73d4e0bd163d25cd19ba9b204db895ab4992872e7c7",
+    "20260909000200_attendance_stage_split": "c01db2e88042e69d921ab14896caccf806b9a6bfbe0d57f644a61757ae8cc0b1",
+    "20260909000300_payroll_employee_payments": "49d385528a95a67287007a934af1642000c7acf425b1bb2d2c837e69a9404c1c",
+    "20260909000400_payroll_status_transition_trigger_fix": "233f44683c4f86e768a9caa1a7cd459d4e9c58d515404ede4144650c4c4ec20d"
   }
 }

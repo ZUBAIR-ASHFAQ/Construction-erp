@@ -276,6 +276,9 @@ export class EmployeesService {
     if (latest && (effectiveFrom <= latest.effectiveFrom || (latest.effectiveTo && effectiveFrom <= latest.effectiveTo))) {
       throw createEmployeeError('COMPENSATION_DATE_OVERLAP');
     }
+    if (await repository.findFinalizedPayrollAffectedByCompensation(employeeId, effectiveFrom)) {
+      throw createEmployeeError('COMPENSATION_FINALIZED_PAYROLL_LOCKED');
+    }
 
     if (latest && latest.effectiveTo === null) {
       const closed = await repository.closeEmployeeCompensation(employeeId, latest.id, previousUtcDate(effectiveFrom));

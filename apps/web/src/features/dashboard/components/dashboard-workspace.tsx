@@ -294,12 +294,12 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
                   <tbody>
                     {summaryQuery.data.executiveSummary.financialsByCurrency.map((item) => (
                       <tr key={item.currency}>
-                        <td>{item.currency}</td><td>{item.projectCount}</td>
-                        <td>{displayMoney(item.recognizedRevenue, item.currency)}</td><td>{displayMoney(item.actualCost, item.currency)}</td>
-                        <td>{displayMoney(item.billedAmount, item.currency)}</td><td>{displayMoney(item.receivedAmount, item.currency)}</td>
-                        <td>{displayMoney(item.allocatedAmount, item.currency)}</td><td>{displayMoney(item.advanceAmount, item.currency)}</td>
-                        <td>{displayMoney(item.outstandingAmount, item.currency)}</td>
-                        <td>{displayMoney(item.supplierPayableAmount, item.currency)}</td><td>{displayMoney(item.profitAmount, item.currency)}</td>
+                        <td data-label="Currency">{item.currency}</td><td data-label="Projects">{item.projectCount}</td>
+                        <td data-label="Recognized revenue">{displayMoney(item.recognizedRevenue, item.currency)}</td><td data-label="Actual cost">{displayMoney(item.actualCost, item.currency)}</td>
+                        <td data-label="Billed">{displayMoney(item.billedAmount, item.currency)}</td><td data-label="Received">{displayMoney(item.receivedAmount, item.currency)}</td>
+                        <td data-label="Allocated">{displayMoney(item.allocatedAmount, item.currency)}</td><td data-label="Advance / unallocated">{displayMoney(item.advanceAmount, item.currency)}</td>
+                        <td data-label="Outstanding">{displayMoney(item.outstandingAmount, item.currency)}</td>
+                        <td data-label="Supplier payable">{displayMoney(item.supplierPayableAmount, item.currency)}</td><td data-label="Profit / loss">{displayMoney(item.profitAmount, item.currency)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -329,12 +329,12 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
                   <tbody>
                     {projectsQuery.data.items.map((project) => (
                       <tr key={project.id}>
-                        <td>{project.projectCode}<span>{project.name}</span><span>{project.id}</span></td>
-                        <td>{project.client.displayName}<span>{project.clientId}</span></td><td>{project.status}</td><td>{project.currency}</td>
-                        <td>{project.startDate.slice(0, 10)}</td><td>{project.plannedEndDate.slice(0, 10)}</td>
-                        <td>{project.overallPhysicalProgressPercent === null ? '—' : `${project.overallPhysicalProgressPercent}%`}</td>
-                        <td>{project.stageCount ?? '—'}</td><td>{project.stageBaselineStatus ?? '—'}</td>
-                        <td><button type="button" className="secondary-button" onClick={() => handleOpenProject(project.id)}>Open</button></td>
+                        <td data-label="Project">{project.projectCode}<span>{project.name}</span><span>{project.id}</span></td>
+                        <td data-label="Client">{project.client.displayName}<span>{project.clientId}</span></td><td data-label="Status">{project.status}</td><td data-label="Currency">{project.currency}</td>
+                        <td data-label="Start">{project.startDate.slice(0, 10)}</td><td data-label="Planned end">{project.plannedEndDate.slice(0, 10)}</td>
+                        <td data-label="Physical progress">{project.overallPhysicalProgressPercent === null ? '—' : `${project.overallPhysicalProgressPercent}%`}</td>
+                        <td data-label="Stages">{project.stageCount ?? '—'}</td><td data-label="Baseline">{project.stageBaselineStatus ?? '—'}</td>
+                        <td data-label="Action"><button type="button" className="secondary-button" onClick={() => handleOpenProject(project.id)}>Open</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -404,14 +404,14 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
               <tbody>
                 {projectQuery.data.stageProgress.items.map((stage) => (
                   <tr key={stage.id}>
-                    <td>{stage.code}<span>{stage.name}</span><span>{stage.id} · Project {stage.projectId}</span></td><td>{stage.sequenceNo}</td><td>{stage.status}</td><td>{stage.weightPercent}%</td><td>{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
-                    <td>{stage.plannedAmount === null ? '—' : displayMoney(stage.plannedAmount, projectQuery.data.project.currency)}</td>
-                    <td>{stage.plannedStartDate ?? '—'}</td><td>{stage.plannedEndDate ?? '—'}</td><td>{stage.actualStartDate ?? '—'}</td><td>{stage.actualEndDate ?? '—'}</td>
-                    <td>{stage.financials?.plannedAmount == null ? '—' : displayMoney(stage.financials.plannedAmount, projectQuery.data.project.currency)}</td>
-                    <td>{stage.financials ? displayMoney(stage.financials.actualCost, projectQuery.data.project.currency) : '—'}</td>
-                    <td>{stage.financials ? displayMoney(stage.financials.billedAmount, projectQuery.data.project.currency) : '—'}</td>
-                    <td>{stage.financials ? displayMoney(stage.financials.receivedAmount, projectQuery.data.project.currency) : '—'}</td>
-                    <td>{stage.financials ? displayMoney(stage.financials.outstandingAmount, projectQuery.data.project.currency) : '—'}</td>
+                    <td data-label="Stage">{stage.code}<span>{stage.name}</span><span>{stage.id} · Project {stage.projectId}</span></td><td data-label="Sequence">{stage.sequenceNo}</td><td data-label="Status">{stage.status}</td><td data-label="Weight">{stage.weightPercent}%</td><td data-label="Physical">{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
+                    <td data-label="Planned amount">{stage.plannedAmount === null ? '—' : displayMoney(stage.plannedAmount, projectQuery.data.project.currency)}</td>
+                    <td data-label="Planned start">{stage.plannedStartDate ?? '—'}</td><td data-label="Planned end">{stage.plannedEndDate ?? '—'}</td><td data-label="Actual start">{stage.actualStartDate ?? '—'}</td><td data-label="Actual end">{stage.actualEndDate ?? '—'}</td>
+                    <td data-label="Financial planned">{stage.financials?.plannedAmount == null ? '—' : displayMoney(stage.financials.plannedAmount, projectQuery.data.project.currency)}</td>
+                    <td data-label="Actual cost">{stage.financials ? displayMoney(stage.financials.actualCost, projectQuery.data.project.currency) : '—'}</td>
+                    <td data-label="Billed">{stage.financials ? displayMoney(stage.financials.billedAmount, projectQuery.data.project.currency) : '—'}</td>
+                    <td data-label="Received">{stage.financials ? displayMoney(stage.financials.receivedAmount, projectQuery.data.project.currency) : '—'}</td>
+                    <td data-label="Outstanding">{stage.financials ? displayMoney(stage.financials.outstandingAmount, projectQuery.data.project.currency) : '—'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -424,8 +424,8 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
                 <tbody>
                   {projectQuery.data.stageProgress.items.flatMap((stage) => (stage.progressUpdates ?? []).map((update) => (
                     <tr key={update.id}>
-                      <td>{stage.code}<span>{update.stageId}</span></td><td>{update.id}</td><td>{update.progressPercent}%</td><td>{update.progressDate ?? '—'}</td><td>{update.status}</td>
-                      <td>{update.note ?? '—'}</td><td>{update.evidenceDocumentId ?? '—'}</td><td>{update.enteredBy}</td><td>{update.approvedBy ?? '—'}</td><td>{update.approvedAt ?? '—'}</td><td>{update.createdAt}</td>
+                      <td data-label="Stage">{stage.code}<span>{update.stageId}</span></td><td data-label="Update">{update.id}</td><td data-label="Progress">{update.progressPercent}%</td><td data-label="Progress date">{update.progressDate ?? '—'}</td><td data-label="Status">{update.status}</td>
+                      <td data-label="Note">{update.note ?? '—'}</td><td data-label="Evidence">{update.evidenceDocumentId ?? '—'}</td><td data-label="Entered by">{update.enteredBy}</td><td data-label="Approved by">{update.approvedBy ?? '—'}</td><td data-label="Approved at">{update.approvedAt ?? '—'}</td><td data-label="Created at">{update.createdAt}</td>
                     </tr>
                   )))}
                 </tbody>
@@ -444,7 +444,7 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
               <tbody>
                 {cashBank.items.map((account) => (
                   <tr key={account.id}>
-                    <td>{account.code}<span>{account.name}</span><span>{account.id}</span></td><td>{account.accountType}</td><td>{account.glAccountId}</td><td>{account.bankName ?? '—'}</td><td>{account.accountReference ?? '—'}</td><td>{account.status}</td><td>{account.balance}</td>
+                    <td data-label="Account">{account.code}<span>{account.name}</span><span>{account.id}</span></td><td data-label="Type">{account.accountType}</td><td data-label="GL account">{account.glAccountId}</td><td data-label="Bank">{account.bankName ?? '—'}</td><td data-label="Reference">{account.accountReference ?? '—'}</td><td data-label="Status">{account.status}</td><td data-label="Balance">{account.balance}</td>
                   </tr>
                 ))}
               </tbody>

@@ -82,6 +82,9 @@ export class ProjectProfitabilityRepository {
         projectCode: true,
         name: true,
         clientId: true,
+        projectModel: true,
+        projectValue: true,
+        costPlusPercent: true,
         currency: true,
         status: true
       }
@@ -108,7 +111,17 @@ export class ProjectProfitabilityRepository {
     const [items, total] = await Promise.all([
       this.db.project.findMany({
         where,
-        select: { id: true, projectCode: true, name: true, clientId: true, currency: true, status: true },
+        select: {
+          id: true,
+          projectCode: true,
+          name: true,
+          clientId: true,
+          projectModel: true,
+          projectValue: true,
+          costPlusPercent: true,
+          currency: true,
+          status: true
+        },
         orderBy: [{ projectCode: 'asc' }, { id: 'asc' }],
         skip: input.skip,
         take: input.take
@@ -132,6 +145,7 @@ export class ProjectProfitabilityRepository {
         name: true,
         sequenceNo: true,
         weightPercent: true,
+        costPlusPercent: true,
         plannedAmount: true,
         status: true,
         progressUpdates: {

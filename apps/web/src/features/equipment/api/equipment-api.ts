@@ -91,19 +91,6 @@ export type AssignEquipmentInput = Readonly<{
   toDate?: string | null;
   toTime?: string | null;
 }>;
-export type RecordEquipmentUsageInput = Readonly<{
-  assignmentId: string;
-  usageDate: string;
-  quantity: string;
-  rate?: string | null;
-}>;
-export type CreateEquipmentMaintenanceInput = Readonly<{
-  maintenanceDate: string;
-  type: string;
-  cost: string;
-  note?: string | null;
-}>;
-
 /** Build one bounded Equipment list query. */
 function listQuery(input: ListEquipmentInput): string {
   const query = new URLSearchParams();
@@ -142,16 +129,6 @@ export function endEquipmentAssignment(equipmentId: string, assignmentId: string
   return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments/${assignmentId}/end`, {
     method: 'POST', headers: commandHeaders(), body: JSON.stringify({ endDate, ...(endTime ? { endTime } : {}) })
   });
-}
-
-/** Record usage and atomically post its Project/Stage Equipment cost. */
-export function recordEquipmentUsage(equipmentId: string, input: RecordEquipmentUsageInput): Promise<EquipmentUsage> {
-  return authenticatedRequest<EquipmentUsage>(`equipment/${equipmentId}/usage`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
-}
-
-/** Record one Equipment maintenance history entry. */
-export function createEquipmentMaintenance(equipmentId: string, input: CreateEquipmentMaintenanceInput): Promise<EquipmentMaintenance> {
-  return authenticatedRequest<EquipmentMaintenance>(`equipment/${equipmentId}/maintenance`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
 /** Load bounded assignment, usage, maintenance and cost history for one Equipment item. */

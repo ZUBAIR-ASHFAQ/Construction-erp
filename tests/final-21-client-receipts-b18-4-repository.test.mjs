@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 
 const ROOT = new URL('../', import.meta.url);
@@ -8,11 +8,6 @@ const REPOSITORY = 'apps/api/src/modules/client-receipts/client-receipts.reposit
 /** Read one repository text file relative to the project root. */
 function read(relativePath) {
   return readFileSync(new URL(relativePath, ROOT), 'utf8');
-}
-
-/** Return whether one repository path exists relative to the project root. */
-function exists(relativePath) {
-  return existsSync(new URL(relativePath, ROOT));
 }
 
 test('B18.4 completes the exact five-file Client Receipts backend module shape', () => {

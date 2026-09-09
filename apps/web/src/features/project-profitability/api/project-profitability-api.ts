@@ -1,6 +1,20 @@
 import { authenticatedRequest } from '../../administration/api/auth-api.js';
 
 export type ProjectProfitabilityTrendGranularity = 'DAY' | 'WEEK' | 'MONTH';
+export type ProjectProfitabilityModel = 'FIXED_PRICE' | 'COST_PLUS_PERCENTAGE';
+
+export type ProjectProfitabilityCommercialSummary = Readonly<{
+  calculationModel: ProjectProfitabilityModel;
+  configuredProfitPercent: string | null;
+  usesStageProfitPercentages: boolean;
+  supplierCostBasis: string;
+  supplierCostAdjustment: string;
+  totalCost: string;
+  totalRevenue: string;
+  totalProfit: string;
+  expectedRevenue: string;
+  remainingToReceive: string;
+}>;
 
 export type ProjectProfitabilityFinancialValues = Readonly<{
   recognizedRevenue: string;
@@ -31,8 +45,12 @@ export type ProjectProfitabilitySummary = ProjectProfitabilityFinancialValues & 
   projectId: string;
   projectCode: string;
   projectName: string;
+  projectModel: ProjectProfitabilityModel;
+  projectValue: string;
+  costPlusPercent: string | null;
   currency: string;
   asOfDate: string;
+  commercialSummary: ProjectProfitabilityCommercialSummary;
 }>;
 
 export type ProjectProfitabilityStageRow = ProjectProfitabilityFinancialValues & Readonly<{
@@ -76,7 +94,11 @@ export type ProjectProfitabilityPortfolioItem = ProjectProfitabilityFinancialVal
   projectCode: string;
   projectName: string;
   clientId: string;
+  projectModel: ProjectProfitabilityModel;
+  projectValue: string;
+  costPlusPercent: string | null;
   currency: string;
+  commercialSummary: ProjectProfitabilityCommercialSummary;
 }>;
 
 export type ProjectProfitabilityPortfolioPage = Readonly<{

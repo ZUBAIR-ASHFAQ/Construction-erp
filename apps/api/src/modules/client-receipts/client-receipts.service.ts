@@ -37,6 +37,14 @@ const ZERO_MONEY = '0.00';
 const DEFAULT_PAGE_SIZE = 25;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+type FinanceJournalRecord = NonNullable<Awaited<ReturnType<FinanceRepository['findJournalBySourceKey']>>>;
+type FinanceJournalLineRecord = FinanceJournalRecord['lines'][number];
+type ClientReceiptRecord = NonNullable<Awaited<ReturnType<ClientReceiptsRepository['findClientReceiptById']>>>;
+type ClientReceiptAllocationRecord = ClientReceiptRecord['allocations'][number];
+type ClientReceiptPostingRecord = Pick<
+  ClientReceiptRecord,
+  'amount' | 'id' | 'projectId' | 'receiptDate' | 'receiptNo' | 'stageId'
+>;
 
 /** Parse one validated API date without local-time conversion. */
 function inputDate(value: string): Date {
@@ -89,7 +97,7 @@ function clientReceiptReversalFinanceSourceKey(receiptId: string): string {
 }
 
 /** Reverse persisted Journal lines without changing the original accounting history. */
-function reverseJournalLines(lines: readonly any[], descriptionPrefix: string) {
+function reverseJournalLines(lines: readonly FinanceJournalLineRecord[], descriptionPrefix: string) {
   return lines.map((line) => ({
     accountId: line.accountId,
     projectId: line.projectId,
@@ -101,7 +109,7 @@ function reverseJournalLines(lines: readonly any[], descriptionPrefix: string) {
 }
 
 /** Convert one persisted allocation into the stable Client Receipt API shape. */
-function allocationResponse(allocation: any) {
+function allocationResponse(allocation: ClientReceiptAllocationRecord) {
   return {
     id: allocation.id,
     clientInvoiceId: allocation.clientInvoiceId,
@@ -112,7 +120,7 @@ function allocationResponse(allocation: any) {
 }
 
 /** Convert one persisted receipt into the API shape with source-derived allocation totals. */
-function receiptResponse(receipt: any) {
+function receiptResponse(receipt: ClientReceiptRecord) {
   const allocations = (receipt.allocations ?? []).map(allocationResponse);
   const amount = moneyToMinorUnits(receipt.amount);
   const allocated = allocations.reduce((sum: bigint, allocation: Readonly<{ amount: string }>) => sum + moneyToMinorUnits(allocation.amount), 0n);
@@ -325,7 +333,7 @@ export class ClientReceiptsService {
   /** Post one new unallocated Client Receipt to Cash/Bank and Client Advance inside the same transaction. */
   private async postReceiptToFinance(
     tx: TransactionClient,
-    receipt: any,
+    receipt: ClientReceiptPostingRecord,
     cashGlAccountId: string,
     clientAdvanceAccountId: string
   ) {
@@ -479,8 +487,8 @@ export class ClientReceiptsService {
 
     if (receipt.stageId) {
       const stageBilled = invoiceDetail.lines
-        .filter((line: any) => line.stageId === receipt.stageId)
-        .reduce((sum: bigint, line: any) => sum + moneyToMinorUnits(line.amount), 0n);
+        .filter((line) => line.stageId === receipt.stageId)
+        .reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
       if (stageBilled === 0n) throw createClientReceiptError('RECEIPT_SCOPE_MISMATCH');
       const stageAllocated = moneyToMinorUnits(await repository.sumAllocatedAmountForInvoiceStage(invoice.id, receipt.stageId) ?? ZERO_MONEY);
       if (stageAllocated + requested > stageBilled) throw createClientReceiptError('ALLOCATION_EXCEEDS_INVOICE');

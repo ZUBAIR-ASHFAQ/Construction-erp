@@ -72,6 +72,9 @@ export function createRequestContext(input: CreateRequestContextInput = {}): Req
     throw new Error('startedAt must be a valid Date.');
   }
 
+  // The context getter closes over this state, which is initialized immediately after
+  // the frozen context object exists. A late assignment is required for this cycle.
+  // eslint-disable-next-line prefer-const
   let state!: MutableState;
   const context: RequestContext = Object.freeze({
     requestId,

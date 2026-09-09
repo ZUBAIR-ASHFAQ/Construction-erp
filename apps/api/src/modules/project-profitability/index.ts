@@ -8,6 +8,7 @@ export {
   PROJECT_PROFITABILITY_TREND_GRANULARITY_VALUES,
   createProjectProfitabilityError,
   projectProfitabilityAsOfQuerySchema,
+  projectProfitabilityCommercialSummarySchema,
   projectProfitabilityCostBreakdownSchema,
   projectProfitabilityFinancialValuesSchema,
   projectProfitabilityPortfolioItemResponseSchema,
@@ -24,6 +25,7 @@ export {
 } from './project-profitability.schema.js';
 export type {
   ProjectProfitabilityAsOfQuery,
+  ProjectProfitabilityCommercialSummary,
   ProjectProfitabilityCostBreakdown,
   ProjectProfitabilityErrorCode,
   ProjectProfitabilityFinancialValues,

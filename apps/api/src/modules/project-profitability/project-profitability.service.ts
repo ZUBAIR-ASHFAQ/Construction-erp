@@ -9,6 +9,7 @@ import {
   projectProfitabilitySummaryResponseSchema,
   projectProfitabilityTrendResponseSchema,
   type ProjectProfitabilityAsOfQuery,
+  type ProjectProfitabilityCommercialSummary,
   type ProjectProfitabilityFinancialValues,
   type ProjectProfitabilityPermissionCode,
   type ProjectProfitabilityPortfolioQuery,
@@ -61,6 +62,15 @@ const COST_CATEGORY_FIELD = Object.freeze({
 } as const);
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+type CommercialProjectSource = Readonly<{
+  projectModel: string;
+  projectValue: DecimalLike;
+  costPlusPercent: DecimalLike | null;
+}>;
+type CommercialStageSource = Readonly<{
+  id: string;
+  costPlusPercent: DecimalLike | null;
+}>;
 type ReceiptFinanceJournalLine = Readonly<{ projectId: string | null; stageId: string | null }>;
 type ReceiptFinanceJournal = Readonly<{
   id: string;
@@ -277,6 +287,22 @@ function calculateSupplierPayable(
   }, 0n);
 }
 
+/** Calculate a percentage of signed money with four-decimal percentage precision. */
+function percentageMoney(amount: bigint, percent: DecimalLike): bigint {
+  const text = percent.toString().trim();
+  const match = /^(\d+)(?:\.(\d+))?$/.exec(text);
+  if (!match) throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  const scaledPercent = (BigInt(match[1] ?? '0') * 10_000n)
+    + BigInt(`${match[2] ?? ''}0000`.slice(0, 4));
+  if (scaledPercent <= 0n || scaledPercent > 1_000_000n) {
+    throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  }
+  const product = amount * scaledPercent;
+  return product >= 0n
+    ? (product + 500_000n) / 1_000_000n
+    : -((-product + 500_000n) / 1_000_000n);
+}
+
 /** Derive Supplier invoice, cash-payment, allocation, advance and outstanding values independently. */
 function calculateSupplierPosition(input: Readonly<{
   invoices: readonly Readonly<{ totalAmount: DecimalLike; allocations: readonly Readonly<{ amount: DecimalLike }>[] }>[];
@@ -388,6 +414,84 @@ function buildFinancialValues(input: Readonly<{
     supplierAdvanceAmount: minorUnitsToMoney(supplierAdvanceAmount),
     supplierPayableAmount: minorUnitsToMoney(supplierPayableAmount),
     costBreakdown: input.costBreakdown
+  };
+}
+
+/** Build the contract-model KPI summary without counting Supplier settlement twice. */
+function calculateCommercialSummary(
+  project: CommercialProjectSource,
+  financials: ProjectProfitabilityFinancialValues,
+  actualSources: FinancialSourceBundle['actualCostSources'],
+  stages: readonly CommercialStageSource[]
+): ProjectProfitabilityCommercialSummary {
+  const actualCost = moneyToMinorUnits(financials.actualCost);
+  const clientReceived = requireNonNegative(moneyToMinorUnits(financials.receivedAmount));
+  const supplierCostBasis = requireNonNegative(
+    moneyToMinorUnits(financials.supplierInvoicedAmount) + moneyToMinorUnits(financials.supplierAdvanceAmount)
+  );
+  const materialActual = sumMoney(
+    actualSources.filter((source) => source.category === 'material'),
+    (source) => source.amount
+  );
+  const inventoryTransferActual = sumMoney(
+    actualSources.filter((source) => source.sourceType === 'inventory_transfer'),
+    (source) => source.amount
+  );
+  const supplierInvoiceActual = sumMoney(
+    actualSources.filter((source) => source.sourceType === 'supplier_invoice'),
+    (source) => source.amount
+  );
+  const supplierCostAlreadyPosted = materialActual - inventoryTransferActual + supplierInvoiceActual;
+  const supplierCostAdjustment = supplierCostBasis > supplierCostAlreadyPosted
+    ? supplierCostBasis - supplierCostAlreadyPosted
+    : 0n;
+  const totalCost = requireNonNegative(actualCost + supplierCostAdjustment);
+
+  if (project.projectModel !== 'FIXED_PRICE' && project.projectModel !== 'COST_PLUS_PERCENTAGE') {
+    throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  }
+  const projectValue = requireNonNegative(moneyToMinorUnits(project.projectValue));
+  if (project.projectModel === 'COST_PLUS_PERCENTAGE' && project.costPlusPercent === null) {
+    throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+  }
+  const projectPercent = project.costPlusPercent;
+  const stagePercentById = new Map(stages.map((stage) => [stage.id, stage.costPlusPercent ?? projectPercent]));
+  const actualCostByStage = new Map<string | null, bigint>();
+  for (const source of actualSources) {
+    actualCostByStage.set(
+      source.stageId,
+      (actualCostByStage.get(source.stageId) ?? 0n) + moneyToMinorUnits(source.amount)
+    );
+  }
+  const markup = project.projectModel === 'COST_PLUS_PERCENTAGE'
+    ? [...actualCostByStage].reduce((sum, [stageId, stageCost]) => {
+        const percent = stageId === null ? projectPercent : stagePercentById.get(stageId);
+        if (percent === null || percent === undefined) {
+          throw createProjectProfitabilityError('PROFITABILITY_SOURCE_INCOMPLETE');
+        }
+        return sum + percentageMoney(stageCost, percent);
+      }, percentageMoney(supplierCostAdjustment, projectPercent as DecimalLike))
+    : 0n;
+  const expectedRevenue = requireNonNegative(
+    project.projectModel === 'COST_PLUS_PERCENTAGE' ? totalCost + markup : projectValue
+  );
+  const totalProfit = project.projectModel === 'COST_PLUS_PERCENTAGE' ? markup : clientReceived - totalCost;
+  const remainingToReceive = expectedRevenue > clientReceived ? expectedRevenue - clientReceived : 0n;
+
+  return {
+    calculationModel: project.projectModel,
+    configuredProfitPercent: project.projectModel === 'COST_PLUS_PERCENTAGE'
+      ? project.costPlusPercent?.toString() ?? null
+      : null,
+    usesStageProfitPercentages: project.projectModel === 'COST_PLUS_PERCENTAGE'
+      && stages.some((stage) => stage.costPlusPercent !== null),
+    supplierCostBasis: minorUnitsToMoney(supplierCostBasis),
+    supplierCostAdjustment: minorUnitsToMoney(supplierCostAdjustment),
+    totalCost: minorUnitsToMoney(totalCost),
+    totalRevenue: minorUnitsToMoney(clientReceived),
+    totalProfit: minorUnitsToMoney(totalProfit),
+    expectedRevenue: minorUnitsToMoney(expectedRevenue),
+    remainingToReceive: minorUnitsToMoney(remainingToReceive)
   };
 }
 
@@ -583,15 +687,28 @@ export class ProjectProfitabilityService {
     const project = await repository.findProject(projectId, visibility);
     if (!project) throw createProjectProfitabilityError('PROFITABILITY_SCOPE_FORBIDDEN');
 
-    const sources = await this.readFinancialSources(repository, [projectId], asOfDate, visibility);
+    const [sources, commercialStages] = await Promise.all([
+      this.readFinancialSources(repository, [projectId], asOfDate, visibility),
+      repository.listProjectStages([projectId], inputDate(asOfDate), visibility)
+    ]);
     const financials = financialBucketFor(sources, projectId);
+    const commercialSummary = calculateCommercialSummary(
+      project,
+      financials,
+      sources.actualCostSources.filter((source) => source.projectId === projectId),
+      commercialStages
+    );
 
     return projectProfitabilitySummaryResponseSchema.parse({
       projectId: project.id,
       projectCode: project.projectCode,
       projectName: project.name,
+      projectModel: project.projectModel,
+      projectValue: minorUnitsToMoney(moneyToMinorUnits(project.projectValue)),
+      costPlusPercent: project.costPlusPercent?.toString() ?? null,
       currency: project.currency,
       asOfDate,
+      commercialSummary,
       ...financials
     });
   }
@@ -709,15 +826,30 @@ export class ProjectProfitabilityService {
       clientId: query.clientId
     });
     const projectIds = result.items.map((project) => project.id);
-    const sources = await this.readFinancialSources(repository, projectIds, asOfDate, visibility);
-    const items = result.items.map((project) => ({
-      projectId: project.id,
-      projectCode: project.projectCode,
-      projectName: project.name,
-      clientId: project.clientId,
-      currency: project.currency,
-      ...financialBucketFor(sources, project.id)
-    }));
+    const [sources, commercialStages] = await Promise.all([
+      this.readFinancialSources(repository, projectIds, asOfDate, visibility),
+      repository.listProjectStages(projectIds, inputDate(asOfDate), visibility)
+    ]);
+    const items = result.items.map((project) => {
+      const financials = financialBucketFor(sources, project.id);
+      return {
+        projectId: project.id,
+        projectCode: project.projectCode,
+        projectName: project.name,
+        clientId: project.clientId,
+        projectModel: project.projectModel,
+        projectValue: minorUnitsToMoney(moneyToMinorUnits(project.projectValue)),
+        costPlusPercent: project.costPlusPercent?.toString() ?? null,
+        currency: project.currency,
+        commercialSummary: calculateCommercialSummary(
+          project,
+          financials,
+          sources.actualCostSources.filter((source) => source.projectId === project.id),
+          commercialStages.filter((stage) => stage.projectId === project.id)
+        ),
+        ...financials
+      };
+    });
 
     return projectProfitabilityPortfolioResponseSchema.parse({
       asOfDate,

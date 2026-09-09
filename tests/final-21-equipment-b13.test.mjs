@@ -141,19 +141,20 @@ test('B13 exposes bounded Equipment history and Project Stage cost summary', () 
   assert.match(schema, /equipmentHistoryResponseSchema/);
 });
 
-/** Confirm React uses the Final permissions, Project Stage selectors, usage and maintenance history only. */
+/** Confirm React keeps the active assignment-completion and ledger workflow without unreachable forms. */
 test('B13 simplifies the Equipment React feature to the Final-21 workflow', () => {
   const page = read(`${web}/pages/equipment-page.tsx`);
   const workspace = read(`${web}/components/equipment-workspace.tsx`);
   const api = read(`${web}/api/equipment-api.ts`);
   const hooks = read(`${web}/hooks/equipment.ts`);
   assert.match(page, /usePermission\('equipment\.usage\.create'\)/);
-  assert.match(page, /usePermission\('equipment\.maintenance\.manage'\)/);
+  assert.doesNotMatch(page, /usePermission\('equipment\.maintenance\.manage'\)/);
   assert.match(workspace, /useProjects/);
   assert.match(workspace, /useProjectStages/);
-  assert.match(workspace, /Record Usage & Cost/);
-  assert.match(workspace, /Project \/ Stage Equipment cost summary/);
-  assert.match(workspace, /endMutation/);
+  assert.match(workspace, /Complete & Post Cost/);
+  assert.match(workspace, /Equipment Ledger/);
+  assert.match(workspace, /Maintenance history/);
+  assert.doesNotMatch(workspace, /function UsageForm|function MaintenanceForm|function EquipmentHistoryPanel/);
   assert.match(api, /endEquipmentAssignment/);
   assert.match(api, /Idempotency-Key/);
   assert.match(hooks, /useEndEquipmentAssignment/);

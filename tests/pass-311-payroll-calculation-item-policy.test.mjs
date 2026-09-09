@@ -6,7 +6,6 @@ const contract = await readFile('docs/PASS-311-PAYROLL-CALCULATION-ITEM-POLICY.m
 const calculationScope = await readFile('docs/PASS-307-PAYROLL-CALCULATION-POLICY.md', 'utf8');
 const persistenceContract = await readFile('docs/PASS-308-STAGE-20-PAYROLL-PERSISTENCE-AMENDMENT.md', 'utf8');
 const prisma = await readFile('packages/database/prisma/schema.prisma', 'utf8');
-const hrService = await readFile('apps/api/src/modules/hr-payroll/hr-payroll.service.ts', 'utf8');
 
 
 test('Pass 311 activates only one first-scope generated Payslip item code', () => {

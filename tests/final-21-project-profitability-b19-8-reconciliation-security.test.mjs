@@ -61,7 +61,11 @@ test('B19.8 freezes one concrete cross-module reconciliation with no double coun
     "supplierPaymentAmount: '250.00'",
     "supplierAllocatedPaymentAmount: '250.00'",
     "supplierAdvanceAmount: '0.00'",
-    "supplierPayableAmount: '650.00'"
+    "supplierPayableAmount: '650.00'",
+    "totalCost: '1200.00'",
+    "totalRevenue: '1500.00'",
+    "totalProfit: '300.00'",
+    "remainingToReceive: '49998500.00'"
   ]) assert.ok(live.includes(expected), `missing frozen reconciliation ${expected}`);
   assert.match(live, /reconciles Modules 9, 15, 16, 17 and 18 without double counting/);
 });

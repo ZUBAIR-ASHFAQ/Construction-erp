@@ -4,23 +4,19 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
-import type { Equipment, EquipmentAssignment, EquipmentHistory } from '../api/equipment-api.js';
+import type { Equipment, EquipmentAssignment } from '../api/equipment-api.js';
 import {
   useAssignEquipment,
   useCreateEquipment,
-  useCreateEquipmentMaintenance,
   useEquipment,
   useEquipmentHistory,
   useEndEquipmentAssignment,
-  useRecordEquipmentUsage,
   useUpdateEquipment
 } from '../hooks/equipment.js';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.');
 const timeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'Use HH:mm.');
 const decimalSchema = z.string().regex(/^(?:0|[1-9]\d{0,13})(?:\.\d{1,4})?$/, 'Use a non-negative number with up to 4 decimals.');
-const moneySchema = z.string().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'Use a non-negative amount with up to 2 decimals.');
-
 const equipmentSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(300),
   equipmentType: z.string().trim().max(120),
@@ -35,38 +31,21 @@ const assignmentSchema = z.object({
   quantity: decimalSchema.refine((value) => value !== '0' && !/^0\.0+$/.test(value), 'Quantity must be greater than zero.'),
   fromDate: dateSchema,
   fromTime: z.union([z.literal(''), timeSchema]),
-  toDate: z.union([z.literal(''), dateSchema])
-  , toTime: z.union([z.literal(''), timeSchema])
+  toDate: z.union([z.literal(''), dateSchema]),
+  toTime: z.union([z.literal(''), timeSchema])
 }).refine((value) => value.toDate === '' || value.toDate >= value.fromDate, {
   path: ['toDate'],
   message: 'End date must be on or after the start date.'
 });
 
-const usageSchema = z.object({
-  assignmentId: z.string().uuid('Select an active assignment.'),
-  usageDate: dateSchema,
-  quantity: decimalSchema,
-  rate: z.union([z.literal(''), decimalSchema])
-});
-
-const maintenanceSchema = z.object({
-  maintenanceDate: dateSchema,
-  type: z.string().trim().min(1, 'Maintenance type is required.').max(120),
-  cost: moneySchema,
-  note: z.string().trim().max(4000)
-});
-
 type EquipmentValues = z.infer<typeof equipmentSchema>;
 type AssignmentValues = z.infer<typeof assignmentSchema>;
-type UsageValues = z.infer<typeof usageSchema>;
-type MaintenanceValues = z.infer<typeof maintenanceSchema>;
 
 export type EquipmentWorkspaceProps = Readonly<{
   canRead: boolean;
   canManage: boolean;
   canAssign: boolean;
   canRecordUsage: boolean;
-  canMaintain: boolean;
 }>;
 
 /** Return one readable request error without exposing backend internals. */
@@ -293,130 +272,6 @@ function AssignmentForm({ equipment, onClose }: Readonly<{ equipment: Equipment;
         {errorMessage(mutation.error) && <div className="form-error" role="alert">{errorMessage(mutation.error)}</div>}
         <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Assigning…' : 'Assign Equipment'}</button>
       </form></div></section></div>
-  );
-}
-
-/** Describe one assignment without inventing Project or Stage names not returned by the Equipment API. */
-function assignmentLabel(assignment: EquipmentAssignment): string {
-  return `${assignment.projectId}${assignment.stageId ? ` / stage ${assignment.stageId}` : ''} · ${assignment.fromDate}${assignment.toDate ? ` to ${assignment.toDate}` : ''}`;
-}
-
-/** Render usage entry for a selected active Equipment assignment. */
-function UsageForm({ equipmentId, assignments }: Readonly<{ equipmentId: string; assignments: EquipmentAssignment[] }>) {
-  const mutation = useRecordEquipmentUsage(equipmentId);
-  const form = useForm<UsageValues>({ resolver: zodResolver(usageSchema), defaultValues: { assignmentId: '', usageDate: '', quantity: '', rate: '' } });
-  const activeAssignments = assignments.filter((assignment) => assignment.status === 'ACTIVE');
-
-  /** Record usage and let the server calculate/post the actual Equipment cost. */
-  async function handleSubmit(values: UsageValues): Promise<void> {
-    await mutation.mutateAsync({
-      assignmentId: values.assignmentId,
-      usageDate: values.usageDate,
-      quantity: values.quantity,
-      ...(values.rate === '' ? {} : { rate: values.rate })
-    });
-    form.reset();
-  }
-
-  return (
-    <section className="admin-card">
-      <h2>Record usage</h2>
-      <form className="admin-stack" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
-        <label>Assignment
-          <select {...form.register('assignmentId')}>
-            <option value="">Select assignment</option>
-            {activeAssignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignmentLabel(assignment)}</option>)}
-          </select>
-        </label>
-        <label>Usage date<input type="date" {...form.register('usageDate')} /></label>
-        <label>Quantity<input inputMode="decimal" placeholder="Hours or days according to the rate unit" {...form.register('quantity')} /></label>
-        <label>Rate override (optional)<input inputMode="decimal" {...form.register('rate')} /></label>
-        {activeAssignments.length === 0 && <p className="muted">Create an active Project assignment before recording usage.</p>}
-        {Object.values(form.formState.errors).map((error, index) => error?.message && <div key={index} className="form-error">{String(error.message)}</div>)}
-        {errorMessage(mutation.error) && <div className="form-error" role="alert">{errorMessage(mutation.error)}</div>}
-        <button type="submit" disabled={mutation.isPending || activeAssignments.length === 0}>{mutation.isPending ? 'Posting…' : 'Record Usage & Cost'}</button>
-      </form>
-    </section>
-  );
-}
-
-/** Render the simple Equipment maintenance-history command required by Module 12. */
-function MaintenanceForm({ equipmentId }: Readonly<{ equipmentId: string }>) {
-  const mutation = useCreateEquipmentMaintenance(equipmentId);
-  const form = useForm<MaintenanceValues>({ resolver: zodResolver(maintenanceSchema), defaultValues: { maintenanceDate: '', type: '', cost: '0', note: '' } });
-
-  /** Record one maintenance entry while preserving history. */
-  async function handleSubmit(values: MaintenanceValues): Promise<void> {
-    await mutation.mutateAsync({
-      maintenanceDate: values.maintenanceDate,
-      type: values.type.trim(),
-      cost: values.cost,
-      ...(values.note === '' ? {} : { note: values.note.trim() })
-    });
-    form.reset();
-  }
-
-  return (
-    <section className="admin-card">
-      <h2>Record maintenance</h2>
-      <form className="admin-stack" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
-        <label>Maintenance date<input type="date" {...form.register('maintenanceDate')} /></label>
-        <label>Type<input placeholder="Service, repair, inspection…" {...form.register('type')} /></label>
-        <label>Cost<input inputMode="decimal" {...form.register('cost')} /></label>
-        <label>Note (optional)<textarea rows={3} {...form.register('note')} /></label>
-        {Object.values(form.formState.errors).map((error, index) => error?.message && <div key={index} className="form-error">{String(error.message)}</div>)}
-        {errorMessage(mutation.error) && <div className="form-error" role="alert">{errorMessage(mutation.error)}</div>}
-        <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Record Maintenance'}</button>
-      </form>
-    </section>
-  );
-}
-
-/** Render assignment, usage, maintenance and Project/Stage cost history for one Equipment item. */
-function EquipmentHistoryPanel(props: Readonly<{ equipmentId: string; canAssign: boolean; data: EquipmentHistory | undefined; isPending: boolean; error: unknown }>) {
-  const endMutation = useEndEquipmentAssignment(props.equipmentId);
-
-  /** End one active assignment with an explicit effective date instead of deleting it. */
-  async function endAssignment(assignmentId: string): Promise<void> {
-    const endDate = window.prompt('End date (YYYY-MM-DD)');
-    if (!endDate) return;
-    await endMutation.mutateAsync({ assignmentId, endDate });
-  }
-
-  if (props.isPending) return <section className="admin-card"><p>Loading Equipment history…</p></section>;
-  if (errorMessage(props.error)) return <section className="admin-card"><div className="form-error">{errorMessage(props.error)}</div></section>;
-  if (!props.data) return null;
-
-  return (
-    <section className="admin-card">
-      <h2>Equipment history</h2>
-      <EquipmentIdentity equipment={props.data.equipment} />
-
-      <h3>Assignments</h3>
-      <div className="table-scroll"><table><thead><tr><th>Assignment ID</th><th>Equipment ID</th><th>Project / Stage</th><th>Dates</th><th>Status</th><th>Action</th></tr></thead><tbody>
-        {props.data.assignments.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.equipmentId}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.fromDate} → {row.toDate ?? 'Open'}</td><td>{row.status}</td><td>{props.canAssign && row.status === 'ACTIVE' ? <button type="button" className="secondary-button" disabled={endMutation.isPending} onClick={() => void endAssignment(row.id)}>End</button> : '—'}</td></tr>)}
-        {props.data.assignments.length === 0 && <tr><td colSpan={6} className="muted">No assignments.</td></tr>}
-      </tbody></table></div>
-      {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
-
-      <h3>Usage & actual cost</h3>
-      <div className="table-scroll"><table><thead><tr><th>Usage ID</th><th>Assignment ID</th><th>Date</th><th>Project / Stage</th><th>Quantity</th><th>Rate</th><th>Amount</th><th>Entered by</th><th>Cost actual</th><th>Status</th></tr></thead><tbody>
-        {props.data.usage.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.assignmentId}</td><td>{row.usageDate}</td><td>{row.projectId}<br /><small>{row.stageId ?? 'Project-level'}</small></td><td>{row.quantity}</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.enteredBy}</td><td>{row.costActualId ?? '—'}</td><td>{row.status}</td></tr>)}
-        {props.data.usage.length === 0 && <tr><td colSpan={10} className="muted">No usage posted.</td></tr>}
-      </tbody></table></div>
-
-      <h3>Maintenance</h3>
-      <div className="table-scroll"><table><thead><tr><th>Maintenance ID</th><th>Equipment ID</th><th>Date</th><th>Type</th><th>Cost</th><th>Note</th><th>Status</th></tr></thead><tbody>
-        {props.data.maintenance.map((row) => <tr key={row.id}><td>{row.id}</td><td>{row.equipmentId}</td><td>{row.maintenanceDate}</td><td>{row.type}</td><td>{row.cost}</td><td>{row.note ?? '—'}</td><td>{row.status}</td></tr>)}
-        {props.data.maintenance.length === 0 && <tr><td colSpan={7} className="muted">No maintenance history.</td></tr>}
-      </tbody></table></div>
-
-      <h3>Project / Stage Equipment cost summary</h3>
-      <div className="table-scroll"><table><thead><tr><th>Project</th><th>Stage</th><th>Actual cost</th></tr></thead><tbody>
-        {props.data.costSummary.map((row) => <tr key={`${row.projectId}:${row.stageId ?? ''}`}><td>{row.projectId}</td><td>{row.stageId ?? 'Project-level'}</td><td>{row.amount}</td></tr>)}
-        {props.data.costSummary.length === 0 && <tr><td colSpan={3} className="muted">No Equipment actual cost posted.</td></tr>}
-      </tbody></table></div>
-    </section>
   );
 }
 

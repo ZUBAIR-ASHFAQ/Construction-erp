@@ -27,7 +27,6 @@ export type VendorsSubcontractorsRoutesOptions = Readonly<{ database: DatabaseCl
 
 const BEARER_SECURITY = [{ bearerAuth: [] }];
 const UUID_JSON_SCHEMA = { type: 'string', format: 'uuid' } as const;
-const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
 const ID_PARAMS_SCHEMA = { type: 'object', additionalProperties: false, required: ['id'], properties: { id: UUID_JSON_SCHEMA } } as const;
 const PAGE_PROPERTIES = { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } as const;
 const VENDOR_LIST_QUERY_JSON_SCHEMA = {

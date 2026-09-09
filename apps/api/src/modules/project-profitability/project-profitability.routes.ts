@@ -28,6 +28,8 @@ const MONEY = { type: 'string', pattern: '^-?(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})
 const NON_NEGATIVE_MONEY = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' } as const;
 const PERCENT = { type: 'string', pattern: '^(?:0|[1-9]\\d?|100)(?:\\.\\d{1,4})?$' } as const;
 const NULLABLE_MONEY = { anyOf: [NON_NEGATIVE_MONEY, { type: 'null' }] } as const;
+const NULLABLE_PERCENT = { anyOf: [PERCENT, { type: 'null' }] } as const;
+const PROJECT_MODEL = { type: 'string', enum: ['FIXED_PRICE', 'COST_PLUS_PERCENTAGE'] } as const;
 const PROJECT_PARAMS = {
   type: 'object',
   additionalProperties: false,
@@ -91,16 +93,43 @@ const FINANCIAL_VALUES = {
   costBreakdown: COST_BREAKDOWN
 } as const;
 const FINANCIAL_VALUE_NAMES = Object.freeze(Object.keys(FINANCIAL_VALUES));
+const COMMERCIAL_SUMMARY = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'calculationModel', 'configuredProfitPercent', 'usesStageProfitPercentages', 'supplierCostBasis', 'supplierCostAdjustment',
+    'totalCost', 'totalRevenue', 'totalProfit', 'expectedRevenue', 'remainingToReceive'
+  ],
+  properties: {
+    calculationModel: PROJECT_MODEL,
+    configuredProfitPercent: NULLABLE_PERCENT,
+    usesStageProfitPercentages: { type: 'boolean' },
+    supplierCostBasis: NON_NEGATIVE_MONEY,
+    supplierCostAdjustment: NON_NEGATIVE_MONEY,
+    totalCost: NON_NEGATIVE_MONEY,
+    totalRevenue: NON_NEGATIVE_MONEY,
+    totalProfit: MONEY,
+    expectedRevenue: NON_NEGATIVE_MONEY,
+    remainingToReceive: NON_NEGATIVE_MONEY
+  }
+} as const;
 const PROJECT_SUMMARY = {
   type: 'object',
   additionalProperties: false,
-  required: ['projectId', 'projectCode', 'projectName', 'currency', 'asOfDate', ...FINANCIAL_VALUE_NAMES],
+  required: [
+    'projectId', 'projectCode', 'projectName', 'projectModel', 'projectValue', 'costPlusPercent',
+    'currency', 'asOfDate', 'commercialSummary', ...FINANCIAL_VALUE_NAMES
+  ],
   properties: {
     projectId: UUID,
     projectCode: { type: 'string', minLength: 1, maxLength: 100 },
     projectName: { type: 'string', minLength: 1, maxLength: 300 },
+    projectModel: PROJECT_MODEL,
+    projectValue: NON_NEGATIVE_MONEY,
+    costPlusPercent: NULLABLE_PERCENT,
     currency: CURRENCY,
     asOfDate: DATE,
+    commercialSummary: COMMERCIAL_SUMMARY,
     ...FINANCIAL_VALUES
   }
 } as const;
@@ -169,13 +198,20 @@ const TREND_RESPONSE = {
 const PORTFOLIO_ITEM = {
   type: 'object',
   additionalProperties: false,
-  required: ['projectId', 'projectCode', 'projectName', 'clientId', 'currency', ...FINANCIAL_VALUE_NAMES],
+  required: [
+    'projectId', 'projectCode', 'projectName', 'clientId', 'projectModel', 'projectValue',
+    'costPlusPercent', 'currency', 'commercialSummary', ...FINANCIAL_VALUE_NAMES
+  ],
   properties: {
     projectId: UUID,
     projectCode: { type: 'string', minLength: 1, maxLength: 100 },
     projectName: { type: 'string', minLength: 1, maxLength: 300 },
     clientId: UUID,
+    projectModel: PROJECT_MODEL,
+    projectValue: NON_NEGATIVE_MONEY,
+    costPlusPercent: NULLABLE_PERCENT,
     currency: CURRENCY,
+    commercialSummary: COMMERCIAL_SUMMARY,
     ...FINANCIAL_VALUES
   }
 } as const;

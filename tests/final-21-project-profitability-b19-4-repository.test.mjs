@@ -67,6 +67,9 @@ test('B19.4 reads Project and Stage identity only inside Company and Project sco
   assert.match(repository, /where: scope\.where\(\{ id: projectId \}\)/);
   assert.match(repository, /async listProjectStages\(/);
   assert.match(repository, /where: scope\.where\(\{ projectId: \{ in: ids \} \}\)/);
+  for (const field of ['projectModel: true', 'projectValue: true', 'costPlusPercent: true']) {
+    assert.ok(repository.includes(field), `missing Project commercial field ${field}`);
+  }
 });
 
 test('B19.4 Stage context reads only latest approved physical progress through the as-of business date', () => {

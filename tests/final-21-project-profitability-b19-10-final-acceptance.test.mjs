@@ -50,6 +50,8 @@ test('B19.10 freezes profit, cash, outstanding and Stage reconciliation invarian
   assert.match(service, /const profitAmount = recognizedRevenue - actualCost/);
   assert.match(service, /const advanceAmount = receivedAmount - allocatedAmount/);
   assert.match(service, /const outstandingAmount = billedAmount - allocatedAmount/);
+  assert.match(service, /const totalProfit = project\.projectModel === 'COST_PLUS_PERCENTAGE' \? markup : clientReceived - totalCost/);
+  assert.match(service, /const remainingToReceive = expectedRevenue > clientReceived \? expectedRevenue - clientReceived : 0n/);
   assert.match(service, /requireStageReconciliation/);
   assert.match(service, /projectOnly/);
 });
@@ -70,7 +72,7 @@ test('B19.10 replays guarded reconciliation/security integration and freezes liv
 test('B19.10 adds one guarded Playwright workflow over all four frozen GET operations', () => {
   const e2e = read(E2E);
   const config = read('playwright.config.mjs');
-  for (const text of ['summary -> Stage -> trend -> portfolio', 'Cash is separate from profit', '500,000.00', 'four frozen GET operations']) assert.match(e2e, new RegExp(text, 'i'));
+  for (const text of ['summary -> Stage -> trend -> portfolio', 'follows each Project commercial model', '500,000.00', 'four frozen GET operations']) assert.match(e2e, new RegExp(text, 'i'));
   assert.match(e2e, /isAllowedProjectProfitabilityPath/);
   assert.match(config, /RUN_FINAL_21_PROJECT_PROFITABILITY_E2E/);
   assert.match(config, /final-21-project-profitability-browser\.spec\.mjs/);
@@ -80,7 +82,7 @@ test('B19.10 keeps the React browser read-only and server-derived', () => {
   const api = read(`${FEATURE}/api/project-profitability-api.ts`);
   const component = read(`${FEATURE}/components/project-profitability-workspace.tsx`);
   assert.doesNotMatch(api, /method:\s*['"](?:POST|PUT|PATCH|DELETE)/);
-  assert.match(component, /Cash is separate from profit/);
+  assert.match(component, /Commercial totals use Client cash as requested/);
   assert.match(component, /Project-only/);
   assert.match(component, /does not create unsafe cross-currency grand totals/);
   assert.match(component, /four frozen GET operations/);

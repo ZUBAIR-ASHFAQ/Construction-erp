@@ -988,7 +988,7 @@ test('Module 5 security attacks the live Stage-7 database constraints and review
       }
     }));
 
-    const indexRows = await client.$queryRaw<Array<{ indexname: string }>>`
+    const indexRows = await client.$queryRaw`
       SELECT indexname
       FROM pg_indexes
       WHERE schemaname = 'public'
@@ -1006,7 +1006,7 @@ test('Module 5 security attacks the live Stage-7 database constraints and review
       'project_status_history_changed_by_changed_idx'
     ]) assert.equal(indexes.has(indexName), true, indexName);
 
-    const constraintRows = await client.$queryRaw<Array<{ conname: string }>>`
+    const constraintRows = await client.$queryRaw`
       SELECT conname
       FROM pg_constraint
       WHERE conrelid IN ('projects'::regclass, 'project_status_history'::regclass)
@@ -1403,4 +1403,3 @@ test('Module 5 operational query plans use reviewed indexes for Project and life
     assert.match(historyPlan, /Execution Time/);
   });
 });
-

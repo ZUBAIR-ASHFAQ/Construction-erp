@@ -521,7 +521,7 @@ export class EquipmentService {
     if (!result) throw createModule12Error('EQUIPMENT_NOT_FOUND');
     const assignments = result.assignments.map(assignmentResponse);
     const costActualByUsageId = new Map(result.costActuals.map((row) => [row.sourceId, row.id]));
-    const usage = result.usage.map((row: any) => usageResponse(row, row.assignment, costActualByUsageId.get(row.id) ?? null));
+    const usage = result.usage.map((row) => usageResponse(row, row.assignment, costActualByUsageId.get(row.id) ?? null));
     const maintenance = result.maintenance.map(maintenanceResponse);
     const totals = new Map<string, { projectId: string; stageId: string | null; minorUnits: bigint }>();
     for (const row of usage) {

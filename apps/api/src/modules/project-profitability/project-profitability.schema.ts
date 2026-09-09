@@ -57,6 +57,11 @@ export const PROJECT_PROFITABILITY_SERVER_OWNED_REQUEST_FIELDS = Object.freeze([
   'advanceAmount',
   'outstandingAmount',
   'supplierPayableAmount',
+  'totalCost',
+  'totalRevenue',
+  'totalProfit',
+  'expectedRevenue',
+  'remainingToReceive',
   'formula',
   'expression',
   'metricExpression'
@@ -174,6 +179,20 @@ export const projectProfitabilityCostBreakdownSchema = z.object({
   otherCost: exactMoneySchema
 }).strict();
 
+/** Contract-model profitability calculated from the complete Project cost and Client cash position. */
+export const projectProfitabilityCommercialSummarySchema = z.object({
+  calculationModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
+  configuredProfitPercent: exactPercentSchema.nullable(),
+  usesStageProfitPercentages: z.boolean(),
+  supplierCostBasis: exactNonNegativeMoneySchema,
+  supplierCostAdjustment: exactNonNegativeMoneySchema,
+  totalCost: exactNonNegativeMoneySchema,
+  totalRevenue: exactNonNegativeMoneySchema,
+  totalProfit: exactMoneySchema,
+  expectedRevenue: exactNonNegativeMoneySchema,
+  remainingToReceive: exactNonNegativeMoneySchema
+}).strict();
+
 /** Financial measures shared by Project, Stage and portfolio profitability responses. */
 export const projectProfitabilityFinancialValuesSchema = z.object({
   recognizedRevenue: exactMoneySchema,
@@ -197,8 +216,12 @@ export const projectProfitabilitySummaryResponseSchema = z.object({
   projectId: uuidSchema,
   projectCode: z.string().trim().min(1).max(100),
   projectName: z.string().trim().min(1).max(300),
+  projectModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
+  projectValue: exactNonNegativeMoneySchema,
+  costPlusPercent: exactPercentSchema.nullable(),
   currency: currencySchema,
   asOfDate: dateSchema,
+  commercialSummary: projectProfitabilityCommercialSummarySchema,
   ...projectProfitabilityFinancialValuesSchema.shape
 }).strict();
 
@@ -252,7 +275,11 @@ export const projectProfitabilityPortfolioItemResponseSchema = z.object({
   projectCode: z.string().trim().min(1).max(100),
   projectName: z.string().trim().min(1).max(300),
   clientId: uuidSchema,
+  projectModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
+  projectValue: exactNonNegativeMoneySchema,
+  costPlusPercent: exactPercentSchema.nullable(),
   currency: currencySchema,
+  commercialSummary: projectProfitabilityCommercialSummarySchema,
   ...projectProfitabilityFinancialValuesSchema.shape
 }).strict();
 
@@ -292,6 +319,7 @@ export type ProjectProfitabilityTrendQuery = z.infer<typeof projectProfitability
 export type ProjectProfitabilityPortfolioQuery = z.infer<typeof projectProfitabilityPortfolioQuerySchema>;
 export type ProjectProfitabilityFinancialValues = z.infer<typeof projectProfitabilityFinancialValuesSchema>;
 export type ProjectProfitabilityCostBreakdown = z.infer<typeof projectProfitabilityCostBreakdownSchema>;
+export type ProjectProfitabilityCommercialSummary = z.infer<typeof projectProfitabilityCommercialSummarySchema>;
 export type ProjectProfitabilitySummaryResponse = z.infer<typeof projectProfitabilitySummaryResponseSchema>;
 export type ProjectProfitabilityStageRowResponse = z.infer<typeof projectProfitabilityStageRowResponseSchema>;
 export type ProjectProfitabilityStagesResponse = z.infer<typeof projectProfitabilityStagesResponseSchema>;

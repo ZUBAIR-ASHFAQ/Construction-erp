@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useProjectWorkspaceVisibility } from '../../administration/hooks/auth.js';
 import { useProjects } from '../../projects/hooks/projects.js';
 import type {
+  ProjectProfitabilityCommercialSummary,
   ProjectProfitabilityFinancialValues,
   ProjectProfitabilityPortfolioItem,
   ProjectProfitabilityTrendGranularity
@@ -142,6 +143,35 @@ function SupplierPositionGrid({ values, currency }: { values: ProjectProfitabili
     ['Payments allocated to invoices', values.supplierAllocatedPaymentAmount],
     ['Supplier advance / unallocated', values.supplierAdvanceAmount],
     ['Supplier payable outstanding', values.supplierPayableAmount]
+  ] as const;
+  return <dl className="profitability-metric-grid">{metrics.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayMoney(value, currency)}</dd></div>)}</dl>;
+}
+
+/** Render the Project-model KPI totals exactly as calculated by the server. */
+function CommercialSummaryGrid({ values, currency }: { values: ProjectProfitabilityCommercialSummary; currency: string }) {
+  const costPlus = values.calculationModel === 'COST_PLUS_PERCENTAGE';
+  const profitLabel = costPlus
+    ? values.usesStageProfitPercentages
+      ? `Total profit / markup (stage rates; ${values.configuredProfitPercent ?? '0'}% fallback)`
+      : `Total profit / markup (${values.configuredProfitPercent ?? '0'}% of total cost)`
+    : 'Total profit (client received - total cost)';
+  const expectedRevenueLabel = costPlus ? 'Cost + profit billable amount' : 'Fixed contract amount';
+  const metrics = [
+    ['Total project cost', values.totalCost],
+    ['Total revenue (client received)', values.totalRevenue],
+    [profitLabel, values.totalProfit],
+    [expectedRevenueLabel, values.expectedRevenue],
+    ['Total remaining to receive', values.remainingToReceive]
+  ] as const;
+  return <dl className="profitability-metric-grid">{metrics.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayMoney(value, currency)}</dd></div>)}</dl>;
+}
+
+/** Explain how Supplier obligations bridge posted expense categories to the complete cost base. */
+function CommercialCostBridge({ values, currency }: { values: ProjectProfitabilityCommercialSummary; currency: string }) {
+  const metrics = [
+    ['Supplier cost basis', values.supplierCostBasis],
+    ['Supplier cost not yet represented in expense rows', values.supplierCostAdjustment],
+    ['Complete total cost', values.totalCost]
   ] as const;
   return <dl className="profitability-metric-grid">{metrics.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{displayMoney(value, currency)}</dd></div>)}</dl>;
 }
@@ -323,14 +353,24 @@ export function ProjectProfitabilityWorkspace({
         {summaryQuery.data && (
           <>
             <p><strong>{summaryQuery.data.projectCode} · {summaryQuery.data.projectName}</strong> <span className="muted">as of {summaryQuery.data.asOfDate}</span></p>
-            <FinancialGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
+            <p className="muted">Commercial model: {summaryQuery.data.projectModel === 'COST_PLUS_PERCENTAGE' ? `Cost + ${summaryQuery.data.costPlusPercent}%` : 'Fixed Price'}</p>
+            <h3>Project totals</h3>
+            <CommercialSummaryGrid values={summaryQuery.data.commercialSummary} currency={summaryQuery.data.currency} />
+            <p className="profitability-cash-note">
+              {summaryQuery.data.projectModel === 'COST_PLUS_PERCENTAGE'
+                ? 'Profit applies each Stage markup where configured and the Project percentage as fallback, including for Project-only Supplier cost. Remaining receipt is the cost-plus billable amount less Client cash received.'
+                : 'Profit is Client cash received minus complete total cost. Remaining receipt is the fixed contract amount less Client cash received.'}
+            </p>
             <h3>Project expense breakdown</h3>
             <CostBreakdownGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
-            <p className="muted">Material, payroll, equipment, subcontractor, site-expense and other posted source rows reconcile exactly to Total expense / actual cost. Inventory transfers retain their signed Project cost movement.</p>
+            <CommercialCostBridge values={summaryQuery.data.commercialSummary} currency={summaryQuery.data.currency} />
+            <p className="muted">Salary, equipment, material, subcontractor, site-expense and other rows come from posted Project costs. The Supplier adjustment adds only posted invoices or direct Supplier payments not already represented in those expense rows.</p>
             <h3>Supplier position</h3>
             <SupplierPositionGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
             <p className="muted">Supplier cash payment is shown separately and is never added to expense a second time. Payable is posted invoices less allocated payments; direct unallocated payments remain Supplier advance.</p>
-            <p className="profitability-cash-note"><strong>Cash is separate from profit.</strong> Client received cash and advances are displayed for financial position only. Profit remains recognized revenue minus actual cost.</p>
+            <h3>Accounting and Client invoice position</h3>
+            <FinancialGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
+            <p className="profitability-cash-note"><strong>Commercial totals use Client cash as requested.</strong> Recognized revenue and invoice outstanding remain visible separately for accounting reconciliation.</p>
           </>
         )}
       </section>
@@ -403,21 +443,19 @@ export function ProjectProfitabilityWorkspace({
             <p className="muted">Each row keeps its own currency. This UI does not create unsafe cross-currency grand totals.</p>
             <div className="table-wrap">
               <table className="admin-table profitability-table">
-                <thead><tr><th>Project</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Client billed</th><th>Client received</th><th>Client advance</th><th>Client receivable</th><th>Supplier invoiced</th><th>Supplier paid</th><th>Supplier payable</th></tr></thead>
+                <thead><tr><th>Project</th><th>Model</th><th>Total revenue</th><th>Total cost</th><th>Total profit</th><th>Remaining receipt</th><th>Supplier paid</th><th>Supplier payable</th><th>Invoice receivable</th></tr></thead>
                 <tbody>
                   {portfolioQuery.data.items.map((item) => (
                     <tr key={item.projectId}>
                       <td><button type="button" className="link-button" onClick={() => handleSelectPortfolioProject(item.projectId)}>{item.projectCode}</button><span>{item.projectName} · {item.currency}</span></td>
-                      <td>{displayMoney(item.recognizedRevenue, item.currency)}</td>
-                      <td>{displayMoney(item.actualCost, item.currency)}</td>
-                      <td>{displayMoney(item.profitAmount, item.currency)}</td>
-                      <td>{displayMoney(item.billedAmount, item.currency)}</td>
-                      <td>{displayMoney(item.receivedAmount, item.currency)}</td>
-                      <td>{displayMoney(item.advanceAmount, item.currency)}</td>
-                      <td>{displayMoney(item.outstandingAmount, item.currency)}</td>
-                      <td>{displayMoney(item.supplierInvoicedAmount, item.currency)}</td>
+                      <td>{item.projectModel === 'COST_PLUS_PERCENTAGE' ? `Cost + ${item.costPlusPercent}%` : 'Fixed Price'}</td>
+                      <td>{displayMoney(item.commercialSummary.totalRevenue, item.currency)}</td>
+                      <td>{displayMoney(item.commercialSummary.totalCost, item.currency)}</td>
+                      <td>{displayMoney(item.commercialSummary.totalProfit, item.currency)}</td>
+                      <td>{displayMoney(item.commercialSummary.remainingToReceive, item.currency)}</td>
                       <td>{displayMoney(item.supplierPaymentAmount, item.currency)}</td>
                       <td>{displayMoney(item.supplierPayableAmount, item.currency)}</td>
+                      <td>{displayMoney(item.outstandingAmount, item.currency)}</td>
                     </tr>
                   ))}
                 </tbody>

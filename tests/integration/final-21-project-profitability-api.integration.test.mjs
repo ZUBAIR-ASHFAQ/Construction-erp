@@ -338,8 +338,23 @@ test('B19.8 live Project summary reconciles Modules 9, 15, 16, 17 and 18 without
       projectId: PROJECT_A_ID,
       projectCode: 'B198-A',
       projectName: 'B19.8 Reconciliation Project',
+      projectModel: 'FIXED_PRICE',
+      projectValue: '50000000.00',
+      costPlusPercent: null,
       currency: 'PKR',
       asOfDate: '2026-08-29',
+      commercialSummary: {
+        calculationModel: 'FIXED_PRICE',
+        configuredProfitPercent: null,
+        usesStageProfitPercentages: false,
+        supplierCostBasis: '900.00',
+        supplierCostAdjustment: '600.00',
+        totalCost: '1200.00',
+        totalRevenue: '1500.00',
+        totalProfit: '300.00',
+        expectedRevenue: '50000000.00',
+        remainingToReceive: '49998500.00'
+      },
       recognizedRevenue: '1700.00',
       actualCost: '600.00',
       profitAmount: '1100.00',
@@ -404,6 +419,9 @@ test('B19.8 live random Rs. 500,000 Client advance changes cash position but not
     assert.equal(payload.recognizedRevenue, '0.00');
     assert.equal(payload.actualCost, '0.00');
     assert.equal(payload.profitAmount, '0.00');
+    assert.equal(payload.commercialSummary.totalRevenue, '500000.00');
+    assert.equal(payload.commercialSummary.totalProfit, '500000.00');
+    assert.equal(payload.commercialSummary.remainingToReceive, '19500000.00');
   });
 });
 

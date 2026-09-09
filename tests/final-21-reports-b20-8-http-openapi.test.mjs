@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 
 const ROOT = new URL('../', import.meta.url);
@@ -8,11 +8,6 @@ const MODULE = 'apps/api/src/modules/reports/';
 /** Read one project file as UTF-8 text. */
 function read(relativePath) {
   return readFileSync(new URL(relativePath, ROOT), 'utf8');
-}
-
-/** Return whether one project path exists. */
-function exists(relativePath) {
-  return existsSync(new URL(relativePath, ROOT));
 }
 
 test('B20.8 keeps the five-file Reports backend shape and adds no migration or Dashboard runtime registration', () => {

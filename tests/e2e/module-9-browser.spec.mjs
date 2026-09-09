@@ -510,10 +510,10 @@ test('Module 9 browser workflow covers quotation-backed draft, approval, issue, 
   await expect(page.locator('.module9-detail-card')).toContainText('CANCELLED');
   const cancellationEvidence = page.getByRole('heading', { name: 'Cancellation evidence' }).locator('..');
   await expect(cancellationEvidence).toContainText('Procurement scope cancelled after approved design change');
-  await expect(cancellationEvidence).toContainText(ADMIN_ID);
+  await expect(cancellationEvidence).toContainText(MANAGER_ID);
   const persistedCancellation = await database.purchaseOrder.findFirstOrThrow({ where: { id: created.id } });
   expect(persistedCancellation.cancelReason).toBe('Procurement scope cancelled after approved design change');
-  expect(persistedCancellation.cancelledBy).toBe(ADMIN_ID);
+  expect(persistedCancellation.cancelledBy).toBe(MANAGER_ID);
   expect(persistedCancellation.cancelledAt).toBeTruthy();
   const cancelledCommitment = await database.costCommitment.findFirst({
     where: { companyId: COMPANY_ID, projectId: PROJECT_ID, sourceType: 'purchase_order', sourceId: created.id }

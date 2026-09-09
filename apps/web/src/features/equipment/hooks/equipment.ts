@@ -2,17 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   assignEquipment,
   createEquipment,
-  createEquipmentMaintenance,
   endEquipmentAssignment,
   getEquipmentHistory,
   listEquipment,
-  recordEquipmentUsage,
   updateEquipment,
   type AssignEquipmentInput,
   type CreateEquipmentInput,
-  type CreateEquipmentMaintenanceInput,
   type ListEquipmentInput,
-  type RecordEquipmentUsageInput,
   type UpdateEquipmentInput
 } from '../api/equipment-api.js';
 
@@ -64,24 +60,6 @@ export function useEndEquipmentAssignment(equipmentId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: Readonly<{ assignmentId: string; endDate: string; endTime?: string }>) => endEquipmentAssignment(equipmentId, input.assignmentId, input.endDate, input.endTime),
-    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
-  });
-}
-
-/** Record usage and refresh the Project/Stage cost history. */
-export function useRecordEquipmentUsage(equipmentId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: RecordEquipmentUsageInput) => recordEquipmentUsage(equipmentId, input),
-    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
-  });
-}
-
-/** Record maintenance and refresh Equipment history. */
-export function useCreateEquipmentMaintenance(equipmentId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: (input: CreateEquipmentMaintenanceInput) => createEquipmentMaintenance(equipmentId, input),
     onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
   });
 }

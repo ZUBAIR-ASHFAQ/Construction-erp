@@ -115,7 +115,6 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const calculateMutation = useCalculatePayrollRun(selectedRunId ?? '00000000-0000-0000-0000-000000000000');
   const finalizeMutation = useFinalizePayrollRun(selectedRunId ?? '00000000-0000-0000-0000-000000000000');
 
-  const employeeNames = useMemo(() => new Map((employees.data?.items ?? []).map((item) => [item.id, `${item.employeeNo} · ${item.name}`])), [employees.data]);
   const projectNames = useMemo(() => new Map((projects.data?.items ?? []).map((item) => [item.id, `${item.projectCode} · ${item.name}`])), [projects.data]);
 
   /** Synchronize correction fields when the user selects an attendance row. */

@@ -160,6 +160,14 @@ const reportCodeSchema = z.enum(REPORT_CODES);
 const outputFormatSchema = z.enum(REPORT_OUTPUT_FORMATS);
 const reportRunStatusSchema = z.enum(REPORT_RUN_STATUS_VALUES);
 const searchSchema = z.string().trim().min(1).max(200);
+const exactMoneySchema = z.string().trim().regex(
+  /^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/,
+  'amount must be an exact decimal with up to 2 decimal places'
+);
+const exactPercentSchema = z.string().trim().regex(
+  /^-?(?:0|[1-9]\d{0,5})(?:\.\d{1,2})?$/,
+  'percentage must be an exact decimal with up to 2 decimal places'
+);
 
 /** Check that one date-only value represents a real calendar date. */
 function isValidDateOnly(value: string): boolean {
@@ -285,6 +293,37 @@ export const reportCatalogResponseSchema = z.object({
   items: z.array(reportCatalogItemResponseSchema)
 }).strict();
 
+/** Validate one Project profitability bar calculated from the shared Project Profitability read model. */
+export const reportAnalyticsProjectResponseSchema = z.object({
+  projectId: uuidSchema,
+  projectCode: z.string().trim().min(1).max(100),
+  projectName: z.string().trim().min(1).max(300),
+  totalRevenue: exactMoneySchema,
+  totalProjectCost: exactMoneySchema,
+  grossProfit: exactMoneySchema,
+  marginPercent: exactPercentSchema
+}).strict();
+
+/** Validate one currency-safe executive summary without combining unrelated currencies. */
+export const reportAnalyticsCurrencyResponseSchema = z.object({
+  currency: z.string().trim().regex(/^[A-Z]{3}$/),
+  totalRevenue: exactMoneySchema,
+  totalProjectCost: exactMoneySchema,
+  grossProfit: exactMoneySchema,
+  overallMarginPercent: exactPercentSchema,
+  clientReceivables: exactMoneySchema,
+  supplierPayables: exactMoneySchema,
+  cashBank: exactMoneySchema,
+  projects: z.array(reportAnalyticsProjectResponseSchema)
+}).strict();
+
+/** Validate the source-derived landing overview shown before an individual report is selected. */
+export const reportAnalyticsOverviewResponseSchema = z.object({
+  generatedAt: z.string().datetime(),
+  asOfDate: dateSchema,
+  currencies: z.array(reportAnalyticsCurrencyResponseSchema)
+}).strict();
+
 /** Validate generic report result metadata while report rows remain server-generated source data. */
 export const runReportResponseSchema = z.object({
   reportCode: reportCodeSchema,
@@ -351,6 +390,9 @@ export type SavedReportFiltersQuery = z.infer<typeof savedReportFiltersQuerySche
 export type SaveReportFilterBody = z.infer<typeof saveReportFilterBodySchema>;
 export type ReportCatalogItemResponse = z.infer<typeof reportCatalogItemResponseSchema>;
 export type ReportCatalogResponse = z.infer<typeof reportCatalogResponseSchema>;
+export type ReportAnalyticsProjectResponse = z.infer<typeof reportAnalyticsProjectResponseSchema>;
+export type ReportAnalyticsCurrencyResponse = z.infer<typeof reportAnalyticsCurrencyResponseSchema>;
+export type ReportAnalyticsOverviewResponse = z.infer<typeof reportAnalyticsOverviewResponseSchema>;
 export type RunReportResponse = z.infer<typeof runReportResponseSchema>;
 export type ReportRunResponse = z.infer<typeof reportRunResponseSchema>;
 export type ReportDownloadResponse = z.infer<typeof reportDownloadResponseSchema>;

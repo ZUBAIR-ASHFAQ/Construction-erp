@@ -150,6 +150,17 @@ test('B19.5 reconciles categorized CostActual rows and keeps Supplier cash outsi
   assert.doesNotMatch(service, /actualCost[^;=]*[+=][^;]*(?:supplierPaymentAmount|supplierPosition\.paid)/);
 });
 
+test('Project commercial profit follows Fixed Price and Cost Plus Percentage rules', () => {
+  const service = read(SERVICE);
+  const commercial = service.match(/function calculateCommercialSummary[\s\S]*?\n\}/)?.[0] ?? '';
+  assert.match(commercial, /supplierCostBasis > supplierCostAlreadyPosted/);
+  assert.match(commercial, /actualCost \+ supplierCostAdjustment/);
+  assert.match(commercial, /stagePercentById\.get\(stageId\)/);
+  assert.match(commercial, /percentageMoney\(supplierCostAdjustment, projectPercent/);
+  assert.match(commercial, /clientReceived - totalCost/);
+  assert.match(commercial, /expectedRevenue > clientReceived \? expectedRevenue - clientReceived : 0n/);
+});
+
 test('B19.5 remains read-only and adds no profitability persistence or migration', () => {
   const service = read(SERVICE);
   assert.doesNotMatch(service, /\.create\(|\.update\(|\.delete\(|\.upsert\(|\$transaction\(/);

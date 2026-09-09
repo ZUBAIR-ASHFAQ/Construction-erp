@@ -35,6 +35,24 @@ const ZERO_MONEY = '0.00';
 const MAX_MINOR_UNITS = 999_999_999_999_999_999n;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+type BillingProjectRecord = NonNullable<Awaited<ReturnType<ClientBillingRepository['findProject']>>>;
+type BillingSettingsRecord = Awaited<ReturnType<ClientBillingRepository['findSettings']>>;
+type ClientInvoiceRecord = NonNullable<Awaited<ReturnType<ClientBillingRepository['findInvoice']>>>;
+type ProgressClaimRecord = NonNullable<Awaited<ReturnType<ClientBillingRepository['findClaim']>>>;
+type InvoicePostingRecord = Pick<
+  ClientInvoiceRecord,
+  | 'claimId'
+  | 'clientId'
+  | 'id'
+  | 'invoiceDate'
+  | 'invoiceNo'
+  | 'lines'
+  | 'projectId'
+  | 'status'
+  | 'subtotal'
+  | 'taxAmount'
+  | 'totalAmount'
+>;
 
 /** Parse one validated API date without local-time conversion. */
 function inputDate(value: string): Date {
@@ -169,7 +187,7 @@ function requireInvoiceDateOrder(invoiceDate: Date, dueDate: Date): void {
 }
 
 /** Convert persisted billing settings into a stable API response. */
-function settingsResponse(settings: any, project: any) {
+function settingsResponse(settings: BillingSettingsRecord, project: BillingProjectRecord) {
   return {
     projectId: project.id,
     billingMethod: settings?.billingMethod ?? project.projectModel,
@@ -181,7 +199,7 @@ function settingsResponse(settings: any, project: any) {
 }
 
 /** Convert one persisted claim line into the API response. */
-function claimLineResponse(line: any) {
+function claimLineResponse(line: ProgressClaimRecord['lines'][number]) {
   return {
     id: line.id,
     stageId: line.stageId,
@@ -192,10 +210,10 @@ function claimLineResponse(line: any) {
 }
 
 /** Convert one persisted invoice into the API response with receipt-allocation paid and due balances. */
-function invoiceResponse(invoice: any) {
+function invoiceResponse(invoice: ClientInvoiceRecord) {
   const total = moneyToMinorUnits(invoice.totalAmount);
   const allocated = (invoice.receiptAllocations ?? [])
-    .reduce((sum: bigint, allocation: any) => sum + moneyToMinorUnits(allocation.amount), 0n);
+    .reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
   if (allocated > total) throw new ValidationError({ message: 'Client Invoice allocations exceed the persisted invoice total.' });
   return {
     id: invoice.id,
@@ -211,7 +229,7 @@ function invoiceResponse(invoice: any) {
     totalAmount: minorUnitsToMoney(total),
     allocatedAmount: minorUnitsToMoney(allocated),
     outstandingAmount: minorUnitsToMoney(total - allocated),
-    lines: (invoice.lines ?? []).map((line: any) => ({
+    lines: (invoice.lines ?? []).map((line) => ({
       id: line.id,
       stageId: line.stageId,
       description: line.description,
@@ -221,7 +239,7 @@ function invoiceResponse(invoice: any) {
 }
 
 /** Convert one persisted progress claim into the API response. */
-function claimResponse(claim: any) {
+function claimResponse(claim: ProgressClaimRecord) {
   return {
     id: claim.id,
     projectId: claim.projectId,
@@ -581,14 +599,14 @@ export class ClientBillingService {
   /** Post one immutable Client Invoice to Finance / AR using a stable source key inside the current transaction. */
   private async postInvoiceToFinance(
     tx: TransactionClient,
-    invoice: any,
+    invoice: InvoicePostingRecord,
     receivableAccountId: string,
     defaultRevenueAccountId: string
   ) {
     const subtotal = moneyToMinorUnits(invoice.subtotal);
     const tax = moneyToMinorUnits(invoice.taxAmount);
     const total = moneyToMinorUnits(invoice.totalAmount);
-    const lineTotal = (invoice.lines ?? []).reduce((sum: bigint, line: any) => sum + moneyToMinorUnits(line.amount), 0n);
+    const lineTotal = (invoice.lines ?? []).reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
     if (tax !== 0n || subtotal !== lineTotal || total !== subtotal + tax || total <= 0n) {
       throw new ConflictError({ message: 'Client Invoice totals do not reconcile to the immutable invoice lines.' });
     }
@@ -613,7 +631,7 @@ export class ClientBillingService {
       description: `Client invoice ${invoice.invoiceNo}`,
       lines: [
         { accountId: receivableAccountId, projectId: invoice.projectId, stageId: null, debit: minorUnitsToMoney(total), credit: ZERO_MONEY, description: `Client receivable ${invoice.invoiceNo}` },
-        ...(invoice.lines ?? []).map((line: any) => ({
+        ...(invoice.lines ?? []).map((line) => ({
           accountId: line.revenueAccountId ?? defaultRevenueAccountId,
           projectId: invoice.projectId,
           stageId: line.stageId,
@@ -627,7 +645,7 @@ export class ClientBillingService {
   }
 
   /** Ensure a direct Client Invoice is posted to Finance only when downstream cash is first allocated. */
-  async ensureDirectInvoiceFinancePostingInTransaction(tx: TransactionClient, invoice: any) {
+  async ensureDirectInvoiceFinancePostingInTransaction(tx: TransactionClient, invoice: InvoicePostingRecord) {
     if (invoice.claimId !== null) return null;
     const repository = new ClientBillingRepository(tx);
     const accounts = await this.requireInvoicePostingAccounts(repository);
@@ -690,7 +708,7 @@ export class ClientBillingService {
     const invoiceDate = inputDate(input.invoiceDate);
     const dueDate = inputDate(input.dueDate);
     requireInvoiceDateOrder(invoiceDate, dueDate);
-    const gross = claim.lines.reduce((sum: bigint, line: any) => sum + moneyToMinorUnits(line.amount), 0n);
+    const gross = claim.lines.reduce((sum, line) => sum + moneyToMinorUnits(line.amount), 0n);
     const storedGross = moneyToMinorUnits(claim.grossValue);
     const subtotal = moneyToMinorUnits(claim.netCertified);
     if (gross !== storedGross || subtotal !== gross - moneyToMinorUnits(claim.retention) - moneyToMinorUnits(claim.deductions)) {

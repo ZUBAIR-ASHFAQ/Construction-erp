@@ -9,12 +9,10 @@ export function runStep(name, command, args, { env = process.env, cwd = process.
   const startedAt = new Date();
   return new Promise((resolve) => {
     const child = spawn(command, args, { cwd, env, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
-    let stdout = '';
-    let stderr = '';
     child.stdout.setEncoding('utf8');
     child.stderr.setEncoding('utf8');
-    child.stdout.on('data', (chunk) => { stdout += chunk; process.stdout.write(chunk); });
-    child.stderr.on('data', (chunk) => { stderr += chunk; process.stderr.write(chunk); });
+    child.stdout.on('data', (chunk) => process.stdout.write(chunk));
+    child.stderr.on('data', (chunk) => process.stderr.write(chunk));
     child.on('error', (error) => {
       resolve({ name, status: 'failed', startedAt: startedAt.toISOString(), finishedAt: new Date().toISOString(), code: null, signal: null, errorCode: error.code ?? 'SPAWN_FAILED' });
     });

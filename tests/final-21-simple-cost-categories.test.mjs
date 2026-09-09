@@ -19,7 +19,6 @@ const billingWorkspace = await readFile('apps/web/src/features/client-billing/co
 const purchaseOrderRepository = await readFile('apps/api/src/modules/procurement/procurement.repository.ts', 'utf8');
 const purchaseOrderService = await readFile('apps/api/src/modules/procurement/procurement.service.ts', 'utf8');
 const inventoryRepository = await readFile('apps/api/src/modules/inventory/inventory.repository.ts', 'utf8');
-const inventoryService = await readFile('apps/api/src/modules/inventory/inventory.service.ts', 'utf8');
 const equipmentRepository = await readFile('apps/api/src/modules/equipment/equipment.repository.ts', 'utf8');
 
 /** Extract one Prisma model block for focused Final-21 assertions. */

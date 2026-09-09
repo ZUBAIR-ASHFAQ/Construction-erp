@@ -72,8 +72,15 @@ test('B19.9 displays all Project financial measures and keeps cash separate from
     'Material and inventory usage', 'Labour salaries / wages', 'Equipment usage', 'Subcontractor cost',
     'Site expenses', 'Supplier invoices posted', 'Supplier cash paid'
   ]) assert.match(workspace, new RegExp(token.replace(/[\/]/g, '\\/')));
-  assert.match(workspace, /Cash is separate from profit/);
-  assert.match(workspace, /Profit remains recognized revenue minus actual cost/);
+  assert.match(workspace, /Commercial totals use Client cash as requested/);
+  assert.match(workspace, /Profit is Client cash received minus complete total cost/);
+  assert.match(workspace, /Profit applies each Stage markup where configured and the Project percentage as fallback/);
+  for (const field of ['totalCost', 'totalRevenue', 'totalProfit', 'expectedRevenue', 'remainingToReceive']) {
+    assert.ok(
+      workspace.includes(`values.${field}`) || workspace.includes(`commercialSummary.${field}`),
+      `missing commercial KPI ${field}`
+    );
+  }
   assert.doesNotMatch(workspace, /Number\([^)]*recognizedRevenue[^)]*\)\s*-\s*Number\([^)]*actualCost/);
   assert.doesNotMatch(workspace, /receivedAmount\s*[-+*/]/);
 });

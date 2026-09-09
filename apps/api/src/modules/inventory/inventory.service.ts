@@ -28,6 +28,12 @@ const SCALE_4 = 10_000n;
 const MONEY_DIVISOR = 1_000_000n;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+type InventoryLedgerRecord = Awaited<ReturnType<InventoryRepository['listLedger']>>['items'][number];
+type MaterialRecord = NonNullable<Awaited<ReturnType<InventoryRepository['findMaterialById']>>>;
+type MaterialIssueRecord = Awaited<ReturnType<InventoryRepository['createMaterialIssue']>> & Readonly<{
+  items: readonly Awaited<ReturnType<InventoryRepository['createMaterialIssueItem']>>[];
+}>;
+type WarehouseRecord = NonNullable<Awaited<ReturnType<InventoryRepository['findWarehouseById']>>>;
 
 /** Normalize one status or code token for case-insensitive comparisons. */
 function token(value: string): string {
@@ -76,12 +82,12 @@ function pageWindow(input: Readonly<{ page?: number | undefined; pageSize?: numb
 }
 
 /** Map a Material row to the public response. */
-function materialResponse(row: any) {
+function materialResponse(row: MaterialRecord) {
   return { id: row.id, code: row.code, name: row.name, unit: row.unit, category: row.category ?? null, status: row.status };
 }
 
 /** Map one stock-ledger row to precision-safe public values. */
-function ledgerResponse(row: any) {
+function ledgerResponse(row: InventoryLedgerRecord) {
   return {
     id: row.id,
     warehouseId: row.warehouseId,
@@ -98,7 +104,7 @@ function ledgerResponse(row: any) {
 }
 
 /** Map one persisted Material Issue and its lines. */
-function materialIssueResponse(row: any) {
+function materialIssueResponse(row: MaterialIssueRecord) {
   return {
     id: row.id,
     projectId: row.projectId,
@@ -107,7 +113,7 @@ function materialIssueResponse(row: any) {
     issueNo: row.issueNo,
     issueDate: row.issueDate.toISOString().slice(0, 10),
     status: row.status,
-    items: row.items.map((item: any) => ({
+    items: row.items.map((item) => ({
       id: item.id,
       materialId: item.materialId,
       quantity: item.quantity.toString(),
@@ -176,7 +182,7 @@ export class InventoryService {
   }
 
   /** Require Warehouse permission using its owning Project or Company scope. */
-  private async requireWarehousePermission(repository: AdministrationRepository, warehouse: any, permission: string, asOf: Date): Promise<void> {
+  private async requireWarehousePermission(repository: AdministrationRepository, warehouse: WarehouseRecord, permission: string, asOf: Date): Promise<void> {
     if (warehouse.projectId) {
       await this.requireProjectPermission(repository, warehouse.projectId, permission, asOf);
       return;
@@ -225,7 +231,7 @@ export class InventoryService {
     const page = pageWindow(query);
     const result = await new InventoryRepository(this.db).listStock({ ...page, visibility, projectId: query.projectId, warehouseId: query.warehouseId, materialId: query.materialId });
     return {
-      items: result.items.map((row: any) => ({
+      items: result.items.map((row) => ({
         warehouseId: row.warehouse.id,
         warehouseCode: row.warehouse.code,
         warehouseName: row.warehouse.name,
@@ -237,7 +243,7 @@ export class InventoryService {
         quantityOnHand: row.quantityOnHand.toString(),
         averageCost: row.averageCost.toString()
       })),
-      warehouses: result.warehouses.map((row: any) => ({ id: row.id, projectId: row.projectId ?? null, code: row.code, name: row.name, status: row.status })),
+      warehouses: result.warehouses.map((row) => ({ id: row.id, projectId: row.projectId ?? null, code: row.code, name: row.name, status: row.status })),
       total: result.total,
       page: page.page,
       pageSize: page.pageSize
@@ -280,7 +286,7 @@ export class InventoryService {
     const sortedMaterialIds = [...uniqueMaterialIds].sort();
     for (const materialId of sortedMaterialIds) await repository.lockStockKey(warehouse.id, materialId);
 
-    const prepared: Array<{ material: any; quantity: bigint; unitCost: bigint; lineCost: string }> = [];
+    const prepared: Array<{ material: MaterialRecord; quantity: bigint; unitCost: bigint; lineCost: string }> = [];
     for (const line of input.items) {
       const material = await repository.findMaterialById(line.materialId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
@@ -480,13 +486,13 @@ export class InventoryService {
     const warehouse = await repository.findWarehouseById(input.warehouseId, visibility);
     if (!warehouse || (warehouse.projectId && warehouse.projectId !== purchaseOrder.projectId)) throw createModule11Error('WAREHOUSE_NOT_FOUND');
     await this.requireWarehousePermission(users, warehouse, 'goods_receipts.create', now);
-    const poItems = new Map(purchaseOrder.items.map((row: any) => [row.id, row]));
+    const poItems = new Map(purchaseOrder.items.map((row) => [row.id, row]));
     const requestedPoItemIds = new Set(input.items.map((item) => item.poItemId));
     if (requestedPoItemIds.size !== input.items.length) throw new ValidationError({ message: 'A Purchase Order line may appear only once in one Goods Receipt.' });
     const prepared = [];
 
     for (const requested of input.items) {
-      const line: any = poItems.get(requested.poItemId);
+      const line = poItems.get(requested.poItemId);
       if (!line || line.itemId !== requested.itemId) throw new ValidationError({ message: 'Goods Receipt line does not match the Purchase Order material.' });
       const material = await repository.findMaterialById(requested.itemId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');

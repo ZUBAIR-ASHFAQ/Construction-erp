@@ -120,6 +120,13 @@ test('B19.7 summary OpenAPI keeps profit, cash, receivable and payable measures 
   for (const field of ['materialCost', 'labourCost', 'securityCost', 'equipmentCost', 'subcontractCost', 'siteExpenseCost', 'otherCost']) {
     assert.ok(breakdown.includes(`${field}: MONEY`), `missing OpenAPI cost breakdown field ${field}`);
   }
+  const commercial = section(routes, 'const COMMERCIAL_SUMMARY = {', 'const PROJECT_SUMMARY = {');
+  for (const field of ['usesStageProfitPercentages', 'totalCost', 'totalRevenue', 'totalProfit', 'expectedRevenue', 'remainingToReceive']) {
+    assert.ok(commercial.includes(`${field}:`), `missing OpenAPI commercial field ${field}`);
+  }
+  const summary = section(routes, 'const PROJECT_SUMMARY = {', 'const STAGE_ROW = {');
+  assert.match(summary, /projectModel: PROJECT_MODEL/);
+  assert.match(summary, /commercialSummary: COMMERCIAL_SUMMARY/);
 });
 
 test('B19.7 Stage OpenAPI keeps weight, physical progress and Project-only reconciliation explicit', () => {

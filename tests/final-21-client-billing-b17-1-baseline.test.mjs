@@ -14,22 +14,6 @@ function exists(relativePath) {
   return existsSync(new URL(relativePath, ROOT));
 }
 
-/** Extract one Prisma model block for focused Client Billing assertions. */
-function prismaModel(name) {
-  const schema = read('packages/database/prisma/schema.prisma');
-  const start = schema.indexOf(`model ${name} {`);
-  if (start < 0) return '';
-  let depth = 0;
-  for (let index = start; index < schema.length; index += 1) {
-    if (schema[index] === '{') depth += 1;
-    if (schema[index] === '}') {
-      depth -= 1;
-      if (depth === 0) return schema.slice(start, index + 1);
-    }
-  }
-  return '';
-}
-
 /** Extract literal route declarations from the frozen Client Billing route contract. */
 function frozenRoutes() {
   const schema = read('apps/api/src/modules/client-billing/client-billing.schema.ts');

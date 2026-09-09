@@ -188,7 +188,7 @@ function isAllowedProjectProfitabilityPath(method, pathname) {
 test.beforeAll(async () => { await seedProjectProfitabilityBrowserScenario(); });
 test.afterAll(async () => { await database?.$disconnect(); });
 
-test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio browser workflow keeps cash separate from profit', async ({ page }) => {
+test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio follows each Project commercial model', async ({ page }) => {
   const requests = trackProjectProfitabilityRequests(page);
   await signIn(page);
   await page.getByRole('button', { name: 'Project Profitability' }).click();
@@ -209,7 +209,10 @@ test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio brow
   const summary = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Project profit / loss' }) });
   await expect(summary).toContainText('B19.10 Reconciliation Project');
   for (const value of ['PKR 1,700.00', 'PKR 600.00', 'PKR 1,100.00', 'PKR 1,500.00', 'PKR 500.00', 'PKR 700.00', 'PKR 650.00']) await expect(summary).toContainText(value);
-  await expect(summary).toContainText('Cash is separate from profit');
+  await expect(summary).toContainText('Total project costPKR 1,200.00');
+  await expect(summary).toContainText('Total revenue (client received)PKR 1,500.00');
+  await expect(summary).toContainText('Total profit (client received - total cost)PKR 300.00');
+  await expect(summary).toContainText('Commercial totals use Client cash as requested');
 
   const stages = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Stage financial position' }) });
   await expect(stages).toContainText('Grey Structure');
@@ -228,6 +231,7 @@ test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio brow
   await portfolio.getByRole('button', { name: 'B1910-ADV' }).click();
   await expect(summary).toContainText('B19.10 Advance Project');
   await expect(summary).toContainText('PKR 500,000.00');
+  await expect(summary).toContainText('Total profit (client received - total cost)PKR 500,000.00');
   await expect(summary).toContainText('Profit / lossPKR 0.00');
   await expect(summary).toContainText('Recognized revenuePKR 0.00');
   await expect(summary).toContainText('Advance / unallocatedPKR 500,000.00');

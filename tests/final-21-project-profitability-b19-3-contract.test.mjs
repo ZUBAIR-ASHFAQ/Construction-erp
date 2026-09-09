@@ -111,6 +111,17 @@ test('B19.3 keeps Stage weight physical progress and financial values distinct w
   assert.match(schema, /projectTotal: projectProfitabilityFinancialValuesSchema/);
 });
 
+test('Project profitability contract separates commercial cash KPIs from accounting measures', () => {
+  const schema = read(SCHEMA);
+  const commercial = schema.match(/projectProfitabilityCommercialSummarySchema = z\.object\(\{[\s\S]*?\}\)\.strict\(\)/)?.[0] ?? '';
+  for (const field of [
+    'calculationModel', 'configuredProfitPercent', 'usesStageProfitPercentages', 'supplierCostBasis', 'supplierCostAdjustment',
+    'totalCost', 'totalRevenue', 'totalProfit', 'expectedRevenue', 'remainingToReceive'
+  ]) assert.ok(commercial.includes(`${field}:`), `missing commercial measure ${field}`);
+  assert.match(schema, /projectModel: z\.enum\(\['FIXED_PRICE', 'COST_PLUS_PERCENTAGE'\]\)/);
+  assert.match(schema, /commercialSummary: projectProfitabilityCommercialSummarySchema/);
+});
+
 test('B19.3 trend output is limited to recognized revenue actual cost and profit', () => {
   const schema = read(SCHEMA);
   const trendPoint = schema.match(/projectProfitabilityTrendPointResponseSchema = z\.object\(\{[\s\S]*?\}\)\.strict\(\)/)?.[0] ?? '';

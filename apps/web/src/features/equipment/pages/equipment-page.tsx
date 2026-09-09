@@ -7,7 +7,6 @@ export function EquipmentPage() {
   const canManage = usePermission('equipment.manage');
   const canAssign = usePermission('equipment.assign');
   const canRecordUsage = usePermission('equipment.usage.create');
-  const canMaintain = usePermission('equipment.maintenance.manage');
 
   return (
     <section className="admin-stack" aria-labelledby="equipment-title">
@@ -22,7 +21,6 @@ export function EquipmentPage() {
         canManage={canManage}
         canAssign={canAssign}
         canRecordUsage={canRecordUsage}
-        canMaintain={canMaintain}
       />
     </section>
   );

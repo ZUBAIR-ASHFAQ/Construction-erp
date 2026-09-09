@@ -64,6 +64,34 @@ export type ReportCatalogItem = Readonly<{
 
 export type ReportCatalog = Readonly<{ items: ReportCatalogItem[] }>;
 
+export type ReportAnalyticsProject = Readonly<{
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  totalRevenue: string;
+  totalProjectCost: string;
+  grossProfit: string;
+  marginPercent: string;
+}>;
+
+export type ReportAnalyticsCurrency = Readonly<{
+  currency: string;
+  totalRevenue: string;
+  totalProjectCost: string;
+  grossProfit: string;
+  overallMarginPercent: string;
+  clientReceivables: string;
+  supplierPayables: string;
+  cashBank: string;
+  projects: ReportAnalyticsProject[];
+}>;
+
+export type ReportAnalyticsOverview = Readonly<{
+  generatedAt: string;
+  asOfDate: string;
+  currencies: ReportAnalyticsCurrency[];
+}>;
+
 export type RunReportInput = Readonly<{
   reportCode: ReportCode;
   filters: ReportFilters;
@@ -120,6 +148,12 @@ function catalogQuery(input: Readonly<{ search?: string; domain?: string }>): st
 /** Load the report catalog already filtered by the authenticated user's permissions. */
 export function listReportCatalog(input: Readonly<{ search?: string; domain?: string }> = {}): Promise<ReportCatalog> {
   return authenticatedRequest<ReportCatalog>(`reports/catalog${catalogQuery(input)}`);
+}
+
+/** Load the server-calculated executive overview shown before a report is selected. */
+export function getReportsAnalyticsOverview(projectId?: string): Promise<ReportAnalyticsOverview> {
+  const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : '';
+  return authenticatedRequest<ReportAnalyticsOverview>(`reports/overview${query}`);
 }
 
 /** Run one bounded server-owned report without calculating report values in the browser. */

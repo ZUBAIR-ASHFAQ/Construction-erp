@@ -281,13 +281,14 @@ test('B20.10 live saved filters and queued exports remain user-owned and durable
   });
 });
 
-test('B20.10 live OpenAPI exposes exactly the seven frozen Reports operations', { skip: !live }, async () => {
+test('B20.10 live OpenAPI exposes the Reports operations including executive analytics', { skip: !live }, async () => {
   await withApi(async ({ app }) => {
     const response = await app.inject({ method: 'GET', url: '/openapi.json' });
     assert.equal(response.statusCode, 200, response.body);
     const spec = response.json();
     const expected = [
       ['get', '/api/v1/reports/catalog', 'listReportCatalog'],
+      ['get', '/api/v1/reports/overview', 'getReportsAnalyticsOverview'],
       ['post', '/api/v1/reports/run', 'runReport'],
       ['post', '/api/v1/reports/exports', 'createReportExport'],
       ['get', '/api/v1/reports/runs/{id}', 'getReportRun'],
@@ -299,6 +300,6 @@ test('B20.10 live OpenAPI exposes exactly the seven frozen Reports operations', 
       assert.equal(spec.paths[path][method].operationId, operationId);
       assert.deepEqual(spec.paths[path][method].security, [{ bearerAuth: [] }]);
     }
-    assert.equal(Object.keys(spec.paths).filter((path) => path.startsWith('/api/v1/reports')).length, 6);
+    assert.equal(Object.keys(spec.paths).filter((path) => path.startsWith('/api/v1/reports')).length, 7);
   });
 });

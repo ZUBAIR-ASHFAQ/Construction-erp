@@ -29,15 +29,15 @@ test('B20.9 adds only the standard four-part Reports React feature', () => {
   assert.deepEqual(entries, ['api', 'components', 'hooks', 'pages']);
 });
 
-test('B20.9 browser client uses exactly the seven frozen Reports HTTP operations', () => {
+test('B20.9 browser client includes the executive overview Reports operation', () => {
   const api = read(`${FEATURE}/api/reports-api.ts`);
   for (const functionName of [
-    'listReportCatalog', 'runReport', 'createReportExport', 'getReportRun',
+    'listReportCatalog', 'getReportsAnalyticsOverview', 'runReport', 'createReportExport', 'getReportRun',
     'getReportDownload', 'listSavedReportFilters', 'saveReportFilter'
   ]) assert.match(api, new RegExp(`export function ${functionName}\\b`));
 
   for (const path of [
-    'reports/catalog', 'reports/run', 'reports/exports', 'reports/runs/',
+    'reports/catalog', 'reports/overview', 'reports/run', 'reports/exports', 'reports/runs/',
     '/download', 'reports/saved-filters'
   ]) assert.match(api, new RegExp(path.replace(/[/-]/g, (value) => `\\${value}`)));
   assert.doesNotMatch(api, /companyId|actorUserId|allowedProjectIds|formula|metricExpression|sql|queryText/);
@@ -50,7 +50,7 @@ test('B20.9 keeps Reports server state in TanStack Query and polls only active e
   assert.match(hooks, /REPORTS_QUERY_KEY = \['module-20', 'reports'\]/);
   assert.match(hooks, /status === 'QUEUED' \|\| status === 'RUNNING' \? 2_000 : false/);
   for (const hook of [
-    'useReportCatalog', 'useRunReport', 'useCreateReportExport', 'useReportRun',
+    'useReportCatalog', 'useReportsAnalyticsOverview', 'useRunReport', 'useCreateReportExport', 'useReportRun',
     'useReportDownload', 'useSavedReportFilters', 'useSaveReportFilter'
   ]) assert.match(hooks, new RegExp(`export function ${hook}\\b`));
 });
@@ -98,9 +98,9 @@ test('B20.9 integrates Reports immediately after Project Profitability without r
   assert.match(shell, /usePermission\('reports\.read'\)/);
 });
 
-test('B20.9 changes no Reports backend route or migration surface', () => {
+test('B20.9 keeps the read-only Reports route and migration surface', () => {
   const routes = read('apps/api/src/modules/reports/reports.routes.ts');
-  assert.equal((routes.match(/app\.(?:get|post)\(`/g) ?? []).length, 7);
+  assert.equal((routes.match(/app\.(?:get|post)\(`/g) ?? []).length, 8);
   assert.doesNotMatch(routes, /app\.(?:put|patch|delete)\(/);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   assert.equal(migrations.some((name) => /b20[_-]?9|reports.*react/i.test(name)), false);

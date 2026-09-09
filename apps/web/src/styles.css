@@ -5486,3 +5486,311 @@ body,
   padding-top: 20px;
   border-top: 1px solid #e2e8f0;
 }
+
+/* Reports executive analytics landing */
+.reports-overview {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 92% 4%, rgb(37 99 235 / 10%), transparent 30%),
+    #ffffff;
+}
+
+.reports-overview-heading,
+.reports-project-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reports-overview-heading h2,
+.reports-project-heading h3 {
+  margin: 0.2rem 0 0;
+}
+
+.reports-live-badge {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.reports-currency-overview {
+  display: grid;
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+.reports-overview-filter {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.65fr) minmax(260px, 1fr);
+  align-items: end;
+  gap: 1rem;
+  margin-top: 1.15rem;
+  padding: 1rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 14px;
+  background: rgb(248 250 252 / 88%);
+}
+
+.reports-overview-filter label {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-weight: 700;
+}
+
+.reports-overview-filter select {
+  width: 100%;
+  padding: 0.72rem 0.8rem;
+  border: 1px solid #bdcadb;
+  border-radius: 9px;
+  background: #ffffff;
+  color: #14213a;
+}
+
+.reports-overview-filter p {
+  margin: 0 0 0.3rem;
+}
+
+.reports-company-position {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border: 1px solid #a7e4bd;
+  border-radius: 14px;
+  background: linear-gradient(120deg, #f0fdf4, #f8fffb);
+}
+
+.reports-company-position.is-loss {
+  border-color: #fecaca;
+  background: linear-gradient(120deg, #fff1f2, #fffafa);
+}
+
+.reports-company-position > div:first-child {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.reports-company-position > div:first-child > strong {
+  color: #166534;
+  font-size: 1.3rem;
+}
+
+.reports-company-position.is-loss > div:first-child > strong {
+  color: #b42318;
+}
+
+.reports-company-position p,
+.reports-company-position-value span {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.reports-company-position-value {
+  display: grid;
+  gap: 0.2rem;
+  text-align: right;
+}
+
+.reports-company-position-value strong {
+  color: #166534;
+  font-size: clamp(1.3rem, 2.2vw, 1.8rem);
+}
+
+.reports-company-position.is-loss .reports-company-position-value strong {
+  color: #b42318;
+}
+
+.reports-profit-definition {
+  margin: -0.35rem 0 0;
+  padding: 0.8rem 1rem;
+  border-left: 3px solid #2563eb;
+  border-radius: 0 9px 9px 0;
+  background: #f5f8ff;
+  color: #53647c;
+  font-size: 0.84rem;
+  line-height: 1.55;
+}
+
+.reports-profit-definition strong {
+  color: #243652;
+}
+
+.reports-currency-overview + .reports-currency-overview {
+  margin-top: 1.7rem;
+  padding-top: 1.7rem;
+  border-top: 1px solid #dbe5f2;
+}
+
+.reports-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.8rem;
+  margin: 0;
+}
+
+.reports-metric-card {
+  display: grid;
+  min-height: 108px;
+  align-content: space-between;
+  gap: 0.8rem;
+  padding: 1rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 14px;
+  background: rgb(248 250 252 / 88%);
+}
+
+.reports-metric-card dt {
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.reports-metric-card dd {
+  margin: 0;
+  color: #14213a;
+  font-size: clamp(1.05rem, 1.8vw, 1.4rem);
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.reports-metric-card.reports-negative dd,
+.reports-margin-value.is-negative {
+  color: #b42318;
+}
+
+.reports-project-profitability {
+  display: grid;
+  gap: 1rem;
+  padding: 1.15rem;
+  border: 1px solid #dbe5f2;
+  border-radius: 14px;
+  background: #ffffff;
+}
+
+.reports-project-heading .muted {
+  max-width: 280px;
+  text-align: right;
+}
+
+.reports-project-bars {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.reports-project-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(180px, 2fr) minmax(170px, auto);
+  align-items: center;
+  gap: 1rem;
+}
+
+.reports-project-label {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.reports-project-label strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.reports-project-label span {
+  color: #7a8aa0;
+  font-size: 0.78rem;
+}
+
+.reports-project-track {
+  height: 11px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e7edf6;
+}
+
+.reports-project-bar {
+  display: block;
+  min-width: 3px;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2563eb, #60a5fa);
+}
+
+.reports-project-bar.is-negative {
+  background: linear-gradient(90deg, #b42318, #f97066);
+}
+
+.reports-margin-value {
+  color: #174ea6;
+  font-size: 0.85rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.reports-overview-loading {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+}
+
+@media (max-width: 980px) {
+  .reports-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reports-project-row {
+    grid-template-columns: minmax(130px, 0.7fr) minmax(160px, 1.5fr);
+  }
+
+  .reports-margin-value {
+    grid-column: 2;
+  }
+}
+
+@media (max-width: 640px) {
+  .reports-overview-heading,
+  .reports-project-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-overview-filter {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-company-position {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-company-position-value {
+    text-align: left;
+  }
+
+  .reports-project-heading .muted {
+    text-align: left;
+  }
+
+  .reports-metric-grid,
+  .reports-project-row {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-margin-value {
+    grid-column: auto;
+    text-align: left;
+  }
+}

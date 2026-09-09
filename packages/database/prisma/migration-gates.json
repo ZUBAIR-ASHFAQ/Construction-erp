@@ -825,6 +825,14 @@
       "migrations": [
         "20260907000200_payroll_overtime_multiplier"
       ]
+    },
+    {
+      "stage": 69,
+      "gate": "equipment-rate-unit-normalization",
+      "description": "Canonicalizes legacy Equipment rate-unit casing and enforces the HOUR, DAY, and MONTH vocabulary used by assignment pricing.",
+      "migrations": [
+        "20260909000100_equipment_rate_unit_normalization"
+      ]
     }
   ]
 }

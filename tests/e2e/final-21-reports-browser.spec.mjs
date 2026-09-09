@@ -10,7 +10,10 @@ const BASELINE_ID = '00000000-0000-4000-8000-000000020151';
 const PROGRESS_ID = '00000000-0000-4000-8000-000000020152';
 const EMAIL = 'b20-10-reports-browser@example.test';
 const PASSWORD = 'Final21-reports-B20.10-browser-password!';
-const REPORT_PERMISSIONS = ['reports.read', 'reports.export', 'reports.save_filters', 'stages.read'];
+const REPORT_PERMISSIONS = [
+  'reports.read', 'reports.export', 'reports.save_filters', 'reports.finance.read', 'stages.read', 'finance.read',
+  'project_profitability.read', 'project_profitability.finance.read', 'project_profitability.portfolio.read'
+];
 
 let database;
 
@@ -47,7 +50,7 @@ async function signIn(page) {
   await expect(page.locator('.topbar')).toContainText(EMAIL);
 }
 
-/** Capture only Module 20 requests so the frozen seven-operation surface can be checked. */
+/** Capture only Module 20 requests so its bounded operation surface can be checked. */
 function trackReportsRequests(page) {
   const requests = [];
   page.on('request', (request) => {
@@ -59,7 +62,7 @@ function trackReportsRequests(page) {
 
 /** Return true only for a frozen Reports path and method. */
 function isAllowedReportsRequest(method, pathname) {
-  if (method === 'GET' && ['/api/v1/reports/catalog', '/api/v1/reports/saved-filters'].includes(pathname)) return true;
+  if (method === 'GET' && ['/api/v1/reports/catalog', '/api/v1/reports/overview', '/api/v1/reports/saved-filters'].includes(pathname)) return true;
   if (method === 'POST' && ['/api/v1/reports/run', '/api/v1/reports/exports', '/api/v1/reports/saved-filters'].includes(pathname)) return true;
   if (method === 'GET' && /^\/api\/v1\/reports\/runs\/[^/]+(?:\/download)?$/.test(pathname)) return true;
   return false;
@@ -73,7 +76,9 @@ test('Final-21 Reports catalog -> Stage Progress -> saved filter -> queued expor
   await signIn(page);
   await page.getByRole('button', { name: 'Reports & Analytics' }).click();
   await expect(page.getByRole('heading', { name: 'Reports & Analytics' })).toBeVisible();
-  await expect(page.getByLabel('Report Catalog')).toHaveValue('stage-progress');
+  await expect(page.getByRole('heading', { name: 'Business performance overview' })).toBeVisible();
+  await expect(page.getByLabel('Project view')).toHaveValue('');
+  await page.getByLabel('Report Catalog').selectOption('stage-progress');
 
   await page.getByLabel('Project ID').fill(PROJECT_ID);
   await page.getByRole('button', { name: 'Run Report' }).click();

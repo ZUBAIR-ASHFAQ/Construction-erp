@@ -121,8 +121,8 @@ export const createEquipmentAssignmentBodySchema = z.object({
   quantity: positiveDecimal,
   fromDate: date,
   fromTime: time.optional(),
-  toDate: date.nullable().optional()
-  , toTime: time.nullable().optional()
+  toDate: date.nullable().optional(),
+  toTime: time.nullable().optional()
 }).strict().refine((value) => value.toDate == null || value.toDate >= value.fromDate, {
   path: ['toDate'],
   message: 'Assignment end date must be on or after the start date.'
@@ -158,7 +158,7 @@ export const equipmentResponseSchema = z.object({
   equipmentType: z.string(),
   ownershipType: z.string(),
   defaultRate: z.string().nullable(),
-  rateUnit: z.string().nullable(),
+  rateUnit: z.enum(['HOUR', 'DAY', 'MONTH']).nullable(),
   status: z.string(),
   assignmentStatus: z.enum(['ASSIGNED', 'UNASSIGNED']),
   activeAssignmentId: uuid.nullable(),
@@ -178,7 +178,7 @@ export const equipmentAssignmentResponseSchema = z.object({
   toTime: time.nullable(),
   quantity: z.string(),
   rate: z.string(),
-  rateUnit: z.string(),
+  rateUnit: z.enum(['HOUR', 'DAY', 'MONTH']),
   estimatedAmount: z.string().nullable(),
   status: z.string(),
   projectName: z.string().nullable(),

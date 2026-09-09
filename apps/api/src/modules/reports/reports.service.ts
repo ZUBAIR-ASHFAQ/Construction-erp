@@ -47,6 +47,7 @@ import {
   REPORTS_MAX_PAGE_SIZE,
   REPORTS_PERMISSION_CODES,
   createReportsError,
+  reportAnalyticsOverviewResponseSchema,
   reportCatalogResponseSchema,
   reportDownloadResponseSchema,
   reportFiltersSchema,
@@ -57,6 +58,8 @@ import {
   type CreateReportExportBody,
   type ReportCatalogQuery,
   type ReportCatalogResponse,
+  type ReportAnalyticsOverviewResponse,
+  type ReportAnalyticsOverviewQuery,
   type ReportCode,
   type ReportDownloadResponse,
   type ReportFilters,
@@ -102,6 +105,24 @@ type ReportResult = Readonly<{
   page?: number;
   pageSize?: number;
 }>;
+
+type AnalyticsProjectAccumulator = {
+  projectId: string;
+  projectCode: string;
+  projectName: string;
+  totalRevenue: bigint;
+  totalProjectCost: bigint;
+  grossProfit: bigint;
+};
+
+type AnalyticsCurrencyAccumulator = {
+  totalRevenue: bigint;
+  totalProjectCost: bigint;
+  clientReceivables: bigint;
+  supplierPayables: bigint;
+  cashBank: bigint;
+  projects: AnalyticsProjectAccumulator[];
+};
 
 const REPORT_SOURCE_PERMISSIONS: Readonly<Record<ReportCode, readonly string[]>> = Object.freeze({
   'project-cost': ['job_cost.read'],
@@ -296,6 +317,26 @@ function minorUnitsToMoney(value: bigint): string {
   const negative = value < 0n;
   const absolute = negative ? -value : value;
   return `${negative ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
+}
+
+/** Convert one exact ratio into a rounded signed percentage with two decimal places. */
+function ratioToPercent(numerator: bigint, denominator: bigint): string {
+  if (denominator === 0n) return '0.00';
+  const negative = numerator < 0n !== denominator < 0n;
+  const absoluteNumerator = numerator < 0n ? -numerator : numerator;
+  const absoluteDenominator = denominator < 0n ? -denominator : denominator;
+  const hundredths = ((absoluteNumerator * 10_000n) + (absoluteDenominator / 2n)) / absoluteDenominator;
+  const value = `${hundredths / 100n}.${(hundredths % 100n).toString().padStart(2, '0')}`;
+  return negative && hundredths !== 0n ? `-${value}` : value;
+}
+
+/** Order Project bars by exact margin without converting accounting values to floating point. */
+function compareProjectMargin(left: AnalyticsProjectAccumulator, right: AnalyticsProjectAccumulator): number {
+  if (left.totalRevenue === 0n && right.totalRevenue === 0n) return left.projectName.localeCompare(right.projectName);
+  if (left.totalRevenue === 0n) return 1;
+  if (right.totalRevenue === 0n) return -1;
+  const difference = (right.grossProfit * left.totalRevenue) - (left.grossProfit * right.totalRevenue);
+  return difference > 0n ? 1 : difference < 0n ? -1 : left.projectName.localeCompare(right.projectName);
 }
 
 /** Convert Dates, decimals, and BigInt source values into JSON-safe report data. */
@@ -586,6 +627,121 @@ export class ReportsService {
       rows.push({ rowType: 'BALANCE_CHECK', amount: minorUnitsToMoney(firstTotal - secondTotal) });
     }
     return { periodId, rows, total: rows.length };
+  }
+
+  /** Load every visible profitability page with one stable as-of date. */
+  private async readAllProjectProfitability(asOfDate: string, projectId?: string) {
+    const profitability = new ProjectProfitabilityService(this.db);
+    if (projectId) return [await profitability.getProjectSummary(projectId, { asOfDate })];
+    const items = [];
+    let page = 1;
+    let total = 0;
+    do {
+      const result = await profitability.getPortfolio({ asOfDate, page, pageSize: REPORTS_MAX_PAGE_SIZE });
+      items.push(...result.items);
+      total = result.total;
+      page += 1;
+    } while (items.length < total);
+    return items;
+  }
+
+  /** Sum every active Cash/Bank account balance derived from posted Finance journals. */
+  private async readCashBankBalance(): Promise<bigint> {
+    const finance = new FinanceService(this.db);
+    let balance = 0n;
+    let count = 0;
+    let page = 1;
+    let total = 0;
+    do {
+      const result = await finance.listCashBankAccounts({ status: 'ACTIVE', page, pageSize: REPORTS_MAX_PAGE_SIZE });
+      balance += result.items.reduce((sum, account) => sum + moneyToMinorUnits(account.balance), 0n);
+      count += result.items.length;
+      total = result.total;
+      page += 1;
+    } while (count < total);
+    return balance;
+  }
+
+  /** Return the executive Reports landing summary from existing posted source-module calculations. */
+  async getAnalyticsOverview(query: ReportAnalyticsOverviewQuery): Promise<ReportAnalyticsOverviewResponse> {
+    await this.requireScope(['reports.read', 'reports.finance.read', 'finance.read'], query.projectId);
+    const asOfDate = dateOnly(new Date());
+    const administration = new AdministrationRepository(this.db);
+    const [projects, cashBank, organization] = await Promise.all([
+      this.readAllProjectProfitability(asOfDate, query.projectId),
+      query.projectId ? Promise.resolve(0n) : this.readCashBankBalance(),
+      administration.getOrganizationProfile()
+    ]);
+    if (!organization) throw createReportsError('REPORT_SCOPE_FORBIDDEN');
+
+    const baseCurrency = organization.baseCurrency.toUpperCase();
+    const currencies = new Map<string, AnalyticsCurrencyAccumulator>();
+    const accumulatorFor = (currency: string): AnalyticsCurrencyAccumulator => {
+      const current = currencies.get(currency);
+      if (current) return current;
+      const created: AnalyticsCurrencyAccumulator = {
+        totalRevenue: 0n,
+        totalProjectCost: 0n,
+        clientReceivables: 0n,
+        supplierPayables: 0n,
+        cashBank: 0n,
+        projects: []
+      };
+      currencies.set(currency, created);
+      return created;
+    };
+
+    for (const project of projects) {
+      const currency = project.currency.toUpperCase();
+      const accumulator = accumulatorFor(currency);
+      const totalRevenue = moneyToMinorUnits(project.commercialSummary.totalRevenue);
+      const totalProjectCost = moneyToMinorUnits(project.commercialSummary.totalCost);
+      const grossProfit = totalRevenue - totalProjectCost;
+      accumulator.totalRevenue += totalRevenue;
+      accumulator.totalProjectCost += totalProjectCost;
+      accumulator.clientReceivables += moneyToMinorUnits(project.outstandingAmount);
+      accumulator.supplierPayables += moneyToMinorUnits(project.supplierPayableAmount);
+      accumulator.projects.push({
+        projectId: project.projectId,
+        projectCode: project.projectCode,
+        projectName: project.projectName,
+        totalRevenue,
+        totalProjectCost,
+        grossProfit
+      });
+    }
+    if (!query.projectId) accumulatorFor(baseCurrency).cashBank = cashBank;
+
+    const currencyRows = [...currencies.entries()]
+      .sort(([left], [right]) => left === baseCurrency ? -1 : right === baseCurrency ? 1 : left.localeCompare(right))
+      .map(([currency, accumulator]) => {
+        const grossProfit = accumulator.totalRevenue - accumulator.totalProjectCost;
+        return {
+          currency,
+          totalRevenue: minorUnitsToMoney(accumulator.totalRevenue),
+          totalProjectCost: minorUnitsToMoney(accumulator.totalProjectCost),
+          grossProfit: minorUnitsToMoney(grossProfit),
+          overallMarginPercent: ratioToPercent(grossProfit, accumulator.totalRevenue),
+          clientReceivables: minorUnitsToMoney(accumulator.clientReceivables),
+          supplierPayables: minorUnitsToMoney(accumulator.supplierPayables),
+          cashBank: minorUnitsToMoney(accumulator.cashBank),
+          projects: accumulator.projects.sort(compareProjectMargin).map((project) => ({
+            projectId: project.projectId,
+            projectCode: project.projectCode,
+            projectName: project.projectName,
+            totalRevenue: minorUnitsToMoney(project.totalRevenue),
+            totalProjectCost: minorUnitsToMoney(project.totalProjectCost),
+            grossProfit: minorUnitsToMoney(project.grossProfit),
+            marginPercent: ratioToPercent(project.grossProfit, project.totalRevenue)
+          }))
+        };
+      });
+
+    return reportAnalyticsOverviewResponseSchema.parse({
+      generatedAt: new Date().toISOString(),
+      asOfDate,
+      currencies: currencyRows
+    });
   }
 
   /** Dispatch one validated report to existing source-module reads instead of duplicating source-of-truth logic. */

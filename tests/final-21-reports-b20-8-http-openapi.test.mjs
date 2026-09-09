@@ -24,10 +24,11 @@ test('B20.8 keeps the five-file Reports backend shape and adds no migration or D
   assert.equal(migrations.some((name) => /b20[_-]?8/i.test(name)), false);
 });
 
-test('B20.8 implements exactly the seven frozen Reports HTTP routes', () => {
+test('B20.8 implements the Reports HTTP routes including the executive overview', () => {
   const routes = read(`${MODULE}reports.routes.ts`);
   for (const route of [
     "app.get(`${REPORTS_API_BASE}/catalog`",
+    "app.get(`${REPORTS_API_BASE}/overview`",
     "app.post(`${REPORTS_API_BASE}/run`",
     "app.post(`${REPORTS_API_BASE}/exports`",
     "app.get(`${REPORTS_API_BASE}/runs/:id`",
@@ -37,14 +38,14 @@ test('B20.8 implements exactly the seven frozen Reports HTTP routes', () => {
   ]) {
     assert.ok(routes.includes(route), `missing ${route}`);
   }
-  assert.equal((routes.match(/app\.(?:get|post)\(`/g) ?? []).length, 7);
+  assert.equal((routes.match(/app\.(?:get|post)\(`/g) ?? []).length, 8);
   assert.doesNotMatch(routes, /app\.(?:put|patch|delete)\(/);
 });
 
 test('B20.8 authenticates every Reports route and keeps Zod as the authoritative HTTP boundary', () => {
   const routes = read(`${MODULE}reports.routes.ts`);
   assert.match(routes, /authenticateRequest\(request, options\.database\)/);
-  assert.equal((routes.match(/preHandler: \[authenticate\]/g) ?? []).length, 7);
+  assert.equal((routes.match(/preHandler: \[authenticate\]/g) ?? []).length, 8);
   for (const schema of [
     'reportCatalogQuerySchema', 'runReportBodySchema', 'createReportExportBodySchema',
     'reportRunIdParamsSchema', 'savedReportFiltersQuerySchema', 'saveReportFilterBodySchema'
@@ -55,15 +56,15 @@ test('B20.8 authenticates every Reports route and keeps Zod as the authoritative
   assert.match(routes, /REPORT_FILTER_INVALID/);
 });
 
-test('B20.8 exposes complete OpenAPI metadata and stable error envelopes for all seven routes', () => {
+test('B20.8 exposes complete OpenAPI metadata and stable error envelopes for all routes', () => {
   const routes = read(`${MODULE}reports.routes.ts`);
   for (const operationId of [
-    'listReportCatalog', 'runReport', 'createReportExport', 'getReportRun',
+    'listReportCatalog', 'getReportsAnalyticsOverview', 'runReport', 'createReportExport', 'getReportRun',
     'downloadReportRun', 'listSavedReportFilters', 'saveReportFilter'
   ]) {
     assert.ok(routes.includes(`operationId: '${operationId}'`), `missing ${operationId}`);
   }
-  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 7);
+  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 8);
   assert.match(routes, /COMMON_RESPONSES = \{ 400: ERROR, 401: ERROR, 403: ERROR, 404: ERROR, 409: ERROR, 500: ERROR, 503: ERROR \}/);
   assert.match(routes, /REPORTS_ERROR_CODES\.join/);
   assert.match(routes, /additionalProperties: false/g);
@@ -72,7 +73,7 @@ test('B20.8 exposes complete OpenAPI metadata and stable error envelopes for all
 test('B20.8 wires route handlers directly to the existing Reports service without new handler layers', () => {
   const routes = read(`${MODULE}reports.routes.ts`);
   assert.match(routes, /const service = new ReportsService\(options\.database\)/);
-  for (const method of ['listCatalog', 'runReport', 'createExport', 'getReportRun', 'createDownloadUrl', 'listSavedFilters', 'saveFilter']) {
+  for (const method of ['listCatalog', 'getAnalyticsOverview', 'runReport', 'createExport', 'getReportRun', 'createDownloadUrl', 'listSavedFilters', 'saveFilter']) {
     assert.match(routes, new RegExp(`service\\.${method}\\(`), `missing service.${method}`);
   }
   assert.doesNotMatch(routes, /class .*Controller|class .*Handler|class .*Manager/);

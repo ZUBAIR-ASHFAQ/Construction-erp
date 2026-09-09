@@ -28,12 +28,21 @@ const DECIMAL_SCALE_4 = 10_000n;
 const PRODUCT_TO_MINOR_UNITS_DIVISOR = 1_000_000n;
 const MAX_MONEY_MINOR_UNITS = 999_999_999_999_999_999n;
 const EQUIPMENT_SEQUENCE_KEY = 'equipment';
+const EQUIPMENT_RATE_UNITS = ['HOUR', 'DAY', 'MONTH'] as const;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
+type EquipmentRateUnit = (typeof EQUIPMENT_RATE_UNITS)[number];
 
 /** Normalize one business token without changing its semantic value. */
 function token(value: string): string {
   return value.trim().toUpperCase();
+}
+
+/** Canonicalize legacy rate-unit casing before it reaches calculations or persistence. */
+function normalizeRateUnit(value: string | null): EquipmentRateUnit | null {
+  if (value === null) return null;
+  const normalized = token(value);
+  return EQUIPMENT_RATE_UNITS.find((unit) => unit === normalized) ?? null;
 }
 
 /** Convert one exact four-decimal value to a scaled integer. */
@@ -78,14 +87,14 @@ function calculateAmount(quantity: DecimalLike, rate: DecimalLike): string {
 }
 
 /** Calculate chargeable quantity from an inclusive date range and captured rate unit. */
-function datedQuantity(quantity: DecimalLike, rateUnit: string, fromDate: Date, fromMinute: number, toDate: Date, toMinute: number): string {
+function datedQuantity(quantity: DecimalLike, rateUnit: EquipmentRateUnit, fromDate: Date, fromMinute: number, toDate: Date, toMinute: number): string {
   const days = BigInt(Math.floor((toDate.getTime() - fromDate.getTime()) / 86_400_000) + 1);
   if (rateUnit === 'HOUR') {
     const elapsedMinutes = BigInt(Math.floor((toDate.getTime() - fromDate.getTime()) / 60_000) + toMinute - fromMinute);
     if (elapsedMinutes <= 0n) throw new ValidationError({ message: 'Hourly equipment completion time must be after its assignment start time.' });
     return scale4ToDecimal(divideRoundHalfUp(decimalToScale4(quantity) * elapsedMinutes, 60n));
   }
-  const periods = rateUnit === 'HOUR' ? days * 24n : rateUnit === 'MONTH' ? (days + 29n) / 30n : days;
+  const periods = rateUnit === 'MONTH' ? (days + 29n) / 30n : days;
   return scale4ToDecimal(decimalToScale4(quantity) * periods);
 }
 
@@ -136,7 +145,7 @@ function equipmentResponse(row: Readonly<{
     equipmentType: row.equipmentType,
     ownershipType: row.ownershipType,
     defaultRate: row.defaultRate === null ? null : decimalString(row.defaultRate),
-    rateUnit: row.rateUnit,
+    rateUnit: normalizeRateUnit(row.rateUnit),
     status: row.status,
     assignmentStatus: row.assignments?.length ? 'ASSIGNED' : 'UNASSIGNED',
     activeAssignmentId: row.assignments?.[0]?.id ?? null,
@@ -174,7 +183,7 @@ function assignmentResponse(row: Readonly<{
     toTime: row.toMinute === null ? null : minuteTime(row.toMinute),
     quantity: decimalString(row.quantity),
     rate: decimalString(row.rate),
-    rateUnit: row.rateUnit,
+    rateUnit: normalizeRateUnit(row.rateUnit) ?? row.rateUnit,
     estimatedAmount: row.estimatedAmount === null ? null : moneyString(row.estimatedAmount),
     status: row.status,
     projectName: row.project?.name ?? null,
@@ -362,10 +371,11 @@ export class EquipmentService {
     const toDate = input.toDate ? inputDate(input.toDate) : null;
     const toMinute = input.toTime ? inputMinute(input.toTime) : null;
     const rate = equipment.defaultRate?.toString() ?? null;
-    if (!rate || !equipment.rateUnit) throw new ValidationError({ message: 'Configure a default rate and rate unit before assigning this equipment.' });
-    if (equipment.rateUnit === 'HOUR' && !input.fromTime) throw new ValidationError({ fieldErrors: [{ field: 'fromTime', message: 'Start time is required for hourly equipment.' }] });
+    const rateUnit = normalizeRateUnit(equipment.rateUnit);
+    if (!rate || !rateUnit) throw new ValidationError({ message: 'Configure a valid default rate and rate unit before assigning this equipment.' });
+    if (rateUnit === 'HOUR' && !input.fromTime) throw new ValidationError({ fieldErrors: [{ field: 'fromTime', message: 'Start time is required for hourly equipment.' }] });
     if (input.toTime && !toDate) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To date is required when a to time is provided.' }] });
-    if (equipment.rateUnit === 'HOUR' && toDate && !input.toTime) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To time is required for an hourly estimate.' }] });
+    if (rateUnit === 'HOUR' && toDate && !input.toTime) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To time is required for an hourly estimate.' }] });
     if (await repository.hasAssignmentOverlap(equipmentId, fromDate, toDate)) throw createModule12Error('ASSIGNMENT_OVERLAP');
     const assignment = await repository.createAssignment({
       equipmentId,
@@ -377,8 +387,8 @@ export class EquipmentService {
       toMinute,
       quantity: input.quantity,
       rate,
-      rateUnit: equipment.rateUnit,
-      estimatedAmount: calculateAmount(toDate ? datedQuantity(input.quantity, equipment.rateUnit, fromDate, fromMinute, toDate, toMinute ?? 0) : input.quantity, rate),
+      rateUnit,
+      estimatedAmount: calculateAmount(toDate ? datedQuantity(input.quantity, rateUnit, fromDate, fromMinute, toDate, toMinute ?? 0) : input.quantity, rate),
       status: ACTIVE
     });
     const response = assignmentResponse(assignment);
@@ -407,10 +417,12 @@ export class EquipmentService {
     if (!equipment) throw createModule12Error('EQUIPMENT_NOT_FOUND');
     const locked = await repository.lockAssignmentForWrite(equipmentId, assignmentId);
     if (!locked || token(locked.status) !== ACTIVE) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+    const rateUnit = normalizeRateUnit(locked.rateUnit);
+    if (!rateUnit) throw new ValidationError({ message: 'The assignment has an invalid equipment rate unit.' });
 
     const endDate = inputDate(input.endDate);
     const endMinute = inputMinute(input.endTime);
-    if (locked.rateUnit === 'HOUR' && !input.endTime) throw new ValidationError({ fieldErrors: [{ field: 'endTime', message: 'Completion time is required for hourly equipment.' }] });
+    if (rateUnit === 'HOUR' && !input.endTime) throw new ValidationError({ fieldErrors: [{ field: 'endTime', message: 'Completion time is required for hourly equipment.' }] });
     if (endDate < locked.fromDate || (endDate.getTime() === locked.fromDate.getTime() && endMinute <= locked.fromMinute)) {
       throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede the assignment start date.' }] });
     }
@@ -423,7 +435,7 @@ export class EquipmentService {
     }
 
     if (!(await repository.hasPostedUsage(equipmentId, assignmentId))) {
-      const quantity = datedQuantity(locked.quantity, locked.rateUnit, locked.fromDate, locked.fromMinute, endDate, endMinute);
+      const quantity = datedQuantity(locked.quantity, rateUnit, locked.fromDate, locked.fromMinute, endDate, endMinute);
       const amount = calculateAmount(quantity, locked.rate);
       const usage = await repository.createUsage({ assignmentId, usageDate: endDate, quantity, rate: locked.rate.toString(), amount, enteredBy: requireRequestSecurityContext().actorUserId, status: POSTED });
       const actual = await repository.createUsageCostActual({ projectId: locked.projectId, stageId: locked.stageId, usageId: usage.id, postingDate: endDate, amount });

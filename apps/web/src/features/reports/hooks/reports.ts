@@ -3,6 +3,7 @@ import {
   createReportExport,
   getReportDownload,
   getReportRun,
+  getReportsAnalyticsOverview,
   listReportCatalog,
   listSavedReportFilters,
   runReport,
@@ -19,6 +20,16 @@ export function useReportCatalog(enabled = true) {
   return useQuery({
     queryKey: [...REPORTS_QUERY_KEY, 'catalog'],
     queryFn: () => listReportCatalog(),
+    enabled,
+    retry: false
+  });
+}
+
+/** Load the source-derived executive analytics landing summary. */
+export function useReportsAnalyticsOverview(projectId?: string, enabled = true) {
+  return useQuery({
+    queryKey: [...REPORTS_QUERY_KEY, 'overview', projectId ?? 'all'],
+    queryFn: () => getReportsAnalyticsOverview(projectId),
     enabled,
     retry: false
   });

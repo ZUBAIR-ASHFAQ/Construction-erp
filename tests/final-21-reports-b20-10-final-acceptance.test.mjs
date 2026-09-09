@@ -30,13 +30,13 @@ test('B20.10 freezes the standard five-file backend and four-part React Reports 
   assert.deepEqual(readdirSync(path.join(ROOT, FEATURE)).sort(), ['api', 'components', 'hooks', 'pages']);
 });
 
-test('B20.10 freezes exactly seven Reports HTTP operations and no generic CRUD surface', () => {
+test('B20.10 keeps the Reports operations read/command-specific with no generic CRUD surface', () => {
   const routes = read(`${MODULE}/reports.routes.ts`);
-  assert.equal(routeCount(routes), 7);
-  assert.equal([...routes.matchAll(/app\.get\(/g)].length, 4);
+  assert.equal(routeCount(routes), 8);
+  assert.equal([...routes.matchAll(/app\.get\(/g)].length, 5);
   assert.equal([...routes.matchAll(/app\.post\(/g)].length, 3);
   assert.doesNotMatch(routes, /app\.(?:put|patch|delete)\(/);
-  for (const operationId of ['listReportCatalog', 'runReport', 'createReportExport', 'getReportRun', 'downloadReportRun', 'listSavedReportFilters', 'saveReportFilter']) {
+  for (const operationId of ['listReportCatalog', 'getReportsAnalyticsOverview', 'runReport', 'createReportExport', 'getReportRun', 'downloadReportRun', 'listSavedReportFilters', 'saveReportFilter']) {
     assert.match(routes, new RegExp(`operationId: '${operationId}'`));
   }
 });
@@ -91,7 +91,7 @@ test('B20.10 keeps queued exports bounded, retryable and stored through Module 2
 
 test('B20.10 adds one guarded live Reports integration suite and registers it in the current-schema runner', () => {
   const liveTest = read(LIVE);
-  for (const text of ['source-module read permission', 'Stage Progress and Project Cost', 'Client outstanding and advance', 'cross-Company', 'saved filters and queued exports', 'seven frozen Reports operations']) {
+  for (const text of ['source-module read permission', 'Stage Progress and Project Cost', 'Client outstanding and advance', 'cross-Company', 'saved filters and queued exports', 'including executive analytics']) {
     assert.match(liveTest, new RegExp(text, 'i'));
   }
   assert.match(read('scripts/testing/run-integration.mjs'), /final-21-reports-api\.integration\.test\.mjs/);

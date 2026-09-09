@@ -12,6 +12,8 @@ import {
   REPORTS_ERROR_CODES,
   REPORTS_MAX_PAGE_SIZE,
   createReportExportBodySchema,
+  reportAnalyticsOverviewResponseSchema,
+  reportAnalyticsOverviewQuerySchema,
   reportCatalogQuerySchema,
   reportCatalogResponseSchema,
   reportDownloadResponseSchema,
@@ -34,9 +36,10 @@ export type ReportsRoutesOptions = Readonly<{
   signedUrlTtlSeconds: number;
 }>;
 
-/** Exact Final-21 Module 20 HTTP surface frozen by pass B20.1. */
+/** Bounded Reports & Analytics HTTP surface. */
 export const REPORTS_HTTP_ROUTES = Object.freeze([
   { method: 'GET', path: `${REPORTS_API_BASE}/catalog`, purpose: 'Available reports' },
+  { method: 'GET', path: `${REPORTS_API_BASE}/overview`, purpose: 'Executive analytics overview' },
   { method: 'POST', path: `${REPORTS_API_BASE}/run`, purpose: 'Run bounded report' },
   { method: 'POST', path: `${REPORTS_API_BASE}/exports`, purpose: 'Start export job' },
   { method: 'GET', path: `${REPORTS_API_BASE}/runs/:id`, purpose: 'Export status' },
@@ -90,6 +93,11 @@ const CATALOG_QUERY = {
     domain: { type: 'string', minLength: 1, maxLength: 100 }
   }
 } as const;
+const ANALYTICS_OVERVIEW_QUERY = {
+  type: 'object',
+  additionalProperties: false,
+  properties: { projectId: UUID }
+} as const;
 const RUN_BODY = {
   type: 'object',
   additionalProperties: false,
@@ -141,6 +149,51 @@ const CATALOG_RESPONSE = {
   additionalProperties: false,
   required: ['items'],
   properties: { items: { type: 'array', items: CATALOG_ITEM } }
+} as const;
+const MONEY = { type: 'string', pattern: '^-?(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' } as const;
+const PERCENT = { type: 'string', pattern: '^-?(?:0|[1-9]\\d{0,5})(?:\\.\\d{1,2})?$' } as const;
+const ANALYTICS_PROJECT = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['projectId', 'projectCode', 'projectName', 'totalRevenue', 'totalProjectCost', 'grossProfit', 'marginPercent'],
+  properties: {
+    projectId: UUID,
+    projectCode: { type: 'string' },
+    projectName: { type: 'string' },
+    totalRevenue: MONEY,
+    totalProjectCost: MONEY,
+    grossProfit: MONEY,
+    marginPercent: PERCENT
+  }
+} as const;
+const ANALYTICS_CURRENCY = {
+  type: 'object',
+  additionalProperties: false,
+  required: [
+    'currency', 'totalRevenue', 'totalProjectCost', 'grossProfit', 'overallMarginPercent',
+    'clientReceivables', 'supplierPayables', 'cashBank', 'projects'
+  ],
+  properties: {
+    currency: { type: 'string', pattern: '^[A-Z]{3}$' },
+    totalRevenue: MONEY,
+    totalProjectCost: MONEY,
+    grossProfit: MONEY,
+    overallMarginPercent: PERCENT,
+    clientReceivables: MONEY,
+    supplierPayables: MONEY,
+    cashBank: MONEY,
+    projects: { type: 'array', items: ANALYTICS_PROJECT }
+  }
+} as const;
+const ANALYTICS_OVERVIEW_RESPONSE = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['generatedAt', 'asOfDate', 'currencies'],
+  properties: {
+    generatedAt: DATETIME,
+    asOfDate: DATE,
+    currencies: { type: 'array', items: ANALYTICS_CURRENCY }
+  }
 } as const;
 const RUN_RESPONSE = {
   type: 'object',
@@ -237,7 +290,7 @@ function parseRequest<T extends z.ZodTypeAny>(schema: T, value: unknown, locatio
   });
 }
 
-/** Register exactly the seven Final-21 Reports routes with authentication, Zod boundaries, and OpenAPI contracts. */
+/** Register the Reports routes with authentication, Zod boundaries, and OpenAPI contracts. */
 export async function registerReportsRoutes(app: FastifyInstance, options: ReportsRoutesOptions): Promise<void> {
   const service = new ReportsService(options.database);
 
@@ -257,6 +310,21 @@ export async function registerReportsRoutes(app: FastifyInstance, options: Repor
   }, async (request) => {
     const query = parseRequest(reportCatalogQuerySchema, request.query, 'query');
     return { data: reportCatalogResponseSchema.parse(await service.listCatalog(query)) };
+  });
+
+  app.get(`${REPORTS_API_BASE}/overview`, {
+    preHandler: [authenticate],
+    schema: {
+      tags: ['Reports & Analytics'],
+      operationId: 'getReportsAnalyticsOverview',
+      summary: 'Read the source-derived executive analytics landing overview',
+      security: BEARER_SECURITY,
+      querystring: ANALYTICS_OVERVIEW_QUERY,
+      response: { 200: dataEnvelope(ANALYTICS_OVERVIEW_RESPONSE), ...COMMON_RESPONSES }
+    }
+  }, async (request) => {
+    const query = parseRequest(reportAnalyticsOverviewQuerySchema, request.query, 'query');
+    return { data: reportAnalyticsOverviewResponseSchema.parse(await service.getAnalyticsOverview(query)) };
   });
 
   app.post(`${REPORTS_API_BASE}/run`, {

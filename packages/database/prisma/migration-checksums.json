@@ -104,6 +104,7 @@
     "20260903000300_subcontractor_contact_profile": "c7f06e27d278a62f4b4c7989cf171a47b6ab523b93ec7e6408cda368141b2ebf",
     "20260904000100_equipment_assignment_pricing": "24c780368fe42cc5f50efc7da7dda9b3eee4f57b632825f69252da20adf1c889",
     "20260907000100_equipment_minute_billing": "c2bf1d225d0f440e0e9e615e3c19606bc205ce32851d6c6fe386ab8b2a88b5c7",
-    "20260907000200_payroll_overtime_multiplier": "5391e76db38cd1a64f2258002fb6f79adb81175c30ef9599898d7cd42bb32966"
+    "20260907000200_payroll_overtime_multiplier": "5391e76db38cd1a64f2258002fb6f79adb81175c30ef9599898d7cd42bb32966",
+    "20260909000100_equipment_rate_unit_normalization": "d6d74569d34844a89bb2c73d4e0bd163d25cd19ba9b204db895ab4992872e7c7"
   }
 }

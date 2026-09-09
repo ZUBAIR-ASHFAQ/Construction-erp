@@ -132,6 +132,13 @@ export const REPORTS_SERVER_OWNED_REQUEST_FIELDS = Object.freeze([
   'startedAt',
   'finishedAt',
   'errorCode',
+  'totalRevenue',
+  'totalProjectCost',
+  'grossProfit',
+  'overallMarginPercent',
+  'clientReceivables',
+  'supplierPayables',
+  'cashBank',
   'formula',
   'expression',
   'metricExpression',
@@ -248,6 +255,11 @@ export const reportFiltersSchema = z.object({
 export const reportCatalogQuerySchema = z.object({
   search: searchSchema.optional(),
   domain: z.string().trim().min(1).max(100).optional()
+}).strict();
+
+/** Validate the optional Project filter for the executive analytics landing overview. */
+export const reportAnalyticsOverviewQuerySchema = z.object({
+  projectId: uuidSchema.optional()
 }).strict();
 
 /** Validate one bounded synchronous report request. */
@@ -383,6 +395,7 @@ export function createReportsError(code: ReportsErrorCode): AppError {
 
 export type ReportFilters = z.infer<typeof reportFiltersSchema>;
 export type ReportCatalogQuery = z.infer<typeof reportCatalogQuerySchema>;
+export type ReportAnalyticsOverviewQuery = z.infer<typeof reportAnalyticsOverviewQuerySchema>;
 export type RunReportBody = z.infer<typeof runReportBodySchema>;
 export type CreateReportExportBody = z.infer<typeof createReportExportBodySchema>;
 export type ReportRunIdParams = z.infer<typeof reportRunIdParamsSchema>;

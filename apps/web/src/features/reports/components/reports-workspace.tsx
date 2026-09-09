@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
 import {
   REPORT_CODES,
+  type ReportAnalyticsOverview,
   type ReportCode,
   type ReportFilters,
   type ReportOutputFormat,
@@ -17,6 +18,7 @@ import {
   useReportDownload,
   useReportRun,
   useRunReport,
+  useReportsAnalyticsOverview,
   useSaveReportFilter,
   useSavedReportFilters
 } from '../hooks/reports.js';
@@ -25,6 +27,7 @@ type FilterField = Exclude<keyof ReportFilters, 'page' | 'pageSize' | 'cashBankA
 
 type ReportsWorkspaceProps = Readonly<{
   canRead: boolean;
+  canViewOverview: boolean;
   canExport: boolean;
   canSaveFilters: boolean;
 }>;
@@ -195,6 +198,154 @@ function displayReportValue(value: unknown, column: string, vendorNames: Readonl
   return String(value);
 }
 
+/** Format one exact server-owned money value without applying browser arithmetic. */
+function displayMoney(value: string, currency: string): string {
+  const negative = value.startsWith('-');
+  const unsigned = negative ? value.slice(1) : value;
+  const [integer = '0', fraction = ''] = unsigned.split('.');
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  return `${currency} ${negative ? '-' : ''}${grouped}.${fraction.padEnd(2, '0').slice(0, 2)}`;
+}
+
+/** Convert a server-calculated margin into a bounded visual bar width only. */
+function marginBarWidth(value: string): string {
+  const percentage = Number(value);
+  return `${Number.isFinite(percentage) ? Math.min(100, Math.abs(percentage)) : 0}%`;
+}
+
+/** Render the currency-safe executive metrics and Project margin bars. */
+function AnalyticsOverview({
+  data,
+  projectOptions,
+  selectedProjectId,
+  onProjectChange
+}: Readonly<{
+  data: ReportAnalyticsOverview;
+  projectOptions: readonly Readonly<{ id: string; label: string }>[];
+  selectedProjectId: string;
+  onProjectChange(projectId: string): void;
+}>) {
+  return (
+    <section className="admin-card reports-overview" aria-labelledby="analytics-overview-title">
+      <div className="section-heading compact-heading reports-overview-heading">
+        <div>
+          <span className="eyebrow">Executive analytics</span>
+          <h2 id="analytics-overview-title">Business performance overview</h2>
+          <p className="muted">Posted financial position as of {data.asOfDate}. Select a report below for detailed analysis.</p>
+        </div>
+        <span className="reports-live-badge">Source derived</span>
+      </div>
+
+      <div className="reports-overview-filter">
+        <label>
+          Project view
+          <select value={selectedProjectId} onChange={(event) => onProjectChange(event.target.value)}>
+            <option value="">All Projects</option>
+            {projectOptions.map((project) => <option key={project.id} value={project.id}>{project.label}</option>)}
+          </select>
+        </label>
+        <p className="muted">
+          {selectedProjectId
+            ? 'Showing the complete source-derived financial position for the selected Project.'
+            : 'All fixed-price and cost-plus Projects in your permitted scope are included.'}
+        </p>
+      </div>
+
+      {data.currencies.map((summary) => {
+        const metrics: readonly (readonly [string, string])[] = [
+          ['Total Client Received', displayMoney(summary.totalRevenue, summary.currency)],
+          ['Total Project Cost', displayMoney(summary.totalProjectCost, summary.currency)],
+          ['Gross Profit', displayMoney(summary.grossProfit, summary.currency)],
+          ['Overall Margin %', `${summary.overallMarginPercent}%`],
+          ['Client Receivables', displayMoney(summary.clientReceivables, summary.currency)],
+          ['Supplier Payables', displayMoney(summary.supplierPayables, summary.currency)],
+          ...(selectedProjectId ? [] : [['Cash / Bank', displayMoney(summary.cashBank, summary.currency)] as const])
+        ];
+        const isLoss = summary.grossProfit.startsWith('-');
+        const isBreakEven = summary.grossProfit === '0.00';
+        const positionLabel = isBreakEven ? 'Break-even' : isLoss ? 'Loss' : 'Profit';
+        return (
+          <div className="reports-currency-overview" key={summary.currency}>
+            {data.currencies.length > 1 && <h3>{summary.currency} position</h3>}
+            <div className={isLoss ? 'reports-company-position is-loss' : 'reports-company-position'}>
+              <div>
+                <span className="eyebrow">{selectedProjectId ? 'Selected Project position' : 'Overall company position'}</span>
+                <strong>{positionLabel}</strong>
+                <p>
+                  {selectedProjectId ? 'This Project' : `${summary.projects.length} Project${summary.projects.length === 1 ? '' : 's'}`} {isBreakEven ? 'is at break-even' : `is in ${positionLabel.toLowerCase()}`}.
+                </p>
+              </div>
+              <div className="reports-company-position-value">
+                <strong>{displayMoney(summary.grossProfit, summary.currency)}</strong>
+                <span>{summary.overallMarginPercent}% margin</span>
+              </div>
+            </div>
+            <p className="reports-profit-definition">
+              <strong>Profit / Loss = Total client cash received − Total Project cost.</strong>
+              {' '}Project cost includes posted material, labour and salaries, equipment, subcontractor, site, security, and other Project expenses. Supplier cost and its settlement are counted once.
+            </p>
+            <dl className="reports-metric-grid">
+              {metrics.map(([label, value]) => {
+                const isProfitMetric = label === 'Gross Profit' || label === 'Overall Margin %';
+                const isNegative = isProfitMetric && value.includes('-');
+                return (
+                  <div className={isNegative ? 'reports-metric-card reports-negative' : 'reports-metric-card'} key={label}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+
+            <div className="reports-project-profitability">
+              <div className="reports-project-heading">
+                <div>
+                  <span className="eyebrow">Portfolio view</span>
+                  <h3>Profitability by Project</h3>
+                </div>
+                <span className="muted">Margin = gross profit / client revenue</span>
+              </div>
+              {summary.projects.length === 0 ? (
+                <p className="muted">No visible Projects have profitability data yet.</p>
+              ) : (
+                <div className="reports-project-bars">
+                  {summary.projects.map((project) => {
+                    const negative = project.marginPercent.startsWith('-');
+                    return (
+                      <div className="reports-project-row" key={project.projectId}>
+                        <div className="reports-project-label">
+                          <strong>{project.projectName}</strong>
+                          <span>{project.projectCode}</span>
+                        </div>
+                        <div
+                          className="reports-project-track"
+                          role="meter"
+                          aria-label={`${project.projectName} margin`}
+                          aria-valuenow={Number(project.marginPercent)}
+                          aria-valuemin={-100}
+                          aria-valuemax={100}
+                        >
+                          <span
+                            className={negative ? 'reports-project-bar is-negative' : 'reports-project-bar'}
+                            style={{ width: marginBarWidth(project.marginPercent) }}
+                          />
+                        </div>
+                        <strong className={negative ? 'reports-margin-value is-negative' : 'reports-margin-value'}>
+                          {displayMoney(project.grossProfit, summary.currency)} · {project.marginPercent}%
+                        </strong>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </section>
+  );
+}
+
 /** Render the permission-filtered Module 20 catalog, filters, results, saved filters and export workflow. */
 export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   const vendorsQuery = useVendors({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canRead);
@@ -205,7 +356,8 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   const downloadMutation = useReportDownload();
   const saveFilterMutation = useSaveReportFilter();
   const form = useForm<FilterFormValues>({ resolver: zodResolver(reportFilterFormSchema), defaultValues: EMPTY_FORM });
-  const selectedReportCode = form.watch('reportCode');
+  const [selectedReportCode, setSelectedReportCode] = useState<ReportCode | null>(null);
+  const [analyticsProjectId, setAnalyticsProjectId] = useState('');
   const savedFiltersQuery = useSavedReportFilters(selectedReportCode, props.canRead && props.canSaveFilters);
   const [savedFilterName, setSavedFilterName] = useState('');
   const [outputFormat, setOutputFormat] = useState<ReportOutputFormat>('PDF');
@@ -213,7 +365,17 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   const [appliedInput, setAppliedInput] = useState<RunReportInput | null>(null);
   const runQuery = useReportRun(activeRunId, props.canRead && props.canExport);
   const selectedReport = catalogQuery.data?.items.find((item) => item.code === selectedReportCode) ?? null;
-  const activeFilterFields = REPORT_FILTER_FIELDS[selectedReportCode];
+  const overviewEnabled = props.canRead && props.canViewOverview && selectedReport === null;
+  const portfolioOverviewQuery = useReportsAnalyticsOverview(undefined, overviewEnabled);
+  const projectOverviewQuery = useReportsAnalyticsOverview(analyticsProjectId || undefined, overviewEnabled && Boolean(analyticsProjectId));
+  const overviewQuery = analyticsProjectId ? projectOverviewQuery : portfolioOverviewQuery;
+  const analyticsProjectOptions = useMemo(() => (
+    portfolioOverviewQuery.data?.currencies.flatMap((currency) => currency.projects.map((project) => ({
+      id: project.projectId,
+      label: `${project.projectCode} · ${project.projectName}`
+    }))).sort((left, right) => left.label.localeCompare(right.label)) ?? []
+  ), [portfolioOverviewQuery.data]);
+  const activeFilterFields = selectedReportCode ? REPORT_FILTER_FIELDS[selectedReportCode] : [];
   const columns = reportColumns(runMutation.data?.rows ?? []);
   const currentPage = runMutation.data?.page ?? 1;
   const pageSize = runMutation.data?.pageSize ?? 25;
@@ -223,14 +385,18 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   );
 
   useEffect(() => {
-    const firstAllowedReport = catalogQuery.data?.items[0]?.code;
+    if (!selectedReportCode) return;
     const selectedStillAllowed = catalogQuery.data?.items.some((item) => item.code === selectedReportCode) ?? false;
-    if (firstAllowedReport && !selectedStillAllowed) form.reset({ ...EMPTY_FORM, reportCode: firstAllowedReport });
+    if (!selectedStillAllowed) {
+      setSelectedReportCode(null);
+      form.reset(EMPTY_FORM);
+    }
   }, [catalogQuery.data, form, selectedReportCode]);
 
   /** Change report and clear filters/results that belong to the previously selected report contract. */
-  function handleReportChange(reportCode: ReportCode): void {
-    form.reset({ ...EMPTY_FORM, reportCode });
+  function handleReportChange(reportCode: ReportCode | null): void {
+    setSelectedReportCode(reportCode);
+    form.reset(reportCode ? { ...EMPTY_FORM, reportCode } : EMPTY_FORM);
     runMutation.reset();
     exportMutation.reset();
     downloadMutation.reset();
@@ -281,6 +447,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
 
   /** Apply one user-owned saved filter and clear any result from a previous filter snapshot. */
   function handleApplySavedFilter(saved: SavedReportFilter): void {
+    setSelectedReportCode(saved.reportCode);
     form.reset(formValuesFromSavedFilter(saved));
     runMutation.reset();
     setAppliedInput(null);
@@ -317,7 +484,8 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
           <div className="reports-catalog-grid">
             <label>
               Report Catalog
-              <select value={selectedReportCode} onChange={(event) => handleReportChange(event.target.value as ReportCode)}>
+              <select value={selectedReportCode ?? ''} onChange={(event) => handleReportChange(event.target.value ? event.target.value as ReportCode : null)}>
+                <option value="">Choose a detailed report</option>
                 {catalogQuery.data.items.map((report) => (
                   <option key={report.code} value={report.code}>{report.name} · {report.domain}</option>
                 ))}
@@ -332,6 +500,27 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
           </div>
         )}
       </section>
+
+      {!selectedReport && props.canViewOverview && overviewQuery.data && (
+        <AnalyticsOverview
+          data={overviewQuery.data}
+          projectOptions={analyticsProjectOptions}
+          selectedProjectId={analyticsProjectId}
+          onProjectChange={setAnalyticsProjectId}
+        />
+      )}
+      {!selectedReport && props.canViewOverview && overviewQuery.isPending && (
+        <section className="admin-card reports-overview-loading" aria-live="polite"><p>Loading executive analytics…</p></section>
+      )}
+      {!selectedReport && props.canViewOverview && errorMessage(overviewQuery.error) && (
+        <section className="admin-card">
+          <div className="form-error" role="alert">{errorMessage(overviewQuery.error)}</div>
+          {analyticsProjectId && <button type="button" className="secondary-button" onClick={() => setAnalyticsProjectId('')}>Back to all Projects</button>}
+        </section>
+      )}
+      {!selectedReport && !props.canViewOverview && (
+        <section className="admin-card"><p className="muted">Financial overview requires Reports Finance, Finance, and Project Profitability portfolio access.</p></section>
+      )}
 
       {selectedReport && (
         <section className="admin-card">
@@ -374,7 +563,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
         </section>
       )}
 
-      <section className="admin-card">
+      {selectedReport && <section className="admin-card">
         <h2>Report Results</h2>
         {!runMutation.data && !runMutation.isPending && <p className="muted">Run a report to display its server-returned rows.</p>}
         {runMutation.data && (
@@ -401,7 +590,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             )}
           </>
         )}
-      </section>
+      </section>}
 
       {props.canSaveFilters && selectedReport && (
         <section className="admin-card">

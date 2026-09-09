@@ -24,6 +24,7 @@ const reportsSchema = read('apps/api/src/modules/reports/reports.schema.ts');
 
 const expectedRouteFragments = [
   "{ method: 'GET', path: `${REPORTS_API_BASE}/catalog`",
+  "{ method: 'GET', path: `${REPORTS_API_BASE}/overview`",
   "{ method: 'POST', path: `${REPORTS_API_BASE}/run`",
   "{ method: 'POST', path: `${REPORTS_API_BASE}/exports`",
   "{ method: 'GET', path: `${REPORTS_API_BASE}/runs/:id`",
@@ -42,12 +43,12 @@ test('B20.1 creates only the required five-file Reports backend module scaffold'
   ]);
 });
 
-test('B20.1 freezes the exact Final-21 Reports API base and seven-route surface', () => {
+test('B20.1 keeps the Reports API base and includes the executive overview route', () => {
   assert.match(reportsSchema, /REPORTS_API_BASE = '\/api\/v1\/reports'/);
   for (const fragment of expectedRouteFragments) {
     assert.ok(reportsRoutes.includes(fragment), `missing route contract ${fragment}`);
   }
-  assert.equal((reportsRoutes.match(/method: '(?:GET|POST)'/g) ?? []).length, 7);
+  assert.equal((reportsRoutes.match(/method: '(?:GET|POST)'/g) ?? []).length, 8);
 });
 
 test('B20.1 preserves the required four-part Reports React feature boundary for later passes', () => {

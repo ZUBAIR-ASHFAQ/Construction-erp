@@ -39,6 +39,9 @@ test('equipment reversal compensates expense and retains assignment history', as
   assert.match(repository, /status: \{ not: 'REVERSED' \}/);
   assert.doesNotMatch(repository, /equipmentAssignment\.delete/);
   assert.match(workspace, /Reverse Assignment & Expense/);
+  assert.match(workspace, /onReverse: \(assignment: EquipmentAssignment\) => void/);
+  assert.match(workspace, /canReverse && row\.status !== 'REVERSED'/);
+  assert.match(workspace, /<th>Action<\/th>/);
 });
 
 /** Confirm all user-visible project breakdowns use the Equipment Expense label. */

@@ -115,7 +115,6 @@ function EquipmentRegister(props: Readonly<{
   onEdit: (equipment: Equipment) => void;
   onAssign: (equipment: Equipment) => void;
   onComplete: (equipment: Equipment) => void;
-  onReverse: (equipment: Equipment) => void;
 }>) {
   const [page, setPage] = useState(1);
   const query = useEquipment({ page, pageSize: 25 }, props.canRead);
@@ -145,7 +144,6 @@ function EquipmentRegister(props: Readonly<{
                       {props.canManage && <button type="button" className="secondary-button" onClick={() => props.onEdit(equipment)}>Edit</button>}
                       {props.canAssign && equipment.assignmentStatus === 'UNASSIGNED' && <button type="button" onClick={() => props.onAssign(equipment)}>Assign To</button>}
                       {props.canComplete && equipment.assignmentStatus === 'ASSIGNED' && <button type="button" onClick={() => props.onComplete(equipment)}>Complete</button>}
-                      {props.canComplete && equipment.assignmentStatus === 'ASSIGNED' && <button type="button" className="secondary-button" onClick={() => props.onReverse(equipment)}>Reverse</button>}
                       <button type="button" className="secondary-button" onClick={() => props.onLedger(equipment)}>Ledger</button>
                     </div></td>
                   </tr>
@@ -299,30 +297,103 @@ function CompleteAssignmentModal({ equipment, onClose }: Readonly<{ equipment: E
   return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-complete-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-complete-title">Complete Assignment</h2></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close completion">×</button></header><div className="finance-modal-body">{history.isPending && <p>Loading assignment…</p>}{assignment && <form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void complete(); }}><p>Quantity: {assignment.quantity} · Rate: {assignment.rate} / {assignment.rateUnit.toLowerCase()}</p>{assignment.rateUnit === 'HOUR' && <p className="muted">Per-minute rate: {(Number(assignment.rate) / 60).toFixed(4)}{elapsedMinutes !== null ? ` · ${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} (${(elapsedMinutes / 60).toFixed(2)} hours)` : ''}</p>}<p>Equipment Expense posted at assignment: {assignment.estimatedAmount ?? 'Calculated on completion'}</p><label>Completion date<input type="date" min={assignment.fromDate} max={assignment.toDate ?? undefined} value={completionDate} onChange={(event) => setCompletionDate(event.target.value)} /></label>{assignment.rateUnit === 'HOUR' && <label>Completion time<input type="time" value={completionTime} onChange={(event) => setCompletionTime(event.target.value)} /></label>}<div className="equipment-cost-preview"><span>Final Equipment Expense</span><strong>{finalAmount ?? 'Select a time after the assignment start'}</strong></div><p className="muted">Completion posts only the difference between the assignment estimate and final usage, so Project cost is never counted twice.</p><button type="submit" disabled={!finalAmount || mutation.isPending}>{mutation.isPending ? 'Completing…' : 'Complete & Finalize Expense'}</button></form>}{!history.isPending && !assignment && <div className="form-error">No active assignment was found.</div>}{errorMessage(history.error) && <div className="form-error">{errorMessage(history.error)}</div>}{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
 }
 
-/** Confirm a wrong assignment reversal with a dated business reason. */
-function ReverseAssignmentModal({ equipment, onClose }: Readonly<{ equipment: Equipment; onClose: () => void }>) {
-  const history = useEquipmentHistory(equipment.id, true);
+/** Confirm one ledger-selected assignment reversal with a dated business reason. */
+function ReverseAssignmentModal({ equipment, assignment, onClose }: Readonly<{ equipment: Equipment; assignment: EquipmentAssignment; onClose: () => void }>) {
   const mutation = useReverseEquipmentAssignment(equipment.id);
-  const assignment = history.data?.assignments.find((row) => row.id === equipment.activeAssignmentId && row.status === 'ACTIVE');
   const [reversalDate, setReversalDate] = useState(() => localAssignmentStart().date);
   const [reason, setReason] = useState('');
 
   /** Post one append-only compensating Equipment Expense entry and preserve history. */
   async function reverse(): Promise<void> {
-    if (!assignment || !reversalDate || reason.trim().length < 3) return;
+    if (!reversalDate || reason.trim().length < 3) return;
     await mutation.mutateAsync({ assignmentId: assignment.id, reversalDate, reason: reason.trim() });
     onClose();
   }
 
-  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-reverse-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-reverse-title">Reverse Equipment Assignment</h2><p>This releases the equipment and reverses all Equipment Expense posted by this assignment. History is retained.</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close reversal">×</button></header><div className="finance-modal-body">{history.isPending && <p>Loading assignment…</p>}{assignment && <form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void reverse(); }}><div className="equipment-cost-preview"><span>Assignment</span><strong>{assignment.projectName ?? equipment.assignedProjectName ?? 'Project'} · {assignment.estimatedAmount ?? '0.00'} Equipment Expense</strong></div><label>Reversal date<input type="date" min={assignment.fromDate} value={reversalDate} onChange={(event) => setReversalDate(event.target.value)} /></label><label>Reason<textarea rows={3} maxLength={500} placeholder="Why is this assignment being reversed?" value={reason} onChange={(event) => setReason(event.target.value)} /></label><p className="muted">Reversal creates a compensating cost entry; it never deletes accounting or equipment history.</p><button type="submit" disabled={reason.trim().length < 3 || mutation.isPending}>{mutation.isPending ? 'Reversing…' : 'Reverse Assignment & Expense'}</button></form>}{!history.isPending && !assignment && <div className="form-error">No active assignment was found.</div>}{errorMessage(history.error) && <div className="form-error">{errorMessage(history.error)}</div>}{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
+  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-reverse-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-reverse-title">Reverse Equipment Assignment</h2><p>This reverses all Equipment Expense posted by the selected ledger assignment. History is retained.</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close reversal">×</button></header><div className="finance-modal-body"><form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void reverse(); }}><div className="equipment-cost-preview"><span>{assignment.status === 'ACTIVE' ? 'Active assignment' : 'Completed assignment'}</span><strong>{assignment.projectName ?? 'Project'} · {assignment.stageName ?? 'Project level'} · {assignment.estimatedAmount ?? '0.00'} Equipment Expense</strong></div><label>Reversal date<input type="date" min={assignment.fromDate} value={reversalDate} onChange={(event) => setReversalDate(event.target.value)} /></label><label>Reason<textarea rows={3} maxLength={500} placeholder="Why is this assignment being reversed?" value={reason} onChange={(event) => setReason(event.target.value)} /></label><p className="muted">A compensating expense entry removes this assignment from Project cost, profitability, reports and billing calculations without deleting its ledger history.</p><button type="submit" disabled={reason.trim().length < 3 || mutation.isPending}>{mutation.isPending ? 'Reversing…' : 'Reverse Assignment & Expense'}</button></form>{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
 }
 
 /** Display the selected equipment's assignment, cost, and maintenance ledger in one popup. */
-function EquipmentLedgerModal({ equipment, onClose }: Readonly<{ equipment: Equipment; onClose: () => void }>) {
+function EquipmentLedgerModal({ equipment, canReverse, onReverse, onClose }: Readonly<{
+  equipment: Equipment;
+  canReverse: boolean;
+  onReverse: (assignment: EquipmentAssignment) => void;
+  onClose: () => void;
+}>) {
   const history = useEquipmentHistory(equipment.id, true);
   const postedTotal = history.data?.costSummary.reduce((total, row) => total + Number(row.amount), 0) ?? 0;
 
-  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="equipment-ledger-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-ledger-title">Equipment Expense Ledger</h2><p>{equipment.equipmentType} · {equipment.ownershipType === 'RENTED' ? 'Rented' : 'Owned'} · {equipment.defaultRate ?? '0.0000'} / {(equipment.rateUnit ?? 'unit').toLowerCase()}</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close equipment ledger">×</button></header><div className="finance-modal-body">{history.isPending && <p className="finance-modal-state">Loading equipment expense ledger…</p>}{errorMessage(history.error) && <div className="form-error">{errorMessage(history.error)}</div>}{history.data && <div className="admin-stack"><div className="equipment-ledger-summary"><span><small>Assignment status</small><strong>{equipment.assignmentStatus === 'ASSIGNED' ? 'Assigned' : 'Available'}</strong></span><span><small>Posted Equipment Expense</small><strong>{postedTotal.toFixed(2)}</strong></span><span><small>Completion / usage entries</small><strong>{history.data.usage.length}</strong></span></div><h3>Project assignments</h3><div className="table-scroll"><table><thead><tr><th>Project / Stage</th><th>Period</th><th>Quantity</th><th>Rate</th><th>Equipment Expense</th><th>Status</th></tr></thead><tbody>{history.data.assignments.map((row) => <tr key={row.id}><td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td><td>{row.fromDate} {row.fromTime} → {row.toDate ? `${row.toDate} ${row.toTime ?? ''}` : 'In progress'}</td><td>{row.quantity}</td><td>{row.rate} / {row.rateUnit.toLowerCase()}</td><td>{row.estimatedAmount ?? '—'}</td><td>{row.status === 'ACTIVE' ? 'Assigned' : row.status === 'REVERSED' ? 'Reversed' : 'Completed'}</td></tr>)}{history.data.assignments.length === 0 && <tr><td colSpan={6} className="muted">No project assignments yet.</td></tr>}</tbody></table></div><h3>Completion / usage detail</h3><div className="table-scroll"><table><thead><tr><th>Posting date</th><th>Project / Stage</th><th>Usage</th><th>Rate</th><th>Final amount</th><th>Status</th></tr></thead><tbody>{history.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td><td>{row.quantity} hours/units</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.status}</td></tr>)}{history.data.usage.length === 0 && <tr><td colSpan={6} className="muted">The assignment estimate is already posted as Equipment Expense; final usage appears here after completion.</td></tr>}</tbody></table></div><h3>Maintenance history</h3><div className="table-scroll"><table><thead><tr><th>Date</th><th>Type</th><th>Cost</th><th>Note</th><th>Status</th></tr></thead><tbody>{history.data.maintenance.map((row) => <tr key={row.id}><td>{row.maintenanceDate}</td><td>{row.type}</td><td>{row.cost}</td><td>{row.note ?? '—'}</td><td>{row.status}</td></tr>)}{history.data.maintenance.length === 0 && <tr><td colSpan={5} className="muted">No maintenance entries.</td></tr>}</tbody></table></div></div>}</div></section></div>;
+  return (
+    <div className="finance-modal-backdrop" role="presentation">
+      <section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="equipment-ledger-title">
+        <header className="finance-modal-header">
+          <div>
+            <p className="eyebrow">{equipment.code} · {equipment.name}</p>
+            <h2 id="equipment-ledger-title">Equipment Expense Ledger</h2>
+            <p>{equipment.equipmentType} · {equipment.ownershipType === 'RENTED' ? 'Rented' : 'Owned'} · {equipment.defaultRate ?? '0.0000'} / {(equipment.rateUnit ?? 'unit').toLowerCase()}</p>
+          </div>
+          <button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close equipment ledger">×</button>
+        </header>
+        <div className="finance-modal-body">
+          {history.isPending && <p className="finance-modal-state">Loading equipment expense ledger…</p>}
+          {errorMessage(history.error) && <div className="form-error">{errorMessage(history.error)}</div>}
+          {history.data && (
+            <div className="admin-stack">
+              <div className="equipment-ledger-summary">
+                <span><small>Assignment status</small><strong>{equipment.assignmentStatus === 'ASSIGNED' ? 'Assigned' : 'Available'}</strong></span>
+                <span><small>Posted Equipment Expense</small><strong>{postedTotal.toFixed(2)}</strong></span>
+                <span><small>Completion / usage entries</small><strong>{history.data.usage.length}</strong></span>
+              </div>
+              <h3>Project assignments</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>Project / Stage</th><th>Period</th><th>Quantity</th><th>Rate</th><th>Equipment Expense</th><th>Status</th><th>Action</th></tr></thead>
+                  <tbody>
+                    {history.data.assignments.map((row) => (
+                      <tr key={row.id}>
+                        <td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td>
+                        <td>{row.fromDate} {row.fromTime} → {row.toDate ? `${row.toDate} ${row.toTime ?? ''}` : 'In progress'}</td>
+                        <td>{row.quantity}</td>
+                        <td>{row.rate} / {row.rateUnit.toLowerCase()}</td>
+                        <td>{row.estimatedAmount ?? '—'}</td>
+                        <td>{row.status === 'ACTIVE' ? 'Assigned' : row.status === 'REVERSED' ? 'Reversed' : 'Completed'}</td>
+                        <td>
+                          {canReverse && row.status !== 'REVERSED'
+                            ? <button type="button" className="secondary-button" onClick={() => onReverse(row)}>Reverse</button>
+                            : row.status === 'REVERSED' ? <span className="muted">Reversed</span> : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                    {history.data.assignments.length === 0 && <tr><td colSpan={7} className="muted">No project assignments yet.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <h3>Completion / usage detail</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>Posting date</th><th>Project / Stage</th><th>Usage</th><th>Rate</th><th>Final amount</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {history.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td><td>{row.quantity} hours/units</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.status}</td></tr>)}
+                    {history.data.usage.length === 0 && <tr><td colSpan={6} className="muted">The assignment estimate is already posted as Equipment Expense; final usage appears here after completion.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+              <h3>Maintenance history</h3>
+              <div className="table-scroll">
+                <table>
+                  <thead><tr><th>Date</th><th>Type</th><th>Cost</th><th>Note</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {history.data.maintenance.map((row) => <tr key={row.id}><td>{row.maintenanceDate}</td><td>{row.type}</td><td>{row.cost}</td><td>{row.note ?? '—'}</td><td>{row.status}</td></tr>)}
+                    {history.data.maintenance.length === 0 && <tr><td colSpan={5} className="muted">No maintenance entries.</td></tr>}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 /** Render the Final-21 Equipment Management feature without legacy fleet subsystems. */
@@ -330,18 +401,28 @@ export function EquipmentWorkspace(props: EquipmentWorkspaceProps) {
   const [editor, setEditor] = useState<Equipment | 'create' | null>(null);
   const [assignmentEditor, setAssignmentEditor] = useState<Equipment | null>(null);
   const [completionEditor, setCompletionEditor] = useState<Equipment | null>(null);
-  const [reversalEditor, setReversalEditor] = useState<Equipment | null>(null);
+  const [reversalEditor, setReversalEditor] = useState<Readonly<{ equipment: Equipment; assignment: EquipmentAssignment }> | null>(null);
   const [ledgerEquipment, setLedgerEquipment] = useState<Equipment | null>(null);
 
   return (
     <div className="admin-stack">
       <section className="equipment-workflow-bar"><div><strong>Equipment workflow</strong><span>Assign → Equipment Expense posted → Complete to finalize, or Reverse to remove the full cost effect</span></div>{props.canManage && <button type="button" onClick={() => setEditor('create')}>Add Equipment</button>}</section>
-      <EquipmentRegister canRead={props.canRead} canManage={props.canManage} canAssign={props.canAssign} canComplete={props.canAssign && props.canRecordUsage} onLedger={setLedgerEquipment} onEdit={setEditor} onAssign={setAssignmentEditor} onComplete={setCompletionEditor} onReverse={setReversalEditor} />
+      <EquipmentRegister canRead={props.canRead} canManage={props.canManage} canAssign={props.canAssign} canComplete={props.canAssign && props.canRecordUsage} onLedger={setLedgerEquipment} onEdit={setEditor} onAssign={setAssignmentEditor} onComplete={setCompletionEditor} />
       {editor && <EquipmentEditorModal equipment={editor === 'create' ? null : editor} onClose={() => setEditor(null)} />}
       {assignmentEditor && <AssignmentForm equipment={assignmentEditor} onClose={() => setAssignmentEditor(null)} />}
       {completionEditor && <CompleteAssignmentModal equipment={completionEditor} onClose={() => setCompletionEditor(null)} />}
-      {reversalEditor && <ReverseAssignmentModal equipment={reversalEditor} onClose={() => setReversalEditor(null)} />}
-      {ledgerEquipment && <EquipmentLedgerModal equipment={ledgerEquipment} onClose={() => setLedgerEquipment(null)} />}
+      {reversalEditor && <ReverseAssignmentModal equipment={reversalEditor.equipment} assignment={reversalEditor.assignment} onClose={() => setReversalEditor(null)} />}
+      {ledgerEquipment && (
+        <EquipmentLedgerModal
+          equipment={ledgerEquipment}
+          canReverse={props.canAssign && props.canRecordUsage}
+          onReverse={(assignment) => {
+            setReversalEditor({ equipment: ledgerEquipment, assignment });
+            setLedgerEquipment(null);
+          }}
+          onClose={() => setLedgerEquipment(null)}
+        />
+      )}
     </div>
   );
 }

@@ -131,6 +131,13 @@ export function endEquipmentAssignment(equipmentId: string, assignmentId: string
   });
 }
 
+/** Reverse one assignment and compensate all Equipment Expense posted by it. */
+export function reverseEquipmentAssignment(equipmentId: string, assignmentId: string, reversalDate: string, reason: string): Promise<EquipmentAssignment> {
+  return authenticatedRequest<EquipmentAssignment>(`equipment/${equipmentId}/assignments/${assignmentId}/reverse`, {
+    method: 'POST', headers: commandHeaders(), body: JSON.stringify({ reversalDate, reason })
+  });
+}
+
 /** Load bounded assignment, usage, maintenance and cost history for one Equipment item. */
 export function getEquipmentHistory(equipmentId: string, pageSize = 50): Promise<EquipmentHistory> {
   return authenticatedRequest<EquipmentHistory>(`equipment/${equipmentId}/history?pageSize=${pageSize}`);

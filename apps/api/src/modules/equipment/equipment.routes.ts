@@ -19,6 +19,7 @@ import {
   listEquipmentQuerySchema,
   listEquipmentResponseSchema,
   recordEquipmentUsageBodySchema,
+  reverseEquipmentAssignmentBodySchema,
   updateEquipmentBodySchema
 } from './equipment.schema.js';
 import { EquipmentService } from './equipment.service.js';
@@ -54,6 +55,7 @@ const ASSIGNMENT_BODY_JSON_SCHEMA = {
   properties: { projectId: UUID_JSON_SCHEMA, stageId: NULLABLE_UUID_JSON_SCHEMA, quantity: DECIMAL_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, fromTime: TIME_JSON_SCHEMA, toDate: NULLABLE_DATE_JSON_SCHEMA, toTime: { anyOf: [TIME_JSON_SCHEMA, { type: 'null' }] } }
 } as const;
 const END_ASSIGNMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['endDate'], properties: { endDate: DATE_JSON_SCHEMA, endTime: TIME_JSON_SCHEMA } } as const;
+const REVERSE_ASSIGNMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['reversalDate', 'reason'], properties: { reversalDate: DATE_JSON_SCHEMA, reason: { type: 'string', minLength: 3, maxLength: 500 } } } as const;
 const USAGE_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['assignmentId', 'usageDate', 'quantity'],
   properties: { assignmentId: UUID_JSON_SCHEMA, usageDate: DATE_JSON_SCHEMA, quantity: DECIMAL_JSON_SCHEMA, rate: NULLABLE_DECIMAL_JSON_SCHEMA }
@@ -143,6 +145,16 @@ export async function registerEquipmentRoutes(app: FastifyInstance, options: Equ
     const params = parseRequest(equipmentAssignmentParamsSchema, request.params, 'params');
     const body = parseRequest(endEquipmentAssignmentBodySchema, request.body, 'body');
     const data = equipmentAssignmentResponseSchema.parse(await service.endAssignment(params.id, params.assignmentId, body, readIdempotencyKey(request)));
+    return reply.send({ data });
+  });
+
+  app.post('/api/v1/equipment/:id/assignments/:assignmentId/reverse', {
+    schema: { tags: ['Equipment'], operationId: 'reverseEquipmentAssignment', summary: 'Reverse an equipment assignment and all of its project expense', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ASSIGNMENT_PARAMS_JSON_SCHEMA, body: REVERSE_ASSIGNMENT_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(equipmentAssignmentParamsSchema, request.params, 'params');
+    const body = parseRequest(reverseEquipmentAssignmentBodySchema, request.body, 'body');
+    const data = equipmentAssignmentResponseSchema.parse(await service.reverseAssignment(params.id, params.assignmentId, body, readIdempotencyKey(request)));
     return reply.send({ data });
   });
 

@@ -410,7 +410,7 @@ function ProjectDetailsContent({ details }: Readonly<{ details: ProjectDetails }
         </div>
         {details.expenseSummary ? <>
           <dl className="project-expense-grid">
-            {details.expenseSummary.categories.map((row) => <div key={row.category}><dt>{({ material: 'Material', labour: 'Labour', security: 'Security', equipment: 'Machinery / Equipment', subcontract: 'Subcontractor', site_expense: 'Site expenses', other: 'Other expenses' } as const)[row.category]}</dt><dd>{project.currency} {row.amount}</dd></div>)}
+            {details.expenseSummary.categories.map((row) => <div key={row.category}><dt>{({ material: 'Material', labour: 'Labour', security: 'Security', equipment: 'Equipment Expense', subcontract: 'Subcontractor', site_expense: 'Site expenses', other: 'Other expenses' } as const)[row.category]}</dt><dd>{project.currency} {row.amount}</dd></div>)}
             <div><dt>Supplier cost basis</dt><dd>{project.currency} {details.expenseSummary.supplierCostAmount}</dd><small>Posted supplier payable plus Project payments, with allocated payments counted only once.</small></div>
             <div className="project-expense-total"><dt>Total actual project cost</dt><dd>{project.currency} {details.expenseSummary.totalExpense}</dd><small>Includes the agreed subcontract contract amount without counting posted subcontract payments twice.</small></div>
           </dl>

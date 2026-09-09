@@ -127,7 +127,7 @@ function CostBreakdownGrid({ values, currency }: { values: ProjectProfitabilityF
     ['Material and inventory usage', values.costBreakdown.materialCost],
     ['Labour salaries / wages', values.costBreakdown.labourCost],
     ['Security salaries / wages', values.costBreakdown.securityCost],
-    ['Equipment usage', values.costBreakdown.equipmentCost],
+    ['Equipment Expense', values.costBreakdown.equipmentCost],
     ['Subcontractor cost', values.costBreakdown.subcontractCost],
     ['Site expenses', values.costBreakdown.siteExpenseCost],
     ['Other direct cost', values.costBreakdown.otherCost]
@@ -364,7 +364,7 @@ export function ProjectProfitabilityWorkspace({
             <h3>Project expense breakdown</h3>
             <CostBreakdownGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
             <CommercialCostBridge values={summaryQuery.data.commercialSummary} currency={summaryQuery.data.currency} />
-            <p className="muted">Salary, equipment, material, subcontractor, site-expense and other rows come from posted Project costs. The Supplier adjustment adds only posted invoices or direct Supplier payments not already represented in those expense rows.</p>
+            <p className="muted">Salary, Equipment Expense, material, subcontractor, site-expense and other rows come from posted Project costs. The Supplier adjustment adds only posted invoices or direct Supplier payments not already represented in those expense rows.</p>
             <h3>Supplier position</h3>
             <SupplierPositionGrid values={summaryQuery.data} currency={summaryQuery.data.currency} />
             <p className="muted">Supplier cash payment is shown separately and is never added to expense a second time. Payable is posted invoices less allocated payments; direct unallocated payments remain Supplier advance.</p>

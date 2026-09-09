@@ -282,7 +282,7 @@ function AnalyticsOverview({
             </div>
             <p className="reports-profit-definition">
               <strong>Profit / Loss = Total client cash received − Total Project cost.</strong>
-              {' '}Project cost includes posted material, labour and salaries, equipment, subcontractor, site, security, and other Project expenses. Supplier cost and its settlement are counted once.
+              {' '}Project cost includes posted material, labour and salaries, Equipment Expense, subcontractor, site, security, and other Project expenses. Supplier cost and its settlement are counted once.
             </p>
             <dl className="reports-metric-grid">
               {metrics.map(([label, value]) => {

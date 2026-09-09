@@ -36,12 +36,13 @@ test('B13 exposes the Final-21 Equipment routes plus controlled assignment end',
     "PATCH', route: '/api/v1/equipment/:id'",
     "POST', route: '/api/v1/equipment/:id/assignments'",
     "POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end'",
+    "POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/reverse'",
     "POST', route: '/api/v1/equipment/:id/usage'",
     "POST', route: '/api/v1/equipment/:id/maintenance'",
     "GET', route: '/api/v1/equipment/:id/history'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 8);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/equipment/g) ?? []).length, 9);
   assert.doesNotMatch(routes, /\/api\/v1\/equipment[^'\"]*(?:transfer|archive|dispose|utilization|submit|post-cost|return)/i);
 });
 
@@ -115,12 +116,12 @@ test('B13 uses the final Equipment permission error and event vocabulary', () =>
   for (const error of ['EQUIPMENT_NOT_FOUND', 'EQUIPMENT_NOT_AVAILABLE', 'ASSIGNMENT_OVERLAP', 'INVALID_EQUIPMENT_STAGE']) {
     assert.ok(schema.includes(`'${error}'`), `missing ${error}`);
   }
-  for (const event of ['equipment.assigned', 'equipment.assignment_ended', 'equipment.usage_posted', 'equipment.maintenance_recorded']) {
+  for (const event of ['equipment.assigned', 'equipment.assignment_ended', 'equipment.assignment_reversed', 'equipment.usage_posted', 'equipment.maintenance_recorded']) {
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
     assert.ok(service.includes(event), `service does not emit ${event}`);
   }
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 6);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 6);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 7);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 7);
   assert.match(service, /executeIdempotentCommand/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);
@@ -151,8 +152,9 @@ test('B13 simplifies the Equipment React feature to the Final-21 workflow', () =
   assert.doesNotMatch(page, /usePermission\('equipment\.maintenance\.manage'\)/);
   assert.match(workspace, /useProjects/);
   assert.match(workspace, /useProjectStages/);
-  assert.match(workspace, /Complete & Post Cost/);
-  assert.match(workspace, /Equipment Ledger/);
+  assert.match(workspace, /Complete & Finalize Expense/);
+  assert.match(workspace, /Equipment Expense Ledger/);
+  assert.match(workspace, /Reverse Assignment & Expense/);
   assert.match(workspace, /Maintenance history/);
   assert.doesNotMatch(workspace, /function UsageForm|function MaintenanceForm|function EquipmentHistoryPanel/);
   assert.match(api, /endEquipmentAssignment/);

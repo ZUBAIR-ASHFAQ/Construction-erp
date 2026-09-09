@@ -26,7 +26,8 @@ export const MODULE_12_EVENT_TYPES = Object.freeze([
   'equipment.assigned',
   'equipment.usage_posted',
   'equipment.maintenance_recorded',
-  'equipment.assignment_ended'
+  'equipment.assignment_ended',
+  'equipment.assignment_reversed'
 ] as const);
 
 /** Final Module 12 public route catalog. */
@@ -36,6 +37,7 @@ export const MODULE_12_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/equipment/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/end' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/assignments/:assignmentId/reverse' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/usage' }),
   Object.freeze({ method: 'POST', route: '/api/v1/equipment/:id/maintenance' }),
   Object.freeze({ method: 'GET', route: '/api/v1/equipment/:id/history' })
@@ -132,6 +134,12 @@ export const createEquipmentAssignmentBodySchema = z.object({
 export const endEquipmentAssignmentBodySchema = z.object({
   endDate: date,
   endTime: time.optional()
+}).strict();
+
+/** Validate one append-only Equipment-assignment reversal. */
+export const reverseEquipmentAssignmentBodySchema = z.object({
+  reversalDate: date,
+  reason: z.string().trim().min(3).max(500)
 }).strict();
 
 /** Validate one usage/rental record tied to an existing assignment. */
@@ -257,5 +265,6 @@ export type CreateEquipmentBody = z.infer<typeof createEquipmentBodySchema>;
 export type UpdateEquipmentBody = z.infer<typeof updateEquipmentBodySchema>;
 export type CreateEquipmentAssignmentBody = z.infer<typeof createEquipmentAssignmentBodySchema>;
 export type EndEquipmentAssignmentBody = z.infer<typeof endEquipmentAssignmentBodySchema>;
+export type ReverseEquipmentAssignmentBody = z.infer<typeof reverseEquipmentAssignmentBodySchema>;
 export type RecordEquipmentUsageBody = z.infer<typeof recordEquipmentUsageBodySchema>;
 export type CreateEquipmentMaintenanceBody = z.infer<typeof createEquipmentMaintenanceBodySchema>;

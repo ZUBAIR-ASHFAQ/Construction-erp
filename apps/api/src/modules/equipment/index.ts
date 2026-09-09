@@ -21,5 +21,6 @@ export {
   listEquipmentQuerySchema,
   listEquipmentResponseSchema,
   recordEquipmentUsageBodySchema,
+  reverseEquipmentAssignmentBodySchema,
   updateEquipmentBodySchema
 } from './equipment.schema.js';

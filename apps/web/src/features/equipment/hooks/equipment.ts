@@ -5,6 +5,7 @@ import {
   endEquipmentAssignment,
   getEquipmentHistory,
   listEquipment,
+  reverseEquipmentAssignment,
   updateEquipment,
   type AssignEquipmentInput,
   type CreateEquipmentInput,
@@ -46,20 +47,29 @@ export function useUpdateEquipment(equipmentId: string) {
   });
 }
 
-/** Assign Equipment and refresh its history. */
+/** Assign Equipment and refresh every read that can include Project cost. */
 export function useAssignEquipment(equipmentId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: AssignEquipmentInput) => assignEquipment(equipmentId, input),
-    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
+    onSuccess: async () => client.invalidateQueries()
   });
 }
 
-/** End one Equipment assignment and refresh its history. */
+/** End one Equipment assignment and refresh every adjusted Project-cost read. */
 export function useEndEquipmentAssignment(equipmentId: string) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: Readonly<{ assignmentId: string; endDate: string; endTime?: string }>) => endEquipmentAssignment(equipmentId, input.assignmentId, input.endDate, input.endTime),
-    onSuccess: async () => client.invalidateQueries({ queryKey: EQUIPMENT_QUERY_KEY })
+    onSuccess: async () => client.invalidateQueries()
+  });
+}
+
+/** Reverse one Equipment assignment and refresh register, expense and ledger reads. */
+export function useReverseEquipmentAssignment(equipmentId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ assignmentId: string; reversalDate: string; reason: string }>) => reverseEquipmentAssignment(equipmentId, input.assignmentId, input.reversalDate, input.reason),
+    onSuccess: async () => client.invalidateQueries()
   });
 }

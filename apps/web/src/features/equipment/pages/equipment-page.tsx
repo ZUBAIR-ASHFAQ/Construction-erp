@@ -13,7 +13,7 @@ export function EquipmentPage() {
       <div className="section-heading">
         <p className="eyebrow">Module 12 · Resources</p>
         <h1 id="equipment-title">Equipment Management</h1>
-        <p className="muted">Register owned or rented equipment, assign it to project work, complete the assignment, and post its calculated cost automatically.</p>
+        <p className="muted">Register owned or rented equipment, post Equipment Expense when assigned, finalize it on completion, or reverse a wrong assignment without deleting history.</p>
       </div>
 
       <EquipmentWorkspace

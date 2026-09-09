@@ -17,11 +17,13 @@ import {
   type ListEquipmentQuery,
   type Module12PermissionCode,
   type RecordEquipmentUsageBody,
+  type ReverseEquipmentAssignmentBody,
   type UpdateEquipmentBody
 } from './equipment.schema.js';
 
 const ACTIVE = 'ACTIVE';
 const ENDED = 'ENDED';
+const REVERSED = 'REVERSED';
 const POSTED = 'POSTED';
 const RECORDED = 'RECORDED';
 const DECIMAL_SCALE_4 = 10_000n;
@@ -69,6 +71,27 @@ function moneyString(value: DecimalLike): string {
   const text = value.toString();
   const [whole = '0', fraction = ''] = text.split('.');
   return `${whole}.${`${fraction}00`.slice(0, 2)}`;
+}
+
+/** Convert signed exact money into minor units for append-only adjustments. */
+function moneyToMinorUnits(value: DecimalLike): bigint {
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value.toString().trim());
+  if (!match) throw new ValidationError({ message: 'Equipment expense amount is invalid.' });
+  const sign = match[1] === '-' ? -1n : 1n;
+  return sign * ((BigInt(match[2] ?? '0') * 100n) + BigInt(`${match[3] ?? ''}00`.slice(0, 2)));
+}
+
+/** Serialize signed minor units as stable two-decimal money. */
+function minorUnitsToMoney(value: bigint): string {
+  const negative = value < 0n;
+  const absolute = negative ? -value : value;
+  const text = `${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
+  return negative ? `-${text}` : text;
+}
+
+/** Sum Equipment Expense source rows without floating-point arithmetic. */
+function sumExpenseActuals(rows: readonly Readonly<{ amount: DecimalLike }>[]): bigint {
+  return rows.reduce((sum, row) => sum + moneyToMinorUnits(row.amount), 0n);
 }
 
 /** Round a non-negative integer quotient half-up. */
@@ -377,6 +400,7 @@ export class EquipmentService {
     if (input.toTime && !toDate) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To date is required when a to time is provided.' }] });
     if (rateUnit === 'HOUR' && toDate && !input.toTime) throw new ValidationError({ fieldErrors: [{ field: 'toTime', message: 'To time is required for an hourly estimate.' }] });
     if (await repository.hasAssignmentOverlap(equipmentId, fromDate, toDate)) throw createModule12Error('ASSIGNMENT_OVERLAP');
+    const estimatedAmount = calculateAmount(toDate ? datedQuantity(input.quantity, rateUnit, fromDate, fromMinute, toDate, toMinute ?? 0) : input.quantity, rate);
     const assignment = await repository.createAssignment({
       equipmentId,
       projectId: input.projectId,
@@ -388,8 +412,17 @@ export class EquipmentService {
       quantity: input.quantity,
       rate,
       rateUnit,
-      estimatedAmount: calculateAmount(toDate ? datedQuantity(input.quantity, rateUnit, fromDate, fromMinute, toDate, toMinute ?? 0) : input.quantity, rate),
+      estimatedAmount,
       status: ACTIVE
+    });
+    await repository.createAssignmentExpenseActual({
+      projectId: assignment.projectId,
+      stageId: assignment.stageId,
+      assignmentId: assignment.id,
+      sourceType: 'equipment_assignment',
+      sourceKeySuffix: 'assigned',
+      postingDate: assignment.fromDate,
+      amount: estimatedAmount
     });
     const response = assignmentResponse(assignment);
     await recordAudit(tx, { action: 'equipment.assigned', entityType: 'equipment_assignment', entityId: assignment.id, projectId: assignment.projectId, stageId: assignment.stageId, after: response });
@@ -434,15 +467,22 @@ export class EquipmentService {
       throw new ValidationError({ fieldErrors: [{ field: 'endDate', message: 'endDate cannot precede posted Equipment usage.' }] });
     }
 
-    if (!(await repository.hasPostedUsage(equipmentId, assignmentId))) {
-      const quantity = datedQuantity(locked.quantity, rateUnit, locked.fromDate, locked.fromMinute, endDate, endMinute);
-      const amount = calculateAmount(quantity, locked.rate);
-      const usage = await repository.createUsage({ assignmentId, usageDate: endDate, quantity, rate: locked.rate.toString(), amount, enteredBy: requireRequestSecurityContext().actorUserId, status: POSTED });
-      const actual = await repository.createUsageCostActual({ projectId: locked.projectId, stageId: locked.stageId, usageId: usage.id, postingDate: endDate, amount });
-      const usageResult = usageResponse(usage, locked, actual.id);
-      await recordAudit(tx, { action: 'equipment.usage_posted', entityType: 'equipment_usage', entityId: usage.id, projectId: locked.projectId, stageId: locked.stageId, after: usageResult });
-      await recordOutboxEvent(tx, { eventType: 'equipment.usage_posted', resourceType: 'equipment_usage', resourceId: usage.id, payload: usageResult });
-    }
+    const quantity = datedQuantity(locked.quantity, rateUnit, locked.fromDate, locked.fromMinute, endDate, endMinute);
+    const amount = calculateAmount(quantity, locked.rate);
+    const currentExpense = sumExpenseActuals(await repository.listAssignmentExpenseActuals(equipmentId, assignmentId));
+    const usage = await repository.createUsage({ assignmentId, usageDate: endDate, quantity, rate: locked.rate.toString(), amount, enteredBy: requireRequestSecurityContext().actorUserId, status: POSTED });
+    const actual = await repository.createAssignmentExpenseActual({
+      projectId: locked.projectId,
+      stageId: locked.stageId,
+      assignmentId,
+      sourceType: 'equipment_assignment_completion',
+      sourceKeySuffix: 'completed',
+      postingDate: endDate,
+      amount: minorUnitsToMoney(moneyToMinorUnits(amount) - currentExpense)
+    });
+    const usageResult = usageResponse(usage, locked, actual.id);
+    await recordAudit(tx, { action: 'equipment.usage_posted', entityType: 'equipment_usage', entityId: usage.id, projectId: locked.projectId, stageId: locked.stageId, after: usageResult });
+    await recordOutboxEvent(tx, { eventType: 'equipment.usage_posted', resourceType: 'equipment_usage', resourceId: usage.id, payload: usageResult });
 
     const updated = await repository.endAssignment(equipmentId, assignmentId, endDate, endMinute);
     if (!updated || token(updated.status) !== ENDED) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
@@ -450,6 +490,48 @@ export class EquipmentService {
     await recordAudit(tx, { action: 'equipment.assignment_ended', entityType: 'equipment_assignment', entityId: assignmentId, projectId: updated.projectId, stageId: updated.stageId, before: assignmentResponse(locked), after: response });
     await recordOutboxEvent(tx, { eventType: 'equipment.assignment_ended', resourceType: 'equipment_assignment', resourceId: assignmentId, payload: response });
     return { statusCode: 200, body: response };
+  }
+
+  /** Reverse one wrong assignment and compensate all of its Equipment Expense entries. */
+  async reverseAssignment(equipmentId: string, assignmentId: string, input: ReverseEquipmentAssignmentBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'equipment.assignment.reverse', idempotencyKey, fingerprintInput: { equipmentId, assignmentId, input }
+    }, async (tx) => {
+      const repository = new EquipmentRepository(tx);
+      const current = await repository.findAssignment(equipmentId, assignmentId);
+      if (!current) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+      const users = new AdministrationRepository(tx);
+      await this.requireProjectPermission(users, current.projectId, 'equipment.assign', new Date());
+      await this.requireProjectPermission(users, current.projectId, 'equipment.usage.create', new Date());
+      if (!(await repository.lockEquipmentForWrite(equipmentId))) throw createModule12Error('EQUIPMENT_NOT_FOUND');
+      const locked = await repository.lockAssignmentForWrite(equipmentId, assignmentId);
+      if (!locked || ![ACTIVE, ENDED].includes(token(locked.status))) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+
+      const reversalDate = inputDate(input.reversalDate);
+      const expenseRows = await repository.listAssignmentExpenseActuals(equipmentId, assignmentId);
+      const latestPostingDate = expenseRows.reduce<Date | null>((latest, row) => latest === null || row.postingDate > latest ? row.postingDate : latest, null);
+      if (reversalDate < locked.fromDate || (latestPostingDate !== null && reversalDate < latestPostingDate)) {
+        throw new ValidationError({ fieldErrors: [{ field: 'reversalDate', message: 'Reversal date cannot precede the assignment or its latest Equipment Expense entry.' }] });
+      }
+      const reversedAmount = minorUnitsToMoney(-sumExpenseActuals(expenseRows));
+      await repository.createAssignmentExpenseActual({
+        projectId: locked.projectId,
+        stageId: locked.stageId,
+        assignmentId,
+        sourceType: 'equipment_assignment_reversal',
+        sourceKeySuffix: 'reversed',
+        postingDate: reversalDate,
+        amount: reversedAmount
+      });
+      const updated = await repository.reverseAssignment(equipmentId, assignmentId);
+      if (!updated || token(updated.status) !== REVERSED) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+      const response = assignmentResponse(updated);
+      const reversal = { ...response, reversalDate: input.reversalDate, reason: input.reason.trim(), reversedExpenseAmount: reversedAmount };
+      await recordAudit(tx, { action: 'equipment.assignment_reversed', entityType: 'equipment_assignment', entityId: assignmentId, projectId: updated.projectId, stageId: updated.stageId, before: assignmentResponse(locked), after: reversal });
+      await recordOutboxEvent(tx, { eventType: 'equipment.assignment_reversed', resourceType: 'equipment_assignment', resourceId: assignmentId, payload: reversal });
+      return { statusCode: 200, body: response };
+    });
+    return result.response.body;
   }
 
   /** Record authorized Equipment usage and its Project/Stage actual cost exactly once. */
@@ -532,16 +614,14 @@ export class EquipmentService {
     const result = await repository.getHistory(equipmentId, this.historyVisibility(), query.pageSize ?? 50);
     if (!result) throw createModule12Error('EQUIPMENT_NOT_FOUND');
     const assignments = result.assignments.map(assignmentResponse);
-    const costActualByUsageId = new Map(result.costActuals.map((row) => [row.sourceId, row.id]));
+    const costActualByUsageId = new Map(result.costActuals.filter((row) => row.sourceType === 'equipment_usage').map((row) => [row.sourceId, row.id]));
     const usage = result.usage.map((row) => usageResponse(row, row.assignment, costActualByUsageId.get(row.id) ?? null));
     const maintenance = result.maintenance.map(maintenanceResponse);
     const totals = new Map<string, { projectId: string; stageId: string | null; minorUnits: bigint }>();
-    for (const row of usage) {
+    for (const row of result.costActuals) {
       const key = `${row.projectId}:${row.stageId ?? ''}`;
-      const [whole = '0', fraction = ''] = row.amount.split('.');
-      const amountMinor = BigInt(whole) * 100n + BigInt(`${fraction}00`.slice(0, 2));
       const current = totals.get(key) ?? { projectId: row.projectId, stageId: row.stageId, minorUnits: 0n };
-      current.minorUnits += amountMinor;
+      current.minorUnits += moneyToMinorUnits(row.amount);
       totals.set(key, current);
     }
     const costSummary = [...totals.values()].map((row) => ({

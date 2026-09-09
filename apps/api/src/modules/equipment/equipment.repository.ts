@@ -124,6 +124,7 @@ export class EquipmentRepository {
     const count = await this.db.equipmentAssignment.count({
       where: {
         equipmentId,
+        status: { not: 'REVERSED' },
         equipment: { companyId: scope.companyId },
         ...(toDate ? { fromDate: { lte: toDate } } : {}),
         OR: [{ toDate: null }, { toDate: { gte: fromDate } }]
@@ -281,6 +282,67 @@ export class EquipmentRepository {
     });
   }
 
+  /** Post one source-keyed Equipment Expense entry for assignment lifecycle accounting. */
+  async createAssignmentExpenseActual(input: Readonly<{
+    projectId: string;
+    stageId: string | null;
+    assignmentId: string;
+    sourceType: 'equipment_assignment' | 'equipment_assignment_completion' | 'equipment_assignment_reversal';
+    sourceKeySuffix: 'assigned' | 'completed' | 'reversed';
+    postingDate: Date;
+    amount: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.costActual.create({
+      data: scope.createData({
+        projectId: input.projectId,
+        stageId: input.stageId,
+        category: 'equipment',
+        sourceType: input.sourceType,
+        sourceId: input.assignmentId,
+        sourceKey: `equipment_assignment:${input.assignmentId}:${input.sourceKeySuffix}`,
+        postingDate: input.postingDate,
+        amount: input.amount
+      })
+    });
+  }
+
+  /** Read every Equipment Expense entry attributable to one assignment, including usage. */
+  async listAssignmentExpenseActuals(equipmentId: string, assignmentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const usage = await this.db.equipmentUsage.findMany({
+      where: { assignmentId, assignment: { id: assignmentId, equipmentId, equipment: { companyId: scope.companyId } } },
+      select: { id: true }
+    });
+    return this.db.costActual.findMany({
+      where: scope.where({
+        category: 'equipment',
+        OR: [
+          { sourceId: assignmentId, sourceType: { in: ['equipment_assignment', 'equipment_assignment_completion', 'equipment_assignment_reversal'] } },
+          ...(usage.length === 0 ? [] : [{ sourceType: 'equipment_usage', sourceId: { in: usage.map((row) => row.id) } }])
+        ]
+      }),
+      select: { id: true, amount: true, sourceType: true, sourceId: true, sourceKey: true, postingDate: true }
+    });
+  }
+
+  /** Mark one assignment reversed while preserving its dates and immutable history. */
+  async reverseAssignment(equipmentId: string, assignmentId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.equipmentAssignment.updateMany({
+      where: {
+        id: assignmentId,
+        equipmentId,
+        status: { in: ['ACTIVE', 'ENDED'] },
+        equipment: { companyId: scope.companyId },
+        project: { companyId: scope.companyId }
+      },
+      data: { status: 'REVERSED' }
+    });
+    if (result.count !== 1) return null;
+    return this.findAssignment(equipmentId, assignmentId);
+  }
+
   /** Create one Company-owned Equipment maintenance history row. */
   async createMaintenance(input: Readonly<{
     equipmentId: string;
@@ -333,9 +395,18 @@ export class EquipmentRepository {
         take
       })
     ]);
-    const costActuals = usage.length === 0 ? [] : await this.db.costActual.findMany({
-      where: scope.where({ sourceType: 'equipment_usage', sourceId: { in: usage.map((row) => row.id) } }),
-      select: { id: true, sourceId: true }
+    const assignmentIds = assignments.map((row) => row.id);
+    const usageIds = usage.map((row) => row.id);
+    const costActuals = assignmentIds.length === 0 && usageIds.length === 0 ? [] : await this.db.costActual.findMany({
+      where: scope.where({
+        category: 'equipment',
+        OR: [
+          ...(assignmentIds.length === 0 ? [] : [{ sourceId: { in: assignmentIds }, sourceType: { in: ['equipment_assignment', 'equipment_assignment_completion', 'equipment_assignment_reversal'] } }]),
+          ...(usageIds.length === 0 ? [] : [{ sourceType: 'equipment_usage', sourceId: { in: usageIds } }])
+        ]
+      }),
+      select: { id: true, sourceId: true, sourceType: true, projectId: true, stageId: true, postingDate: true, amount: true },
+      orderBy: [{ postingDate: 'desc' }, { id: 'asc' }]
     });
     return { equipment, assignments, usage, maintenance, costActuals };
   }

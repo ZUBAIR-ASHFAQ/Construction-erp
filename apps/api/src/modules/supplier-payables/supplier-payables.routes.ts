@@ -12,6 +12,7 @@ import {
   listSupplierPaymentsQuerySchema,
   listSupplierPaymentsResponseSchema,
   postSupplierInvoiceBodySchema,
+  reverseSupplierPaymentBodySchema,
   supplierAgingQuerySchema,
   supplierAgingResponseSchema,
   supplierInvoiceResponseSchema,
@@ -39,7 +40,7 @@ const NON_NEGATIVE_MONEY_JSON_SCHEMA = {
   pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$'
 } as const;
 const INVOICE_STATUS_JSON_SCHEMA = { type: 'string', enum: ['DRAFT', 'POSTED'] } as const;
-const PAYMENT_STATUS_JSON_SCHEMA = { type: 'string', enum: ['DRAFT', 'POSTED'] } as const;
+const PAYMENT_STATUS_JSON_SCHEMA = { type: 'string', enum: ['DRAFT', 'POSTED', 'REVERSED'] } as const;
 const SUPPLIER_PAYABLES_ID_PARAMS_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -451,6 +452,25 @@ export async function registerSupplierPayablesRoutes(app: FastifyInstance, optio
     const result = await service.allocateSupplierPayment(params.id, body, readIdempotencyKey(request));
     const data = supplierPaymentAllocationResponseSchema.array().parse(result);
     return reply.code(201).send({ data });
+  });
+
+  app.post('/api/v1/supplier-payables/payments/:id/reverse', {
+    schema: {
+      tags: ['Supplier Payables'],
+      operationId: 'reverseSupplierPayment',
+      summary: 'Reverse a posted Supplier Payment',
+      security: BEARER_SECURITY,
+      headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA,
+      params: SUPPLIER_PAYABLES_ID_PARAMS_JSON_SCHEMA,
+      body: EMPTY_BODY_JSON_SCHEMA,
+      response: { 200: PAYMENT_SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES }
+    }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(supplierPayablesIdParamsSchema, request.params, 'params');
+    parseRequest(reverseSupplierPaymentBodySchema, request.body ?? {}, 'body');
+    const data = supplierPaymentResponseSchema.parse(await service.reverseSupplierPayment(params.id, readIdempotencyKey(request)));
+    return reply.send({ data });
   });
 
   app.get('/api/v1/supplier-payables/aging', {

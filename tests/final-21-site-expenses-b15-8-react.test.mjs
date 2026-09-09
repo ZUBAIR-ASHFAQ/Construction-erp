@@ -87,17 +87,16 @@ test('B15.8 validates create and edit forms with React Hook Form and Zod', () =>
   assert.match(workspace, /expenseDate: dateSchema/);
 });
 
-/** Confirm the register supplies bounded filters, pagination and explicit selection rather than unbounded browser reads. */
-test('B15.8 renders the bounded Site Expense register and filters', () => {
+/** Confirm the page keeps direct entry and adds only a compact immutable Expense List, not the old register workflow. */
+test('B15.8 keeps direct expense entry with compact history and no draft register workflow', () => {
   const workspace = read(`${FEATURE}/components/site-expenses-workspace.tsx`);
-  assert.match(workspace, /pageSize: 25/);
-  for (const filter of ['projectId', 'stageId', 'categoryId', 'paymentMode', 'status', 'fromDate', 'toDate']) {
-    assert.match(workspace, new RegExp(`\\b${filter}\\b`));
-  }
-  assert.match(workspace, /Site Expense register/);
-  assert.match(workspace, /Previous/);
-  assert.match(workspace, /Next/);
-  assert.match(workspace, /onSelect/);
+  assert.match(workspace, /New Site Expense/);
+  assert.match(workspace, /Add Site Expense/);
+  assert.match(workspace, /Cash \/ Bank account/);
+  assert.match(workspace, /createMutation\.mutateAsync\(expenseWriteInput\(values\)\)/);
+  assert.match(workspace, /Expense List/);
+  assert.match(workspace, /useSiteExpenses\(\{ page: 1, pageSize: 100 \}/);
+  assert.doesNotMatch(workspace, /Site Expense register|SiteExpenseRegister|Save Draft Changes|Post Expense|onSelect/);
 });
 
 /** Confirm Project Stage Finance and Documents reads are reused instead of duplicating their source APIs. */
@@ -120,15 +119,15 @@ test('B15.8 handles configured category IDs without inventing category CRUD', ()
   assert.doesNotMatch(api, /categories/);
 });
 
-/** Confirm posted history is read-only and correction is exposed only through explicit reversal. */
-test('B15.8 exposes explicit post and reversal actions while editing only DRAFT expenses', () => {
+/** Confirm draft/detail/edit controls stay absent while only POSTED expense history can be reversed. */
+test('B15.8 posts from create and exposes reversal only for posted expense history', () => {
   const workspace = read(`${FEATURE}/components/site-expenses-workspace.tsx`);
-  assert.match(workspace, /props\.expense\.status === 'DRAFT'/);
-  assert.match(workspace, /Post Expense/);
-  assert.match(workspace, /props\.expense\.status === 'POSTED'/);
-  assert.match(workspace, /Reverse Expense/);
-  assert.match(workspace, /Posted history is immutable/);
-  assert.match(workspace, /props\.canUpdate && selectedExpense\.status === 'DRAFT'/);
+  assert.match(workspace, /Saving posts the expense to Project Cost and Finance immediately/);
+  assert.match(workspace, /createMutation\.mutateAsync\(expenseWriteInput\(values\)\)/);
+  assert.match(workspace, /useReverseSiteExpense/);
+  assert.match(workspace, /expense\.status === 'POSTED'/);
+  assert.match(workspace, /reverseMutation\.mutateAsync\(expenseId\)/);
+  assert.doesNotMatch(workspace, /SiteExpenseDetail|Save Draft Changes|Post Expense|selectedExpense|selectedId/);
 });
 
 /** Confirm page actions are hidden by the five Final Module 14 permissions. */

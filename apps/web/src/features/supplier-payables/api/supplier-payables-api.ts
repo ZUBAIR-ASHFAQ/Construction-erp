@@ -1,7 +1,7 @@
 import { authenticatedRequest } from '../../administration/api/auth-api.js';
 
 export type SupplierInvoiceStatus = 'DRAFT' | 'POSTED';
-export type SupplierPaymentStatus = 'DRAFT' | 'POSTED';
+export type SupplierPaymentStatus = 'DRAFT' | 'POSTED' | 'REVERSED';
 
 export type SupplierInvoiceLine = Readonly<{
   id: string;
@@ -183,6 +183,15 @@ export function createSupplierPayment(input: CreateSupplierPaymentInput): Promis
     method: 'POST',
     headers: commandHeaders(),
     body: JSON.stringify(input)
+  });
+}
+
+/** Reverse one POSTED Supplier Payment through the server-owned compensating command. */
+export function reverseSupplierPayment(paymentId: string): Promise<SupplierPayment> {
+  return authenticatedRequest<SupplierPayment>(`supplier-payables/payments/${encodeURIComponent(paymentId)}/reverse`, {
+    method: 'POST',
+    headers: commandHeaders(),
+    body: JSON.stringify({})
   });
 }
 

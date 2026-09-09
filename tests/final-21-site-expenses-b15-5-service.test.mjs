@@ -64,14 +64,19 @@ test('B15.5 creates server-numbered draft expenses through Foundation numbering'
   assert.doesNotMatch(service, /expenseNo: input\.expenseNo|companyId: input\.companyId/);
 });
 
-/** Confirm direct CASH/BANK and PAYABLE settlement use Finance-owned accounts only. */
-test('B15.5 resolves Finance posting accounts without introducing a duplicate account master', () => {
+/** Confirm direct settlement uses Finance accounts and repairs the bootstrap category's missing expense GL. */
+test('B15.5 resolves and repairs Finance posting accounts without introducing a duplicate account master', () => {
   const service = read(SERVICE);
   const repository = read(REPOSITORY);
   assert.match(service, /SITE_EXPENSE_PAYABLE_ACCOUNT_CODE = 'SITE-EXPENSE-PAYABLE'/);
   assert.match(service, /input\.paymentMode === 'CASH' \|\| input\.paymentMode === 'BANK'/);
+  assert.match(service, /ensureExpenseCategoryPostingAccount\(input\.categoryId\)/);
   assert.match(service, /account\.glAccount\.status !== ACTIVE/);
   assert.match(service, /findGlAccountByCode\(SITE_EXPENSE_PAYABLE_ACCOUNT_CODE\)/);
+  assert.match(repository, /async ensureExpenseCategoryPostingAccount/);
+  assert.match(repository, /this\.db\.glAccount\.upsert/);
+  assert.match(repository, /defaultGlAccountId: null/);
+  assert.match(repository, /data: \{ defaultGlAccountId: account\.id \}/);
   assert.match(repository, /async findGlAccountByCode/);
   assert.doesNotMatch(read('packages/database/prisma/schema.prisma'), /model SiteExpenseAccount|model SiteExpensePayableAccount/);
 });

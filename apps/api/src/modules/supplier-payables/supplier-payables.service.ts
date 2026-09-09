@@ -28,6 +28,7 @@ const ACTIVE = 'ACTIVE';
 const CLOSED = 'CLOSED';
 const DRAFT = 'DRAFT';
 const POSTED = 'POSTED';
+const REVERSED = 'REVERSED';
 const PO_ISSUED = 'ISSUED';
 const GOODS_RECEIPT_RECEIVED = 'RECEIVED';
 const ZERO_MONEY = '0.00';
@@ -37,6 +38,7 @@ const INVENTORY_ASSET_ACCOUNT_CODE = 'INVENTORY-ASSET';
 const PROJECT_EXPENSE_ACCOUNT_CODE = 'PROJECT-EXPENSE';
 const SUPPLIER_PAYMENT_SEQUENCE_KEY = 'supplier-payment';
 const SUPPLIER_PAYMENT_SOURCE_TYPE = 'supplier_payment';
+const SUPPLIER_PAYMENT_REVERSAL_SOURCE_TYPE = 'supplier_payment_reversal';
 const DAY_IN_MS = 86_400_000;
 const MAX_MONEY_MINOR_UNITS = 999_999_999_999_999_999n;
 
@@ -210,8 +212,9 @@ function supplierInvoiceResponse(row: SupplierInvoiceRow) {
 /** Serialize one Supplier Payment with source-derived allocation and remaining balances. */
 function supplierPaymentResponse(row: SupplierPaymentRow) {
   const amount = moneyToMinorUnits(row.amount);
-  const allocated = row.allocations.reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
-  const remaining = amount > allocated ? amount - allocated : 0n;
+  const isReversed = hasStatus(row.status, REVERSED);
+  const allocated = isReversed ? 0n : row.allocations.reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
+  const remaining = isReversed ? 0n : amount > allocated ? amount - allocated : 0n;
   return {
     id: row.id,
     vendorId: row.vendorId,
@@ -252,6 +255,11 @@ function supplierInvoiceAgeDays(asOfDate: Date, invoiceDate: Date, dueDate: Date
 /** Return the stable Finance source key for one posted Supplier Payment. */
 function supplierPaymentFinanceSourceKey(paymentId: string): string {
   return `supplier_payment:${paymentId}`;
+}
+
+/** Return the stable Finance source key for one controlled Supplier Payment reversal. */
+function supplierPaymentReversalFinanceSourceKey(paymentId: string): string {
+  return `supplier_payment_reversal:${paymentId}`;
 }
 
 /** Return the stable Finance source key for one posted Supplier Invoice. */
@@ -841,6 +849,83 @@ export class SupplierPayablesService {
       }
     });
     return { statusCode: 201, body: response };
+  }
+
+  /** Reverse one POSTED Supplier Payment exactly once while retaining its immutable payment and allocation history. */
+  async reverseSupplierPayment(paymentId: string, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'supplier-payables.payments.reverse',
+      idempotencyKey,
+      fingerprintInput: { paymentId }
+    }, async (tx) => this.reverseSupplierPaymentOnce(tx, paymentId));
+    return result.response.body;
+  }
+
+  /** Compensate Finance, deactivate every allocation through payment status, and persist REVERSED atomically. */
+  private async reverseSupplierPaymentOnce(tx: TransactionClient, paymentId: string) {
+    const now = new Date();
+    const users = new AdministrationRepository(tx);
+    const visibility = await this.resolveVisibility(users, 'supplier_payments.create', now);
+    const repository = new SupplierPayablesRepository(tx);
+    const payment = await repository.lockSupplierPaymentForWrite(paymentId, visibility);
+    if (!payment) throw new NotFoundError({ message: 'The requested Supplier Payment was not found.' });
+    if (!hasStatus(payment.status, POSTED)) throw new ConflictError({ message: 'Only POSTED Supplier Payments can be reversed.' });
+    if (payment.projectId) {
+      await this.requireProjectPermission(users, payment.projectId, 'supplier_payments.create', now);
+    } else if (!(await this.hasCompanyPermission(users, 'supplier_payments.create', now))) {
+      throw new AuthorizationError();
+    }
+
+    const amount = moneyString(payment.amount);
+    const originalSourceKey = supplierPaymentFinanceSourceKey(payment.id);
+    const originalJournal = await new FinanceRepository(tx).findJournalBySourceKey(originalSourceKey);
+    if (!originalJournal
+      || originalJournal.sourceType !== SUPPLIER_PAYMENT_SOURCE_TYPE
+      || originalJournal.sourceId !== payment.id
+      || !hasStatus(originalJournal.status, POSTED)
+      || moneyString(originalJournal.totalDebit) !== amount
+      || moneyString(originalJournal.totalCredit) !== amount) {
+      throw new ConflictError({ message: 'Posted Supplier Payment Finance history is incomplete and cannot be reversed safely.' });
+    }
+
+    const financeSourceKey = supplierPaymentReversalFinanceSourceKey(payment.id);
+    await new FinanceService(this.db).postSourceReversalInTransaction(tx, {
+      originalSourceType: SUPPLIER_PAYMENT_SOURCE_TYPE,
+      originalSourceId: payment.id,
+      originalSourceKey,
+      reversalSourceType: SUPPLIER_PAYMENT_REVERSAL_SOURCE_TYPE,
+      reversalSourceId: payment.id,
+      reversalSourceKey: financeSourceKey,
+      postingDate: now,
+      description: `Reverse Supplier payment ${payment.paymentNo}`,
+      lineDescription: `Supplier payment ${payment.paymentNo} reversal`
+    });
+
+    const reversed = await repository.markSupplierPaymentReversed(payment.id, visibility);
+    if (!reversed) throw new ConflictError({ message: 'Supplier Payment state changed before reversal completed.' });
+    const response = supplierPaymentResponse(reversed);
+    await recordAudit(tx, {
+      action: 'supplier_payment.reversed',
+      entityType: 'supplier_payment',
+      entityId: payment.id,
+      projectId: payment.projectId,
+      before: { status: POSTED, financeSourceKey: originalSourceKey },
+      after: { ...response, financeSourceKey }
+    });
+    await recordOutboxEvent(tx, {
+      eventType: 'supplier_payment.reversed',
+      resourceType: 'supplier_payment',
+      resourceId: payment.id,
+      payload: {
+        supplierPaymentId: payment.id,
+        paymentNo: payment.paymentNo,
+        vendorId: payment.vendorId,
+        projectId: payment.projectId,
+        amount,
+        financeSourceKey
+      }
+    });
+    return { statusCode: 200, body: response };
   }
 
   /** Allocate one POSTED Supplier Payment to POSTED same-Vendor invoices without mutating prior allocation history. */

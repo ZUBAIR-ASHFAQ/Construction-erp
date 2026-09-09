@@ -30,8 +30,8 @@ test('B16.10 freezes the simple Supplier Payables module structure', () => {
   assert.deepEqual(readdirSync(new URL(`../${WEB}`, import.meta.url)).sort(), ['api', 'components', 'hooks', 'pages']);
 });
 
-/** Freeze exactly the eight Final Module 17 operations and reject generic CRUD expansion. */
-test('B16.10 freezes exactly eight Supplier Payables HTTP operations', () => {
+/** Freeze the explicit Final Module 17 operations and reject generic CRUD expansion. */
+test('B16.10 freezes the explicit Supplier Payables HTTP operations', () => {
   const schema = read(`${BACKEND}/supplier-payables.schema.ts`);
   const expected = [
     "GET', route: '/api/v1/supplier-payables/invoices'",
@@ -41,11 +41,12 @@ test('B16.10 freezes exactly eight Supplier Payables HTTP operations', () => {
     "GET', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/allocations'",
+    "POST', route: '/api/v1/supplier-payables/payments/:id/reverse'",
     "GET', route: '/api/v1/supplier-payables/aging'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 8);
-  assert.doesNotMatch(schema, /\/reverse|\/delete|\/archive|payments\/:id\/post|PATCH'.*supplier-payables|DELETE'.*supplier-payables/);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.doesNotMatch(schema, /\/delete|\/archive|payments\/:id\/post|PATCH'.*supplier-payables|DELETE'.*supplier-payables/);
 });
 
 /** Freeze only the four required Supplier Payables models and two forward migrations. */
@@ -85,6 +86,10 @@ test('B16.10 freezes Supplier Payment allocation and aging invariants', () => {
   assert.match(service, /supplier_payment:\$\{paymentId\}/);
   assert.match(service, /supplier_payment\.posted/);
   assert.match(service, /supplier_payment\.allocated/);
+  assert.match(service, /supplier_payment\.reversed/);
+  assert.match(service, /supplier_payment_reversal:\$\{paymentId\}/);
+  assert.match(service, /postSourceReversalInTransaction\(tx/);
+  assert.match(repository, /markSupplierPaymentReversed/);
   assert.match(service, /alreadyAllocatedPayment \+ requestedPayment > paymentAmount/);
   assert.match(service, /alreadyAllocatedInvoice \+ requestedInvoice > moneyToMinorUnits\(invoice\.totalAmount\)/);
   assert.match(service, /outstandingMinorUnits = totalMinorUnits > allocatedMinorUnits \? totalMinorUnits - allocatedMinorUnits : 0n/);
@@ -113,12 +118,14 @@ test('B16.10 freezes the Supplier Payables React workflow', () => {
   const api = read(`${WEB}/api/supplier-payables-api.ts`);
   const hooks = read(`${WEB}/hooks/supplier-payables.ts`);
   const page = read(`${WEB}/pages/supplier-payables-page.tsx`);
-  for (const token of ['New Supplier Invoice', 'Create invoice', 'Post Supplier Invoice', 'New Supplier Payment', 'Create & post payment', 'Allocate payment', 'Supplier Outstanding &amp; Aging']) {
+  for (const token of ['New Supplier Invoice', 'Create invoice', 'Post Supplier Invoice', 'New Supplier Payment', 'Create & post payment', 'Allocate payment', 'Reverse', 'Supplier Outstanding &amp; Aging']) {
     assert.ok(workspace.includes(token), `missing UI token ${token}`);
   }
   assert.match(api, /Idempotency-Key/);
   assert.match(hooks, /useSupplierAging/);
   assert.match(hooks, /useAllocateSupplierPayment/);
+  assert.match(hooks, /useReverseSupplierPayment/);
+  assert.match(api, /reverseSupplierPayment/);
   assert.match(page, /supplier_invoices\.post/);
   assert.match(page, /supplier_payments\.allocate/);
   assert.doesNotMatch(workspace, /authoritative.*profit|editable.*outstanding/i);

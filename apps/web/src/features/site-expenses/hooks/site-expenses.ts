@@ -16,13 +16,19 @@ import {
 const SITE_EXPENSE_QUERY_KEY = ['module-14', 'site-expenses'] as const;
 const FINANCE_QUERY_KEY = ['final21', 'finance'] as const;
 const JOB_COST_QUERY_KEY = ['module-9', 'project-budget-cost'] as const;
+const PROJECT_PROFITABILITY_QUERY_KEY = ['module-19', 'project-profitability'] as const;
+const REPORTS_QUERY_KEY = ['module-20', 'reports'] as const;
+const DASHBOARD_QUERY_KEY = ['module-1', 'dashboard'] as const;
 
 /** Refresh Site Expense, Finance and Job Cost reads after a posting-state mutation. */
 async function invalidatePostingReads(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
   await Promise.all([
     queryClient.invalidateQueries({ queryKey: SITE_EXPENSE_QUERY_KEY }),
     queryClient.invalidateQueries({ queryKey: FINANCE_QUERY_KEY }),
-    queryClient.invalidateQueries({ queryKey: JOB_COST_QUERY_KEY })
+    queryClient.invalidateQueries({ queryKey: JOB_COST_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: PROJECT_PROFITABILITY_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: REPORTS_QUERY_KEY }),
+    queryClient.invalidateQueries({ queryKey: DASHBOARD_QUERY_KEY })
   ]);
 }
 
@@ -57,12 +63,12 @@ export function useSiteExpense(expenseId: string | null, enabled = true) {
   });
 }
 
-/** Create one DRAFT Site Expense and refresh the register. */
+/** Create and post one Site Expense, then refresh every directly affected read model. */
 export function useCreateSiteExpense() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: CreateSiteExpenseInput) => createSiteExpense(input),
-    onSuccess: async () => queryClient.invalidateQueries({ queryKey: SITE_EXPENSE_QUERY_KEY })
+    onSuccess: async () => invalidatePostingReads(queryClient)
   });
 }
 

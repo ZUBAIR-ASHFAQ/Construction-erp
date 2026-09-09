@@ -297,7 +297,7 @@ function CompleteAssignmentModal({ equipment, onClose }: Readonly<{ equipment: E
   return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-complete-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-complete-title">Complete Assignment</h2></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close completion">×</button></header><div className="finance-modal-body">{history.isPending && <p>Loading assignment…</p>}{assignment && <form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void complete(); }}><p>Quantity: {assignment.quantity} · Rate: {assignment.rate} / {assignment.rateUnit.toLowerCase()}</p>{assignment.rateUnit === 'HOUR' && <p className="muted">Per-minute rate: {(Number(assignment.rate) / 60).toFixed(4)}{elapsedMinutes !== null ? ` · ${elapsedMinutes} minute${elapsedMinutes === 1 ? '' : 's'} (${(elapsedMinutes / 60).toFixed(2)} hours)` : ''}</p>}<p>Equipment Expense posted at assignment: {assignment.estimatedAmount ?? 'Calculated on completion'}</p><label>Completion date<input type="date" min={assignment.fromDate} max={assignment.toDate ?? undefined} value={completionDate} onChange={(event) => setCompletionDate(event.target.value)} /></label>{assignment.rateUnit === 'HOUR' && <label>Completion time<input type="time" value={completionTime} onChange={(event) => setCompletionTime(event.target.value)} /></label>}<div className="equipment-cost-preview"><span>Final Equipment Expense</span><strong>{finalAmount ?? 'Select a time after the assignment start'}</strong></div><p className="muted">Completion posts only the difference between the assignment estimate and final usage, so Project cost is never counted twice.</p><button type="submit" disabled={!finalAmount || mutation.isPending}>{mutation.isPending ? 'Completing…' : 'Complete & Finalize Expense'}</button></form>}{!history.isPending && !assignment && <div className="form-error">No active assignment was found.</div>}{errorMessage(history.error) && <div className="form-error">{errorMessage(history.error)}</div>}{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
 }
 
-/** Confirm one ledger-selected assignment reversal with a dated business reason. */
+/** Confirm one completion/usage-selected Equipment Expense reversal with a dated business reason. */
 function ReverseAssignmentModal({ equipment, assignment, onClose }: Readonly<{ equipment: Equipment; assignment: EquipmentAssignment; onClose: () => void }>) {
   const mutation = useReverseEquipmentAssignment(equipment.id);
   const [reversalDate, setReversalDate] = useState(() => localAssignmentStart().date);
@@ -310,7 +310,7 @@ function ReverseAssignmentModal({ equipment, assignment, onClose }: Readonly<{ e
     onClose();
   }
 
-  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-reverse-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-reverse-title">Reverse Equipment Assignment</h2><p>This reverses all Equipment Expense posted by the selected ledger assignment. History is retained.</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close reversal">×</button></header><div className="finance-modal-body"><form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void reverse(); }}><div className="equipment-cost-preview"><span>{assignment.status === 'ACTIVE' ? 'Active assignment' : 'Completed assignment'}</span><strong>{assignment.projectName ?? 'Project'} · {assignment.stageName ?? 'Project level'} · {assignment.estimatedAmount ?? '0.00'} Equipment Expense</strong></div><label>Reversal date<input type="date" min={assignment.fromDate} value={reversalDate} onChange={(event) => setReversalDate(event.target.value)} /></label><label>Reason<textarea rows={3} maxLength={500} placeholder="Why is this assignment being reversed?" value={reason} onChange={(event) => setReason(event.target.value)} /></label><p className="muted">A compensating expense entry removes this assignment from Project cost, profitability, reports and billing calculations without deleting its ledger history.</p><button type="submit" disabled={reason.trim().length < 3 || mutation.isPending}>{mutation.isPending ? 'Reversing…' : 'Reverse Assignment & Expense'}</button></form>{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
+  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="equipment-reverse-title"><header className="finance-modal-header"><div><p className="eyebrow">{equipment.code} · {equipment.name}</p><h2 id="equipment-reverse-title">Reverse Equipment Expense</h2><p>This reverses the full posted Equipment Expense for the selected completion / usage assignment. History is retained.</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close reversal">×</button></header><div className="finance-modal-body"><form className="admin-stack" onSubmit={(event) => { event.preventDefault(); void reverse(); }}><div className="equipment-cost-preview"><span>Posted completion / usage</span><strong>{assignment.projectName ?? 'Project'} · {assignment.stageName ?? 'Project level'}</strong></div><label>Reversal date<input type="date" min={assignment.fromDate} value={reversalDate} onChange={(event) => setReversalDate(event.target.value)} /></label><label>Reason<textarea rows={3} maxLength={500} placeholder="Why is this Equipment Expense being reversed?" value={reason} onChange={(event) => setReason(event.target.value)} /></label><p className="muted">A compensating expense entry removes this assignment's posted Equipment Expense from Project cost, profitability, reports and billing calculations without deleting ledger history.</p><button type="submit" disabled={reason.trim().length < 3 || mutation.isPending}>{mutation.isPending ? 'Reversing…' : 'Reverse Equipment Expense'}</button></form>{errorMessage(mutation.error) && <div className="form-error">{errorMessage(mutation.error)}</div>}</div></section></div>;
 }
 
 /** Display the selected equipment's assignment, cost, and maintenance ledger in one popup. */
@@ -322,6 +322,16 @@ function EquipmentLedgerModal({ equipment, canReverse, onReverse, onClose }: Rea
 }>) {
   const history = useEquipmentHistory(equipment.id, true);
   const postedTotal = history.data?.costSummary.reduce((total, row) => total + Number(row.amount), 0) ?? 0;
+  const assignmentById = new Map(history.data?.assignments.map((row) => [row.id, row] as const) ?? []);
+  const reverseActionUsageIds = new Set<string>();
+  const handledAssignmentIds = new Set<string>();
+  for (const row of history.data?.usage ?? []) {
+    const assignment = assignmentById.get(row.assignmentId);
+    if (row.status === 'POSTED' && assignment && assignment.status !== 'REVERSED' && !handledAssignmentIds.has(row.assignmentId)) {
+      reverseActionUsageIds.add(row.id);
+      handledAssignmentIds.add(row.assignmentId);
+    }
+  }
 
   return (
     <div className="finance-modal-backdrop" role="presentation">
@@ -347,7 +357,7 @@ function EquipmentLedgerModal({ equipment, canReverse, onReverse, onClose }: Rea
               <h3>Project assignments</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>Project / Stage</th><th>Period</th><th>Quantity</th><th>Rate</th><th>Equipment Expense</th><th>Status</th><th>Action</th></tr></thead>
+                  <thead><tr><th>Project / Stage</th><th>Period</th><th>Quantity</th><th>Rate</th><th>Status</th></tr></thead>
                   <tbody>
                     {history.data.assignments.map((row) => (
                       <tr key={row.id}>
@@ -355,26 +365,23 @@ function EquipmentLedgerModal({ equipment, canReverse, onReverse, onClose }: Rea
                         <td>{row.fromDate} {row.fromTime} → {row.toDate ? `${row.toDate} ${row.toTime ?? ''}` : 'In progress'}</td>
                         <td>{row.quantity}</td>
                         <td>{row.rate} / {row.rateUnit.toLowerCase()}</td>
-                        <td>{row.estimatedAmount ?? '—'}</td>
                         <td>{row.status === 'ACTIVE' ? 'Assigned' : row.status === 'REVERSED' ? 'Reversed' : 'Completed'}</td>
-                        <td>
-                          {canReverse && row.status !== 'REVERSED'
-                            ? <button type="button" className="secondary-button" onClick={() => onReverse(row)}>Reverse</button>
-                            : row.status === 'REVERSED' ? <span className="muted">Reversed</span> : '—'}
-                        </td>
                       </tr>
                     ))}
-                    {history.data.assignments.length === 0 && <tr><td colSpan={7} className="muted">No project assignments yet.</td></tr>}
+                    {history.data.assignments.length === 0 && <tr><td colSpan={5} className="muted">No project assignments yet.</td></tr>}
                   </tbody>
                 </table>
               </div>
               <h3>Completion / usage detail</h3>
               <div className="table-scroll">
                 <table>
-                  <thead><tr><th>Posting date</th><th>Project / Stage</th><th>Usage</th><th>Rate</th><th>Final amount</th><th>Status</th></tr></thead>
+                  <thead><tr><th>Posting date</th><th>Project / Stage</th><th>Usage</th><th>Rate</th><th>Final amount</th><th>Status</th><th>Action</th></tr></thead>
                   <tbody>
-                    {history.data.usage.map((row) => <tr key={row.id}><td>{row.usageDate}</td><td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td><td>{row.quantity} hours/units</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.status}</td></tr>)}
-                    {history.data.usage.length === 0 && <tr><td colSpan={6} className="muted">The assignment estimate is already posted as Equipment Expense; final usage appears here after completion.</td></tr>}
+                    {history.data.usage.map((row) => {
+                      const assignment = assignmentById.get(row.assignmentId);
+                      return <tr key={row.id}><td>{row.usageDate}</td><td><strong>{row.projectName ?? 'Project'}</strong><br /><small>{row.stageName ?? 'Project level'}</small></td><td>{row.quantity} hours/units</td><td>{row.rate}</td><td>{row.amount}</td><td>{row.status}</td><td>{canReverse && assignment && reverseActionUsageIds.has(row.id) ? <button type="button" className="secondary-button" onClick={() => onReverse(assignment)}>Reverse</button> : row.status === 'REVERSED' ? <span className="muted">Reversed</span> : '—'}</td></tr>;
+                    })}
+                    {history.data.usage.length === 0 && <tr><td colSpan={7} className="muted">The assignment estimate is already posted as Equipment Expense; final usage appears here after completion.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -406,7 +413,7 @@ export function EquipmentWorkspace(props: EquipmentWorkspaceProps) {
 
   return (
     <div className="admin-stack">
-      <section className="equipment-workflow-bar"><div><strong>Equipment workflow</strong><span>Assign → Equipment Expense posted → Complete to finalize, or Reverse to remove the full cost effect</span></div>{props.canManage && <button type="button" onClick={() => setEditor('create')}>Add Equipment</button>}</section>
+      <section className="equipment-workflow-bar"><div><strong>Equipment workflow</strong><span>Assign → Complete to finalize Equipment Expense → Reverse from completion / usage detail</span></div>{props.canManage && <button type="button" onClick={() => setEditor('create')}>Add Equipment</button>}</section>
       <EquipmentRegister canRead={props.canRead} canManage={props.canManage} canAssign={props.canAssign} canComplete={props.canAssign && props.canRecordUsage} onLedger={setLedgerEquipment} onEdit={setEditor} onAssign={setAssignmentEditor} onComplete={setCompletionEditor} />
       {editor && <EquipmentEditorModal equipment={editor === 'create' ? null : editor} onClose={() => setEditor(null)} />}
       {assignmentEditor && <AssignmentForm equipment={assignmentEditor} onClose={() => setAssignmentEditor(null)} />}

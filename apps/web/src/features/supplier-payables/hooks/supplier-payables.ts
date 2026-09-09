@@ -8,6 +8,7 @@ import {
   listSupplierInvoices,
   listSupplierPayments,
   postSupplierInvoice,
+  reverseSupplierPayment,
   type AllocateSupplierPaymentInput,
   type CreateSupplierInvoiceInput,
   type CreateSupplierPaymentInput,
@@ -23,6 +24,8 @@ const VENDOR_MASTER_QUERY_KEY = ['vendors-subcontractors'] as const;
 const PROJECTS_QUERY_KEY = ['module-6', 'projects'] as const;
 const PROJECT_PROFITABILITY_QUERY_KEY = ['module-19', 'project-profitability'] as const;
 const DASHBOARD_QUERY_KEY = ['module-1', 'dashboard'] as const;
+const CLIENT_BILLING_QUERY_KEY = ['client-billing'] as const;
+const REPORTS_QUERY_KEY = ['module-20', 'reports'] as const;
 
 /** Refresh every browser read model whose Supplier payable balance is derived from invoice allocations. */
 async function refreshSupplierPayableReads(queryClient: ReturnType<typeof useQueryClient>): Promise<void> {
@@ -98,6 +101,21 @@ export function useCreateSupplierPayment() {
   return useMutation({
     mutationFn: (input: CreateSupplierPaymentInput) => createSupplierPayment(input),
     onSuccess: async () => refreshPostingReads(queryClient)
+  });
+}
+
+/** Reverse one posted Supplier Payment and refresh every directly affected financial read model. */
+export function useReverseSupplierPayment() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (paymentId: string) => reverseSupplierPayment(paymentId),
+    onSuccess: async () => {
+      await Promise.all([
+        refreshPostingReads(queryClient),
+        queryClient.invalidateQueries({ queryKey: CLIENT_BILLING_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: REPORTS_QUERY_KEY })
+      ]);
+    }
   });
 }
 

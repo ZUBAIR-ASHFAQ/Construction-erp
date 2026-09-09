@@ -30,6 +30,7 @@ export const SUPPLIER_PAYABLES_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/supplier-payables/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments/:id/allocations' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments/:id/reverse' }),
   Object.freeze({ method: 'GET', route: '/api/v1/supplier-payables/aging' })
 ] as const);
 
@@ -51,7 +52,7 @@ export const SUPPLIER_PAYABLES_SERVER_OWNED_REQUEST_FIELDS = Object.freeze([
 export const SUPPLIER_INVOICE_STATUS_VALUES = Object.freeze(['DRAFT', 'POSTED'] as const);
 
 /** Confirmed Supplier Payment lifecycle values used by persistence and posting. */
-export const SUPPLIER_PAYMENT_STATUS_VALUES = Object.freeze(['DRAFT', 'POSTED'] as const);
+export const SUPPLIER_PAYMENT_STATUS_VALUES = Object.freeze(['DRAFT', 'POSTED', 'REVERSED'] as const);
 
 export type SupplierPayablesPermissionCode = (typeof SUPPLIER_PAYABLES_PERMISSION_CODES)[number];
 export type SupplierPayablesErrorCode = (typeof SUPPLIER_PAYABLES_ERROR_CODES)[number];
@@ -159,6 +160,9 @@ export const createSupplierPaymentBodySchema = z.object({
   cashBankAccountId: uuidSchema,
   reference: referenceSchema.nullable().optional()
 }).strict();
+
+/** Supplier Payment reversal is an explicit bodyless command; accounting metadata remains server-owned. */
+export const reverseSupplierPaymentBodySchema = z.object({}).strict();
 
 /** Validate one allocation line for a posted Supplier Payment. */
 export const supplierPaymentAllocationInputSchema = z.object({

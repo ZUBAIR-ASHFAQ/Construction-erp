@@ -14,6 +14,7 @@ import {
   useCreateSupplierInvoice,
   useCreateSupplierPayment,
   usePostSupplierInvoice,
+  useReverseSupplierPayment,
   useSupplierAging,
   useSupplierInvoice,
   useSupplierInvoices,
@@ -130,7 +131,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const [vendorFilter, setVendorFilter] = useState('');
   const [projectFilter, setProjectFilter] = useState('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'' | 'DRAFT' | 'POSTED'>('');
-  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'' | 'DRAFT' | 'POSTED'>('');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<'' | 'DRAFT' | 'POSTED' | 'REVERSED'>('');
   const [agingAsOfDate, setAgingAsOfDate] = useState('');
   const [invoiceImage, setInvoiceImage] = useState<File | null>(null);
   const [invoiceImageInputKey, setInvoiceImageInputKey] = useState(0);
@@ -197,6 +198,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     pageSize: 100
   }, props.canRead);
   const createPayment = useCreateSupplierPayment();
+  const reversePayment = useReverseSupplierPayment();
   const allocatePayment = useAllocateSupplierPayment(selectedPayment?.id ?? null);
   const allocationForm = useForm<AllocationFormValues>({ resolver: zodResolver(allocationFormSchema), defaultValues: { supplierInvoiceId: '', amount: '' } });
   const watchedAllocationInvoiceId = allocationForm.watch('supplierInvoiceId');
@@ -349,6 +351,13 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     });
     setSelectedPayment(Number(created.remainingAmount) > 0 ? created : null);
     paymentForm.reset(EMPTY_PAYMENT_FORM);
+  }
+
+  /** Reverse one posted Supplier Payment and clear any now-invalid allocation selection. */
+  async function reverseSelectedPayment(payment: SupplierPayment): Promise<void> {
+    if (!window.confirm(`Reverse Supplier Payment ${payment.paymentNo}? This restores Cash/Bank, Supplier payable and any invoice allocation effect.`)) return;
+    const reversed = await reversePayment.mutateAsync(payment.id);
+    if (selectedPayment?.id === reversed.id) setSelectedPayment(null);
   }
 
   /** Append one allocation from the selected posted Supplier Payment to one posted Supplier Invoice. */
@@ -587,11 +596,12 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           )}
 
           <section className="admin-card">
-            <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option></select></label></div>
+            <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED' | 'REVERSED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option><option value="REVERSED">Reversed</option></select></label></div>
             <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Total</th><th>Allocated</th><th>Remaining</th><th>Reference</th><th>Action</th></tr></thead><tbody>
-              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td><td>{props.canAllocatePayment && payment.status === 'POSTED' && Number(payment.remainingAmount) > 0 ? <button type="button" className="secondary-button" onClick={() => { setSelectedPayment(payment); allocationForm.reset({ supplierInvoiceId: '', amount: '' }); }}>Allocate</button> : '—'}</td></tr>)}
+              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td><td><div className="admin-actions">{props.canAllocatePayment && payment.status === 'POSTED' && Number(payment.remainingAmount) > 0 ? <button type="button" className="secondary-button" onClick={() => { setSelectedPayment(payment); allocationForm.reset({ supplierInvoiceId: '', amount: '' }); }}>Allocate</button> : null}{props.canCreatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={reversePayment.isPending} onClick={() => void reverseSelectedPayment(payment)}>{reversePayment.isPending ? 'Reversing…' : 'Reverse'}</button> : null}{!(payment.status === 'POSTED' && ((props.canAllocatePayment && Number(payment.remainingAmount) > 0) || props.canCreatePayment)) ? '—' : null}</div></td></tr>)}
               {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No Supplier Payments match the current filters.</td></tr>}
             </tbody></table></div>
+            {mutationMessage(reversePayment.error) && <p className="field-error">{mutationMessage(reversePayment.error)}</p>}
           </section>
 
           {props.canAllocatePayment && selectedPayment && (
@@ -629,10 +639,10 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
           </tbody></table></div>
           {downloadError && <div className="form-error" role="alert">{downloadError}</div>}
           <h3>Supplier Payment History</h3>
-          <p className="muted">Every posted supplier payment remains in this ledger. Allocated is the amount applied to invoices; remaining is an available direct/unallocated payment balance.</p>
-          <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Supplier / Project</th><th>Total paid</th><th>Invoice allocated</th><th>Unallocated</th><th>Reference</th></tr></thead><tbody>
-            {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}</td><td>{payment.paymentDate}</td><td>{vendorNames.get(payment.vendorId) ?? 'Unknown supplier'}<br /><small>{payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company-level'}</small></td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td></tr>)}
-            {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={7} className="muted">No Supplier Payments match the current filters.</td></tr>}
+          <p className="muted">Posted and reversed Supplier Payments remain in this ledger. Reversed payments retain history but have no active invoice-allocation or Cash/Bank effect.</p>
+          <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Supplier / Project</th><th>Total paid</th><th>Invoice allocated</th><th>Unallocated</th><th>Reference</th></tr></thead><tbody>
+            {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}</td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{vendorNames.get(payment.vendorId) ?? 'Unknown supplier'}<br /><small>{payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company-level'}</small></td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td></tr>)}
+            {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No Supplier Payments match the current filters.</td></tr>}
           </tbody></table></div>
         </section>
       )}

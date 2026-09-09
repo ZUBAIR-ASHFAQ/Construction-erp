@@ -223,7 +223,7 @@ export async function registerSiteExpensesRoutes(app: FastifyInstance, options: 
     schema: {
       tags: ['Site Expenses'],
       operationId: 'createSiteExpense',
-      summary: 'Create a draft Site Expense',
+      summary: 'Create and post a Site Expense',
       security: BEARER_SECURITY,
       headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA,
       body: CREATE_SITE_EXPENSE_BODY_JSON_SCHEMA,

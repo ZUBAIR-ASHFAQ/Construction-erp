@@ -154,7 +154,7 @@ test('B13 simplifies the Equipment React feature to the Final-21 workflow', () =
   assert.match(workspace, /useProjectStages/);
   assert.match(workspace, /Complete & Finalize Expense/);
   assert.match(workspace, /Equipment Expense Ledger/);
-  assert.match(workspace, /Reverse Assignment & Expense/);
+  assert.match(workspace, /Reverse Equipment Expense/);
   assert.match(workspace, /Maintenance history/);
   assert.doesNotMatch(workspace, /function UsageForm|function MaintenanceForm|function EquipmentHistoryPanel/);
   assert.match(api, /endEquipmentAssignment/);

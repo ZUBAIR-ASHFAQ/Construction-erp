@@ -14,6 +14,7 @@ export {
   listSupplierPaymentsQuerySchema,
   listSupplierPaymentsResponseSchema,
   postSupplierInvoiceBodySchema,
+  reverseSupplierPaymentBodySchema,
   supplierAgingQuerySchema,
   supplierAgingResponseSchema,
   supplierInvoiceResponseSchema,

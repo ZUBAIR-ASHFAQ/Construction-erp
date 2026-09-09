@@ -224,7 +224,7 @@ function usageResponse<TCostActualId extends string | null>(row: Readonly<{
   amount: DecimalLike;
   enteredBy: string;
   status: string;
-}>, assignment: Readonly<{ projectId: string; stageId: string | null; project?: Readonly<{ name: string }>; stage?: Readonly<{ name: string }> | null }>, costActualId: TCostActualId) {
+}>, assignment: Readonly<{ projectId: string; stageId: string | null; status: string; project?: Readonly<{ name: string }>; stage?: Readonly<{ name: string }> | null }>, costActualId: TCostActualId) {
   return {
     id: row.id,
     assignmentId: row.assignmentId,
@@ -237,7 +237,7 @@ function usageResponse<TCostActualId extends string | null>(row: Readonly<{
     rate: decimalString(row.rate),
     amount: moneyString(row.amount),
     enteredBy: row.enteredBy,
-    status: row.status,
+    status: token(assignment.status) === REVERSED ? REVERSED : row.status,
     costActualId
   };
 }
@@ -506,6 +506,9 @@ export class EquipmentService {
       if (!(await repository.lockEquipmentForWrite(equipmentId))) throw createModule12Error('EQUIPMENT_NOT_FOUND');
       const locked = await repository.lockAssignmentForWrite(equipmentId, assignmentId);
       if (!locked || ![ACTIVE, ENDED].includes(token(locked.status))) throw createModule12Error('EQUIPMENT_NOT_AVAILABLE');
+      if (!(await repository.hasPostedUsage(equipmentId, assignmentId))) {
+        throw new ValidationError({ message: 'Only Equipment assignments with posted completion or usage expense can be reversed.' });
+      }
 
       const reversalDate = inputDate(input.reversalDate);
       const expenseRows = await repository.listAssignmentExpenseActuals(equipmentId, assignmentId);

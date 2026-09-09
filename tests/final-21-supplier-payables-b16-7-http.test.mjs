@@ -29,8 +29,8 @@ test('B16.7 completes the five-file Supplier Payables backend and keeps React de
   assert.equal(exists('apps/web/src/features/supplier-payables'), true);
 });
 
-/** Confirm the runtime route layer implements exactly the eight frozen Final Module 17 endpoints. */
-test('B16.7 registers exactly the eight Supplier Payables routes and no generic CRUD additions', () => {
+/** Confirm the runtime route layer implements the explicit Final Module 17 endpoints plus controlled payment reversal. */
+test('B16.7 registers the explicit Supplier Payables routes and no generic CRUD additions', () => {
   const routes = read(ROUTES);
   const expected = [
     "app.get('/api/v1/supplier-payables/invoices'",
@@ -40,17 +40,18 @@ test('B16.7 registers exactly the eight Supplier Payables routes and no generic 
     "app.get('/api/v1/supplier-payables/payments'",
     "app.post('/api/v1/supplier-payables/payments'",
     "app.post('/api/v1/supplier-payables/payments/:id/allocations'",
+    "app.post('/api/v1/supplier-payables/payments/:id/reverse'",
     "app.get('/api/v1/supplier-payables/aging'"
   ];
   for (const route of expected) assert.ok(routes.includes(route), `missing ${route}`);
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 8);
-  assert.doesNotMatch(routes, /app\.patch\(|app\.put\(|app\.delete\(|\/payments\/:id\/post|\/reverse|\/credit|\/archive/);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.doesNotMatch(routes, /app\.patch\(|app\.put\(|app\.delete\(|\/payments\/:id\/post|\/credit|\/archive/);
 });
 
-/** Confirm all eight routes authenticate and use the frozen Zod request/response schemas. */
+/** Confirm every route authenticates and uses the frozen Zod request/response schemas. */
 test('B16.7 authenticates all routes and validates HTTP boundaries through B16.3 schemas', () => {
   const routes = read(ROUTES);
-  assert.equal((routes.match(/await authenticateRequest\(request, options\.database\);/g) ?? []).length, 8);
+  assert.equal((routes.match(/await authenticateRequest\(request, options\.database\);/g) ?? []).length, 9);
   for (const schemaName of [
     'listSupplierInvoicesQuerySchema',
     'listSupplierInvoicesResponseSchema',
@@ -60,6 +61,7 @@ test('B16.7 authenticates all routes and validates HTTP boundaries through B16.3
     'listSupplierPaymentsResponseSchema',
     'createSupplierPaymentBodySchema',
     'allocateSupplierPaymentBodySchema',
+    'reverseSupplierPaymentBodySchema',
     'supplierAgingQuerySchema',
     'supplierAgingResponseSchema',
     'supplierPayablesIdParamsSchema',
@@ -73,11 +75,11 @@ test('B16.7 authenticates all routes and validates HTTP boundaries through B16.3
   assert.match(routes, /fieldErrors:/);
 });
 
-/** Confirm the four retry-sensitive Supplier Payables commands require Foundation Idempotency-Key. */
-test('B16.7 requires Idempotency-Key on invoice create post payment create and allocation commands', () => {
+/** Confirm all retry-sensitive Supplier Payables commands require Foundation Idempotency-Key. */
+test('B16.7 requires Idempotency-Key on invoice create post payment create allocation and reversal commands', () => {
   const routes = read(ROUTES);
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 4);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 4);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 5);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 5);
   assert.match(routes, /required: \['idempotency-key'\]/);
   assert.match(routes, /maxLength: 200/);
 });
@@ -88,6 +90,7 @@ test('B16.7 preserves atomic Supplier Payment creation and append-only allocatio
   assert.match(routes, /summary: 'Create and post a Supplier Payment'/);
   assert.match(routes, /service\.createSupplierPayment\(body, readIdempotencyKey\(request\)\)/);
   assert.match(routes, /service\.allocateSupplierPayment\(params\.id, body, readIdempotencyKey\(request\)\)/);
+  assert.match(routes, /service\.reverseSupplierPayment\(params\.id, readIdempotencyKey\(request\)\)/);
   assert.equal((routes.match(/reply\.code\(201\)\.send\(\{ data \}\)/g) ?? []).length, 3);
   assert.doesNotMatch(routes, /payments\/:id\/post/);
 });
@@ -104,16 +107,18 @@ test('B16.7 publishes complete Supplier Payables OpenAPI route metadata', () => 
     'listSupplierPayments',
     'createSupplierPayment',
     'allocateSupplierPayment',
+    'reverseSupplierPayment',
     'getSupplierAging'
   ]);
-  assert.equal(new Set(operationIds).size, 8);
-  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 8);
-  assert.equal((routes.match(/tags: \['Supplier Payables'\]/g) ?? []).length, 8);
+  assert.equal(new Set(operationIds).size, 9);
+  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 9);
+  assert.equal((routes.match(/tags: \['Supplier Payables'\]/g) ?? []).length, 9);
   assert.match(routes, /querystring: LIST_INVOICES_QUERY_JSON_SCHEMA/);
   assert.match(routes, /body: CREATE_INVOICE_BODY_JSON_SCHEMA/);
   assert.match(routes, /params: SUPPLIER_PAYABLES_ID_PARAMS_JSON_SCHEMA/);
   assert.match(routes, /body: CREATE_PAYMENT_BODY_JSON_SCHEMA/);
   assert.match(routes, /body: ALLOCATE_PAYMENT_BODY_JSON_SCHEMA/);
+  assert.match(routes, /operationId: 'reverseSupplierPayment'[\s\S]*?body: EMPTY_BODY_JSON_SCHEMA/);
   assert.match(routes, /querystring: AGING_QUERY_JSON_SCHEMA/);
   assert.match(routes, /response: \{ 201: ALLOCATION_LIST_SUCCESS_JSON_SCHEMA/);
   assert.match(routes, /\.\.\.COMMON_RESPONSES/);

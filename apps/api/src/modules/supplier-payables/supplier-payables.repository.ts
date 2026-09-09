@@ -649,6 +649,18 @@ export class SupplierPayablesRepository {
     return this.findSupplierPaymentById(paymentId, { allowedProjectIds });
   }
 
+  /** Persist the controlled POSTED to REVERSED Supplier Payment transition only once. */
+  async markSupplierPaymentReversed(paymentId: string, visibility: SupplierPayablesRepositoryVisibility) {
+    const scope = requireCompanyRepositoryScope();
+    const allowedProjectIds = normalizeAllowedProjectIds(visibility.allowedProjectIds);
+    const updated = await this.db.supplierPayment.updateMany({
+      where: scope.where({ id: paymentId, status: 'POSTED', ...optionalProjectScopeWhere(allowedProjectIds) }),
+      data: { status: 'REVERSED' }
+    });
+    if (updated.count !== 1) return null;
+    return this.findSupplierPaymentById(paymentId, { allowedProjectIds });
+  }
+
   /** Sum immutable allocations already applied from one same-Company Supplier Payment. */
   async sumAllocatedAmountForSupplierPayment(paymentId: string) {
     const scope = requireCompanyRepositoryScope();

@@ -8,7 +8,7 @@ export function SiteExpensesPage() {
       <div className="section-heading">
         <p className="eyebrow">Module 14 · Projects & Finance</p>
         <h1 id="site-expenses-title">Site Expense Management</h1>
-        <p className="muted">Capture direct Project/Site costs, attach evidence, then post or reverse them through controlled Finance and Job Cost commands.</p>
+        <p className="muted">Enter a Site Expense once; saving posts its Project Cost and Finance effect atomically.</p>
       </div>
 
       <SiteExpensesWorkspace

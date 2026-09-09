@@ -27,8 +27,8 @@ test('B16.3 contract remains intact while B16.5 adds invoice service and HTTP st
   assert.equal(exists(MIGRATION), true);
 });
 
-/** Confirm the exact eight Final Module 17 routes are frozen without generic CRUD expansion. */
-test('B16.3 freezes exactly the eight Supplier Payables HTTP operations', () => {
+/** Confirm the required Supplier Payables routes stay explicit without generic CRUD expansion. */
+test('B16.3 freezes the explicit Supplier Payables HTTP operations', () => {
   const schema = read(SCHEMA);
   const expected = [
     "GET', route: '/api/v1/supplier-payables/invoices'",
@@ -38,11 +38,12 @@ test('B16.3 freezes exactly the eight Supplier Payables HTTP operations', () => 
     "GET', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/allocations'",
+    "POST', route: '/api/v1/supplier-payables/payments/:id/reverse'",
     "GET', route: '/api/v1/supplier-payables/aging'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PATCH|PUT|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 8);
-  assert.doesNotMatch(schema, /PATCH', route: '\/api\/v1\/supplier-payables|DELETE', route: '\/api\/v1\/supplier-payables|\/reverse'|\/approve'/i);
+  assert.equal((schema.match(/method: '(?:GET|POST|PATCH|PUT|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.doesNotMatch(schema, /PATCH', route: '\/api\/v1\/supplier-payables|DELETE', route: '\/api\/v1\/supplier-payables|\/approve'/i);
 });
 
 /** Confirm the exact Module 17 permission and stable error vocabularies. */

@@ -179,12 +179,13 @@ test.afterAll(async () => {
   await database?.$disconnect();
 });
 
-test('Final-21 Site Expense create, post and reverse browser workflow preserves Finance and Job Cost history', async ({ page }) => {
+test('Final-21 Site Expense direct entry atomically posts Finance and Project Cost effects', async ({ page }) => {
   const requests = trackSiteExpenseRequests(page);
   await signIn(page);
 
   await page.getByRole('button', { name: 'Site Expenses' }).click();
   await expect(page.getByRole('heading', { name: 'Site Expense Management' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Site Expense register' })).toHaveCount(0);
 
   const form = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'New Site Expense' }) }).locator('form');
   await form.getByLabel('Project').selectOption(PROJECT_ID);
@@ -195,36 +196,35 @@ test('Final-21 Site Expense create, post and reverse browser workflow preserves 
   await form.getByLabel('Amount').fill('12500.00');
   await form.getByLabel('Payment treatment').selectOption('BANK');
   await form.getByLabel('Cash / Bank account').selectOption(BANK_ID);
-  await form.getByRole('button', { name: 'Create & Post Expense' }).click();
-
-  const detail = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'SE-00001' }) });
-  await expect(detail).toBeVisible();
-  await expect(detail.getByText('POSTED', { exact: true })).toBeVisible();
-  await detail.getByRole('button', { name: 'Reverse Expense' }).click();
-  await expect(detail.getByText('REVERSED', { exact: true })).toBeVisible();
+  await form.getByRole('button', { name: 'Add Site Expense' }).click();
+  await expect(form.getByText('SE-00001 posted successfully.')).toBeVisible();
 
   const expense = await database.siteExpense.findFirstOrThrow({ where: { companyId: COMPANY_ID, expenseNo: 'SE-00001' } });
   const costRows = await database.costActual.findMany({
-    where: { companyId: COMPANY_ID, sourceKey: { in: [`site_expense:${expense.id}`, `site_expense_reversal:${expense.id}`] } },
-    orderBy: { sourceKey: 'asc' }
+    where: { companyId: COMPANY_ID, sourceKey: `site_expense:${expense.id}` }
   });
   const journals = await database.journal.findMany({
-    where: { companyId: COMPANY_ID, sourceKey: { in: [`site_expense:${expense.id}`, `site_expense_reversal:${expense.id}`] } },
-    include: { lines: true },
-    orderBy: { sourceKey: 'asc' }
+    where: { companyId: COMPANY_ID, sourceKey: `site_expense:${expense.id}` },
+    include: { lines: true }
   });
 
-  expect(expense.status).toBe('REVERSED');
-  expect(costRows).toHaveLength(2);
-  expect(costRows.reduce((sum, row) => sum + Number(row.amount), 0)).toBe(0);
-  expect(journals).toHaveLength(2);
-  for (const journal of journals) {
-    const debit = journal.lines.reduce((sum, line) => sum + Number(line.debit), 0);
-    const credit = journal.lines.reduce((sum, line) => sum + Number(line.credit), 0);
-    expect(debit).toBe(credit);
-  }
+  expect(expense.status).toBe('POSTED');
+  expect(expense.postedAt).not.toBeNull();
+  expect(costRows).toHaveLength(1);
+  expect(Number(costRows[0].amount)).toBe(12500);
+  expect(journals).toHaveLength(1);
+  const journal = journals[0];
+  const debit = journal.lines.reduce((sum, line) => sum + Number(line.debit), 0);
+  const credit = journal.lines.reduce((sum, line) => sum + Number(line.credit), 0);
+  expect(debit).toBe(12500);
+  expect(credit).toBe(12500);
+  const bankLine = journal.lines.find((line) => line.accountId === BANK_GL_ID);
+  expect(bankLine).toBeTruthy();
+  expect(Number(bankLine.debit)).toBe(0);
+  expect(Number(bankLine.credit)).toBe(12500);
 
-  expect(requests.length).toBeGreaterThan(0);
+  expect(requests.some((request) => request.method === 'POST' && request.pathname === '/api/v1/site-expenses')).toBe(true);
+  expect(requests.some((request) => /\/(?:post|reverse)$/.test(request.pathname))).toBe(false);
   for (const request of requests) {
     expect(isAllowedSiteExpensePath(request.method, request.pathname)).toBe(true);
     if (request.method !== 'GET') expect(request.idempotencyKey).toBeTruthy();

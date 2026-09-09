@@ -202,6 +202,32 @@ export class SiteExpensesRepository {
     return this.db.expenseCategory.create({ data: scope.createData({ code: input.code, name: input.name, defaultGlAccountId: account.id, status: 'ACTIVE' }) });
   }
 
+  /** Ensure a configured Site Expense category has the active EXPENSE GL required for posting. */
+  async ensureExpenseCategoryPostingAccount(categoryId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const category = await this.findExpenseCategoryById(categoryId);
+    if (!category || category.defaultGlAccount) return category;
+
+    const account = await this.db.glAccount.upsert({
+      where: { companyId_accountCode: { companyId: scope.companyId, accountCode: category.code } },
+      update: {},
+      create: scope.createData({
+        accountCode: category.code,
+        name: `${category.name} Expense`,
+        accountType: 'EXPENSE',
+        parentId: null,
+        status: 'ACTIVE'
+      })
+    });
+    if (account.status !== 'ACTIVE' || account.accountType.trim().toUpperCase() !== 'EXPENSE') return category;
+
+    await this.db.expenseCategory.updateMany({
+      where: scope.where({ id: categoryId, defaultGlAccountId: null }),
+      data: { defaultGlAccountId: account.id }
+    });
+    return this.findExpenseCategoryById(categoryId);
+  }
+
   /** Find one Company-owned Cash/Bank account and its mapped General Ledger account. */
   async findCashBankAccountById(cashBankAccountId: string) {
     const scope = requireCompanyRepositoryScope();

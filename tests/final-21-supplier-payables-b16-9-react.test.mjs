@@ -30,26 +30,27 @@ test('B16.9 adds the four-part Supplier Payables React feature', () => {
   assert.deepEqual(entries, ['api', 'components', 'hooks', 'pages']);
 });
 
-/** Confirm the typed browser client maps to exactly the eight frozen Module 17 endpoints. */
-test('B16.9 API client matches the frozen eight-route Supplier Payables contract', () => {
+/** Confirm the typed browser client maps to the explicit Module 17 endpoints including payment reversal. */
+test('B16.9 API client matches the Supplier Payables contract', () => {
   const api = read(`${FEATURE}/api/supplier-payables-api.ts`);
   for (const functionName of [
     'listSupplierInvoices', 'createSupplierInvoice', 'getSupplierInvoice', 'postSupplierInvoice',
-    'listSupplierPayments', 'createSupplierPayment', 'allocateSupplierPayment', 'getSupplierAging'
+    'listSupplierPayments', 'createSupplierPayment', 'allocateSupplierPayment', 'reverseSupplierPayment', 'getSupplierAging'
   ]) assert.match(api, new RegExp(`export function ${functionName}\\b`));
   assert.match(api, /supplier-payables\/invoices/);
   assert.match(api, /supplier-payables\/payments/);
   assert.match(api, /\/allocations/);
+  assert.match(api, /\/reverse/);
   assert.match(api, /supplier-payables\/aging/);
   assert.doesNotMatch(api, /method:\s*'DELETE'|method:\s*'PATCH'/);
 });
 
-/** Confirm all four retry-sensitive Supplier Payables commands send Foundation idempotency keys. */
-test('B16.9 sends Idempotency-Key on invoice create/post and payment create/allocation', () => {
+/** Confirm all retry-sensitive Supplier Payables commands send Foundation idempotency keys. */
+test('B16.9 sends Idempotency-Key on invoice create/post and payment create/allocation/reversal', () => {
   const api = read(`${FEATURE}/api/supplier-payables-api.ts`);
   assert.match(api, /function commandHeaders\(\): HeadersInit/);
   assert.match(api, /'Idempotency-Key': crypto\.randomUUID\(\)/);
-  assert.equal((api.match(/headers: commandHeaders\(\)/g) ?? []).length, 4);
+  assert.equal((api.match(/headers: commandHeaders\(\)/g) ?? []).length, 5);
 });
 
 /** Confirm TanStack Query owns AP server state and posting refreshes Finance and Job Cost where required. */
@@ -58,7 +59,7 @@ test('B16.9 uses TanStack Query with AP Finance and Job Cost invalidation', () =
   assert.match(hooks, /SUPPLIER_PAYABLES_QUERY_KEY = \['module-17', 'supplier-payables'\]/);
   assert.match(hooks, /FINANCE_QUERY_KEY = \['final21', 'finance'\]/);
   assert.match(hooks, /JOB_COST_QUERY_KEY = \['module-9', 'project-budget-cost'\]/);
-  for (const hook of ['useSupplierInvoices', 'useSupplierInvoice', 'useCreateSupplierInvoice', 'usePostSupplierInvoice', 'useSupplierPayments', 'useCreateSupplierPayment', 'useAllocateSupplierPayment', 'useSupplierAging']) {
+  for (const hook of ['useSupplierInvoices', 'useSupplierInvoice', 'useCreateSupplierInvoice', 'usePostSupplierInvoice', 'useSupplierPayments', 'useCreateSupplierPayment', 'useReverseSupplierPayment', 'useAllocateSupplierPayment', 'useSupplierAging']) {
     assert.match(hooks, new RegExp(`export function ${hook}\\b`));
   }
 });
@@ -101,6 +102,7 @@ test('B16.9 renders Supplier Payment entry and allocation using the existing com
   const workspace = read(`${FEATURE}/components/supplier-payables-workspace.tsx`);
   assert.match(workspace, /Create & post payment/);
   assert.match(workspace, /Allocate payment/);
+  assert.match(workspace, /Reversing…' : 'Reverse'/);
   assert.match(workspace, /const allocationInvoicesQuery = useSupplierInvoices/);
   assert.match(workspace, /status: 'POSTED'/);
   assert.match(workspace, /invoice\.outstandingAmount/);
@@ -134,10 +136,10 @@ test('B16.9 binds navigation and actions to Supplier Payables permissions', () =
   assert.match(shell, /activeView === 'supplier-payables' && <SupplierPayablesPage \/>/);
 });
 
-/** Confirm B16.9 changes no backend route or migration surface. */
-test('B16.9 is frontend-only and preserves eight routes plus two Supplier Payables migrations', () => {
+/** Confirm payment reversal adds one explicit command without changing Supplier Payables persistence. */
+test('B16.9 preserves the explicit routes plus two Supplier Payables migrations', () => {
   const routes = read('apps/api/src/modules/supplier-payables/supplier-payables.routes.ts');
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 8);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 9);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   assert.deepEqual(migrations.filter((name) => name.includes('final21_supplier_payables')).sort(), [
     '20260829002100_final21_supplier_payables',

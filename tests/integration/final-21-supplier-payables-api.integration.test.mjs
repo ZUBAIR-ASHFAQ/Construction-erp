@@ -378,7 +378,7 @@ test('B16.10 live Finance failure rolls invoice posting back to DRAFT with no AP
   });
 });
 
-test('B16.10 live OpenAPI exposes exactly the eight Supplier Payables operations and idempotency boundaries', { skip: !live }, async () => {
+test('B16.10 live OpenAPI exposes the explicit Supplier Payables operations and idempotency boundaries', { skip: !live }, async () => {
   await withApi(async ({ app }) => {
     const response = await app.inject({ method: 'GET', url: '/openapi.json' });
     assert.equal(response.statusCode, 200, response.body);
@@ -391,6 +391,7 @@ test('B16.10 live OpenAPI exposes exactly the eight Supplier Payables operations
       ['get', '/api/v1/supplier-payables/payments', 'listSupplierPayments'],
       ['post', '/api/v1/supplier-payables/payments', 'createSupplierPayment'],
       ['post', '/api/v1/supplier-payables/payments/{id}/allocations', 'allocateSupplierPayment'],
+      ['post', '/api/v1/supplier-payables/payments/{id}/reverse', 'reverseSupplierPayment'],
       ['get', '/api/v1/supplier-payables/aging', 'getSupplierAging']
     ];
     for (const [method, path, operationId] of expected) {
@@ -401,7 +402,8 @@ test('B16.10 live OpenAPI exposes exactly the eight Supplier Payables operations
       ['post', '/api/v1/supplier-payables/invoices'],
       ['post', '/api/v1/supplier-payables/invoices/{id}/post'],
       ['post', '/api/v1/supplier-payables/payments'],
-      ['post', '/api/v1/supplier-payables/payments/{id}/allocations']
+      ['post', '/api/v1/supplier-payables/payments/{id}/allocations'],
+      ['post', '/api/v1/supplier-payables/payments/{id}/reverse']
     ]) {
       assert.ok(spec.paths[path][method].parameters.some((parameter) => parameter.name === 'idempotency-key' && parameter.required === true));
     }

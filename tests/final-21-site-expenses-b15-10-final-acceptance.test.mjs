@@ -86,33 +86,35 @@ test('B15.10 freezes secure Site Expense evidence integration through Documents'
   assert.doesNotMatch(siteRepository, /storageKey|signedUrl|Buffer|Blob/);
 });
 
-/** Confirm the React surface preserves controlled draft, post and reversal behavior without adding source ownership. */
-test('B15.10 freezes the permission-aware Site Expense React workflow', () => {
+/** Confirm the React surface exposes only direct Site Expense entry while posting remains permission controlled. */
+test('B15.10 freezes the single-entry Site Expense React workflow', () => {
   const workspace = read(`${web}/components/site-expenses-workspace.tsx`);
   const api = read(`${web}/api/site-expenses-api.ts`);
   const hooks = read(`${web}/hooks/site-expenses.ts`);
   const page = read(`${web}/pages/site-expenses-page.tsx`);
   assert.match(workspace, /New Site Expense/);
-  assert.match(workspace, /Create Draft Expense/);
-  assert.match(workspace, /Post Expense/);
-  assert.match(workspace, /Reverse Expense/);
-  assert.match(workspace, /Posted history is immutable/);
+  assert.match(workspace, /Add Site Expense/);
+  assert.match(workspace, /Cash \/ Bank account/);
+  assert.doesNotMatch(workspace, /Site Expense register|Create Draft Expense|Post Expense|Reverse Expense|SiteExpenseDetail/);
   assert.match(api, /Idempotency-Key/);
-  assert.match(hooks, /usePostSiteExpense/);
-  assert.match(hooks, /useReverseSiteExpense/);
+  assert.match(hooks, /onSuccess: async \(\) => invalidatePostingReads\(queryClient\)/);
+  for (const key of ['PROJECT_PROFITABILITY_QUERY_KEY', 'REPORTS_QUERY_KEY', 'DASHBOARD_QUERY_KEY']) {
+    assert.match(hooks, new RegExp(key));
+  }
+  assert.match(page, /site_expenses\.create/);
   assert.match(page, /site_expenses\.post/);
-  assert.match(page, /site_expenses\.reverse/);
 });
 
-/** Confirm a real Playwright workflow is wired as the final browser acceptance gate before B16. */
-test('B15.10 adds the Final-21 Site Expense Playwright acceptance workflow', () => {
+/** Confirm the browser acceptance workflow verifies direct atomic posting and its Finance/Job Cost effects. */
+test('B15.10 adds the direct Site Expense Playwright acceptance workflow', () => {
   const spec = read('tests/e2e/final-21-site-expenses-browser.spec.mjs');
   const config = read('playwright.config.mjs');
   const pkg = JSON.parse(read('package.json'));
-  assert.match(spec, /Create Draft Expense/);
-  assert.match(spec, /Post Expense/);
-  assert.match(spec, /Reverse Expense/);
-  assert.match(spec, /site_expense_reversal:/);
+  assert.match(spec, /Add Site Expense/);
+  assert.match(spec, /posted successfully/);
+  assert.match(spec, /sourceKey: `site_expense:\$\{expense\.id\}`/);
+  assert.match(spec, /accountId === BANK_GL_ID/);
+  assert.doesNotMatch(spec, /Reverse Expense|site_expense_reversal:/);
   assert.match(config, /RUN_FINAL_21_SITE_EXPENSES_E2E/);
   assert.match(config, /final-21-site-expenses-browser\.spec\.mjs/);
   assert.ok(pkg.scripts['test:e2e:final-21-site-expenses']);

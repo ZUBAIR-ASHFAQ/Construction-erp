@@ -443,7 +443,7 @@ export function ProjectProfitabilityWorkspace({
             <p className="muted">Each row keeps its own currency. This UI does not create unsafe cross-currency grand totals.</p>
             <div className="table-wrap">
               <table className="admin-table profitability-table">
-                <thead><tr><th>Project</th><th>Model</th><th>Total revenue</th><th>Total cost</th><th>Total profit</th><th>Remaining receipt</th><th>Supplier paid</th><th>Supplier payable</th><th>Invoice receivable</th></tr></thead>
+                <thead><tr><th>Project</th><th>Model</th><th>Client Recieved</th><th>Total cost</th><th>Total profit</th><th>Client Remaining</th><th>Supplier paid</th><th>Supplier payable</th><th>Invoice receivable</th></tr></thead>
                 <tbody>
                   {portfolioQuery.data.items.map((item) => (
                     <tr key={item.projectId}>

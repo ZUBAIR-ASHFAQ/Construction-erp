@@ -194,8 +194,12 @@ export class SiteExpensesService {
       if (!stage) throw createSiteExpenseError('INVALID_EXPENSE_STAGE');
     }
 
-    const category = await repository.findExpenseCategoryById(input.categoryId);
+    let category = await repository.findExpenseCategoryById(input.categoryId);
     if (!category || category.status !== ACTIVE) throw new ValidationError({ message: 'Site Expense category must be active in this company.' });
+    if (requirePostingAccounts && !category.defaultGlAccount) {
+      category = await repository.ensureExpenseCategoryPostingAccount(input.categoryId);
+      if (!category || category.status !== ACTIVE) throw new ValidationError({ message: 'Site Expense category must be active in this company.' });
+    }
 
     if (input.documentId) {
       const document = await repository.findProjectEvidenceDocument(input.projectId, input.documentId, visibility);
@@ -278,7 +282,7 @@ export class SiteExpensesService {
     return siteExpenseResponse(expense);
   }
 
-  /** Create one validated DRAFT Site Expense exactly once. */
+  /** Create and atomically post one validated Site Expense exactly once. */
   async createSiteExpense(input: CreateSiteExpenseBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'site-expenses.create',
@@ -288,7 +292,7 @@ export class SiteExpensesService {
     return result.response.body;
   }
 
-  /** Validate dependencies, allocate the server number and persist one DRAFT expense. */
+  /** Validate dependencies, persist the numbered expense, then post Finance and Project Cost in the same transaction. */
   private async createSiteExpenseOnce(tx: TransactionClient, input: CreateSiteExpenseBody) {
     const users = new AdministrationRepository(tx);
     const now = new Date();
@@ -325,7 +329,9 @@ export class SiteExpensesService {
     const response = siteExpenseResponse(created);
     await recordAudit(tx, { action: 'site_expense.created', entityType: 'site_expense', entityId: created.id, projectId: created.projectId, stageId: created.stageId, after: response });
     await recordOutboxEvent(tx, { eventType: 'site_expense.created', resourceType: 'site_expense', resourceId: created.id, payload: { expenseId: created.id, projectId: created.projectId, stageId: created.stageId, expenseNo: created.expenseNo } });
-    return { statusCode: 201, body: response };
+
+    const posted = await this.postSiteExpenseOnce(tx, created.id);
+    return { statusCode: 201, body: posted.body };
   }
 
   /** Edit one visible DRAFT Site Expense exactly once. */

@@ -19,9 +19,6 @@ import type { AuthActionPurpose } from '../../plugins/authentication.js';
 
 type RepositoryClient = DatabaseClient | TransactionClient;
 
-// TEMPORARY: keep authentication/company isolation, but bypass role permissions and Project scope authorization.
-const TEMPORARY_AUTHORIZATION_BYPASS = true;
-
 export type RepositoryPageWindow = Readonly<{
   skip: number;
   take: number;
@@ -36,6 +33,8 @@ export type CreateUserRepositoryInput = Readonly<{
   phone?: string | null;
   name: string;
   status: string;
+  passwordHash?: string;
+  passwordChangedAt?: Date;
 }>;
 
 export type UpdateUserRepositoryInput = Readonly<{
@@ -43,6 +42,8 @@ export type UpdateUserRepositoryInput = Readonly<{
   phone?: string | null | undefined;
   name?: string | undefined;
   status?: string | undefined;
+  passwordHash?: string | undefined;
+  passwordChangedAt?: Date | undefined;
 }>;
 
 export type SetUserPasswordRepositoryInput = Readonly<{
@@ -296,7 +297,9 @@ export class AdministrationRepository {
         email: input.email,
         ...(input.phone === undefined ? {} : { phone: input.phone }),
         name: input.name,
-        status: input.status
+        status: input.status,
+        ...(input.passwordHash === undefined ? {} : { passwordHash: input.passwordHash }),
+        ...(input.passwordChangedAt === undefined ? {} : { passwordChangedAt: input.passwordChangedAt })
       })
     });
   }
@@ -355,7 +358,9 @@ export class AdministrationRepository {
       ...(input.email === undefined ? {} : { email: input.email }),
       ...(input.phone === undefined ? {} : { phone: input.phone }),
       ...(input.name === undefined ? {} : { name: input.name }),
-      ...(input.status === undefined ? {} : { status: input.status })
+      ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.passwordHash === undefined ? {} : { passwordHash: input.passwordHash }),
+      ...(input.passwordChangedAt === undefined ? {} : { passwordChangedAt: input.passwordChangedAt })
     };
 
     const updated = await this.db.user.updateMany({ where: scope.where({ id }), data });
@@ -517,6 +522,20 @@ export class AdministrationRepository {
     });
   }
 
+  /** Lock one company-owned role before a destructive lifecycle command. */
+  async lockCompanyRoleForWrite(roleId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{ id: string }>>`
+      SELECT id
+      FROM roles
+      WHERE id = ${roleId}::uuid
+        AND company_id = ${scope.companyId}::uuid
+      FOR UPDATE
+    `;
+
+    return rows[0] ?? null;
+  }
+
   /** List visible roles and permission codes in one paged query. */
   async listRoles(input: RepositoryPageWindow) {
     assertPageWindow(input);
@@ -669,6 +688,34 @@ export class AdministrationRepository {
     return result.count;
   }
 
+  /** Count every user assignment that still references one company-owned role. */
+  async countCompanyRoleUserAssignments(roleId: string) {
+    const role = await this.findCompanyRoleById(roleId);
+    if (!role) return null;
+
+    return this.db.userRole.count({
+      where: { companyId: role.companyId, roleId }
+    });
+  }
+
+  /** Count Project-scope metadata that still names one company-owned role code. */
+  async countCompanyRoleProjectScopes(roleId: string) {
+    const role = await this.findCompanyRoleById(roleId);
+    if (!role) return null;
+
+    return this.db.userProjectScope.count({
+      where: { companyId: role.companyId, roleCode: role.code }
+    });
+  }
+
+  /** Delete one company-owned role after the service has enforced lifecycle rules. */
+  async deleteCompanyRole(roleId: string) {
+    const role = await this.findCompanyRoleById(roleId);
+    if (!role) return null;
+
+    return this.db.role.delete({ where: { id: role.id } });
+  }
+
   /** Lock one same-company User before replacing the complete role-assignment set. */
   async lockUserForRoleAssignmentWrite(userId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -763,9 +810,6 @@ export class AdministrationRepository {
     });
     if (!user) return { kind: 'restricted' as const, projectIds: [] as string[] };
 
-    // TEMPORARY: set TEMPORARY_AUTHORIZATION_BYPASS to false to restore role/project-scope enforcement.
-    if (TEMPORARY_AUTHORIZATION_BYPASS) return { kind: 'all' as const };
-
     const allProjectAssignment = await this.db.userRole.findFirst({
       where: {
         companyId: user.companyId,
@@ -859,16 +903,6 @@ export class AdministrationRepository {
     companyId: string,
     input: EffectivePermissionLookupInput
   ) {
-    // TEMPORARY: keep the real catalog for responses, but bypass permission membership checks used by services.
-    if (TEMPORARY_AUTHORIZATION_BYPASS) {
-      const permissions = await this.listPermissionCodes();
-      Object.defineProperty(permissions, 'includes', {
-        value: () => true,
-        enumerable: false
-      });
-      return permissions;
-    }
-
     if (input.assignmentStatuses.length === 0 || input.roleStatuses.length === 0) return [];
 
     const assignments = await this.db.userRole.findMany({

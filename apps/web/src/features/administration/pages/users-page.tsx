@@ -19,10 +19,24 @@ import {
 const createUserSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(200),
   email: z.string().trim().email('Enter a valid email address.'),
-  phone: z.string().trim().max(50).optional()
+  phone: z.string().trim().max(50).optional(),
+  password: z.string().min(8, 'Password must contain at least 8 characters.').max(4096),
+  confirmPassword: z.string().min(1, 'Confirm the password.'),
+  siteManagerProjectIds: z.array(z.string().uuid()).min(1, 'Assign at least one Project.')
+}).refine((value) => value.password === value.confirmPassword, {
+  path: ['confirmPassword'],
+  message: 'Passwords do not match.'
 });
 
-const editUserSchema = createUserSchema;
+const editUserSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(200),
+  email: z.string().trim().email('Enter a valid email address.'),
+  phone: z.string().trim().max(50).optional(),
+  password: z.string().max(4096).refine(
+    (value) => value.length === 0 || value.length >= 8,
+    'Password must contain at least 8 characters.'
+  )
+});
 
 type CreateUserValues = z.infer<typeof createUserSchema>;
 type EditUserValues = z.infer<typeof editUserSchema>;
@@ -52,9 +66,15 @@ export function UsersPage() {
     enabled: canReadRoles
   });
 
+  const projectOptionsQuery = useQuery({
+    queryKey: ['administration', 'projects', 'site-manager-create-options'],
+    queryFn: () => listProjects({ page: 1, pageSize: 100 }),
+    enabled: canManageUsers && canManageProjectScopes
+  });
+
   const createForm = useForm<CreateUserValues>({
     resolver: zodResolver(createUserSchema),
-    defaultValues: { name: '', email: '', phone: '' }
+    defaultValues: { name: '', email: '', phone: '', password: '', confirmPassword: '', siteManagerProjectIds: [] }
   });
 
   const createMutation = useMutation({
@@ -85,12 +105,14 @@ export function UsersPage() {
     setPage(1);
   }
 
-  /** Create one invited user from the validated form values. */
+  /** Create one active Site Manager login from validated admin-supplied credentials. */
   async function handleCreate(values: CreateUserValues): Promise<void> {
     await createMutation.mutateAsync({
       name: values.name,
       email: values.email,
-      phone: values.phone ? values.phone : null
+      phone: values.phone ? values.phone : null,
+      password: values.password,
+      siteManagerProjectIds: values.siteManagerProjectIds
     });
   }
 
@@ -194,10 +216,10 @@ export function UsersPage() {
         </div>
       </section>
 
-      {canManageUsers && (
+      {canManageUsers && canManageProjectScopes && (
         <section className="admin-card">
-          <h2>Create user</h2>
-          <p className="muted">New users stay inactive until they accept the invitation and set their first password.</p>
+          <h2>Create Site Manager login</h2>
+          <p className="muted">Set the login credentials and assigned Projects. The account becomes active immediately; no invitation is required.</p>
           <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <label>Name<input {...createForm.register('name')} /></label>
             {createForm.formState.errors.name && <span className="field-error">{createForm.formState.errors.name.message}</span>}
@@ -205,8 +227,25 @@ export function UsersPage() {
             {createForm.formState.errors.email && <span className="field-error">{createForm.formState.errors.email.message}</span>}
             <label>Phone<input {...createForm.register('phone')} /></label>
             {createForm.formState.errors.phone && <span className="field-error">{createForm.formState.errors.phone.message}</span>}
+            <label>Password<input type="password" autoComplete="new-password" {...createForm.register('password')} /></label>
+            {createForm.formState.errors.password && <span className="field-error">{createForm.formState.errors.password.message}</span>}
+            <label>Confirm password<input type="password" autoComplete="new-password" {...createForm.register('confirmPassword')} /></label>
+            {createForm.formState.errors.confirmPassword && <span className="field-error">{createForm.formState.errors.confirmPassword.message}</span>}
+            <fieldset className="admin-form">
+              <legend>Assigned Projects</legend>
+              {projectOptionsQuery.isPending && <p>Loading Projects...</p>}
+              {(projectOptionsQuery.data?.items ?? []).map((project) => (
+                <label className="checkbox-row" key={project.id}>
+                  <input type="checkbox" value={project.id} {...createForm.register('siteManagerProjectIds')} />
+                  <span>{project.projectCode} · {project.name}</span>
+                </label>
+              ))}
+              {projectOptionsQuery.data?.items.length === 0 && <p className="muted">Create a Project before creating its Site Manager login.</p>}
+              {createForm.formState.errors.siteManagerProjectIds && <span className="field-error">{createForm.formState.errors.siteManagerProjectIds.message}</span>}
+              {projectOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{projectOptionsQuery.error.message}</div>}
+            </fieldset>
             {createMutation.error instanceof Error && <div className="form-error" role="alert">{createMutation.error.message}</div>}
-            <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create user'}</button>
+            <button type="submit" disabled={createMutation.isPending || projectOptionsQuery.isPending}>{createMutation.isPending ? 'Creating...' : 'Create Site Manager login'}</button>
           </form>
         </section>
       )}
@@ -237,7 +276,8 @@ function EditUserForm(props: Readonly<{ user: AdminUser; onSaved: () => Promise<
     defaultValues: {
       name: props.user.name,
       email: props.user.email,
-      phone: props.user.phone ?? ''
+      phone: props.user.phone ?? '',
+      password: ''
     }
   });
 
@@ -245,7 +285,8 @@ function EditUserForm(props: Readonly<{ user: AdminUser; onSaved: () => Promise<
     mutationFn: (values: EditUserValues) => updateUser(props.user.id, {
       name: values.name,
       email: values.email,
-      phone: values.phone ? values.phone : null
+      phone: values.phone ? values.phone : null,
+      ...(values.password ? { password: values.password } : {})
     }),
     onSuccess: props.onSaved
   });
@@ -265,6 +306,9 @@ function EditUserForm(props: Readonly<{ user: AdminUser; onSaved: () => Promise<
         {form.formState.errors.email && <span className="field-error">{form.formState.errors.email.message}</span>}
         <label>Phone<input {...form.register('phone')} /></label>
         {form.formState.errors.phone && <span className="field-error">{form.formState.errors.phone.message}</span>}
+        <label>Set / reset login password<input type="password" autoComplete="new-password" {...form.register('password')} /></label>
+        <span className="muted">Leave blank to keep the current password. Setting a password activates the account and signs out existing sessions.</span>
+        {form.formState.errors.password && <span className="field-error">{form.formState.errors.password.message}</span>}
         {mutation.error instanceof Error && <div className="form-error" role="alert">{mutation.error.message}</div>}
         <div className="action-row">
           <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save changes'}</button>
@@ -312,9 +356,11 @@ function UserAccessForm(props: UserAccessFormProps) {
 
   /** Toggle one Project ID in the complete explicit Project-scope replacement set. */
   function toggleProject(projectId: string): void {
+    const siteManagerRole = props.roles.find((role) => role.code === 'site-manager');
+    const isSiteManager = siteManagerRole ? roleIds.includes(siteManagerRole.id) : false;
     setProjectScopes((current) => current.some((scope) => scope.projectId === projectId)
       ? current.filter((scope) => scope.projectId !== projectId)
-      : [...current, { projectId, roleCode: null }].sort((left, right) => left.projectId.localeCompare(right.projectId)));
+      : [...current, { projectId, roleCode: isSiteManager ? 'site-manager' : null }].sort((left, right) => left.projectId.localeCompare(right.projectId)));
   }
 
   return (

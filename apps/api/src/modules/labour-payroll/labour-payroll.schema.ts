@@ -12,7 +12,9 @@ export const LABOUR_PAYROLL_PERMISSION_CODES = Object.freeze([
   'payroll.calculate',
   'payroll.finalize',
   'payroll.payments.create',
-  'payroll.payments.reverse'
+  'payroll.payments.reverse',
+  'payroll.advances.create',
+  'payroll.advances.reverse'
 ] as const);
 
 export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
@@ -28,6 +30,8 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
   'PAYROLL_PAYMENT_INVALID',
   'PAYROLL_PAYMENT_EXCEEDS_OUTSTANDING',
   'PAYROLL_CASH_BANK_INVALID',
+  'EMPLOYEE_ADVANCE_INVALID',
+  'EMPLOYEE_ADVANCE_ALREADY_RECOVERED',
   'PAYROLL_NO_ATTENDANCE',
   'PAYROLL_COMPENSATION_MISSING',
   'PAYROLL_SALARY_PERIOD_INVALID',
@@ -44,7 +48,9 @@ export const LABOUR_PAYROLL_EVENT_TYPES = Object.freeze([
   'payroll.finalized',
   'payroll.posted',
   'payroll.payment_posted',
-  'payroll.payment_reversed'
+  'payroll.payment_reversed',
+  'payroll.advance_posted',
+  'payroll.advance_reversed'
 ] as const);
 
 export const LABOUR_PAYROLL_HTTP_ROUTES = Object.freeze([
@@ -61,6 +67,9 @@ export const LABOUR_PAYROLL_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/payments/:id/reverse' }),
+  Object.freeze({ method: 'GET', route: '/api/v1/payroll/advances' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/payroll/advances' }),
+  Object.freeze({ method: 'POST', route: '/api/v1/payroll/advances/:id/reverse' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/employees/:id/ledger' })
 ] as const);
 
@@ -179,6 +188,32 @@ export const listPayrollPaymentsQuerySchema = z.object({
   ...paginationShape
 }).strict();
 
+/** Validate bounded Employee advance filters. */
+export const listEmployeeAdvancesQuerySchema = z.object({
+  employeeId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
+  status: z.enum(PAYROLL_PAYMENT_STATUS_VALUES).optional(),
+  ...paginationShape
+}).strict();
+
+/** Validate an immediate project-linked salary advance paid from Cash/Bank. */
+export const createEmployeeAdvanceBodySchema = z.object({
+  employeeId: uuidSchema,
+  projectId: uuidSchema,
+  stageId: uuidSchema.nullable().optional(),
+  advanceDate: dateSchema,
+  amount: exactMoneySchema.refine((value) => Number(value) > 0, 'amount must be greater than zero'),
+  cashBankAccountId: uuidSchema,
+  reason: z.string().trim().min(1).max(500),
+  reference: z.string().trim().min(1).max(200).nullable().optional()
+}).strict();
+
+/** Validate an append-only advance reversal date. */
+export const reverseEmployeeAdvanceBodySchema = z.object({ reversalDate: dateSchema }).strict();
+
+/** Validate the optional Project filter for an Employee ledger. */
+export const employeeSalaryLedgerQuerySchema = z.object({ projectId: uuidSchema.optional() }).strict();
+
 /** Validate one partial or full Employee salary settlement. */
 export const createPayrollPaymentBodySchema = z.object({
   payrollLineId: uuidSchema,
@@ -250,6 +285,9 @@ export const payrollLineResponseSchema = z.object({
   employeeNo: z.string().min(1),
   employeeName: z.string().min(1),
   grossAmount: exactMoneySchema,
+  salaryBeforeAbsence: exactMoneySchema,
+  absenceDeduction: exactMoneySchema,
+  advanceDeduction: exactMoneySchema,
   deductions: exactMoneySchema,
   netAmount: exactMoneySchema,
   paidAmount: exactMoneySchema,
@@ -314,22 +352,62 @@ export const listPayrollPaymentsResponseSchema = z.object({
   pageSize: z.number().int().min(1).max(LABOUR_PAYROLL_MAX_PAGE_SIZE)
 }).strict();
 
+/** Validate one immutable Employee salary-advance record and its recovery balance. */
+export const employeeAdvanceResponseSchema = z.object({
+  id: uuidSchema,
+  employeeId: uuidSchema,
+  employeeNo: z.string().min(1),
+  employeeName: z.string().min(1),
+  projectId: uuidSchema,
+  projectCode: z.string().min(1),
+  projectName: z.string().min(1),
+  stageId: uuidSchema.nullable(),
+  stageName: z.string().nullable(),
+  advanceNo: z.string().min(1),
+  advanceDate: dateSchema,
+  amount: exactMoneySchema,
+  recoveredAmount: exactMoneySchema,
+  outstandingAmount: exactMoneySchema,
+  cashBankAccountId: uuidSchema,
+  cashBankAccountName: z.string().min(1),
+  reason: z.string().min(1),
+  reference: z.string().nullable(),
+  status: z.enum(PAYROLL_PAYMENT_STATUS_VALUES),
+  reversalDate: dateSchema.nullable(),
+  createdByName: z.string().min(1),
+  createdAt: z.string().datetime({ offset: true })
+}).strict();
+
+export const listEmployeeAdvancesResponseSchema = z.object({
+  items: z.array(employeeAdvanceResponseSchema),
+  total: z.number().int().min(0),
+  page: z.number().int().min(1),
+  pageSize: z.number().int().min(1).max(LABOUR_PAYROLL_MAX_PAGE_SIZE)
+}).strict();
+
 /** Validate the source-derived Employee salary ledger. */
 export const employeeSalaryLedgerResponseSchema = z.object({
   employee: z.object({ id: uuidSchema, employeeNo: z.string().min(1), name: z.string().min(1) }).strict(),
   totalSalary: exactMoneySchema,
   totalPaid: exactMoneySchema,
+  totalAdvances: exactMoneySchema,
+  totalAdvanceRecovered: exactMoneySchema,
+  advanceOutstanding: exactMoneySchema,
   outstanding: exactMoneySchema,
   entries: z.array(z.object({
     id: z.string().min(1),
     entryDate: dateSchema,
-    entryType: z.enum(['SALARY_DUE', 'PAYMENT', 'PAYMENT_REVERSAL']),
+    entryType: z.enum(['SALARY_DUE', 'PAYMENT', 'PAYMENT_REVERSAL', 'ADVANCE', 'ADVANCE_REVERSAL', 'ADVANCE_RECOVERY']),
     reference: z.string().min(1),
     debit: exactMoneySchema,
     credit: exactMoneySchema,
     balance: exactMoneySchema,
-    payrollRunId: uuidSchema,
-    payrollLineId: uuidSchema,
+    projectId: uuidSchema.nullable(),
+    projectName: z.string().nullable(),
+    stageName: z.string().nullable(),
+    payrollRunId: uuidSchema.nullable(),
+    payrollLineId: uuidSchema.nullable(),
+    advanceId: uuidSchema.nullable(),
     paymentId: uuidSchema.nullable()
   }).strict())
 }).strict();
@@ -361,6 +439,10 @@ export type CreateAttendanceBody = z.infer<typeof createAttendanceBodySchema>;
 export type UpdateAttendanceBody = z.infer<typeof updateAttendanceBodySchema>;
 export type ListPayrollRunsQuery = z.infer<typeof listPayrollRunsQuerySchema>;
 export type ListPayrollPaymentsQuery = z.infer<typeof listPayrollPaymentsQuerySchema>;
+export type ListEmployeeAdvancesQuery = z.infer<typeof listEmployeeAdvancesQuerySchema>;
+export type CreateEmployeeAdvanceBody = z.infer<typeof createEmployeeAdvanceBodySchema>;
+export type ReverseEmployeeAdvanceBody = z.infer<typeof reverseEmployeeAdvanceBodySchema>;
+export type EmployeeSalaryLedgerQuery = z.infer<typeof employeeSalaryLedgerQuerySchema>;
 export type CreatePayrollPaymentBody = z.infer<typeof createPayrollPaymentBodySchema>;
 export type ReversePayrollPaymentBody = z.infer<typeof reversePayrollPaymentBodySchema>;
 export type CreatePayrollRunBody = z.infer<typeof createPayrollRunBodySchema>;
@@ -380,6 +462,8 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   PAYROLL_PAYMENT_INVALID: 'The selected Employee salary payment or finalized Payroll line is invalid.',
   PAYROLL_PAYMENT_EXCEEDS_OUTSTANDING: 'The Employee salary payment exceeds the outstanding amount for this Payroll line.',
   PAYROLL_CASH_BANK_INVALID: 'Select an active same-Company Cash or Bank account.',
+  EMPLOYEE_ADVANCE_INVALID: 'The selected Employee salary advance, Project, Stage, or Employee is invalid.',
+  EMPLOYEE_ADVANCE_ALREADY_RECOVERED: 'This salary advance has already been recovered by finalized Payroll and cannot be reversed.',
   PAYROLL_NO_ATTENDANCE: 'No attendance records exist inside this Payroll period. Mark attendance before calculating Payroll.',
   PAYROLL_COMPENSATION_MISSING: 'An Employee in this Payroll period has no single effective salary, daily wage or hourly rate for all recorded attendance dates.',
   PAYROLL_SALARY_PERIOD_INVALID: 'Salaried Employees require a complete calendar-month Payroll period.',

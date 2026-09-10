@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   calculatePayrollRun,
   createAttendance,
+  createEmployeeAdvance,
   createPayrollPayment,
   createPayrollRun,
   finalizePayrollRun,
@@ -12,10 +13,13 @@ import {
   listPayrollRuns,
   listPayrollCashBankAccounts,
   listPayrollPayments,
+  listEmployeeAdvances,
+  reverseEmployeeAdvance,
   reversePayrollPayment,
   updateAttendance,
   type CalculatePayrollRunInput,
   type CreateAttendanceInput,
+  type CreateEmployeeAdvanceInput,
   type CreatePayrollPaymentInput,
   type CreatePayrollRunInput,
   type ListAttendanceInput,
@@ -127,7 +131,27 @@ export function useReversePayrollPayment() {
   });
 }
 
+/** Load Employee advances, optionally narrowed to one Employee or Project. */
+export function useEmployeeAdvances(input: Readonly<{ employeeId?: string; projectId?: string }> = {}, enabled = true) {
+  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'advances', input], queryFn: () => listEmployeeAdvances(input), enabled, retry: false });
+}
+
+/** Pay an Employee advance and refresh Payroll, ledgers, Finance, and account balances. */
+export function useCreateEmployeeAdvance() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (input: CreateEmployeeAdvanceInput) => createEmployeeAdvance(input), onSuccess: async () => client.invalidateQueries() });
+}
+
+/** Reverse an unrecovered Employee advance and refresh all affected balances. */
+export function useReverseEmployeeAdvance() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ advanceId: string; reversalDate: string }>) => reverseEmployeeAdvance(input.advanceId, input.reversalDate),
+    onSuccess: async () => client.invalidateQueries()
+  });
+}
+
 /** Load one Employee salary ledger while its detail popup is open. */
-export function useEmployeeSalaryLedger(employeeId: string | null) {
-  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'employee-ledger', employeeId], queryFn: () => getEmployeeSalaryLedger(employeeId as string), enabled: employeeId !== null, retry: false });
+export function useEmployeeSalaryLedger(employeeId: string | null, projectId?: string) {
+  return useQuery({ queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'employee-ledger', employeeId, projectId], queryFn: () => getEmployeeSalaryLedger(employeeId as string, projectId), enabled: employeeId !== null, retry: false });
 }

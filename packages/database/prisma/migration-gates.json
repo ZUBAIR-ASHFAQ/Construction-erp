@@ -857,6 +857,38 @@
       "migrations": [
         "20260909000400_payroll_status_transition_trigger_fix"
       ]
+    },
+    {
+      "stage": 73,
+      "gate": "employee-salary-advance-recovery-ledger",
+      "description": "Adds project-linked Employee salary advances, Cash/Bank accounting, automatic FIFO Payroll recovery, absence deductions, reversals, and project-wise Employee ledger history.",
+      "migrations": [
+        "20260910000100_employee_salary_advances"
+      ]
+    },
+    {
+      "stage": 74,
+      "gate": "site-manager-project-access",
+      "description": "Adds the built-in least-privilege Site Manager role, backfills explicit scopes for existing Project managers, and restores enforced role and Project authorization.",
+      "migrations": [
+        "20260910000200_site_manager_project_access"
+      ]
+    },
+    {
+      "stage": 75,
+      "gate": "site-manager-least-privilege",
+      "description": "Narrows Site Manager grants to Project operations and enables the Project-filtered Employee directory needed by Attendance.",
+      "migrations": [
+        "20260910000300_site_manager_least_privilege"
+      ]
+    },
+    {
+      "stage": 76,
+      "gate": "project-operations-permission-catalog",
+      "description": "Repairs the stable Inventory and Project Cost permission catalog for enforced System Admin and scoped Site Manager authorization.",
+      "migrations": [
+        "20260910000400_project_operations_permission_catalog"
+      ]
     }
   ]
 }

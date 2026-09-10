@@ -187,12 +187,14 @@ test('R6 explicitly separates required Administration routes from justified auth
     'GET /api/v1/admin/organization-profile',
     'PATCH /api/v1/admin/organization-profile'
   ];
+  const roleLifecycle = ['DELETE /api/v1/admin/roles/:id'];
 
-  for (const route of [...required, ...support, ...organizationProfile]) assert.ok(actual.includes(route), `missing ${route}`);
-  assert.equal(actual.length, required.length + support.length + organizationProfile.length);
+  for (const route of [...required, ...support, ...organizationProfile, ...roleLifecycle]) assert.ok(actual.includes(route), `missing ${route}`);
+  assert.equal(actual.length, required.length + support.length + organizationProfile.length + roleLifecycle.length);
   assert.match(schema, /ADMINISTRATION_REQUIRED_HTTP_ROUTES/);
   assert.match(schema, /ADMINISTRATION_SUPPORT_HTTP_ROUTES/);
   assert.match(schema, /ADMINISTRATION_ORGANIZATION_PROFILE_HTTP_ROUTES/);
+  assert.match(schema, /ADMINISTRATION_ROLE_LIFECYCLE_HTTP_ROUTES/);
 });
 
 test('R6 keeps only the Final-21 Document routes plus the bounded Document Browser read', async () => {

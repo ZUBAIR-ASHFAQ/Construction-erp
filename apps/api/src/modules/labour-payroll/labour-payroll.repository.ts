@@ -20,6 +20,15 @@ const payrollPaymentInclude = {
   creator: { select: { name: true } }
 } as const;
 
+const employeeAdvanceInclude = {
+  employee: { select: { employeeNo: true, name: true } },
+  project: { select: { projectCode: true, name: true } },
+  stage: { select: { name: true } },
+  cashBankAccount: { select: { name: true, glAccountId: true, status: true, accountType: true } },
+  creator: { select: { name: true } },
+  recoveries: { select: { amount: true, payrollLineId: true }, orderBy: { createdAt: 'asc' as const } }
+} as const;
+
 /** Reject invalid pagination before a repository query reaches Prisma. */
 function assertPageWindow(input: LabourPayrollPageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) throw new RangeError('Repository skip must be a non-negative integer.');
@@ -271,7 +280,7 @@ export class LabourPayrollRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.attendanceEntry.findMany({
       where: scope.where({ workDate: { gte: periodStart, lte: periodEnd } }),
-      include: { employee: { select: { id: true, employmentType: true } } },
+      include: { employee: { select: { id: true, employmentType: true, joinDate: true } } },
       orderBy: [{ employeeId: 'asc' }, { workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
     });
   }
@@ -307,6 +316,9 @@ export class LabourPayrollRepository {
     payrollRunId: string;
     employeeId: string;
     grossAmount: string;
+    salaryBeforeAbsence: string;
+    absenceDeduction: string;
+    advanceDeduction: string;
     deductions: string;
     netAmount: string;
     projectAllocationJson: Array<Readonly<{
@@ -356,6 +368,12 @@ export class LabourPayrollRepository {
     };
   }
 
+  /** Read the active Employee Advance asset account. */
+  async findEmployeeAdvanceAccount(accountCode: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.glAccount.findFirst({ where: scope.where({ accountCode, status: 'ACTIVE' }) });
+  }
+
   /** Ensure the minimal Payroll journal sequence and posting accounts exist for the Company. */
   async ensurePayrollPostingSetup(): Promise<void> {
     const scope = requireCompanyRepositoryScope();
@@ -365,13 +383,14 @@ export class LabourPayrollRepository {
       update: {}
     });
     for (const account of [
-      { accountCode: 'PAYROLL-LABOUR-EXPENSE', name: 'Payroll Labour Expense', accountType: 'EXPENSE' },
-      { accountCode: 'PAYROLL-PAYABLE', name: 'Payroll Payable', accountType: 'LIABILITY' }
+      { accountCode: 'PAYROLL-LABOUR-EXPENSE', name: 'Employee Salary Expense', accountType: 'EXPENSE' },
+      { accountCode: 'PAYROLL-PAYABLE', name: 'Payroll Payable', accountType: 'LIABILITY' },
+      { accountCode: 'EMPLOYEE-SALARY-ADVANCE', name: 'Employee Salary Advances', accountType: 'ASSET' }
     ] as const) {
       await this.db.glAccount.upsert({
         where: { companyId_accountCode: { companyId: scope.companyId, accountCode: account.accountCode } },
         create: scope.createData({ ...account, parentId: null, status: 'ACTIVE' }),
-        update: {}
+        update: { name: account.name }
       });
     }
   }
@@ -467,6 +486,99 @@ export class LabourPayrollRepository {
     });
   }
 
+  /** Ensure the server-owned salary-advance number sequence exists for this Company. */
+  async ensureEmployeeAdvanceSequence() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'employee-advance' } },
+      create: { companyId: scope.companyId, sequenceKey: 'employee-advance', prefix: 'ADV-', suffix: '', padWidth: 6, nextValue: 1n, incrementBy: 1n, status: 'ACTIVE' },
+      update: {}
+    });
+  }
+
+  /** Validate one active Employee and assigned Project/Stage advance destination. */
+  async findEmployeeAdvanceDestination(employeeId: string, projectId: string, stageId: string | null, advanceDate: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const employee = await this.db.employee.findFirst({ where: scope.where({ id: employeeId, status: 'ACTIVE', joinDate: { lte: advanceDate } }) });
+    if (!employee) return null;
+    const project = await this.db.project.findFirst({ where: scope.where({ id: projectId, status: 'ACTIVE' }) });
+    if (!project) return null;
+    if (stageId && !(await this.findStage(projectId, stageId))) return null;
+    const assignment = await this.db.projectTeamAssignment.findFirst({
+      where: scope.where({
+        employeeId,
+        projectId,
+        status: 'ACTIVE',
+        fromDate: { lte: advanceDate },
+        AND: [
+          { OR: [{ toDate: null }, { toDate: { gte: advanceDate } }] },
+          ...(stageId ? [{ OR: [{ stageId }, { stageId: null }] }] : [])
+        ]
+      })
+    });
+    return assignment ? { employee, project } : null;
+  }
+
+  /** Create one posted Employee advance inside the accounting transaction. */
+  async createEmployeeAdvance(input: Readonly<{
+    employeeId: string; projectId: string; stageId: string | null; advanceNo: string; advanceDate: Date;
+    amount: string; cashBankAccountId: string; reason: string; reference: string | null; createdBy: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.employeeAdvance.create({
+      data: scope.createData({ ...input, status: 'POSTED', reversalDate: null, reversedAt: null }),
+      include: employeeAdvanceInclude
+    });
+  }
+
+  /** List Employee advances with source-derived recovery balances. */
+  async listEmployeeAdvances(input: Readonly<{ employeeId?: string; projectId?: string; projectIds?: readonly string[]; status?: 'POSTED' | 'REVERSED' }> & LabourPayrollPageWindow) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const where = scope.where({
+      ...(input.employeeId ? { employeeId: input.employeeId } : {}),
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...(!input.projectId && input.projectIds ? { projectId: { in: [...input.projectIds] } } : {}),
+      ...(input.status ? { status: input.status } : {})
+    });
+    const [items, total] = await Promise.all([
+      this.db.employeeAdvance.findMany({ where, include: employeeAdvanceInclude, orderBy: [{ advanceDate: 'desc' }, { advanceNo: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.employeeAdvance.count({ where })
+    ]);
+    return { items, total };
+  }
+
+  /** List posted advances still available for FIFO recovery through the period end. */
+  async listRecoverableEmployeeAdvances(employeeId: string, periodEnd: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.employeeAdvance.findMany({
+      where: scope.where({ employeeId, status: 'POSTED', advanceDate: { lte: periodEnd } }),
+      include: { recoveries: { select: { amount: true } } },
+      orderBy: [{ advanceDate: 'asc' }, { advanceNo: 'asc' }, { id: 'asc' }]
+    });
+  }
+
+  /** Persist one immutable advance recovery during Payroll finalization. */
+  async createAdvanceRecovery(input: Readonly<{ payrollLineId: string; employeeAdvanceId: string; amount: string }>) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollAdvanceRecovery.create({ data: scope.createData(input) });
+  }
+
+  /** Lock one advance before reversal and include finalized recoveries. */
+  async lockEmployeeAdvance(advanceId: string) {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.$queryRaw`SELECT id FROM employee_advances WHERE id = ${advanceId}::uuid AND company_id = ${scope.companyId}::uuid FOR UPDATE`;
+    return this.db.employeeAdvance.findFirst({ where: scope.where({ id: advanceId }), include: employeeAdvanceInclude });
+  }
+
+  /** Retain the advance record while marking its compensating reversal. */
+  async markEmployeeAdvanceReversed(advanceId: string, reversalDate: Date, reversedAt: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const updated = await this.db.employeeAdvance.updateMany({ where: scope.where({ id: advanceId, status: 'POSTED' }), data: { status: 'REVERSED', reversalDate, reversedAt } });
+    if (updated.count !== 1) return null;
+    return this.db.employeeAdvance.findFirst({ where: scope.where({ id: advanceId }), include: employeeAdvanceInclude });
+  }
+
   /** Persist one POSTED Employee salary payment inside the Finance posting transaction. */
   async createPayrollPayment(input: Readonly<{
     payrollLineId: string;
@@ -558,15 +670,38 @@ export class LabourPayrollRepository {
   }
 
   /** Read finalized salary accruals and all payment history for one Employee ledger. */
-  async getEmployeeSalaryLedgerSources(employeeId: string) {
+  async getEmployeeSalaryLedgerSources(employeeId: string, projectId?: string) {
     const scope = requireCompanyRepositoryScope();
     const employee = await this.db.employee.findFirst({ where: scope.where({ id: employeeId }), select: { id: true, employeeNo: true, name: true } });
     if (!employee) return null;
     const lines = await this.db.payrollLine.findMany({
       where: { employeeId, payrollRun: { companyId: scope.companyId, status: 'FINALIZED' } },
-      include: { payrollRun: { select: { id: true, periodStart: true, periodEnd: true } }, payments: { orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }] } },
+      include: {
+        payrollRun: { select: { id: true, periodStart: true, periodEnd: true } },
+        payments: { orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }] },
+        advanceRecoveries: { include: { employeeAdvance: { include: { project: { select: { name: true } }, stage: { select: { name: true } } } } } }
+      },
       orderBy: [{ payrollRun: { periodEnd: 'asc' } }, { id: 'asc' }]
     });
-    return { employee, lines };
+    const advances = await this.db.employeeAdvance.findMany({
+      where: scope.where({ employeeId, ...(projectId ? { projectId } : {}) }),
+      include: employeeAdvanceInclude,
+      orderBy: [{ advanceDate: 'asc' }, { id: 'asc' }]
+    });
+    const visibleLines = projectId
+      ? lines.filter((line) => {
+        const allocations = Array.isArray(line.projectAllocationJson) ? line.projectAllocationJson : [];
+        return allocations.some((item) => item && typeof item === 'object' && 'projectId' in item && item.projectId === projectId);
+      })
+      : lines;
+    const allocationProjectIds = visibleLines.flatMap((line) => {
+      const allocations = Array.isArray(line.projectAllocationJson) ? line.projectAllocationJson : [];
+      return allocations.flatMap((item) => item && typeof item === 'object' && 'projectId' in item && typeof item.projectId === 'string' ? [item.projectId] : []);
+    });
+    const projects = await this.db.project.findMany({
+      where: scope.where({ id: { in: [...new Set(allocationProjectIds)] } }),
+      select: { id: true, name: true }
+    });
+    return { employee, lines: visibleLines, advances, projects };
   }
 }

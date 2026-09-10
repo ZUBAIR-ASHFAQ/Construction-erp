@@ -47,6 +47,9 @@ export type PayrollLine = Readonly<{
   employeeNo: string;
   employeeName: string;
   grossAmount: string;
+  salaryBeforeAbsence: string;
+  absenceDeduction: string;
+  advanceDeduction: string;
   deductions: string;
   netAmount: string;
   paidAmount: string;
@@ -109,12 +112,24 @@ export type PayrollPayment = Readonly<{
 }>;
 export type PayrollPaymentPage = Readonly<{ items: PayrollPayment[]; total: number; page: number; pageSize: number }>;
 export type CreatePayrollPaymentInput = Readonly<{ payrollLineId: string; paymentDate: string; amount: string; cashBankAccountId: string; reference?: string | null }>;
+export type EmployeeAdvance = Readonly<{
+  id: string; employeeId: string; employeeNo: string; employeeName: string; projectId: string; projectCode: string; projectName: string;
+  stageId: string | null; stageName: string | null; advanceNo: string; advanceDate: string; amount: string; recoveredAmount: string;
+  outstandingAmount: string; cashBankAccountId: string; cashBankAccountName: string; reason: string; reference: string | null;
+  status: PayrollPaymentStatus; reversalDate: string | null; createdByName: string; createdAt: string;
+}>;
+export type EmployeeAdvancePage = Readonly<{ items: EmployeeAdvance[]; total: number; page: number; pageSize: number }>;
+export type CreateEmployeeAdvanceInput = Readonly<{
+  employeeId: string; projectId: string; stageId?: string | null; advanceDate: string; amount: string;
+  cashBankAccountId: string; reason: string; reference?: string | null;
+}>;
 export type EmployeeSalaryLedger = Readonly<{
   employee: Readonly<{ id: string; employeeNo: string; name: string }>;
-  totalSalary: string; totalPaid: string; outstanding: string;
+  totalSalary: string; totalPaid: string; totalAdvances: string; totalAdvanceRecovered: string; advanceOutstanding: string; outstanding: string;
   entries: ReadonlyArray<Readonly<{
-    id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL'; reference: string;
-    debit: string; credit: string; balance: string; payrollRunId: string; payrollLineId: string; paymentId: string | null;
+    id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
+    debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
+    payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null;
   }>>;
 }>;
 
@@ -205,7 +220,26 @@ export function reversePayrollPayment(paymentId: string, reversalDate: string): 
   return authenticatedRequest<PayrollPayment>(`payroll/payments/${paymentId}/reverse`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify({ reversalDate }) });
 }
 
+/** Load bounded Employee salary-advance history. */
+export function listEmployeeAdvances(input: Readonly<{ employeeId?: string; projectId?: string }> = {}): Promise<EmployeeAdvancePage> {
+  const query = new URLSearchParams({ page: '1', pageSize: '100' });
+  if (input.employeeId) query.set('employeeId', input.employeeId);
+  if (input.projectId) query.set('projectId', input.projectId);
+  return authenticatedRequest<EmployeeAdvancePage>(`payroll/advances?${query}`);
+}
+
+/** Pay one Employee salary advance from Cash/Bank. */
+export function createEmployeeAdvance(input: CreateEmployeeAdvanceInput): Promise<EmployeeAdvance> {
+  return authenticatedRequest<EmployeeAdvance>('payroll/advances', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
+/** Reverse one unrecovered Employee advance. */
+export function reverseEmployeeAdvance(advanceId: string, reversalDate: string): Promise<EmployeeAdvance> {
+  return authenticatedRequest<EmployeeAdvance>(`payroll/advances/${advanceId}/reverse`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify({ reversalDate }) });
+}
+
 /** Load one source-derived Employee salary ledger. */
-export function getEmployeeSalaryLedger(employeeId: string): Promise<EmployeeSalaryLedger> {
-  return authenticatedRequest<EmployeeSalaryLedger>(`payroll/employees/${employeeId}/ledger`);
+export function getEmployeeSalaryLedger(employeeId: string, projectId?: string): Promise<EmployeeSalaryLedger> {
+  const query = projectId ? `?${new URLSearchParams({ projectId })}` : '';
+  return authenticatedRequest<EmployeeSalaryLedger>(`payroll/employees/${employeeId}/ledger${query}`);
 }

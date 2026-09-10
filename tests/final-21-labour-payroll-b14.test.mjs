@@ -44,10 +44,13 @@ test('B14 exposes the Labour Payroll and salary-settlement routes', () => {
     "GET', route: '/api/v1/payroll/payments'",
     "POST', route: '/api/v1/payroll/payments'",
     "POST', route: '/api/v1/payroll/payments/:id/reverse'",
+    "GET', route: '/api/v1/payroll/advances'",
+    "POST', route: '/api/v1/payroll/advances'",
+    "POST', route: '/api/v1/payroll/advances/:id/reverse'",
     "GET', route: '/api/v1/payroll/employees/:id/ledger'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 14);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 17);
   assert.doesNotMatch(schema, /timesheets|leave-requests|payslip\.self_read/i);
 });
 
@@ -103,7 +106,8 @@ test('B14 calculates employee salaries from effective compensation and present a
   assert.match(service, /moneyCents\(salaryCompensation\.baseSalary\)/);
   assert.match(service, /regularAmount = multiplyToCents\(regularHours, rate\)/);
   assert.match(service, /overtimeAmount = overtimeHours > 0n[\s\S]*multiplyWithMultiplierToCents\(overtimeHours, rate, decimal4Units\(overtimeMultiplier\)\)/);
-  assert.match(service, /deductions: ZERO_MONEY/);
+  assert.match(service, /deductions: moneyString\(advanceDeductionCents\)/);
+  assert.match(service, /absenceDeduction: moneyString\(absenceDeductionCents\)/);
   assert.doesNotMatch(service, /parseFloat|toFixed\(|Number\(compensation\.|Math\.round/);
 });
 
@@ -115,6 +119,7 @@ test('B14 finalizes payroll with idempotent Module 9 cost and Module 18 Finance 
   assert.match(repository, /costActual\.upsert/);
   assert.match(repository, /sourceType: 'payroll'/);
   assert.match(repository, /ensurePayrollPostingSetup/);
+  assert.match(repository, /name: 'Employee Salary Expense'/);
   assert.match(service, /accounts\.expense\.accountType !== 'EXPENSE'/);
   assert.match(service, /postSourceJournalInTransaction\(tx/);
   assert.match(service, /PAYROLL-LABOUR-EXPENSE/);
@@ -125,21 +130,45 @@ test('B14 finalizes payroll with idempotent Module 9 cost and Module 18 Finance 
   assert.match(finance, /async postSourceJournalInTransaction/);
 });
 
+/** Confirm finalized Employee Salary costs flow once into Project totals and profitability. */
+test('B14 carries selected Project and Stage Employee Salary cost into every profitability total without counting payment twice', () => {
+  const payrollService = read(`${backend}/labour-payroll.service.ts`);
+  const projectsRepository = read('apps/api/src/modules/projects/projects.repository.ts');
+  const projectsService = read('apps/api/src/modules/projects/projects.service.ts');
+  const profitabilityService = read('apps/api/src/modules/project-profitability/project-profitability.service.ts');
+  const paymentLedgerTest = read('tests/hr-payroll-employee-payment-ledger.test.mjs');
+  const projectDetails = read('apps/web/src/features/projects/components/project-details-panel.tsx');
+  const profitabilityWorkspace = read('apps/web/src/features/project-profitability/components/project-profitability-workspace.tsx');
+
+  assert.match(payrollService, /projectId: allocation\.projectId/);
+  assert.match(payrollService, /stageId: allocation\.stageId/);
+  assert.match(payrollService, /category: allocation\.category/);
+  assert.match(payrollService, /sourceKey = `payroll:\$\{payrollRunId\}:\$\{line\.id\}:\$\{allocation\.projectId\}:\$\{allocation\.stageId \?\? 'project'\}`/);
+  assert.match(projectsRepository, /costActual\.groupBy/);
+  assert.match(projectsService, /PROJECT_COST_CATEGORIES\.reduce/);
+  assert.match(profitabilityService, /labour: 'labourCost'/);
+  assert.match(profitabilityService, /actualCost: sumMoney\(input\.actualCostSources/);
+  assert.match(paymentLedgerTest, /doesNotMatch\(createPayment, \/upsertPayrollCostActual\//);
+  assert.match(projectDetails, /labour: 'Employee Salaries'/);
+  assert.match(profitabilityWorkspace, /Employee Salaries \/ Wages/);
+  assert.match(profitabilityWorkspace, /paying it later only settles Payroll Payable/);
+});
+
 /** Confirm final permissions, errors, idempotency and audit/outbox vocabulary. */
 test('B14 uses only the Final-21 Module 13 permissions errors and events', () => {
   const schema = read(`${backend}/labour-payroll.schema.ts`);
   const routes = read(`${backend}/labour-payroll.routes.ts`);
   const service = read(`${backend}/labour-payroll.service.ts`);
-  for (const permission of ['attendance.read', 'attendance.create', 'attendance.correct', 'payroll.read', 'payroll.create', 'payroll.calculate', 'payroll.finalize', 'payroll.payments.create', 'payroll.payments.reverse']) {
+  for (const permission of ['attendance.read', 'attendance.create', 'attendance.correct', 'payroll.read', 'payroll.create', 'payroll.calculate', 'payroll.finalize', 'payroll.payments.create', 'payroll.payments.reverse', 'payroll.advances.create', 'payroll.advances.reverse']) {
     assert.ok(schema.includes(`'${permission}'`), `missing ${permission}`);
   }
   for (const code of ['ATTENDANCE_DUPLICATE', 'EMPLOYEE_NOT_ASSIGNED', 'PAYROLL_NOT_FOUND', 'PAYROLL_LOCKED', 'PAYROLL_NOT_READY']) {
     assert.ok(schema.includes(`'${code}'`), `missing ${code}`);
   }
-  for (const event of ['attendance.recorded', 'payroll.created', 'payroll.calculated', 'payroll.finalized', 'payroll.posted', 'payroll.payment_posted', 'payroll.payment_reversed']) {
+  for (const event of ['attendance.recorded', 'payroll.created', 'payroll.calculated', 'payroll.finalized', 'payroll.posted', 'payroll.payment_posted', 'payroll.payment_reversed', 'payroll.advance_posted', 'payroll.advance_reversed']) {
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
   }
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 7);
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 9);
   assert.match(service, /executeIdempotentCommand/);
   assert.match(service, /recordAudit/);
   assert.match(service, /recordOutboxEvent/);
@@ -170,7 +199,7 @@ test('B14 replaces separate Timesheet and Payroll React workspaces with one Fina
   assert.match(workspace, /useProjectStages/);
   assert.match(workspace, /Attendance register/);
   assert.match(workspace, /Payroll calculation preview/);
-  assert.match(workspace, /Project \/ Stage labour cost/);
+  assert.match(workspace, /Project \/ Stage Employee Salary cost/);
   assert.match(api, /Idempotency-Key/);
   assert.match(hooks, /useFinalizePayrollRun/);
   assert.match(page, /usePermission\('attendance\.read'\)/);

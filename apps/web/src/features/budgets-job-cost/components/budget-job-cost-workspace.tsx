@@ -16,6 +16,15 @@ import {
 } from '../hooks/budgets-job-cost.js';
 
 const COST_CATEGORIES = ['material', 'labour', 'security', 'equipment', 'subcontract', 'site_expense', 'other'] as const;
+const COST_CATEGORY_LABELS: Readonly<Record<(typeof COST_CATEGORIES)[number], string>> = Object.freeze({
+  material: 'Material',
+  labour: 'Employee Salaries',
+  security: 'Security Employee Salaries',
+  equipment: 'Equipment Expense',
+  subcontract: 'Subcontractor',
+  site_expense: 'Site Expenses',
+  other: 'Other Expenses'
+});
 const moneySchema = z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'Use a non-negative amount with at most 2 decimals.');
 const optionalUuidSchema = z.union([z.literal(''), z.string().uuid('Choose a valid Stage.')]);
 const budgetLineFormSchema = z.object({
@@ -205,7 +214,7 @@ export function BudgetJobCostWorkspace({
                       </td>
                       <td>
                         <select {...budgetForm.register(`lines.${index}.category`)}>
-                          {COST_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                          {COST_CATEGORIES.map((category) => <option key={category} value={category}>{COST_CATEGORY_LABELS[category]}</option>)}
                         </select>
                       </td>
                       <td><input {...budgetForm.register(`lines.${index}.description`)} /></td>
@@ -238,7 +247,7 @@ export function BudgetJobCostWorkspace({
               <tbody>{currentBudget.lines.map((line) => (
                 <tr key={line.id}>
                   <td>{line.stageId ? (stageById.get(line.stageId)?.name ?? line.stageId) : 'Project level'}</td>
-                  <td>{line.category}</td><td>{line.description}</td><td>{currentBudget.currency} {line.plannedAmount}</td>
+                  <td>{COST_CATEGORY_LABELS[line.category]}</td><td>{line.description}</td><td>{currentBudget.currency} {line.plannedAmount}</td>
                 </tr>
               ))}</tbody>
             </table>
@@ -265,7 +274,7 @@ export function BudgetJobCostWorkspace({
                     <tbody>{jobCostQuery.data.forecasts.map((line) => (
                       <tr key={line.id}>
                         <td>{line.stageId ? (stageById.get(line.stageId)?.name ?? line.stageId) : 'Project level'}</td>
-                        <td>{line.category}</td><td>{project.currency} {line.forecastAmount}</td><td>{line.updatedBy}</td><td>{new Date(line.updatedAt).toLocaleString()}</td>
+                        <td>{COST_CATEGORY_LABELS[line.category]}</td><td>{project.currency} {line.forecastAmount}</td><td>{line.updatedBy}</td><td>{new Date(line.updatedAt).toLocaleString()}</td>
                       </tr>
                     ))}</tbody>
                   </table>
@@ -294,7 +303,7 @@ export function BudgetJobCostWorkspace({
                     </td>
                     <td>
                       <select {...forecastForm.register(`lines.${index}.category`)}>
-                        {COST_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+                        {COST_CATEGORIES.map((category) => <option key={category} value={category}>{COST_CATEGORY_LABELS[category]}</option>)}
                       </select>
                     </td>
                     <td><input inputMode="decimal" {...forecastForm.register(`lines.${index}.forecastAmount`)} /></td>
@@ -319,7 +328,7 @@ export function BudgetJobCostWorkspace({
               <thead><tr><th>Date</th><th>Type</th><th>Category</th><th>Stage</th><th>Source</th><th>Amount</th><th>Status</th></tr></thead>
               <tbody>{(ledgerQuery.data?.items ?? []).map((entry) => (
                 <tr key={`${entry.recordType}-${entry.id}`}>
-                  <td>{entry.postingDate}</td><td>{entry.recordType}</td><td>{entry.category}</td>
+                  <td>{entry.postingDate}</td><td>{entry.recordType}</td><td>{COST_CATEGORY_LABELS[entry.category]}</td>
                   <td>{entry.stageId ? (stageById.get(entry.stageId)?.name ?? entry.stageId) : 'Project level'}</td>
                   <td><code>{entry.sourceKey}</code><br /><small>{entry.sourceType} · {entry.sourceId}</small></td><td>{project.currency} {entry.amount}</td><td>{entry.status ?? 'POSTED'}</td>
                 </tr>

@@ -58,6 +58,8 @@ const PASSWORD_RESET_TTL_MS = 30 * 60 * 1000;
 const AUTH_NOTIFICATION_QUEUE = 'auth-notifications';
 const AUTH_INVITATION_JOB = 'auth.invitation';
 const AUTH_PASSWORD_RESET_JOB = 'auth.password-reset';
+const SITE_MANAGER_ROLE_CODE = 'site-manager';
+const SYSTEM_ADMIN_ROLE_CODE = 'system-admin';
 
 export type SessionClientInfo = Readonly<{
   ip: string;
@@ -680,37 +682,91 @@ export class AdministrationService {
     };
   }
 
-  /** Create an inactive company user that can be onboarded later. */
+  /** Create a company user, using direct credentials for the Site Manager workflow. */
   async createUser(input: CreateUserBody) {
     this.requirePermission('admin.users.manage');
+    if (input.siteManagerProjectIds) this.requirePermission('admin.project_scopes.manage');
 
     if (await this.repository.findUserByEmail(input.email)) {
       throw createAdministrationError('DUPLICATE_USER_EMAIL');
     }
 
+    const credentialCreatedAt = input.password ? new Date() : null;
+    const passwordHash = input.password ? await hashPassword(input.password) : null;
+
     try {
       return await this.inTransaction(async (repository, tx) => {
+        const siteManagerProjectIds = input.siteManagerProjectIds
+          ? [...new Set(input.siteManagerProjectIds)].sort()
+          : [];
+        const siteManagerRole = input.siteManagerProjectIds
+          ? await repository.findRoleByCode(SITE_MANAGER_ROLE_CODE)
+          : null;
+
+        if (input.siteManagerProjectIds) {
+          if (!siteManagerRole || siteManagerRole.status !== ROLE_ACTIVE) {
+            throw createAdministrationError('ROLE_NOT_FOUND');
+          }
+          const [assignableSiteManagerRole] = await repository.findVisibleRolesByIds([siteManagerRole.id]);
+          if (!assignableSiteManagerRole
+            || assignableSiteManagerRole.rolePermissions.some((row) => !hasPermission(row.permissionCode))) {
+            throw createAdministrationError('FORBIDDEN');
+          }
+          const projects = await repository.findCompanyProjectsByIds(siteManagerProjectIds);
+          if (projects.length !== siteManagerProjectIds.length) {
+            throw createAdministrationError('PROJECT_SCOPE_INVALID');
+          }
+          for (const projectId of siteManagerProjectIds) this.requireActorProjectScope(projectId);
+        }
+
         const created = await repository.createUser({
           email: input.email,
           ...(input.phone === undefined ? {} : { phone: input.phone }),
           name: input.name,
-          status: USER_INACTIVE
+          status: siteManagerRole ? USER_ACTIVE : USER_INACTIVE,
+          ...(passwordHash === null ? {} : { passwordHash }),
+          ...(credentialCreatedAt === null ? {} : { passwordChangedAt: credentialCreatedAt })
         });
         const user = safeUser(created);
-        await issueInvitation(repository, tx, user.id);
+
+        if (siteManagerRole) {
+          const assignment = await repository.createUserRole({
+            userId: user.id,
+            roleId: siteManagerRole.id,
+            status: ASSIGNMENT_ACTIVE
+          });
+          if (!assignment) throw createAdministrationError('ROLE_NOT_FOUND');
+          await repository.createUserProjectScopes(
+            user.id,
+            siteManagerProjectIds.map((projectId) => ({ projectId, roleCode: SITE_MANAGER_ROLE_CODE })),
+            PROJECT_SCOPE_ACTIVE
+          );
+        }
+
+        if (!siteManagerRole) await issueInvitation(repository, tx, user.id);
 
         await recordAudit(tx, {
           action: 'user.created',
           entityType: 'user',
           entityId: user.id,
-          after: user
+          after: {
+            ...user,
+            ...(siteManagerRole
+              ? { roleCode: SITE_MANAGER_ROLE_CODE, projectIds: siteManagerProjectIds }
+              : {})
+          }
         });
 
         await recordOutboxEvent(tx, {
           eventType: 'user.created',
           resourceType: 'user',
           resourceId: user.id,
-          payload: { status: user.status }
+          payload: {
+            status: user.status,
+            ...(siteManagerRole
+              ? { roleCode: SITE_MANAGER_ROLE_CODE, projectIds: siteManagerProjectIds }
+              : {})
+          }
         });
 
 
@@ -736,25 +792,35 @@ export class AdministrationService {
     }
 
     const now = new Date();
+    const replacementPasswordHash = input.password ? await hashPassword(input.password) : null;
     return this.inTransaction(async (repository, tx) => {
       const before = await repository.findUserById(userId);
       if (!before) throw createAdministrationError('USER_NOT_FOUND');
 
       const emailChanged = input.email !== undefined && input.email !== before.email;
-      const statusChanged = input.status !== undefined && input.status !== before.status;
-      const sessionsToRevoke = input.status === USER_INACTIVE
+      const nextStatus = replacementPasswordHash ? USER_ACTIVE : input.status;
+      const statusChanged = nextStatus !== undefined && nextStatus !== before.status;
+      const sessionsToRevoke = nextStatus === USER_INACTIVE || replacementPasswordHash
         ? (await repository.listUserSessions(userId)).filter((session) => !session.revokedAt)
         : [];
 
-      if (emailChanged || input.status === USER_INACTIVE) {
+      if (emailChanged || nextStatus === USER_INACTIVE || replacementPasswordHash) {
         await repository.clearUserAuthAction(userId);
       }
 
-      const updated = await repository.updateUser(userId, input);
+      const updated = await repository.updateUser(userId, {
+        ...(input.email === undefined ? {} : { email: input.email }),
+        ...(input.phone === undefined ? {} : { phone: input.phone }),
+        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(nextStatus === undefined ? {} : { status: nextStatus }),
+        ...(replacementPasswordHash === null
+          ? {}
+          : { passwordHash: replacementPasswordHash, passwordChangedAt: now })
+      });
       if (!updated) throw createAdministrationError('USER_NOT_FOUND');
 
       let revokedSessionCount = 0;
-      if (statusChanged && updated.status === USER_INACTIVE) {
+      if (sessionsToRevoke.length > 0) {
         revokedSessionCount = await repository.revokeAllUserSessions(userId, now) ?? 0;
       }
 
@@ -768,7 +834,11 @@ export class AdministrationService {
         entityType: 'user',
         entityId: userId,
         before: safeUser(before),
-        after: { ...user, ...(revokedSessionCount > 0 ? { revokedSessionCount } : {}) }
+        after: {
+          ...user,
+          ...(replacementPasswordHash ? { loginPasswordReset: true } : {}),
+          ...(revokedSessionCount > 0 ? { revokedSessionCount } : {})
+        }
       });
 
       if (statusChanged) {
@@ -781,13 +851,27 @@ export class AdministrationService {
         });
       }
 
+      if (replacementPasswordHash) {
+        await recordOutboxEvent(tx, {
+          eventType: 'user.credentials_changed',
+          resourceType: 'user',
+          resourceId: userId,
+          payload: { activated: updated.status === USER_ACTIVE, revokedSessionCount },
+          occurredAt: now
+        });
+      }
+
       for (const session of sessionsToRevoke) {
         await recordAudit(tx, {
           action: 'auth.session_revoked',
           entityType: 'auth_session',
           entityId: session.id,
           before: { userId, revokedAt: session.revokedAt },
-          after: { userId, revokedAt: now, reason: 'USER_DEACTIVATED' }
+          after: {
+            userId,
+            revokedAt: now,
+            reason: replacementPasswordHash ? 'PASSWORD_RESET_BY_ADMIN' : 'USER_DEACTIVATED'
+          }
         });
       }
 
@@ -897,7 +981,7 @@ export class AdministrationService {
     });
   }
 
-  /** Replace a company role's permissions without allowing privilege escalation. */
+  /** Replace custom-role or Site Manager permissions without allowing privilege escalation. */
   async replaceRolePermissions(roleId: string, input: ReplaceRolePermissionsBody) {
     this.requirePermission('admin.roles.manage');
 
@@ -906,7 +990,19 @@ export class AdministrationService {
       if (!visibleRole) throw createAdministrationError('ROLE_NOT_FOUND');
 
       const companyRole = await repository.findCompanyRoleById(roleId);
-      if (!companyRole || companyRole.isSystem) throw createAdministrationError('FORBIDDEN');
+      const isEditableSystemRole = companyRole?.isSystem && companyRole.code === SITE_MANAGER_ROLE_CODE;
+      if (!companyRole || (companyRole.isSystem && !isEditableSystemRole)) {
+        throw createAdministrationError('FORBIDDEN');
+      }
+
+      // Site Managers never receive Administration authority, even when the
+      // acting System Administrator possesses those permissions.
+      if (
+        companyRole.code === SITE_MANAGER_ROLE_CODE
+        && input.permissionCodes.some((code) => code.startsWith('admin.'))
+      ) {
+        throw createAdministrationError('FORBIDDEN');
+      }
 
       const permissions = await repository.findPermissionsByCodes(input.permissionCodes);
       if (permissions.length !== input.permissionCodes.length) {
@@ -946,6 +1042,53 @@ export class AdministrationService {
       });
 
       return afterPermissionCodes;
+    });
+  }
+
+  /** Delete an unused company-created role while protecting every system role. */
+  async deleteRole(roleId: string) {
+    this.requirePermission('admin.roles.manage');
+
+    return this.inTransaction(async (repository, tx) => {
+      const visibleRole = await repository.findRoleById(roleId);
+      if (!visibleRole) throw createAdministrationError('ROLE_NOT_FOUND');
+
+      const companyRole = await repository.findCompanyRoleById(roleId);
+      if (!companyRole || companyRole.isSystem || companyRole.code === SYSTEM_ADMIN_ROLE_CODE) {
+        throw createAdministrationError('FORBIDDEN');
+      }
+      if (!await repository.lockCompanyRoleForWrite(roleId)) {
+        throw createAdministrationError('ROLE_NOT_FOUND');
+      }
+
+      const [userAssignmentCount, projectScopeCount] = await Promise.all([
+        repository.countCompanyRoleUserAssignments(roleId),
+        repository.countCompanyRoleProjectScopes(roleId)
+      ]);
+      if (userAssignmentCount === null || projectScopeCount === null) {
+        throw createAdministrationError('ROLE_NOT_FOUND');
+      }
+      if (userAssignmentCount > 0 || projectScopeCount > 0) {
+        throw createAdministrationError('ROLE_IN_USE');
+      }
+
+      const deletedRole = await repository.deleteCompanyRole(roleId);
+      if (!deletedRole) throw createAdministrationError('ROLE_NOT_FOUND');
+
+      await recordAudit(tx, {
+        action: 'role.deleted',
+        entityType: 'role',
+        entityId: roleId,
+        before: companyRole
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'role.updated',
+        resourceType: 'role',
+        resourceId: roleId,
+        payload: { action: 'DELETED', code: companyRole.code }
+      });
+
+      return { deleted: true } as const;
     });
   }
 

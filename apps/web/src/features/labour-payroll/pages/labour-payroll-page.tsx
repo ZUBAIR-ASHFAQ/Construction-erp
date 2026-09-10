@@ -14,6 +14,8 @@ export function LabourPayrollPage() {
       canFinalizePayroll={usePermission('payroll.finalize')}
       canCreatePayrollPayment={usePermission('payroll.payments.create')}
       canReversePayrollPayment={usePermission('payroll.payments.reverse')}
+      canCreateEmployeeAdvance={usePermission('payroll.advances.create')}
+      canReverseEmployeeAdvance={usePermission('payroll.advances.reverse')}
     />
   );
 }

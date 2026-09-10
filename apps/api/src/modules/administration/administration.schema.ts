@@ -58,6 +58,11 @@ export const ADMINISTRATION_ORGANIZATION_PROFILE_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/admin/organization-profile' })
 ] as const);
 
+/** Role lifecycle extension for deleting company-created roles. */
+export const ADMINISTRATION_ROLE_LIFECYCLE_HTTP_ROUTES = Object.freeze([
+  Object.freeze({ method: 'DELETE', route: '/api/v1/admin/roles/:id' })
+] as const);
+
 
 export const ADMINISTRATION_ERROR_CODES = Object.freeze([
   'AUTH_INVALID_CREDENTIALS',
@@ -65,6 +70,7 @@ export const ADMINISTRATION_ERROR_CODES = Object.freeze([
   'USER_NOT_FOUND',
   'DUPLICATE_USER_EMAIL',
   'ROLE_NOT_FOUND',
+  'ROLE_IN_USE',
   'FORBIDDEN',
   'PROJECT_SCOPE_INVALID',
   'CROSS_COMPANY_FORBIDDEN'
@@ -135,17 +141,42 @@ export const listUsersQuerySchema = z.object({
 export const createUserBodySchema = z.object({
   email: emailSchema,
   phone: phoneSchema.nullable().optional(),
-  name: nameSchema
-}).strict();
+  name: nameSchema,
+  password: newPasswordSchema.optional(),
+  siteManagerProjectIds: z.array(uuidSchema).min(1).superRefine((projectIds, context) => {
+    if (new Set(projectIds).size !== projectIds.length) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Site Manager Project IDs must be unique.'
+      });
+    }
+  }).optional()
+}).strict().superRefine((value, context) => {
+  if (value.siteManagerProjectIds && !value.password) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['password'],
+      message: 'Password is required for a direct Site Manager login.'
+    });
+  }
+  if (value.password && !value.siteManagerProjectIds) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['siteManagerProjectIds'],
+      message: 'Direct credentials may only be created with Site Manager Project access.'
+    });
+  }
+});
 
 /** Validate the final Administration user update command for permitted profile and status fields. */
 export const adminUpdateUserBodySchema = z.object({
   email: emailSchema.optional(),
   phone: phoneSchema.nullable().optional(),
   name: nameSchema.optional(),
-  status: z.enum(['ACTIVE', 'INACTIVE']).optional()
+  status: z.enum(['ACTIVE', 'INACTIVE']).optional(),
+  password: newPasswordSchema.optional()
 }).strict().refine(
-  (value) => value.email !== undefined || value.phone !== undefined || value.name !== undefined || value.status !== undefined,
+  (value) => value.email !== undefined || value.phone !== undefined || value.name !== undefined || value.status !== undefined || value.password !== undefined,
   { message: 'At least one editable user field or status is required.' }
 );
 
@@ -567,6 +598,7 @@ const ADMINISTRATION_ERROR_MESSAGES: Readonly<Record<AdministrationErrorCode, st
   USER_NOT_FOUND: 'The requested user was not found.',
   DUPLICATE_USER_EMAIL: 'A user with this email already exists.',
   ROLE_NOT_FOUND: 'The requested role was not found.',
+  ROLE_IN_USE: 'This role is assigned to a user or Project scope. Remove those assignments before deleting it.',
   FORBIDDEN: 'You are not allowed to perform this action.',
   PROJECT_SCOPE_INVALID: 'The requested Project scope is invalid.',
   CROSS_COMPANY_FORBIDDEN: 'The requested resource is outside the active company.'
@@ -597,8 +629,8 @@ export function createAdministrationError(code: AdministrationErrorCode, cause?:
     case 'CROSS_COMPANY_FORBIDDEN':
       return new AuthorizationError({ code, message, ...causeOptions });
     case 'DUPLICATE_USER_EMAIL':
+    case 'ROLE_IN_USE':
     case 'PROJECT_SCOPE_INVALID':
       return new ConflictError({ code, message, ...causeOptions });
   }
 }
-

@@ -36,6 +36,8 @@ export type CreateUserInput = Readonly<{
   email: string;
   phone?: string | null;
   name: string;
+  password?: string;
+  siteManagerProjectIds?: string[];
 }>;
 
 export type UpdateUserInput = Readonly<{
@@ -43,6 +45,7 @@ export type UpdateUserInput = Readonly<{
   phone?: string | null;
   name?: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  password?: string;
 }>;
 
 export type CreateRoleInput = Readonly<{
@@ -109,7 +112,7 @@ export function listUsers(input: Readonly<{ search?: string; page: number; pageS
   return authenticatedRequest<PageResult<AdminUser>>(`admin/users?${query.toString()}`);
 }
 
-/** Create one inactive user in the authenticated company. */
+/** Create one user, optionally provisioning an active direct Site Manager login atomically. */
 export function createUser(input: CreateUserInput): Promise<AdministrationUser> {
   return authenticatedRequest<AdministrationUser>('admin/users', {
     method: 'POST',
@@ -144,6 +147,13 @@ export function replaceRolePermissions(roleId: string, permissionCodes: readonly
   return authenticatedRequest<string[]>(`admin/roles/${roleId}/permissions`, {
     method: 'PUT',
     body: JSON.stringify({ permissionCodes })
+  });
+}
+
+/** Delete one unused company-created role. System roles are protected by the API. */
+export function deleteRole(roleId: string): Promise<Readonly<{ deleted: true }>> {
+  return authenticatedRequest<Readonly<{ deleted: true }>>(`admin/roles/${roleId}`, {
+    method: 'DELETE'
   });
 }
 

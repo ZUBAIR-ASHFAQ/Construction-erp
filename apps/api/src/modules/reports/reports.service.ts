@@ -546,7 +546,7 @@ export class ReportsService {
     return { items, total: result.total, page: window.page, pageSize: window.pageSize, asOfDate };
   }
 
-  /** Read labour and security actual-cost sources from the Module 9 append-only actual ledger. */
+  /** Read Employee Salary actual-cost sources from the Module 9 append-only actual ledger. */
   private async readLabourCost(filters: ReportFilters) {
     const window = pageWindow(filters);
     const result = await new BudgetsJobCostRepository(this.db).listActualCostSources({

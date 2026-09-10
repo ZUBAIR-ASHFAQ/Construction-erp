@@ -97,7 +97,7 @@ export const REPORT_DEFINITION_DEFAULTS = Object.freeze([
   { code: 'supplier-aging', name: 'Supplier Aging', domain: 'PROCUREMENT', requiredPermissions: ['reports.finance.read'] },
   { code: 'attendance', name: 'Attendance', domain: 'PEOPLE', requiredPermissions: ['reports.hr.read'] },
   { code: 'payroll', name: 'Payroll', domain: 'PEOPLE', requiredPermissions: ['reports.hr.read'] },
-  { code: 'labour-cost', name: 'Labour Cost', domain: 'PEOPLE', requiredPermissions: ['reports.hr.read', 'reports.finance.read'] },
+  { code: 'labour-cost', name: 'Employee Salary Cost', domain: 'PEOPLE', requiredPermissions: ['reports.hr.read', 'reports.finance.read'] },
   { code: 'cash-bank', name: 'Cash/Bank', domain: 'FINANCE', requiredPermissions: ['reports.finance.read'] },
   { code: 'general-ledger', name: 'General Ledger', domain: 'FINANCE', requiredPermissions: ['reports.finance.read'] },
   { code: 'profit-loss', name: 'Profit & Loss', domain: 'FINANCE', requiredPermissions: ['reports.finance.read'] },

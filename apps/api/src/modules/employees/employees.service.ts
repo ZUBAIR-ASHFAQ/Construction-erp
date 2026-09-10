@@ -3,7 +3,7 @@ import type { DatabaseClient, TransactionClient } from '@construction-erp/databa
 import { AuthorizationError, ValidationError } from '@construction-erp/errors';
 import { executeIdempotentCommand } from '@construction-erp/idempotency';
 import { recordOutboxEvent } from '@construction-erp/outbox';
-import { hasPermission } from '@construction-erp/request-context';
+import { hasPermission, requireRequestSecurityContext } from '@construction-erp/request-context';
 import { EmployeesRepository } from './employees.repository.js';
 import {
   createEmployeeError,
@@ -133,11 +133,17 @@ export class EmployeesService {
   /** List/search Company Employees with bounded pagination. */
   async listEmployees(input: ListEmployeesQuery) {
     this.requirePermission('employees.read');
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    const allowedProjectIds = security.projectScope.kind === 'restricted'
+      ? security.projectScope.projectIds
+      : null;
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
     const result = await new EmployeesRepository(this.db).listEmployees({
       ...(input.search === undefined ? {} : { search: input.search }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -147,8 +153,13 @@ export class EmployeesService {
   /** Get one Employee detail and include salary history only for authorized HR compensation users. */
   async getEmployee(employeeId: string) {
     this.requirePermission('employees.read');
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    const allowedProjectIds = security.projectScope.kind === 'restricted'
+      ? security.projectScope.projectIds
+      : null;
     const repository = new EmployeesRepository(this.db);
-    const employee = await repository.findEmployeeById(employeeId);
+    const employee = await repository.findEmployeeById(employeeId, allowedProjectIds);
     if (!employee) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
 
     const compensation = hasPermission('employees.compensation.manage')

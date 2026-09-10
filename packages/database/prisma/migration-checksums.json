@@ -108,6 +108,10 @@
     "20260909000100_equipment_rate_unit_normalization": "d6d74569d34844a89bb2c73d4e0bd163d25cd19ba9b204db895ab4992872e7c7",
     "20260909000200_attendance_stage_split": "c01db2e88042e69d921ab14896caccf806b9a6bfbe0d57f644a61757ae8cc0b1",
     "20260909000300_payroll_employee_payments": "49d385528a95a67287007a934af1642000c7acf425b1bb2d2c837e69a9404c1c",
-    "20260909000400_payroll_status_transition_trigger_fix": "233f44683c4f86e768a9caa1a7cd459d4e9c58d515404ede4144650c4c4ec20d"
+    "20260909000400_payroll_status_transition_trigger_fix": "233f44683c4f86e768a9caa1a7cd459d4e9c58d515404ede4144650c4c4ec20d",
+    "20260910000100_employee_salary_advances": "8d9c7e964795e4b1d0c8ccf3c4f549b7fa411d3616e1981ca1d5be8a709b46f5",
+    "20260910000200_site_manager_project_access": "486367c00ae8a7fe99b25364f583ed81b2d5c87355def556495372a2e849c83f",
+    "20260910000300_site_manager_least_privilege": "32023687ea230ea4e13cc0bfc47512dae27deae366f93ac09b26705ee54ed3b6",
+    "20260910000400_project_operations_permission_catalog": "5801268092c39eb4fe88d0e535c3dce4447bdeb10a49a9ef293b5a8f40b8d26f"
   }
 }

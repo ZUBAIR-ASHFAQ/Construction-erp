@@ -9,6 +9,7 @@ export type EmployeeRepositoryPageWindow = Readonly<{ skip: number; take: number
 export type ListEmployeesRepositoryInput = EmployeeRepositoryPageWindow & Readonly<{
   search?: string;
   status?: string;
+  allowedProjectIds?: readonly string[] | null;
 }>;
 
 export type CreateEmployeeRepositoryInput = Readonly<{
@@ -68,6 +69,13 @@ export class EmployeesRepository {
     const search = input.search?.trim();
     const where = scope.where({
       ...(input.status ? { status: input.status } : {}),
+      ...(input.allowedProjectIds === undefined || input.allowedProjectIds === null
+        ? {}
+        : {
+            projectTeamAssignments: {
+              some: { projectId: { in: [...new Set(input.allowedProjectIds)] } }
+            }
+          }),
       ...(search ? {
         OR: [
           { employeeNo: { contains: search, mode: 'insensitive' as const } },
@@ -92,9 +100,20 @@ export class EmployeesRepository {
   }
 
   /** Find one Employee only inside the authenticated Company. */
-  async findEmployeeById(employeeId: string) {
+  async findEmployeeById(employeeId: string, allowedProjectIds?: readonly string[] | null) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.employee.findFirst({ where: scope.where({ id: employeeId }) });
+    return this.db.employee.findFirst({
+      where: scope.where({
+        id: employeeId,
+        ...(allowedProjectIds === undefined || allowedProjectIds === null
+          ? {}
+          : {
+              projectTeamAssignments: {
+                some: { projectId: { in: [...new Set(allowedProjectIds)] } }
+              }
+            })
+      })
+    });
   }
 
   /** Find one Employee number only inside the authenticated Company. */

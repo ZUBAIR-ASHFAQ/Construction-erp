@@ -14,12 +14,16 @@ import {
   type CreateAttendanceBody,
   type CreatePayrollRunBody,
   type CreatePayrollPaymentBody,
+  type CreateEmployeeAdvanceBody,
   type CalculatePayrollRunBody,
   type LabourPayrollPermissionCode,
   type ListAttendanceAssignmentsQuery,
   type ListAttendanceQuery,
   type ListPayrollRunsQuery,
   type ListPayrollPaymentsQuery,
+  type ListEmployeeAdvancesQuery,
+  type EmployeeSalaryLedgerQuery,
+  type ReverseEmployeeAdvanceBody,
   type ReversePayrollPaymentBody,
   type UpdateAttendanceBody
 } from './labour-payroll.schema.js';
@@ -34,6 +38,10 @@ const PAYROLL_PAYABLE_ACCOUNT_CODE = 'PAYROLL-PAYABLE';
 const PAYROLL_PAYMENT_SEQUENCE_KEY = 'payroll-payment';
 const PAYROLL_PAYMENT_SOURCE_TYPE = 'payroll_payment';
 const PAYROLL_PAYMENT_REVERSAL_SOURCE_TYPE = 'payroll_payment_reversal';
+const EMPLOYEE_ADVANCE_ACCOUNT_CODE = 'EMPLOYEE-SALARY-ADVANCE';
+const EMPLOYEE_ADVANCE_SEQUENCE_KEY = 'employee-advance';
+const EMPLOYEE_ADVANCE_SOURCE_TYPE = 'employee_advance';
+const EMPLOYEE_ADVANCE_REVERSAL_SOURCE_TYPE = 'employee_advance_reversal';
 const SCALE_4 = 10_000n;
 const MAX_MONEY_CENTS = 99_999_999_999_999_999n;
 
@@ -56,13 +64,18 @@ type AttendanceLike = Readonly<{
   hours: DecimalLike | null;
   overtimeHours: DecimalLike | null;
   enteredBy: string;
-  employee?: Readonly<{ id?: string; employeeNo?: string; name?: string; employmentType: string }>;
+  employee?: Readonly<{ id?: string; employeeNo?: string; name?: string; employmentType: string; joinDate?: Date }>;
   project?: Readonly<{ projectCode: string; name: string }>;
   stage?: Readonly<{ name: string }> | null;
   enteredByUser?: Readonly<{ name: string }>;
 }>;
 type PayrollAllocation = Readonly<{ projectId: string; stageId: string | null; category: 'labour' | 'security'; amount: string }>;
-type PayrollDraftLine = Readonly<{ employeeId: string; grossAmount: string; deductions: string; netAmount: string; projectAllocation: readonly PayrollAllocation[] }>;
+type AdvanceRecovery = Readonly<{ advanceId: string; projectId: string; stageId: string | null; amount: string }>;
+type PayrollDraftLine = Readonly<{
+  employeeId: string; salaryBeforeAbsence: string; absenceDeduction: string; grossAmount: string;
+  advanceDeduction: string; deductions: string; netAmount: string;
+  projectAllocation: readonly PayrollAllocation[]; advanceRecoveries: readonly AdvanceRecovery[];
+}>;
 
 /** Parse one validated date-only API value for database persistence. */
 function inputDate(value: string): Date {
@@ -219,6 +232,9 @@ function payrollRunResponse(run: Readonly<{
     id: string;
     employeeId: string;
     grossAmount: DecimalLike;
+    salaryBeforeAbsence: DecimalLike;
+    absenceDeduction: DecimalLike;
+    advanceDeduction: DecimalLike;
     deductions: DecimalLike;
     netAmount: DecimalLike;
     projectAllocationJson: unknown;
@@ -244,6 +260,9 @@ function payrollRunResponse(run: Readonly<{
       employeeId: line.employeeId,
       employeeNo: line.employee?.employeeNo ?? line.employeeId,
       employeeName: line.employee?.name ?? 'Employee',
+      salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),
+      absenceDeduction: line.absenceDeduction.toString(),
+      advanceDeduction: line.advanceDeduction.toString(),
       grossAmount: line.grossAmount.toString(),
       deductions: line.deductions.toString(),
       netAmount: line.netAmount.toString(),
@@ -254,6 +273,11 @@ function payrollRunResponse(run: Readonly<{
       };
     })
   };
+}
+
+/** Count inclusive UTC calendar days between two date-only values. */
+function inclusiveDays(start: Date, end: Date): bigint {
+  return BigInt(Math.floor((end.getTime() - start.getTime()) / 86_400_000) + 1);
 }
 
 type PayrollPaymentLike = Readonly<{
@@ -297,10 +321,56 @@ function payrollPaymentResponse(row: PayrollPaymentLike) {
   };
 }
 
+type EmployeeAdvanceLike = Readonly<{
+  id: string; employeeId: string; projectId: string; stageId: string | null; advanceNo: string; advanceDate: Date;
+  amount: DecimalLike; cashBankAccountId: string; reason: string; reference: string | null; status: string;
+  reversalDate: Date | null; createdAt: Date;
+  employee: Readonly<{ employeeNo: string; name: string }>;
+  project: Readonly<{ projectCode: string; name: string }>;
+  stage: Readonly<{ name: string }> | null;
+  cashBankAccount: Readonly<{ name: string }>;
+  creator: Readonly<{ name: string }>;
+  recoveries: readonly Readonly<{ amount: DecimalLike }>[];
+}>;
+
+/** Serialize an advance with recovery and outstanding amounts derived from immutable sources. */
+function employeeAdvanceResponse(row: EmployeeAdvanceLike) {
+  const amount = moneyCents(row.amount);
+  const recovered = row.recoveries.reduce((sum, recovery) => sum + moneyCents(recovery.amount), 0n);
+  return {
+    id: row.id,
+    employeeId: row.employeeId,
+    employeeNo: row.employee.employeeNo,
+    employeeName: row.employee.name,
+    projectId: row.projectId,
+    projectCode: row.project.projectCode,
+    projectName: row.project.name,
+    stageId: row.stageId,
+    stageName: row.stage?.name ?? null,
+    advanceNo: row.advanceNo,
+    advanceDate: dateOnly(row.advanceDate),
+    amount: row.amount.toString(),
+    recoveredAmount: moneyString(recovered),
+    outstandingAmount: moneyString(row.status === 'POSTED' && amount > recovered ? amount - recovered : 0n),
+    cashBankAccountId: row.cashBankAccountId,
+    cashBankAccountName: row.cashBankAccount.name,
+    reason: row.reason,
+    reference: row.reference,
+    status: row.status,
+    reversalDate: row.reversalDate ? dateOnly(row.reversalDate) : null,
+    createdByName: row.creator.name,
+    createdAt: row.createdAt.toISOString()
+  };
+}
+
 /** Compare calculated Payroll lines by stable Employee and allocation content before final posting. */
 function payrollDraftFingerprint(lines: readonly PayrollDraftLine[]): string {
   return JSON.stringify([...lines]
-    .map((line) => ({ ...line, projectAllocation: [...line.projectAllocation].sort((a, b) => `${a.projectId}:${a.stageId ?? ''}`.localeCompare(`${b.projectId}:${b.stageId ?? ''}`)) }))
+    .map((line) => ({
+      ...line,
+      projectAllocation: [...line.projectAllocation].sort((a, b) => `${a.projectId}:${a.stageId ?? ''}`.localeCompare(`${b.projectId}:${b.stageId ?? ''}`)),
+      advanceRecoveries: [...line.advanceRecoveries].sort((a, b) => a.advanceId.localeCompare(b.advanceId))
+    }))
     .sort((a, b) => a.employeeId.localeCompare(b.employeeId)));
 }
 
@@ -558,6 +628,8 @@ export class LabourPayrollService {
       }
       const allocationMap = new Map<string, { projectId: string; stageId: string | null; category: 'labour' | 'security'; cents: bigint }>();
       let grossCents = 0n;
+      let salaryBeforeAbsenceCents = 0n;
+      let absenceDeductionCents = 0n;
 
       if (payType === 'SALARY') {
         if (!isFullCalendarMonth(periodStart, periodEnd)) throw createLabourPayrollError('PAYROLL_SALARY_PERIOD_INVALID');
@@ -572,7 +644,16 @@ export class LabourPayrollService {
         const presentDates = new Set(rows.filter((item) => item.status === 'PRESENT').map((item) => dateOnly(item.workDate)));
         if (presentDates.size === 0) continue;
         const periodDays = BigInt(periodEnd.getUTCDate());
+        const eligibleStart = rows[0]?.employee?.joinDate && rows[0].employee.joinDate > periodStart
+          ? rows[0].employee.joinDate
+          : periodStart;
+        const compensationEnd = salaryCompensation.effectiveTo && salaryCompensation.effectiveTo < periodEnd
+          ? salaryCompensation.effectiveTo
+          : periodEnd;
+        const eligibleDays = inclusiveDays(eligibleStart, compensationEnd);
+        salaryBeforeAbsenceCents = prorateCents(moneyCents(salaryCompensation.baseSalary), eligibleDays, periodDays);
         grossCents = prorateCents(moneyCents(salaryCompensation.baseSalary), BigInt(presentDates.size), periodDays);
+        absenceDeductionCents = salaryBeforeAbsenceCents > grossCents ? salaryBeforeAbsenceCents - grossCents : 0n;
         const allocated = allocateCents(grossCents, presentRows);
         presentRows.forEach((row, index) => addAllocation(allocationMap, row, category, allocated[index] ?? 0n));
       } else if (payType === 'DAILY') {
@@ -613,13 +694,29 @@ export class LabourPayrollService {
       }
 
       if (grossCents <= 0n || allocationMap.size === 0) throw createLabourPayrollError('PAYROLL_NO_EARNINGS');
+      if (salaryBeforeAbsenceCents === 0n) salaryBeforeAbsenceCents = grossCents;
+      let remainingRecoverable = grossCents;
+      const advanceRecoveries: AdvanceRecovery[] = [];
+      for (const advance of await repository.listRecoverableEmployeeAdvances(employeeId, periodEnd)) {
+        const recovered = advance.recoveries.reduce((sum, item) => sum + moneyCents(item.amount), 0n);
+        const outstanding = moneyCents(advance.amount) - recovered;
+        if (outstanding <= 0n || remainingRecoverable <= 0n) continue;
+        const recovery = outstanding < remainingRecoverable ? outstanding : remainingRecoverable;
+        advanceRecoveries.push({ advanceId: advance.id, projectId: advance.projectId, stageId: advance.stageId, amount: moneyString(recovery) });
+        remainingRecoverable -= recovery;
+      }
+      const advanceDeductionCents = grossCents - remainingRecoverable;
       const grossAmount = moneyString(grossCents);
       drafts.push({
         employeeId,
+        salaryBeforeAbsence: moneyString(salaryBeforeAbsenceCents),
+        absenceDeduction: moneyString(absenceDeductionCents),
         grossAmount,
-        deductions: ZERO_MONEY,
-        netAmount: grossAmount,
-        projectAllocation: [...allocationMap.values()].map((item) => ({ projectId: item.projectId, stageId: item.stageId, category: item.category, amount: moneyString(item.cents) }))
+        advanceDeduction: moneyString(advanceDeductionCents),
+        deductions: moneyString(advanceDeductionCents),
+        netAmount: moneyString(remainingRecoverable),
+        projectAllocation: [...allocationMap.values()].map((item) => ({ projectId: item.projectId, stageId: item.stageId, category: item.category, amount: moneyString(item.cents) })),
+        advanceRecoveries
       });
     }
 
@@ -647,6 +744,9 @@ export class LabourPayrollService {
         await repository.createPayrollLine({
           payrollRunId,
           employeeId: line.employeeId,
+          salaryBeforeAbsence: line.salaryBeforeAbsence,
+          absenceDeduction: line.absenceDeduction,
+          advanceDeduction: line.advanceDeduction,
           grossAmount: line.grossAmount,
           deductions: line.deductions,
           netAmount: line.netAmount,
@@ -664,7 +764,7 @@ export class LabourPayrollService {
     return result.response.body;
   }
 
-  /** Finalize Payroll atomically with Project/Stage labour cost and Finance payable posting. */
+  /** Finalize Payroll atomically with Project/Stage Employee Salary cost and Finance payable posting. */
   async finalizePayrollRun(payrollRunId: string, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'payroll.finalize', idempotencyKey, fingerprintInput: { payrollRunId }
@@ -687,20 +787,28 @@ export class LabourPayrollService {
       const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.overtimeMultiplier);
       const persistedDrafts: PayrollDraftLine[] = snapshot.lines.map((line) => ({
         employeeId: line.employeeId,
+        salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),
+        absenceDeduction: line.absenceDeduction.toString(),
+        advanceDeduction: line.advanceDeduction.toString(),
         grossAmount: line.grossAmount.toString(),
         deductions: line.deductions.toString(),
         netAmount: line.netAmount.toString(),
-        projectAllocation: allocationResponse(line.projectAllocationJson)
+        projectAllocation: allocationResponse(line.projectAllocationJson),
+        advanceRecoveries: recalculated.find((item) => item.employeeId === line.employeeId)?.advanceRecoveries ?? []
       }));
       if (payrollDraftFingerprint(recalculated) !== payrollDraftFingerprint(persistedDrafts)) throw createLabourPayrollError('PAYROLL_NOT_READY');
 
       await repository.ensurePayrollPostingSetup();
       const accounts = await repository.findPayrollPostingAccounts(LABOUR_EXPENSE_ACCOUNT_CODE, PAYROLL_PAYABLE_ACCOUNT_CODE);
+      const advanceAccount = await repository.findEmployeeAdvanceAccount(EMPLOYEE_ADVANCE_ACCOUNT_CODE);
       if (!accounts.expense || accounts.expense.accountType !== 'EXPENSE'
-        || !accounts.payable || accounts.payable.accountType !== 'LIABILITY') throw createLabourPayrollError('PAYROLL_POSTING_SETUP_INVALID');
+        || !accounts.payable || accounts.payable.accountType !== 'LIABILITY'
+        || !advanceAccount || advanceAccount.accountType !== 'ASSET') throw createLabourPayrollError('PAYROLL_POSTING_SETUP_INVALID');
       const postingDate = locked.periodEnd;
       let totalCents = 0n;
+      let totalAdvanceRecoveryCents = 0n;
       const debitLines: Array<{ accountId: string; projectId: string; stageId: string | null; debit: string; credit: string; description: string }> = [];
+      const advanceCreditLines: Array<{ accountId: string; projectId: string; stageId: string | null; debit: string; credit: string; description: string }> = [];
 
       for (const line of snapshot.lines) {
         const allocations = allocationResponse(line.projectAllocationJson);
@@ -722,7 +830,21 @@ export class LabourPayrollService {
             stageId: allocation.stageId,
             debit: allocation.amount,
             credit: ZERO_MONEY,
-            description: `Payroll labour cost ${payrollRunId}`
+            description: `Employee Salary cost ${payrollRunId}`
+          });
+        }
+        const draft = recalculated.find((item) => item.employeeId === line.employeeId);
+        if (!draft) throw createLabourPayrollError('PAYROLL_NOT_READY');
+        for (const recovery of draft.advanceRecoveries) {
+          await repository.createAdvanceRecovery({ payrollLineId: line.id, employeeAdvanceId: recovery.advanceId, amount: recovery.amount });
+          totalAdvanceRecoveryCents += moneyCents(recovery.amount);
+          advanceCreditLines.push({
+            accountId: advanceAccount.id,
+            projectId: recovery.projectId,
+            stageId: recovery.stageId,
+            debit: ZERO_MONEY,
+            credit: recovery.amount,
+            description: `Employee advance recovered in Payroll ${payrollRunId}`
           });
         }
       }
@@ -736,7 +858,10 @@ export class LabourPayrollService {
         description: `Payroll ${dateOnly(locked.periodStart)} to ${dateOnly(locked.periodEnd)}`,
         lines: [
           ...debitLines,
-          { accountId: accounts.payable.id, projectId: null, stageId: null, debit: ZERO_MONEY, credit: moneyString(totalCents), description: `Payroll payable ${payrollRunId}` }
+          ...advanceCreditLines,
+          ...(totalCents > totalAdvanceRecoveryCents
+            ? [{ accountId: accounts.payable.id, projectId: null, stageId: null, debit: ZERO_MONEY, credit: moneyString(totalCents - totalAdvanceRecoveryCents), description: `Payroll payable ${payrollRunId}` }]
+            : [])
         ]
       });
 
@@ -763,7 +888,12 @@ export class LabourPayrollService {
 
   /** List active Cash/Bank accounts for an authorized Employee salary-payment selector. */
   async listPayrollCashBankAccounts() {
-    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'payroll.payments.create', new Date());
+    const security = requireRequestSecurityContext();
+    const admin = new AdministrationRepository(this.db);
+    const asOf = new Date();
+    if (security.projectScope.kind === 'not-resolved'
+      || (!(await this.hasCompanyPermission(admin, 'payroll.payments.create', asOf))
+        && !(await this.hasCompanyPermission(admin, 'payroll.advances.create', asOf)))) throw new AuthorizationError();
     const result = await new FinanceRepository(this.db).listCashBankAccounts({
       skip: 0,
       take: 100,
@@ -794,6 +924,111 @@ export class LabourPayrollService {
       ...(query.status ? { status: query.status } : {})
     });
     return { items: result.items.map((row) => payrollPaymentResponse(row)), total: result.total, page: window.page, pageSize: window.pageSize };
+  }
+
+  /** List Employee advances with recovered and outstanding balances. */
+  async listEmployeeAdvances(query: ListEmployeeAdvancesQuery) {
+    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'payroll.read', new Date());
+    const security = requireRequestSecurityContext();
+    if (query.projectId && security.projectScope.kind === 'restricted' && !security.projectScope.projectIds.includes(query.projectId)) throw new AuthorizationError();
+    const window = pageWindow(query);
+    const result = await new LabourPayrollRepository(this.db).listEmployeeAdvances({
+      skip: window.skip,
+      take: window.take,
+      ...(query.employeeId ? { employeeId: query.employeeId } : {}),
+      ...(query.projectId ? { projectId: query.projectId } : {}),
+      ...(!query.projectId && security.projectScope.kind === 'restricted' ? { projectIds: security.projectScope.projectIds } : {}),
+      ...(query.status ? { status: query.status } : {})
+    });
+    return { items: result.items.map(employeeAdvanceResponse), total: result.total, page: window.page, pageSize: window.pageSize };
+  }
+
+  /** Pay one Employee advance immediately from Cash/Bank and record it as an asset, not Project cost. */
+  async createEmployeeAdvance(input: CreateEmployeeAdvanceBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'payroll.advances.create', idempotencyKey, fingerprintInput: input
+    }, async (tx) => {
+      const admin = new AdministrationRepository(tx);
+      await this.requireProjectPermission(admin, input.projectId, 'payroll.advances.create', new Date());
+      const repository = new LabourPayrollRepository(tx);
+      const advanceDate = inputDate(input.advanceDate);
+      if (!(await repository.findEmployeeAdvanceDestination(input.employeeId, input.projectId, input.stageId ?? null, advanceDate))) {
+        throw createLabourPayrollError('EMPLOYEE_ADVANCE_INVALID');
+      }
+      const cashBank = await repository.findPayrollCashBankAccount(input.cashBankAccountId);
+      if (!cashBank || cashBank.status !== ACTIVE || !['CASH', 'BANK'].includes(cashBank.accountType)
+        || cashBank.glAccount.status !== ACTIVE || cashBank.glAccount.accountType !== cashBank.accountType) {
+        throw createLabourPayrollError('PAYROLL_CASH_BANK_INVALID');
+      }
+      await repository.ensurePayrollPostingSetup();
+      await repository.ensureEmployeeAdvanceSequence();
+      const advanceAccount = await repository.findEmployeeAdvanceAccount(EMPLOYEE_ADVANCE_ACCOUNT_CODE);
+      if (!advanceAccount || advanceAccount.accountType !== 'ASSET') throw createLabourPayrollError('PAYROLL_POSTING_SETUP_INVALID');
+      const advanceNo = (await allocateCompanyNumber(tx, { sequenceKey: EMPLOYEE_ADVANCE_SEQUENCE_KEY })).formatted;
+      const created = await repository.createEmployeeAdvance({
+        employeeId: input.employeeId,
+        projectId: input.projectId,
+        stageId: input.stageId ?? null,
+        advanceNo,
+        advanceDate,
+        amount: input.amount,
+        cashBankAccountId: input.cashBankAccountId,
+        reason: input.reason,
+        reference: input.reference ?? null,
+        createdBy: requireRequestSecurityContext().actorUserId
+      });
+      await new FinanceService(this.db).postSourceJournalInTransaction(tx, {
+        sourceType: EMPLOYEE_ADVANCE_SOURCE_TYPE,
+        sourceId: created.id,
+        sourceKey: `employee_advance:${created.id}`,
+        postingDate: advanceDate,
+        description: `Employee salary advance ${advanceNo}`,
+        lines: [
+          { accountId: advanceAccount.id, projectId: input.projectId, stageId: input.stageId ?? null, debit: input.amount, credit: ZERO_MONEY, description: `Employee advance ${advanceNo}` },
+          { accountId: cashBank.glAccount.id, projectId: input.projectId, stageId: input.stageId ?? null, debit: ZERO_MONEY, credit: input.amount, description: `Cash/Bank advance ${advanceNo}` }
+        ]
+      });
+      const response = employeeAdvanceResponse(created);
+      await recordAudit(tx, { action: 'payroll.advance_posted', entityType: 'employee_advance', entityId: created.id, after: response });
+      await recordOutboxEvent(tx, { eventType: 'payroll.advance_posted', resourceType: 'employee_advance', resourceId: created.id, payload: response });
+      return { statusCode: 201, body: response };
+    });
+    return result.response.body;
+  }
+
+  /** Reverse one unrecovered Employee advance with a compensating Finance journal. */
+  async reverseEmployeeAdvance(advanceId: string, input: ReverseEmployeeAdvanceBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'payroll.advances.reverse', idempotencyKey, fingerprintInput: { advanceId, input }
+    }, async (tx) => {
+      await this.requireCompanyPermission(new AdministrationRepository(tx), 'payroll.advances.reverse', new Date());
+      const repository = new LabourPayrollRepository(tx);
+      const advance = await repository.lockEmployeeAdvance(advanceId);
+      if (!advance || advance.status !== 'POSTED') throw createLabourPayrollError('EMPLOYEE_ADVANCE_INVALID');
+      if (advance.recoveries.length > 0) throw createLabourPayrollError('EMPLOYEE_ADVANCE_ALREADY_RECOVERED');
+      const reversalDate = inputDate(input.reversalDate);
+      if (reversalDate < advance.advanceDate) {
+        throw new ValidationError({ fieldErrors: [{ field: 'reversalDate', message: 'Reversal date cannot precede the advance date.' }] });
+      }
+      await new FinanceService(this.db).postSourceReversalInTransaction(tx, {
+        originalSourceType: EMPLOYEE_ADVANCE_SOURCE_TYPE,
+        originalSourceId: advance.id,
+        originalSourceKey: `employee_advance:${advance.id}`,
+        reversalSourceType: EMPLOYEE_ADVANCE_REVERSAL_SOURCE_TYPE,
+        reversalSourceId: advance.id,
+        reversalSourceKey: `employee_advance_reversal:${advance.id}`,
+        postingDate: reversalDate,
+        description: `Reverse Employee advance ${advance.advanceNo}`,
+        lineDescription: `Employee advance ${advance.advanceNo} reversal`
+      });
+      const reversed = await repository.markEmployeeAdvanceReversed(advance.id, reversalDate, new Date());
+      if (!reversed) throw createLabourPayrollError('EMPLOYEE_ADVANCE_INVALID');
+      const response = employeeAdvanceResponse(reversed);
+      await recordAudit(tx, { action: 'payroll.advance_reversed', entityType: 'employee_advance', entityId: advance.id, before: { status: 'POSTED' }, after: response });
+      await recordOutboxEvent(tx, { eventType: 'payroll.advance_reversed', resourceType: 'employee_advance', resourceId: advance.id, payload: response });
+      return { statusCode: 200, body: response };
+    });
+    return result.response.body;
   }
 
   /** Create and post one partial or full Employee salary payment atomically. */
@@ -892,25 +1127,45 @@ export class LabourPayrollService {
   }
 
   /** Build one Employee salary ledger from finalized Payroll and immutable payment history. */
-  async getEmployeeSalaryLedger(employeeId: string) {
+  async getEmployeeSalaryLedger(employeeId: string, query: EmployeeSalaryLedgerQuery = {}) {
     await this.requireCompanyPermission(new AdministrationRepository(this.db), 'payroll.read', new Date());
-    const sources = await new LabourPayrollRepository(this.db).getEmployeeSalaryLedgerSources(employeeId);
+    const sources = await new LabourPayrollRepository(this.db).getEmployeeSalaryLedgerSources(employeeId, query.projectId);
     if (!sources) throw createLabourPayrollError('PAYROLL_PAYMENT_INVALID');
+    const projectNames = new Map(sources.projects.map((project) => [project.id, project.name]));
     const entries: Array<{
-      id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL'; reference: string;
-      debit: string; credit: string; balance: string; payrollRunId: string; payrollLineId: string; paymentId: string | null; sortOrder: number;
+      id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
+      debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
+      payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null; sortOrder: number;
     }> = [];
     let totalSalary = 0n;
     let totalPaid = 0n;
+    let totalAdvances = 0n;
+    let totalAdvanceRecovered = 0n;
     for (const line of sources.lines) {
-      totalSalary += moneyCents(line.netAmount);
-      entries.push({ id: `salary:${line.id}`, entryDate: dateOnly(line.payrollRun.periodEnd), entryType: 'SALARY_DUE', reference: `Payroll ${dateOnly(line.payrollRun.periodStart)} to ${dateOnly(line.payrollRun.periodEnd)}`, debit: line.netAmount.toString(), credit: ZERO_MONEY, balance: ZERO_MONEY, payrollRunId: line.payrollRun.id, payrollLineId: line.id, paymentId: null, sortOrder: 0 });
+      const allocations = allocationResponse(line.projectAllocationJson);
+      const visibleAllocations = query.projectId ? allocations.filter((allocation) => allocation.projectId === query.projectId) : allocations;
+      const salaryCents = visibleAllocations.reduce((sum, allocation) => sum + moneyCents(allocation.amount), 0n);
+      totalSalary += salaryCents;
+      const primaryProjectId = visibleAllocations[0]?.projectId ?? null;
+      entries.push({ id: `salary:${line.id}`, entryDate: dateOnly(line.payrollRun.periodEnd), entryType: 'SALARY_DUE', reference: `Payroll ${dateOnly(line.payrollRun.periodStart)} to ${dateOnly(line.payrollRun.periodEnd)}`, debit: moneyString(salaryCents), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: null, sortOrder: 0 });
       for (const payment of line.payments) {
-        entries.push({ id: `payment:${payment.id}`, entryDate: dateOnly(payment.paymentDate), entryType: 'PAYMENT', reference: payment.paymentNo, debit: ZERO_MONEY, credit: payment.amount.toString(), balance: ZERO_MONEY, payrollRunId: line.payrollRun.id, payrollLineId: line.id, paymentId: payment.id, sortOrder: 1 });
+        entries.push({ id: `payment:${payment.id}`, entryDate: dateOnly(payment.paymentDate), entryType: 'PAYMENT', reference: payment.paymentNo, debit: ZERO_MONEY, credit: payment.amount.toString(), balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: payment.id, sortOrder: 2 });
         if (payment.status === 'POSTED') totalPaid += moneyCents(payment.amount);
         if (payment.status === 'REVERSED' && payment.reversalDate) {
-          entries.push({ id: `reversal:${payment.id}`, entryDate: dateOnly(payment.reversalDate), entryType: 'PAYMENT_REVERSAL', reference: `${payment.paymentNo} reversed`, debit: payment.amount.toString(), credit: ZERO_MONEY, balance: ZERO_MONEY, payrollRunId: line.payrollRun.id, payrollLineId: line.id, paymentId: payment.id, sortOrder: 2 });
+          entries.push({ id: `reversal:${payment.id}`, entryDate: dateOnly(payment.reversalDate), entryType: 'PAYMENT_REVERSAL', reference: `${payment.paymentNo} reversed`, debit: payment.amount.toString(), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: payment.id, sortOrder: 3 });
         }
+      }
+      for (const recovery of line.advanceRecoveries) {
+        if (query.projectId && recovery.employeeAdvance.projectId !== query.projectId) continue;
+        totalAdvanceRecovered += moneyCents(recovery.amount);
+        entries.push({ id: `recovery:${recovery.id}`, entryDate: dateOnly(line.payrollRun.periodEnd), entryType: 'ADVANCE_RECOVERY', reference: `${recovery.employeeAdvance.advanceNo} recovered in Payroll`, debit: ZERO_MONEY, credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: recovery.employeeAdvance.projectId, projectName: recovery.employeeAdvance.project.name, stageName: recovery.employeeAdvance.stage?.name ?? null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: recovery.employeeAdvanceId, paymentId: null, sortOrder: 1 });
+      }
+    }
+    for (const advance of sources.advances) {
+      if (advance.status === 'POSTED') totalAdvances += moneyCents(advance.amount);
+      entries.push({ id: `advance:${advance.id}`, entryDate: dateOnly(advance.advanceDate), entryType: 'ADVANCE', reference: `${advance.advanceNo} · ${advance.reason}`, debit: ZERO_MONEY, credit: advance.amount.toString(), balance: ZERO_MONEY, projectId: advance.projectId, projectName: advance.project.name, stageName: advance.stage?.name ?? null, payrollRunId: null, payrollLineId: null, advanceId: advance.id, paymentId: null, sortOrder: 0 });
+      if (advance.status === 'REVERSED' && advance.reversalDate) {
+        entries.push({ id: `advance-reversal:${advance.id}`, entryDate: dateOnly(advance.reversalDate), entryType: 'ADVANCE_REVERSAL', reference: `${advance.advanceNo} reversed`, debit: advance.amount.toString(), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: advance.projectId, projectName: advance.project.name, stageName: advance.stage?.name ?? null, payrollRunId: null, payrollLineId: null, advanceId: advance.id, paymentId: null, sortOrder: 4 });
       }
     }
     entries.sort((left, right) => left.entryDate.localeCompare(right.entryDate) || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
@@ -923,7 +1178,10 @@ export class LabourPayrollService {
       employee: sources.employee,
       totalSalary: moneyString(totalSalary),
       totalPaid: moneyString(totalPaid),
-      outstanding: moneyString(totalSalary > totalPaid ? totalSalary - totalPaid : 0n),
+      totalAdvances: moneyString(totalAdvances),
+      totalAdvanceRecovered: moneyString(totalAdvanceRecovered),
+      advanceOutstanding: moneyString(totalAdvances > totalAdvanceRecovered ? totalAdvances - totalAdvanceRecovered : 0n),
+      outstanding: moneyString(balance > 0n ? balance : 0n),
       entries: ledgerEntries
     };
   }

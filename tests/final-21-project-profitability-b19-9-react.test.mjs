@@ -69,7 +69,7 @@ test('B19.9 displays all Project financial measures and keeps cash separate from
     'Client receivable / outstanding', 'Supplier payable outstanding'
   ]) assert.match(workspace, new RegExp(token.replace(/[\/]/g, '\\/')));
   for (const token of [
-    'Material and inventory usage', 'Labour salaries / wages', 'Equipment usage', 'Subcontractor cost',
+    'Material and inventory usage', 'Employee Salaries / Wages', 'Equipment Expense', 'Subcontractor cost',
     'Site expenses', 'Supplier invoices posted', 'Supplier cash paid'
   ]) assert.match(workspace, new RegExp(token.replace(/[\/]/g, '\\/')));
   assert.match(workspace, /Commercial totals use Client cash as requested/);

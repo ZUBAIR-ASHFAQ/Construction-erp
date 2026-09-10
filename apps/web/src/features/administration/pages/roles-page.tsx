@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { usePermission } from '../hooks/auth.js';
 import {
   createRole,
+  deleteRole,
   listRoles,
   replaceRolePermissions,
   type AdminRole
@@ -30,6 +31,7 @@ export function RolesPage() {
   const canManage = usePermission('admin.roles.manage');
   const [page, setPage] = useState(1);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const [rolePendingDeletion, setRolePendingDeletion] = useState<AdminRole | null>(null);
 
   const rolesQuery = useQuery({
     queryKey: ['administration', 'roles', 'admin-page', page],
@@ -49,6 +51,15 @@ export function RolesPage() {
     onSuccess: async (role) => {
       createForm.reset();
       setSelectedRoleId(role.id);
+      await queryClient.invalidateQueries({ queryKey: ['administration', 'roles'] });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteRole,
+    onSuccess: async (_result, roleId) => {
+      if (selectedRoleId === roleId) setSelectedRoleId(null);
+      setRolePendingDeletion(null);
       await queryClient.invalidateQueries({ queryKey: ['administration', 'roles'] });
     }
   });
@@ -103,9 +114,26 @@ export function RolesPage() {
                       <strong>{role.name}</strong><span>{role.code}</span>
                       <small className="muted">Company {role.companyId} · Created {new Date(role.createdAt).toLocaleString()} · Updated {new Date(role.updatedAt).toLocaleString()}</small>
                     </td>
-                    <td>{role.isSystem ? 'System' : 'Company'}</td>
+                    <td>{role.isSystem ? 'System' : 'Admin-created'}</td>
                     <td>{role.permissionCodes.length}</td>
-                    <td><button type="button" className="link-button" onClick={() => selectRole(role.id)}>View permissions</button></td>
+                    <td>
+                      <div className="button-row">
+                        <button type="button" className="link-button" onClick={() => selectRole(role.id)}>View permissions</button>
+                        {canManage && !role.isSystem && (
+                          <button
+                            type="button"
+                            className="danger-button"
+                            disabled={deleteMutation.isPending}
+                            onClick={() => {
+                              deleteMutation.reset();
+                              setRolePendingDeletion(role);
+                            }}
+                          >
+                            {deleteMutation.isPending && deleteMutation.variables === role.id ? 'Deleting…' : 'Delete'}
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -145,6 +173,31 @@ export function RolesPage() {
           onSaved={handlePermissionsSaved}
         />
       )}
+
+      {rolePendingDeletion && (
+        <div className="finance-modal-backdrop" role="presentation">
+          <section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="delete-role-title">
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Administration</p>
+                <h2 id="delete-role-title">Delete role</h2>
+              </div>
+              <button type="button" className="finance-modal-close" onClick={() => { deleteMutation.reset(); setRolePendingDeletion(null); }} aria-label="Close delete role dialog">×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p>Delete <strong>{rolePendingDeletion.name}</strong>?</p>
+              <p className="muted">This cannot be undone. If the role is assigned to a user or Project scope, the server will keep it and ask you to remove the assignment first.</p>
+              {deleteMutation.error instanceof Error && <div className="form-error" role="alert">{deleteMutation.error.message}</div>}
+              <div className="form-actions">
+                <button type="button" className="danger-button" disabled={deleteMutation.isPending} onClick={() => deleteMutation.mutate(rolePendingDeletion.id)}>
+                  {deleteMutation.isPending ? 'Deleting…' : 'Delete role'}
+                </button>
+                <button type="button" className="secondary-button" disabled={deleteMutation.isPending} onClick={() => { deleteMutation.reset(); setRolePendingDeletion(null); }}>Cancel</button>
+              </div>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }
@@ -156,13 +209,19 @@ function RolePermissionEditor(props: Readonly<{
   canManage: boolean;
   onSaved: () => Promise<void>;
 }>) {
+  const isSiteManager = props.role.code === 'site-manager';
+  const canEdit = props.canManage && (!props.role.isSystem || isSiteManager);
   const form = useForm<PermissionValues>({
     resolver: zodResolver(permissionsSchema),
-    defaultValues: { permissionCodes: props.role.permissionCodes }
+    defaultValues: {
+      permissionCodes: isSiteManager
+        ? props.role.permissionCodes.filter((code) => !code.startsWith('admin.'))
+        : props.role.permissionCodes
+    }
   });
 
   const mutation = useMutation({
-    // Replace the complete permission set only for company-owned roles.
+    // The API permits custom roles and the protected, non-administrative Site Manager role.
     mutationFn: (values: PermissionValues) => replaceRolePermissions(props.role.id, values.permissionCodes),
     // Reload role data after the API confirms the replacement.
     onSuccess: props.onSaved
@@ -176,20 +235,24 @@ function RolePermissionEditor(props: Readonly<{
   return (
     <section className="admin-card" aria-labelledby="permission-title">
       <h2 id="permission-title">Permissions for {props.role.name}</h2>
-      {props.role.isSystem && <p className="muted">System roles are visible for review but cannot be changed by a tenant administrator.</p>}
+      {props.role.isSystem && !isSiteManager && <p className="muted">System Administrator permissions are protected and cannot be changed.</p>}
+      {isSiteManager && <p className="muted">System Administrators may change Site Manager operational permissions. Administration permissions remain protected.</p>}
       <form className="admin-form" onSubmit={form.handleSubmit(handleSave)}>
         <div className="checkbox-grid permission-grid">
-          {props.availablePermissionCodes.map((permission) => (
-            <label key={permission} className="checkbox-row">
-              <input type="checkbox" value={permission} disabled={!props.canManage || props.role.isSystem} {...form.register('permissionCodes')} />
-              <span>{permission}</span>
-            </label>
-          ))}
+          {props.availablePermissionCodes.map((permission) => {
+            const isProtectedForSiteManager = isSiteManager && permission.startsWith('admin.');
+            return (
+              <label key={permission} className="checkbox-row">
+                <input type="checkbox" value={permission} disabled={!canEdit || isProtectedForSiteManager} {...form.register('permissionCodes')} />
+                <span>{permission}</span>
+              </label>
+            );
+          })}
         </div>
         {props.availablePermissionCodes.length === 0 && <p className="muted">No assignable permissions are available.</p>}
         {mutation.error instanceof Error && <div className="form-error" role="alert">{mutation.error.message}</div>}
-        {props.canManage && !props.role.isSystem && (
-          <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Replace permission set'}</button>
+        {canEdit && (
+          <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save permissions'}</button>
         )}
       </form>
     </section>

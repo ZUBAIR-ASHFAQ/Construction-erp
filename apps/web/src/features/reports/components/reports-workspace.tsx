@@ -194,6 +194,8 @@ function reportColumns(rows: Record<string, unknown>[]): string[] {
 function displayReportValue(value: unknown, column: string, vendorNames: ReadonlyMap<string, string>): string {
   if (value === null || value === undefined || value === '') return '—';
   if (column === 'vendorId' && typeof value === 'string') return vendorNames.get(value) ?? 'Unknown supplier';
+  if (column === 'category' && value === 'labour') return 'Employee Salaries';
+  if (column === 'category' && value === 'security') return 'Security Employee Salaries';
   if (typeof value === 'object') return JSON.stringify(value);
   return String(value);
 }
@@ -282,7 +284,7 @@ function AnalyticsOverview({
             </div>
             <p className="reports-profit-definition">
               <strong>Profit / Loss = Total client cash received − Total Project cost.</strong>
-              {' '}Project cost includes posted material, labour and salaries, Equipment Expense, subcontractor, site, security, and other Project expenses. Supplier cost and its settlement are counted once.
+              {' '}Project cost includes posted material, Employee Salaries, Equipment Expense, subcontractor, site, security, and other Project expenses. Salary and Supplier cash settlements are not counted a second time.
             </p>
             <dl className="reports-metric-grid">
               {metrics.map(([label, value]) => {

@@ -41,6 +41,6 @@ test('salary payment reversal and Employee ledger preserve auditable history', a
   assert.match(service, /postSourceReversalInTransaction/);
   assert.match(service, /PAYMENT_REVERSAL/);
   assert.match(workspace, /Employee salary payments/);
-  assert.match(workspace, /Salary Ledger/);
+  assert.match(workspace, /Project-wise Employee Ledger/);
   assert.match(workspace, /Post salary payment/);
 });

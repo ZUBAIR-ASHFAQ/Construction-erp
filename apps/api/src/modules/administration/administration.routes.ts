@@ -424,7 +424,14 @@ export async function registerAdministrationRoutes(
         properties: {
           email: { type: 'string', format: 'email', maxLength: 320 },
           phone: { type: 'string', nullable: true, minLength: 1, maxLength: 50 },
-          name: { type: 'string', minLength: 1, maxLength: 200 }
+          name: { type: 'string', minLength: 1, maxLength: 200 },
+          password: { type: 'string', minLength: 8, maxLength: 4096 },
+          siteManagerProjectIds: {
+            type: 'array',
+            minItems: 1,
+            uniqueItems: true,
+            items: { type: 'string', format: 'uuid' }
+          }
         }
       },
       response: {
@@ -455,7 +462,8 @@ export async function registerAdministrationRoutes(
           email: { type: 'string', format: 'email', maxLength: 320 },
           phone: { type: 'string', nullable: true, minLength: 1, maxLength: 50 },
           name: { type: 'string', minLength: 1, maxLength: 200 },
-          status: { type: 'string', enum: ['ACTIVE', 'INACTIVE'] }
+          status: { type: 'string', enum: ['ACTIVE', 'INACTIVE'] },
+          password: { type: 'string', minLength: 8, maxLength: 4096 }
         }
       },
       response: {
@@ -612,6 +620,31 @@ export async function registerAdministrationRoutes(
     const params = parseRequest(roleIdParamsSchema, request.params, 'params');
     const body = parseRequest(replaceRolePermissionsBodySchema, request.body, 'body');
     const result = await service.replaceRolePermissions(params.id, body);
+    return reply.send({ data: result });
+  });
+
+  // Delete only an unused role created by this company; system roles remain immutable.
+  app.delete('/api/v1/admin/roles/:id', {
+    schema: {
+      tags: ['Module 2 - Administration'],
+      operationId: 'administrationDeleteRole',
+      summary: 'Delete a company-created role',
+      security: BEARER_SECURITY,
+      params: USER_ID_PARAMS_OPENAPI_SCHEMA,
+      response: {
+        200: dataEnvelopeSchema({
+          type: 'object',
+          additionalProperties: false,
+          required: ['deleted'],
+          properties: { deleted: { type: 'boolean', const: true } }
+        }),
+        ...COMMON_ERROR_RESPONSES
+      }
+    }
+  }, async (request, reply) => {
+    await authenticateRequest(request, database);
+    const params = parseRequest(roleIdParamsSchema, request.params, 'params');
+    const result = await service.deleteRole(params.id);
     return reply.send({ data: result });
   });
 

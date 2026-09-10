@@ -10,73 +10,75 @@ datasource db {
 /// Foundation-owned tenant/company master.
 /// Every future ERP company_id foreign key must resolve to companies.id.
 model Company {
-  id                     String                  @id @default(uuid()) @db.Uuid
-  legalName              String                  @map("legal_name") @db.VarChar(200)
-  displayName            String                  @map("display_name") @db.VarChar(200)
-  status                 String                  @db.VarChar(32)
-  baseCurrency           String                  @map("base_currency") @db.Char(3)
-  timeZone               String                  @map("time_zone") @db.VarChar(100)
-  locale                 String                  @db.VarChar(35)
-  fiscalSettings         Json                    @map("fiscal_settings") @db.JsonB
-  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
-  auditLogs              AuditLog[]
-  outboxEvents           OutboxEvent[]
-  idempotencyRecords     IdempotencyRecord[]
-  numberSequences        NumberSequence[]
-  queueJobs              QueueJob[]
-  configuration          CompanyConfiguration?
-  initialBootstrapRuns   InitialBootstrapRun[]
-  users                  User[]
-  roles                  Role[]
-  roleAssignments        UserRole[]
-  userProjectScopes      UserProjectScope[]
-  departments            Department[]
-  documents              Document[]
-  documentUploadIntents  DocumentUploadIntent[]
-  documentLinks          DocumentLink[]
-  clients                Client[]
-  clientContacts         ClientContact[]
-  projects               Project[]
-  projectStages          ProjectStage[]
-  projectTeamAssignments ProjectTeamAssignment[]
-  glAccounts             GlAccount[]
-  fiscalPeriods          FiscalPeriod[]
-  journals               Journal[]
-  cashBankAccounts       CashBankAccount[]
-  projectBudgets         ProjectBudget[]
-  costCommitments        CostCommitment[]
-  costActuals            CostActual[]
-  vendors                Vendor[]
-  purchaseRequisitions   PurchaseRequisition[]
-  purchaseOrders         PurchaseOrder[]
-  materials              Material[]
-  warehouses             Warehouse[]
-  goodsReceipts          GoodsReceipt[]
-  stockLedger            StockLedger[]
-  materialIssues         MaterialIssue[]
-  subcontractors         Subcontractor[]
-  subcontractContracts   SubcontractContract[]
-  subcontractPayments    SubcontractPayment[]
-  equipment              Equipment[]
-  employees              Employee[]
-  attendanceEntries      AttendanceEntry[]
-  employeeCompensations  EmployeeCompensation[]
-  payrollRuns            PayrollRun[]
-  payrollPayments        PayrollPayment[]
-  expenseCategories      ExpenseCategory[]
-  siteExpenses           SiteExpense[]
-  supplierInvoices       SupplierInvoice[]
-  supplierPayments       SupplierPayment[]
-  projectBillingSettings ProjectBillingSetting[]
-  progressClaims         ProgressClaim[]
-  clientInvoices         ClientInvoice[]
-  clientReceipts         ClientReceipt[]
-  reportDefinitions      ReportDefinition[]
-  reportRuns             ReportRun[]
-  savedReportFilters     SavedReportFilter[]
-  dashboardPreferences   DashboardPreference[]
-  dashboardSavedFilters  DashboardSavedFilter[]
+  id                       String                   @id @default(uuid()) @db.Uuid
+  legalName                String                   @map("legal_name") @db.VarChar(200)
+  displayName              String                   @map("display_name") @db.VarChar(200)
+  status                   String                   @db.VarChar(32)
+  baseCurrency             String                   @map("base_currency") @db.Char(3)
+  timeZone                 String                   @map("time_zone") @db.VarChar(100)
+  locale                   String                   @db.VarChar(35)
+  fiscalSettings           Json                     @map("fiscal_settings") @db.JsonB
+  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditLogs                AuditLog[]
+  outboxEvents             OutboxEvent[]
+  idempotencyRecords       IdempotencyRecord[]
+  numberSequences          NumberSequence[]
+  queueJobs                QueueJob[]
+  configuration            CompanyConfiguration?
+  initialBootstrapRuns     InitialBootstrapRun[]
+  users                    User[]
+  roles                    Role[]
+  roleAssignments          UserRole[]
+  userProjectScopes        UserProjectScope[]
+  departments              Department[]
+  documents                Document[]
+  documentUploadIntents    DocumentUploadIntent[]
+  documentLinks            DocumentLink[]
+  clients                  Client[]
+  clientContacts           ClientContact[]
+  projects                 Project[]
+  projectStages            ProjectStage[]
+  projectTeamAssignments   ProjectTeamAssignment[]
+  glAccounts               GlAccount[]
+  fiscalPeriods            FiscalPeriod[]
+  journals                 Journal[]
+  cashBankAccounts         CashBankAccount[]
+  projectBudgets           ProjectBudget[]
+  costCommitments          CostCommitment[]
+  costActuals              CostActual[]
+  vendors                  Vendor[]
+  purchaseRequisitions     PurchaseRequisition[]
+  purchaseOrders           PurchaseOrder[]
+  materials                Material[]
+  warehouses               Warehouse[]
+  goodsReceipts            GoodsReceipt[]
+  stockLedger              StockLedger[]
+  materialIssues           MaterialIssue[]
+  subcontractors           Subcontractor[]
+  subcontractContracts     SubcontractContract[]
+  subcontractPayments      SubcontractPayment[]
+  equipment                Equipment[]
+  employees                Employee[]
+  attendanceEntries        AttendanceEntry[]
+  employeeCompensations    EmployeeCompensation[]
+  payrollRuns              PayrollRun[]
+  payrollPayments          PayrollPayment[]
+  employeeAdvances         EmployeeAdvance[]
+  payrollAdvanceRecoveries PayrollAdvanceRecovery[]
+  expenseCategories        ExpenseCategory[]
+  siteExpenses             SiteExpense[]
+  supplierInvoices         SupplierInvoice[]
+  supplierPayments         SupplierPayment[]
+  projectBillingSettings   ProjectBillingSetting[]
+  progressClaims           ProgressClaim[]
+  clientInvoices           ClientInvoice[]
+  clientReceipts           ClientReceipt[]
+  reportDefinitions        ReportDefinition[]
+  reportRuns               ReportRun[]
+  savedReportFilters       SavedReportFilter[]
+  dashboardPreferences     DashboardPreference[]
+  dashboardSavedFilters    DashboardSavedFilter[]
 
   @@index([status], map: "companies_status_idx")
   @@map("companies")
@@ -337,6 +339,7 @@ model User {
   enteredAttendanceEntries      AttendanceEntry[]         @relation("AttendanceEnteredBy")
   createdPayrollRuns            PayrollRun[]              @relation("PayrollCreatedBy")
   createdPayrollPayments        PayrollPayment[]          @relation("PayrollPaymentCreatedBy")
+  createdEmployeeAdvances       EmployeeAdvance[]         @relation("EmployeeAdvanceCreatedBy")
   createdSiteExpenses           SiteExpense[]
   createdClientReceipts         ClientReceipt[]           @relation("ClientReceiptCreator")
   clientReceiptAllocations      ClientReceiptAllocation[] @relation("ClientReceiptAllocationActor")
@@ -715,6 +718,7 @@ model Project {
   clientReceipts              ClientReceipt[]
   dashboardDefaultPreferences DashboardPreference[]   @relation("DashboardPreferenceDefaultProject")
   subcontractContracts        SubcontractContract[]
+  employeeAdvances            EmployeeAdvance[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -767,6 +771,7 @@ model ProjectStage {
   progressClaimLines       ProgressClaimLine[]       @relation("ProgressClaimLineStage")
   clientInvoiceLines       ClientInvoiceLine[]       @relation("ClientInvoiceLineStage")
   clientReceipts           ClientReceipt[]           @relation("ClientReceiptStage")
+  employeeAdvances         EmployeeAdvance[]
 
   @@unique([companyId, projectId, code], map: "project_stages_company_project_code_uq")
   @@unique([companyId, projectId, sequenceNo], map: "project_stages_company_project_sequence_uq")
@@ -1008,6 +1013,7 @@ model CashBankAccount {
   clientReceipts      ClientReceipt[]
   subcontractPayments SubcontractPayment[]
   payrollPayments     PayrollPayment[]
+  employeeAdvances    EmployeeAdvance[]
 
   @@unique([companyId, code], map: "cash_bank_accounts_company_code_uq")
   @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
@@ -1663,6 +1669,7 @@ model Employee {
   employmentHistory      EmployeeEmploymentHistory[]
   payrollLines           PayrollLine[]
   payrollPayments        PayrollPayment[]
+  employeeAdvances       EmployeeAdvance[]
 
   @@unique([companyId, employeeNo], map: "employees_company_employee_no_uq")
   @@unique([id, companyId], map: "employees_id_company_uq")
@@ -1766,14 +1773,18 @@ model PayrollLine {
   payrollRunId          String  @map("payroll_run_id") @db.Uuid
   employeeId            String  @map("employee_id") @db.Uuid
   grossAmount           Decimal @map("gross_amount") @db.Decimal(18, 2)
+  salaryBeforeAbsence   Decimal @default(0) @map("salary_before_absence") @db.Decimal(18, 2)
+  absenceDeduction      Decimal @default(0) @map("absence_deduction") @db.Decimal(18, 2)
+  advanceDeduction      Decimal @default(0) @map("advance_deduction") @db.Decimal(18, 2)
   deductions            Decimal @db.Decimal(18, 2)
   netAmount             Decimal @map("net_amount") @db.Decimal(18, 2)
   projectAllocationJson Json    @map("project_allocation_json") @db.JsonB
 
-  payrollRun PayrollRun       @relation(fields: [payrollRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  employee   Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  payslip    Payslip?
-  payments   PayrollPayment[]
+  payrollRun        PayrollRun               @relation(fields: [payrollRunId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee          Employee                 @relation(fields: [employeeId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payslip           Payslip?
+  payments          PayrollPayment[]
+  advanceRecoveries PayrollAdvanceRecovery[]
 
   @@unique([payrollRunId, employeeId], map: "payroll_lines_run_employee_uq")
   @@index([employeeId, payrollRunId], map: "payroll_lines_employee_run_idx")
@@ -1824,6 +1835,60 @@ model PayrollPayment {
   @@index([payrollLineId, status], map: "payroll_payments_line_status_idx")
   @@index([cashBankAccountId, paymentDate], map: "payroll_payments_cash_bank_date_idx")
   @@map("payroll_payments")
+}
+
+/// Cash/Bank money paid to an Employee before salary settlement.
+/// It remains an Employee Advance asset until a finalized Payroll Run recovers it.
+model EmployeeAdvance {
+  id                String    @id @default(uuid()) @db.Uuid
+  companyId         String    @map("company_id") @db.Uuid
+  employeeId        String    @map("employee_id") @db.Uuid
+  projectId         String    @map("project_id") @db.Uuid
+  stageId           String?   @map("stage_id") @db.Uuid
+  advanceNo         String    @map("advance_no") @db.VarChar(100)
+  advanceDate       DateTime  @map("advance_date") @db.Date
+  amount            Decimal   @db.Decimal(18, 2)
+  cashBankAccountId String    @map("cash_bank_account_id") @db.Uuid
+  reason            String    @db.VarChar(500)
+  reference         String?   @db.VarChar(200)
+  status            String    @default("POSTED") @db.VarChar(32)
+  createdBy         String    @map("created_by") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  reversalDate      DateTime? @map("reversal_date") @db.Date
+  reversedAt        DateTime? @map("reversed_at") @db.Timestamptz(6)
+
+  company         Company                  @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employee        Employee                 @relation(fields: [employeeId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project         Project                  @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  stage           ProjectStage?            @relation(fields: [stageId, projectId], references: [id, projectId], onDelete: Restrict, onUpdate: Restrict)
+  cashBankAccount CashBankAccount          @relation(fields: [cashBankAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  creator         User                     @relation("EmployeeAdvanceCreatedBy", fields: [createdBy], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  recoveries      PayrollAdvanceRecovery[]
+
+  @@unique([companyId, advanceNo], map: "employee_advances_company_advance_no_uq")
+  @@unique([id, companyId], map: "employee_advances_id_company_uq")
+  @@index([companyId, employeeId, advanceDate], map: "employee_advances_company_employee_date_idx")
+  @@index([companyId, projectId, advanceDate], map: "employee_advances_company_project_date_idx")
+  @@index([cashBankAccountId, advanceDate], map: "employee_advances_cash_bank_date_idx")
+  @@map("employee_advances")
+}
+
+/// Immutable allocation that recovers an Employee advance in one finalized Payroll line.
+model PayrollAdvanceRecovery {
+  id                String   @id @default(uuid()) @db.Uuid
+  companyId         String   @map("company_id") @db.Uuid
+  payrollLineId     String   @map("payroll_line_id") @db.Uuid
+  employeeAdvanceId String   @map("employee_advance_id") @db.Uuid
+  amount            Decimal  @db.Decimal(18, 2)
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company         Company         @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  payrollLine     PayrollLine     @relation(fields: [payrollLineId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  employeeAdvance EmployeeAdvance @relation(fields: [employeeAdvanceId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([payrollLineId, employeeAdvanceId], map: "payroll_advance_recoveries_line_advance_uq")
+  @@index([companyId, employeeAdvanceId], map: "payroll_advance_recoveries_company_advance_idx")
+  @@map("payroll_advance_recoveries")
 }
 
 /// Final Module 14 Company-owned Site Expense category.

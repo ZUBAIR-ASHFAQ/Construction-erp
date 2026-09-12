@@ -111,6 +111,23 @@ export class EmployeesService {
     if (!hasPermission(permission)) throw new AuthorizationError();
   }
 
+  /** Return trusted assigned Projects for a restricted identity, or null for System Administrator scope. */
+  private allowedProjectIds(): readonly string[] | null {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    return security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null;
+  }
+
+  /** Require a Project selection for restricted Employee creation and reject forged Project ids. */
+  private creationProjectId(projectId?: string): string | null {
+    const allowedProjectIds = this.allowedProjectIds();
+    if (allowedProjectIds !== null && !projectId) {
+      throw new ValidationError({ fieldErrors: [{ field: 'projectId', message: 'Select one of your assigned Projects.' }] });
+    }
+    if (projectId && allowedProjectIds !== null && !allowedProjectIds.includes(projectId)) throw new AuthorizationError();
+    return projectId ?? null;
+  }
+
   /** Validate an optional linked login User inside the same Company. */
   private async requireCompanyUser(repository: EmployeesRepository, userId?: string | null): Promise<void> {
     if (!userId) return;
@@ -133,11 +150,7 @@ export class EmployeesService {
   /** List/search Company Employees with bounded pagination. */
   async listEmployees(input: ListEmployeesQuery) {
     this.requirePermission('employees.read');
-    const security = requireRequestSecurityContext();
-    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
-    const allowedProjectIds = security.projectScope.kind === 'restricted'
-      ? security.projectScope.projectIds
-      : null;
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? DEFAULT_PAGE_SIZE;
     const result = await new EmployeesRepository(this.db).listEmployees({
@@ -153,11 +166,7 @@ export class EmployeesService {
   /** Get one Employee detail and include salary history only for authorized HR compensation users. */
   async getEmployee(employeeId: string) {
     this.requirePermission('employees.read');
-    const security = requireRequestSecurityContext();
-    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
-    const allowedProjectIds = security.projectScope.kind === 'restricted'
-      ? security.projectScope.projectIds
-      : null;
+    const allowedProjectIds = this.allowedProjectIds();
     const repository = new EmployeesRepository(this.db);
     const employee = await repository.findEmployeeById(employeeId, allowedProjectIds);
     if (!employee) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
@@ -191,7 +200,11 @@ export class EmployeesService {
   /** Persist one new Employee with audit, history and outbox evidence. */
   private async createEmployeeOnce(tx: TransactionClient, input: CreateEmployeeBody) {
     this.requirePermission('employees.create');
+    const projectId = this.creationProjectId(input.projectId);
     const repository = new EmployeesRepository(tx);
+    if (projectId && !await repository.findProjectById(projectId)) {
+      throw new ValidationError({ fieldErrors: [{ field: 'projectId', message: 'The selected Project was not found.' }] });
+    }
     await this.requireUniqueIdentity(repository, input);
     await this.requireCompanyUser(repository, input.userId);
 
@@ -209,10 +222,19 @@ export class EmployeesService {
       status: EMPLOYEE_ACTIVE
     });
     await repository.createEmploymentHistory(employee.id, 'CREATED', inputDate(input.joiningDate), 'Employee record created.');
+    if (projectId) {
+      await repository.createInitialProjectAssignment({
+        projectId,
+        employeeId: employee.id,
+        projectRole: input.jobTitle,
+        fromDate: inputDate(input.joiningDate),
+        changedBy: requireRequestSecurityContext().actorUserId
+      });
+    }
 
     const response = employeeResponse(employee);
-    await recordAudit(tx, { action: 'employee.created', entityType: 'employee', entityId: employee.id, after: response });
-    await recordOutboxEvent(tx, { eventType: 'employee.created', resourceType: 'employee', resourceId: employee.id, payload: { employeeNo: employee.employeeNo, status: employee.status } });
+    await recordAudit(tx, { action: 'employee.created', entityType: 'employee', entityId: employee.id, projectId, after: { ...response, projectId } });
+    await recordOutboxEvent(tx, { eventType: 'employee.created', resourceType: 'employee', resourceId: employee.id, payload: { employeeNo: employee.employeeNo, status: employee.status, projectId } });
     return { statusCode: 201, body: response };
   }
 
@@ -236,7 +258,7 @@ export class EmployeesService {
   private async updateEmployeeOnce(tx: TransactionClient, employeeId: string, input: UpdateEmployeeBody) {
     this.requirePermission('employees.update');
     const repository = new EmployeesRepository(tx);
-    const before = await repository.findEmployeeById(employeeId);
+    const before = await repository.findEmployeeById(employeeId, this.allowedProjectIds());
     if (!before) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
 
     await this.requireUniqueIdentity(repository, input, employeeId);
@@ -278,7 +300,7 @@ export class EmployeesService {
     const locked = await repository.lockEmployeeForCompensationWrite(employeeId);
     if (!locked) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
 
-    const employee = await repository.findEmployeeById(employeeId);
+    const employee = await repository.findEmployeeById(employeeId, this.allowedProjectIds());
     if (!employee) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
     if (employee.status !== EMPLOYEE_ACTIVE) throw createEmployeeError('EMPLOYEE_INACTIVE');
 
@@ -330,7 +352,7 @@ export class EmployeesService {
   private async updateStatusOnce(tx: TransactionClient, employeeId: string, input: UpdateEmployeeStatusBody) {
     this.requirePermission('employees.update');
     const repository = new EmployeesRepository(tx);
-    const before = await repository.findEmployeeById(employeeId);
+    const before = await repository.findEmployeeById(employeeId, this.allowedProjectIds());
     if (!before) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
     if (before.status === input.status) return { statusCode: 200, body: employeeResponse(before) };
 

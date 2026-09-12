@@ -90,6 +90,7 @@ export const listEmployeesQuerySchema = z.object({
 
 /** Validate one new Employee master record without accepting Company or lifecycle authority. */
 export const createEmployeeBodySchema = z.object({
+  projectId: uuidSchema.optional(),
   employeeNo: employeeNoSchema,
   userId: uuidSchema.nullable().optional(),
   name: employeeNameSchema,

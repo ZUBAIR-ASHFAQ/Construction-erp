@@ -48,6 +48,7 @@ export type ListEmployeesInput = Readonly<{
 }>;
 
 export type CreateEmployeeInput = Readonly<{
+  projectId?: string;
   employeeNo: string;
   userId?: string | null;
   name: string;

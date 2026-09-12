@@ -134,6 +134,15 @@ export class EmployeesRepository {
     return this.db.user.findFirst({ where: scope.where({ id: userId }) });
   }
 
+  /** Find one Company Project before creating an initial Employee assignment. */
+  async findProjectById(projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.project.findFirst({
+      where: scope.where({ id: projectId }),
+      select: { id: true, status: true }
+    });
+  }
+
   /** Create one Company-owned Employee after service validation. */
   async createEmployee(input: CreateEmployeeRepositoryInput) {
     const scope = requireCompanyRepositoryScope();
@@ -152,6 +161,38 @@ export class EmployeesRepository {
         status: input.status
       })
     });
+  }
+
+  /** Create the initial active Project membership for a newly created Employee. */
+  async createInitialProjectAssignment(input: Readonly<{
+    projectId: string;
+    employeeId: string;
+    projectRole: string;
+    fromDate: Date;
+    changedBy: string;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    const assignment = await this.db.projectTeamAssignment.create({
+      data: scope.createData({
+        projectId: input.projectId,
+        employeeId: input.employeeId,
+        projectRole: input.projectRole,
+        allocationPercent: '100.0000',
+        stageId: null,
+        fromDate: input.fromDate,
+        toDate: null,
+        status: 'ACTIVE'
+      })
+    });
+    await this.db.projectTeamHistory.create({
+      data: {
+        assignmentId: assignment.id,
+        action: 'CREATED',
+        changedBy: input.changedBy,
+        note: 'Initial assignment created with the Employee record.'
+      }
+    });
+    return assignment;
   }
 
   /** Update Employee master fields without changing Company or lifecycle ownership. */

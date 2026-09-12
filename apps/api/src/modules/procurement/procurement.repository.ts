@@ -71,9 +71,15 @@ export class ProcurementRepository {
   }
 
   /** Find one Company vendor by id. */
-  async findVendorById(vendorId: string) {
+  async findVendorById(vendorId: string, projectId?: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.vendor.findFirst({ where: scope.where({ id: vendorId }), select: { id: true, status: true, qualificationStatus: true } });
+    return this.db.vendor.findFirst({
+      where: scope.where({
+        id: vendorId,
+        ...(projectId ? { projectAssignments: { some: { projectId } } } : {})
+      }),
+      select: { id: true, status: true, qualificationStatus: true }
+    });
   }
 
   /** List requisitions inside the authenticated Project visibility. */

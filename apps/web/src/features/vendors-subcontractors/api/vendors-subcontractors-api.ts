@@ -95,6 +95,7 @@ export type SubcontractLedgerRow = Readonly<{
 type Page<T> = Readonly<{ items: T[]; total: number; page: number; pageSize: number }>;
 
 export type ListVendorsInput = Readonly<{
+  projectId?: string;
   search?: string;
   status?: VendorStatus;
   qualificationStatus?: VendorQualificationStatus;
@@ -103,6 +104,7 @@ export type ListVendorsInput = Readonly<{
 }>;
 
 export type CreateVendorInput = Readonly<{
+  projectId?: string;
   code: string;
   legalName: string;
   displayName: string;
@@ -122,6 +124,7 @@ export type CreateVendorContactInput = Readonly<{
 }>;
 
 export type ListSubcontractorsInput = Readonly<{
+  projectId?: string;
   search?: string;
   status?: SubcontractorStatus;
   page?: number;
@@ -129,6 +132,7 @@ export type ListSubcontractorsInput = Readonly<{
 }>;
 
 export type CreateSubcontractorInput = Readonly<{
+  projectId?: string;
   name: string;
   phone: string;
   specialty: string;
@@ -180,6 +184,7 @@ export type ListSubcontractLedgerInput = Readonly<{
 /** Load one bounded supplier/vendor page from the final Module 5 API. */
 export function listVendors(input: ListVendorsInput = {}): Promise<Page<Vendor>> {
   const query = new URLSearchParams();
+  if (input.projectId) query.set('projectId', input.projectId);
   if (input.search) query.set('search', input.search);
   if (input.status) query.set('status', input.status);
   if (input.qualificationStatus) query.set('qualificationStatus', input.qualificationStatus);
@@ -212,6 +217,7 @@ export function createVendorContact(vendorId: string, input: CreateVendorContact
 /** Load one bounded subcontractor-master page. */
 export function listSubcontractors(input: ListSubcontractorsInput = {}): Promise<Page<Subcontractor>> {
   const query = new URLSearchParams();
+  if (input.projectId) query.set('projectId', input.projectId);
   if (input.search) query.set('search', input.search);
   if (input.status) query.set('status', input.status);
   if (input.page !== undefined) query.set('page', String(input.page));

@@ -141,10 +141,13 @@ export class SupplierPayablesRepository {
   }
 
   /** Find one same-Company Vendor for Supplier Invoice or Payment validation. */
-  async findVendorById(vendorId: string) {
+  async findVendorById(vendorId: string, projectId?: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.vendor.findFirst({
-      where: scope.where({ id: vendorId }),
+      where: scope.where({
+        id: vendorId,
+        ...(projectId ? { projectAssignments: { some: { projectId } } } : {})
+      }),
       select: {
         id: true,
         status: true,

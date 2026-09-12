@@ -106,6 +106,7 @@ export const masterIdParamsSchema = z.object({ id: uuidSchema }).strict();
 
 /** Bounded supplier/vendor list filters. */
 export const listVendorsQuerySchema = z.object({
+  projectId: uuidSchema.optional(),
   search: searchSchema.optional(),
   status: z.enum(VENDOR_STATUS_VALUES).optional(),
   qualificationStatus: z.enum(VENDOR_QUALIFICATION_VALUES).optional(),
@@ -114,6 +115,7 @@ export const listVendorsQuerySchema = z.object({
 
 /** Create one company-owned supplier/vendor master record. */
 export const createVendorBodySchema = z.object({
+  projectId: uuidSchema.optional(),
   code: codeSchema,
   legalName: nameSchema,
   displayName: nameSchema,
@@ -147,6 +149,7 @@ export const createVendorContactBodySchema = z.object({
 
 /** Bounded subcontractor-master list filters. */
 export const listSubcontractorsQuerySchema = z.object({
+  projectId: uuidSchema.optional(),
   search: searchSchema.optional(),
   status: z.enum(SUBCONTRACTOR_STATUS_VALUES).optional(),
   ...paginationQueryShape
@@ -200,6 +203,7 @@ export const listSubcontractLedgerQuerySchema = z.object({
 
 /** Create one subcontractor profile from its four user-maintained business fields. */
 export const createSubcontractorBodySchema = z.object({
+  projectId: uuidSchema.optional(),
   name: nameSchema,
   phone: phoneSchema,
   specialty: specialtySchema,

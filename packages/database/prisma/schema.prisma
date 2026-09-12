@@ -48,6 +48,7 @@ model Company {
   costCommitments          CostCommitment[]
   costActuals              CostActual[]
   vendors                  Vendor[]
+  vendorProjectAssignments VendorProjectAssignment[]
   purchaseRequisitions     PurchaseRequisition[]
   purchaseOrders           PurchaseOrder[]
   materials                Material[]
@@ -56,6 +57,7 @@ model Company {
   stockLedger              StockLedger[]
   materialIssues           MaterialIssue[]
   subcontractors           Subcontractor[]
+  subcontractorProjectAssignments SubcontractorProjectAssignment[]
   subcontractContracts     SubcontractContract[]
   subcontractPayments      SubcontractPayment[]
   equipment                Equipment[]
@@ -715,6 +717,8 @@ model Project {
   siteExpenses                SiteExpense[]
   supplierInvoices            SupplierInvoice[]
   supplierPayments            SupplierPayment[]
+  vendorProjectAssignments    VendorProjectAssignment[]
+  subcontractorProjectAssignments SubcontractorProjectAssignment[]
   clientReceipts              ClientReceipt[]
   dashboardDefaultPreferences DashboardPreference[]   @relation("DashboardPreferenceDefaultProject")
   subcontractContracts        SubcontractContract[]
@@ -1170,11 +1174,29 @@ model Vendor {
   subcontractors   Subcontractor[]
   supplierInvoices SupplierInvoice[]
   supplierPayments SupplierPayment[]
+  projectAssignments VendorProjectAssignment[]
 
   @@unique([id, companyId], map: "vendors_id_company_uq")
   @@unique([companyId, code], map: "vendors_company_code_uq")
   @@index([companyId, status, qualificationStatus], map: "vendors_company_status_qualification_idx")
   @@map("vendors")
+}
+
+/// Explicit Project membership for a reusable Company supplier master.
+/// Restricted users can only discover or use suppliers through these rows.
+model VendorProjectAssignment {
+  companyId String   @map("company_id") @db.Uuid
+  vendorId  String   @map("vendor_id") @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor  Vendor  @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project Project @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([vendorId, projectId], map: "vendor_project_assignments_pkey")
+  @@index([companyId, projectId, vendorId], map: "vendor_project_assignments_company_project_vendor_idx")
+  @@map("vendor_project_assignments")
 }
 
 /// Contact owned through one supplier/vendor master row.
@@ -1503,12 +1525,30 @@ model Subcontractor {
   company   Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   vendor    Vendor?               @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   contracts SubcontractContract[]
+  projectAssignments SubcontractorProjectAssignment[]
 
   @@unique([id, companyId], map: "subcontractors_id_company_uq")
   @@index([companyId, code], map: "subcontractors_company_code_idx")
   @@index([companyId, vendorId], map: "subcontractors_company_vendor_idx")
   @@index([companyId, status, specialty], map: "subcontractors_company_status_specialty_idx")
   @@map("subcontractors")
+}
+
+/// Explicit Project membership for a reusable Company subcontractor master.
+/// Restricted users can only discover or use subcontractors through these rows.
+model SubcontractorProjectAssignment {
+  companyId       String   @map("company_id") @db.Uuid
+  subcontractorId String   @map("subcontractor_id") @db.Uuid
+  projectId       String   @map("project_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  company       Company       @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  subcontractor Subcontractor @relation(fields: [subcontractorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project       Project       @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+
+  @@id([subcontractorId, projectId], map: "subcontractor_project_assignments_pkey")
+  @@index([companyId, projectId, subcontractorId], map: "subcontractor_project_scope_idx")
+  @@map("subcontractor_project_assignments")
 }
 
 /// Company-owned Project assignment and agreed contract value for one subcontractor.

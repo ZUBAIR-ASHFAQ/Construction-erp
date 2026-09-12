@@ -3,11 +3,13 @@ import { useState, type FormEvent } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { usePermission } from '../../administration/hooks/auth.js';
+import { useProjects } from '../../projects/hooks/projects.js';
 import { EmployeeDetailsPanel } from '../components/employee-details-panel.js';
 import { useCreateEmployee, useEmployees } from '../hooks/employees.js';
 import type { EmployeeStatus } from '../api/employees-api.js';
 
 const createEmployeeSchema = z.object({
+  projectId: z.string().uuid('Select a Project.'),
   employeeNo: z.string().trim().min(1, 'Employee number is required.').max(100),
   userId: z.union([z.string().trim().uuid('Use a valid User UUID.'), z.literal('')]),
   name: z.string().trim().min(1, 'Name is required.').max(200),
@@ -49,10 +51,11 @@ export function EmployeesPage() {
     pageSize: 25
   }, canRead);
   const createMutation = useCreateEmployee();
+  const projectsQuery = useProjects({ page: 1, pageSize: 100 });
   const createForm = useForm<CreateEmployeeValues>({
     resolver: zodResolver(createEmployeeSchema),
     defaultValues: {
-      employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
+      projectId: '', employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
       jobTitle: '', employeeType: '', joiningDate: ''
     }
   });
@@ -79,6 +82,7 @@ export function EmployeesPage() {
   /** Create one active Employee master and select it for salary setup. */
   async function handleCreate(values: CreateEmployeeValues): Promise<void> {
     const employee = await createMutation.mutateAsync({
+      projectId: values.projectId,
       employeeNo: values.employeeNo,
       userId: values.userId || null,
       name: values.name,
@@ -90,7 +94,7 @@ export function EmployeesPage() {
       employeeType: values.employeeType,
       joiningDate: values.joiningDate
     });
-    createForm.reset();
+    createForm.reset({ projectId: '', employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '', jobTitle: '', employeeType: '', joiningDate: '' });
     setSelectedEmployeeId(employee.id);
   }
 
@@ -150,6 +154,7 @@ export function EmployeesPage() {
           <h2>Create Employee</h2>
           <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="module14b-form-grid">
+              <label>Project<select {...createForm.register('projectId')}><option value="">Select Project</option>{(projectsQuery.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
               <label>Employee no.<input {...createForm.register('employeeNo')} /></label>
               <label>Login user ID (optional)<input {...createForm.register('userId')} placeholder="User UUID" /></label>
               <label>Name<input {...createForm.register('name')} /></label>

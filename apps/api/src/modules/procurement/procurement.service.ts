@@ -398,7 +398,7 @@ export class ProcurementService {
     this.requireWritableProject(project);
     await this.requireProjectStages(repository, requisition.projectId, [requisition.stageId, ...requisition.items.map((item) => item.stageId)]);
 
-    const vendor = await repository.findVendorById(input.vendorId);
+    const vendor = await repository.findVendorById(input.vendorId, requisition.projectId);
     if (!vendor || !isPurchasableVendor(vendor)) throw createProcurementError('VENDOR_NOT_ACTIVE');
     const prepared = preparePurchaseOrderLines(input, requisition);
     const required = new Map(requisition.items.map((item) => [item.id, decimalToScale4(item.quantity.toString())] as const));

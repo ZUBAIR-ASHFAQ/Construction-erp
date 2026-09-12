@@ -7,12 +7,16 @@ type RepositoryClient = DatabaseClient | TransactionClient;
 type PageWindow = Readonly<{ skip: number; take: number }>;
 
 export type ListVendorsRepositoryInput = PageWindow & Readonly<{
+  projectId?: string;
+  allowedProjectIds: readonly string[] | null;
   search?: string;
   status?: string;
   qualificationStatus?: string;
 }>;
 
 export type ListSubcontractorsRepositoryInput = PageWindow & Readonly<{
+  projectId?: string;
+  allowedProjectIds: readonly string[] | null;
   search?: string;
   status?: string;
 }>;
@@ -21,6 +25,7 @@ export type ListSubcontractContractsRepositoryInput = PageWindow & Readonly<{
   subcontractorId?: string;
   projectId?: string;
   status?: string;
+  allowedProjectIds: readonly string[] | null;
 }>;
 
 
@@ -29,13 +34,27 @@ export type ListSubcontractPaymentsRepositoryInput = PageWindow & Readonly<{
   projectId?: string;
   subcontractContractId?: string;
   status?: string;
+  allowedProjectIds: readonly string[] | null;
 }>;
 
 export type ListSubcontractLedgerRepositoryInput = PageWindow & Readonly<{
   subcontractorId?: string;
   projectId?: string;
   status?: string;
+  allowedProjectIds: readonly string[] | null;
 }>;
+
+/** Build a Project condition from trusted request scope. */
+function projectWhere(allowedProjectIds: readonly string[] | null, projectId?: string) {
+  if (projectId) return { projectId };
+  return allowedProjectIds === null ? {} : { projectId: { in: [...new Set(allowedProjectIds)] } };
+}
+
+/** Build master-record visibility through explicit Project assignments. */
+function assignmentWhere(allowedProjectIds: readonly string[] | null, projectId?: string) {
+  if (allowedProjectIds === null && !projectId) return {};
+  return { projectAssignments: { some: projectWhere(allowedProjectIds, projectId) } };
+}
 
 /** Reject invalid list windows before they reach Prisma. */
 function assertPageWindow(input: PageWindow): void {
@@ -56,6 +75,7 @@ export class VendorsSubcontractorsRepository {
     const scope = requireCompanyRepositoryScope();
     const search = input.search?.trim();
     const where = scope.where({
+      ...assignmentWhere(input.allowedProjectIds, input.projectId),
       ...(input.status ? { status: input.status } : {}),
       ...(input.qualificationStatus ? { qualificationStatus: input.qualificationStatus } : {}),
       ...(search ? {
@@ -75,10 +95,10 @@ export class VendorsSubcontractorsRepository {
   }
 
   /** Find one company supplier/vendor by identifier. */
-  async findVendorById(vendorId: string) {
+  async findVendorById(vendorId: string, allowedProjectIds: readonly string[] | null = null) {
     const scope = requireCompanyRepositoryScope();
     return this.db.vendor.findFirst({
-      where: scope.where({ id: vendorId }),
+      where: scope.where({ id: vendorId, ...assignmentWhere(allowedProjectIds) }),
       include: { contacts: { orderBy: [{ name: 'asc' }, { id: 'asc' }] } }
     });
   }
@@ -104,6 +124,16 @@ export class VendorsSubcontractorsRepository {
     return this.db.vendor.create({ data: scope.createData(input) });
   }
 
+  /** Assign one reusable supplier master to one Company Project. */
+  async assignVendorToProject(vendorId: string, projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.vendorProjectAssignment.upsert({
+      where: { vendorId_projectId: { vendorId, projectId } },
+      create: scope.createData({ vendorId, projectId }),
+      update: {}
+    });
+  }
+
   /** Update one company supplier/vendor without changing ownership. */
   async updateVendor(vendorId: string, input: Readonly<Record<string, unknown>>) {
     const scope = requireCompanyRepositoryScope();
@@ -125,9 +155,9 @@ export class VendorsSubcontractorsRepository {
   }
 
   /** Return purchase totals derived from Procurement documents for one supplier/vendor. */
-  async getVendorPurchaseSummary(vendorId: string) {
+  async getVendorPurchaseSummary(vendorId: string, allowedProjectIds: readonly string[] | null = null) {
     const scope = requireCompanyRepositoryScope();
-    const where = scope.where({ vendorId });
+    const where = scope.where({ vendorId, ...projectWhere(allowedProjectIds) });
     const [purchaseOrderCount, totals] = await Promise.all([
       this.db.purchaseOrder.count({ where }),
       this.db.purchaseOrder.aggregate({ where, _sum: { total: true } })
@@ -141,6 +171,7 @@ export class VendorsSubcontractorsRepository {
     const scope = requireCompanyRepositoryScope();
     const search = input.search?.trim();
     const where = scope.where({
+      ...assignmentWhere(input.allowedProjectIds, input.projectId),
       ...(input.status ? { status: input.status } : {}),
       ...(search ? {
         OR: [
@@ -164,10 +195,10 @@ export class VendorsSubcontractorsRepository {
   }
 
   /** Find one company subcontractor profile by identifier. */
-  async findSubcontractorById(subcontractorId: string) {
+  async findSubcontractorById(subcontractorId: string, allowedProjectIds: readonly string[] | null = null) {
     const scope = requireCompanyRepositoryScope();
     return this.db.subcontractor.findFirst({
-      where: scope.where({ id: subcontractorId }),
+      where: scope.where({ id: subcontractorId, ...assignmentWhere(allowedProjectIds) }),
     });
   }
 
@@ -183,6 +214,16 @@ export class VendorsSubcontractorsRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.subcontractor.create({
       data: scope.createData(input),
+    });
+  }
+
+  /** Assign one reusable subcontractor master to one Company Project. */
+  async assignSubcontractorToProject(subcontractorId: string, projectId: string) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.subcontractorProjectAssignment.upsert({
+      where: { subcontractorId_projectId: { subcontractorId, projectId } },
+      create: scope.createData({ subcontractorId, projectId }),
+      update: {}
     });
   }
 
@@ -218,6 +259,7 @@ export class VendorsSubcontractorsRepository {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({
+      ...projectWhere(input.allowedProjectIds, input.projectId),
       ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
       ...(input.projectId ? { projectId: input.projectId } : {}),
       ...(input.status ? { status: input.status } : {})
@@ -257,10 +299,10 @@ export class VendorsSubcontractorsRepository {
   }
 
   /** Find one company subcontract contract by identifier. */
-  async findSubcontractContractById(contractId: string) {
+  async findSubcontractContractById(contractId: string, allowedProjectIds: readonly string[] | null = null) {
     const scope = requireCompanyRepositoryScope();
     return this.db.subcontractContract.findFirst({
-      where: scope.where({ id: contractId }),
+      where: scope.where({ id: contractId, ...projectWhere(allowedProjectIds) }),
       include: {
         project: { select: { id: true, projectCode: true, name: true, currency: true, status: true } },
         subcontractor: {
@@ -435,13 +477,11 @@ export class VendorsSubcontractorsRepository {
     const where = scope.where({
       ...(input.subcontractContractId ? { subcontractContractId: input.subcontractContractId } : {}),
       ...(input.status ? { status: input.status } : {}),
-      ...(input.subcontractorId || input.projectId ? {
-        subcontractContract: {
-          companyId: scope.companyId,
-          ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
-          ...(input.projectId ? { projectId: input.projectId } : {})
-        }
-      } : {})
+      subcontractContract: {
+        companyId: scope.companyId,
+        ...projectWhere(input.allowedProjectIds, input.projectId),
+        ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {})
+      }
     });
     const include = {
       subcontractContract: {
@@ -464,6 +504,7 @@ export class VendorsSubcontractorsRepository {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({
+      ...projectWhere(input.allowedProjectIds, input.projectId),
       ...(input.subcontractorId ? { subcontractorId: input.subcontractorId } : {}),
       ...(input.projectId ? { projectId: input.projectId } : {}),
       ...(input.status ? { status: input.status } : {})

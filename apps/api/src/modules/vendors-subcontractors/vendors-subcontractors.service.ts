@@ -4,7 +4,7 @@ import { AuthorizationError, ConflictError, ValidationError } from '@constructio
 import { executeIdempotentCommand } from '@construction-erp/idempotency';
 import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { recordOutboxEvent } from '@construction-erp/outbox';
-import { hasPermission } from '@construction-erp/request-context';
+import { hasPermission, requireRequestSecurityContext } from '@construction-erp/request-context';
 import { FinanceService } from '../finance/finance.service.js';
 import { SupplierPayablesService } from '../supplier-payables/supplier-payables.service.js';
 import { VendorsSubcontractorsRepository } from './vendors-subcontractors.repository.js';
@@ -65,15 +65,42 @@ export class VendorsSubcontractorsService {
     if (!hasPermission(permission)) throw new AuthorizationError();
   }
 
+  /** Return the trusted Project ids for a restricted identity, or null for System Administrator scope. */
+  private allowedProjectIds(): readonly string[] | null {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    return security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null;
+  }
+
+  /** Reject an explicit Project outside the authenticated identity's trusted scope. */
+  private requireProjectAccess(projectId: string): void {
+    const allowedProjectIds = this.allowedProjectIds();
+    if (allowedProjectIds !== null && !allowedProjectIds.includes(projectId)) throw new AuthorizationError();
+  }
+
+  /** Site Managers must select one of their assigned Projects when creating a scoped master. */
+  private creationProjectId(projectId?: string): string | null {
+    const allowedProjectIds = this.allowedProjectIds();
+    if (allowedProjectIds !== null && !projectId) {
+      throw new ValidationError({ fieldErrors: [{ field: 'projectId', message: 'Select one of your assigned Projects.' }] });
+    }
+    if (projectId && allowedProjectIds !== null && !allowedProjectIds.includes(projectId)) throw new AuthorizationError();
+    return projectId ?? null;
+  }
+
   /** List supplier/vendor masters with bounded company-scoped filters. */
   async listVendors(input: ListVendorsQuery) {
     this.requirePermission('vendors.read');
+    if (input.projectId) this.requireProjectAccess(input.projectId);
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new VendorsSubcontractorsRepository(this.db).listVendors({
       ...(input.search === undefined ? {} : { search: input.search }),
       ...(input.status === undefined ? {} : { status: input.status }),
       ...(input.qualificationStatus === undefined ? {} : { qualificationStatus: input.qualificationStatus }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -94,10 +121,11 @@ export class VendorsSubcontractorsService {
   async getVendor(vendorId: string) {
     this.requirePermission('vendors.read');
     const repository = new VendorsSubcontractorsRepository(this.db);
-    const vendor = await repository.findVendorById(vendorId);
+    const allowedProjectIds = this.allowedProjectIds();
+    const vendor = await repository.findVendorById(vendorId, allowedProjectIds);
     if (!vendor) throw createVendorsSubcontractorsError('VENDOR_NOT_FOUND');
     const [purchaseSummary, payableSummary] = await Promise.all([
-      repository.getVendorPurchaseSummary(vendorId),
+      repository.getVendorPurchaseSummary(vendorId, allowedProjectIds),
       this.readVendorPayableSummary(vendorId)
     ]);
     return {
@@ -113,9 +141,11 @@ export class VendorsSubcontractorsService {
   /** Create one active supplier/vendor with audit and outbox evidence. */
   async createVendor(input: CreateVendorBody) {
     this.requirePermission('vendors.create');
+    const projectId = this.creationProjectId(input.projectId);
     try {
       return await withTransaction(this.db, async (tx) => {
         const repository = new VendorsSubcontractorsRepository(tx);
+        if (projectId && !await repository.findProjectById(projectId)) throw createVendorsSubcontractorsError('PROJECT_NOT_FOUND');
         if (await repository.findVendorByCode(input.code)) throw createVendorsSubcontractorsError('DUPLICATE_VENDOR_CODE');
         const vendor = await repository.createVendor({
           code: input.code,
@@ -127,9 +157,11 @@ export class VendorsSubcontractorsService {
           ...(input.qualificationStatus === undefined ? {} : { qualificationStatus: input.qualificationStatus }),
           status: ACTIVE
         });
+        if (projectId) await repository.assignVendorToProject(vendor.id, projectId);
         await recordAudit(tx, {
           action: 'vendor.created', entityType: 'vendor', entityId: vendor.id,
-          after: { code: vendor.code, displayName: vendor.displayName, status: vendor.status, qualificationStatus: vendor.qualificationStatus }
+          projectId,
+          after: { code: vendor.code, displayName: vendor.displayName, status: vendor.status, qualificationStatus: vendor.qualificationStatus, projectId }
         });
         await recordOutboxEvent(tx, {
           eventType: 'vendor.created', resourceType: 'vendor', resourceId: vendor.id,
@@ -151,7 +183,7 @@ export class VendorsSubcontractorsService {
     try {
       return await withTransaction(this.db, async (tx) => {
         const repository = new VendorsSubcontractorsRepository(tx);
-        const before = await repository.findVendorById(vendorId);
+        const before = await repository.findVendorById(vendorId, this.allowedProjectIds());
         if (!before) throw createVendorsSubcontractorsError('VENDOR_NOT_FOUND');
         if (input.code) {
           const sameCode = await repository.findVendorByCode(input.code);
@@ -192,7 +224,7 @@ export class VendorsSubcontractorsService {
     this.requirePermission('vendors.update');
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
-      const vendor = await repository.findVendorById(vendorId);
+      const vendor = await repository.findVendorById(vendorId, this.allowedProjectIds());
       if (!vendor) throw createVendorsSubcontractorsError('VENDOR_NOT_FOUND');
       const contact = await repository.createVendorContact(vendorId, {
         name: input.name,
@@ -216,11 +248,15 @@ export class VendorsSubcontractorsService {
   /** List company subcontractor profiles with bounded filters. */
   async listSubcontractors(input: ListSubcontractorsQuery) {
     this.requirePermission('subcontractors.read');
+    if (input.projectId) this.requireProjectAccess(input.projectId);
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractors({
       ...(input.search === undefined ? {} : { search: input.search }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -230,8 +266,10 @@ export class VendorsSubcontractorsService {
   /** Create one subcontractor with a server-generated code and four user-maintained fields. */
   async createSubcontractor(input: CreateSubcontractorBody) {
     this.requirePermission('subcontractors.manage');
+    const projectId = this.creationProjectId(input.projectId);
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
+      if (projectId && !await repository.findProjectById(projectId)) throw createVendorsSubcontractorsError('PROJECT_NOT_FOUND');
       await repository.ensureSubcontractorNumbering();
       const number = await allocateCompanyNumber(tx, { sequenceKey: SUBCONTRACTOR_SEQUENCE_KEY });
       const subcontractor = await repository.createSubcontractor({
@@ -242,9 +280,11 @@ export class VendorsSubcontractorsService {
         address: input.address,
         status: ACTIVE
       });
+      if (projectId) await repository.assignSubcontractorToProject(subcontractor.id, projectId);
       await recordAudit(tx, {
         action: 'subcontractor.created', entityType: 'subcontractor', entityId: subcontractor.id,
-        after: { code: subcontractor.code, name: subcontractor.name, specialty: subcontractor.specialty, status: subcontractor.status }
+        projectId,
+        after: { code: subcontractor.code, name: subcontractor.name, specialty: subcontractor.specialty, status: subcontractor.status, projectId }
       });
       await recordOutboxEvent(tx, {
         eventType: 'subcontractor.created', resourceType: 'subcontractor', resourceId: subcontractor.id,
@@ -259,7 +299,7 @@ export class VendorsSubcontractorsService {
     this.requirePermission('subcontractors.manage');
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
-      const before = await repository.findSubcontractorById(subcontractorId);
+      const before = await repository.findSubcontractorById(subcontractorId, this.allowedProjectIds());
       if (!before) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
       const updated = await repository.updateSubcontractor(subcontractorId, {
         ...(input.name === undefined ? {} : { name: input.name }),
@@ -285,12 +325,15 @@ export class VendorsSubcontractorsService {
   /** List subcontract Project assignments with bounded company-scoped filters. */
   async listSubcontractContracts(input: ListSubcontractContractsQuery) {
     this.requirePermission('subcontractors.read');
+    if (input.projectId) this.requireProjectAccess(input.projectId);
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractContracts({
       ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
       ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -300,9 +343,10 @@ export class VendorsSubcontractorsService {
   /** Assign one company Project and agreed contract amount to an active subcontractor. */
   async createSubcontractContract(input: CreateSubcontractContractBody) {
     this.requirePermission('subcontractors.manage');
+    this.requireProjectAccess(input.projectId);
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
-      const subcontractor = await repository.findSubcontractorById(input.subcontractorId);
+      const subcontractor = await repository.findSubcontractorById(input.subcontractorId, this.allowedProjectIds());
       if (!subcontractor) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
       if (subcontractor.status !== ACTIVE) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_ACTIVE');
       const project = await repository.findProjectById(input.projectId);
@@ -314,6 +358,7 @@ export class VendorsSubcontractorsService {
         contractDate: new Date(`${input.contractDate}T00:00:00.000Z`),
         status: ACTIVE
       });
+      await repository.assignSubcontractorToProject(input.subcontractorId, input.projectId);
       await recordAudit(tx, {
         action: 'subcontract.created',
         entityType: 'subcontract_contract',
@@ -339,6 +384,8 @@ export class VendorsSubcontractorsService {
   /** List direct subcontract payments without exposing supplier-payables data. */
   async listSubcontractPayments(input: ListSubcontractPaymentsQuery) {
     this.requirePermission('subcontractors.read');
+    if (input.projectId) this.requireProjectAccess(input.projectId);
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractPayments({
@@ -346,6 +393,7 @@ export class VendorsSubcontractorsService {
       ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
       ...(input.subcontractContractId === undefined ? {} : { subcontractContractId: input.subcontractContractId }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -384,6 +432,7 @@ export class VendorsSubcontractorsService {
     const repository = new VendorsSubcontractorsRepository(tx);
     const contract = await repository.lockSubcontractContractForPayment(input.subcontractContractId);
     if (!contract) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
+    this.requireProjectAccess(contract.projectId);
 
     const cashBank = await repository.findCashBankAccountById(input.cashBankAccountId);
     if (!cashBank
@@ -470,12 +519,15 @@ export class VendorsSubcontractorsService {
   /** Return contract, paid and remaining values for the subcontractor ledger. */
   async listSubcontractLedger(input: ListSubcontractLedgerQuery) {
     this.requirePermission('subcontractors.read');
+    if (input.projectId) this.requireProjectAccess(input.projectId);
+    const allowedProjectIds = this.allowedProjectIds();
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new VendorsSubcontractorsRepository(this.db).listSubcontractLedger({
       ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
       ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
       ...(input.status === undefined ? {} : { status: input.status }),
+      allowedProjectIds,
       skip: (page - 1) * pageSize,
       take: pageSize
     });
@@ -506,7 +558,7 @@ export class VendorsSubcontractorsService {
     this.requirePermission('subcontractors.manage');
     return withTransaction(this.db, async (tx) => {
       const repository = new VendorsSubcontractorsRepository(tx);
-      const before = await repository.findSubcontractContractById(contractId);
+      const before = await repository.findSubcontractContractById(contractId, this.allowedProjectIds());
       if (!before) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
       if (before.status === 'FINISHED') throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_ALREADY_FINISHED');
       const finishedAt = new Date();

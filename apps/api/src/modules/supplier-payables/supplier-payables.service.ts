@@ -333,7 +333,7 @@ export class SupplierPayablesService {
     input: InvoiceDependencyInput,
     requireLineAccounts: boolean
   ): Promise<ValidatedInvoiceDependencies> {
-    const vendor = await repository.findVendorById(input.vendorId);
+    const vendor = await repository.findVendorById(input.vendorId, input.projectId);
     if (!vendor || !hasStatus(vendor.status, ACTIVE)) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
 
     const project = await repository.findProjectById(input.projectId, visibility);
@@ -721,7 +721,7 @@ export class SupplierPayablesService {
     const users = new AdministrationRepository(tx);
     const visibility = await this.resolveVisibility(users, 'supplier_payments.create', now);
     const repository = new SupplierPayablesRepository(tx);
-    const vendor = await repository.findVendorById(input.vendorId);
+    const vendor = await repository.findVendorById(input.vendorId, input.projectId ?? undefined);
     if (!vendor) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
     let paymentProjectId = input.projectId ?? null;
     let linkedInvoice: Awaited<ReturnType<SupplierPayablesRepository['lockSupplierInvoiceForWrite']>> = null;

@@ -57,13 +57,17 @@ test('B1.6 financial position preserves received, advance, outstanding, payable 
   assert.doesNotMatch(service, /receivedAmount\s*-\s*actualCost|receivedAmount\s*[-+]\s*values\.actualCost/i);
 });
 
-test('B1.6 Company financial summary never mixes currencies and exposes bounded coverage', () => {
+test('B1.6 Company financial summary sums every permission-visible profitability page without mixing currencies', () => {
   const service = read(SERVICE);
   assert.match(service, /function aggregateFinancialsByCurrency/);
   assert.match(service, /new Map<string, CurrencyFinancialAccumulator>/);
   assert.match(service, /totals\.get\(item\.currency\)/);
-  assert.match(service, /financialsByCurrency: profitability \? aggregateFinancialsByCurrency\(profitability\.items\) : null/);
   assert.match(service, /DASHBOARD_FINANCIAL_PORTFOLIO_PAGE_SIZE = 100/);
+  assert.match(service, /let profitability = firstProfitabilityPage/);
+  assert.match(service, /while \(profitabilityItems\.length < profitability\.total\)/);
+  assert.match(service, /page: profitabilityPage/);
+  assert.match(service, /profitabilityItems\.push\(\.\.\.nextPage\.items\)/);
+  assert.match(service, /financialsByCurrency: profitability \? aggregateFinancialsByCurrency\(profitability\.items\) : null/);
   assert.match(service, /includedProjects: profitability\.items\.length/);
   assert.match(service, /complete: profitability\.items\.length === profitability\.total/);
 });

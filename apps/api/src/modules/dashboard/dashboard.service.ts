@@ -359,7 +359,7 @@ export class DashboardService {
         'profit-loss'
       ]);
     const readCashBank = this.canReadCashBank(scope) && wantsAnyWidget(query.widgetCodes, ['cash-bank']);
-    const [profitability, cashBank] = await Promise.all([
+    const [firstProfitabilityPage, cashBank] = await Promise.all([
       readProfitability
         ? new ProjectProfitabilityService(this.db).getPortfolio({
             ...(asOfDate ? { asOfDate } : {}),
@@ -371,6 +371,22 @@ export class DashboardService {
         ? new FinanceService(this.db).listCashBankAccounts({ page: 1, pageSize: 100 })
         : null
     ]);
+    let profitability = firstProfitabilityPage;
+    if (profitability && profitability.items.length < profitability.total) {
+      const profitabilityItems = [...profitability.items];
+      let profitabilityPage = 2;
+      while (profitabilityItems.length < profitability.total) {
+        const nextPage = await new ProjectProfitabilityService(this.db).getPortfolio({
+          asOfDate: profitability.asOfDate,
+          page: profitabilityPage,
+          pageSize: DASHBOARD_FINANCIAL_PORTFOLIO_PAGE_SIZE
+        });
+        if (nextPage.items.length === 0) break;
+        profitabilityItems.push(...nextPage.items);
+        profitabilityPage += 1;
+      }
+      profitability = { ...profitability, items: profitabilityItems };
+    }
 
     return {
       projectCount: projects.total,

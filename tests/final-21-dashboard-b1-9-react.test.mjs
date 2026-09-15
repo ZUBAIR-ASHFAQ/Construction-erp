@@ -78,6 +78,18 @@ test('B1.9 renders all required Dashboard management views from server-returned 
   assert.doesNotMatch(workspace, /receivedAmount\s*[-+*/]|recognizedRevenue\s*[-+]\s*actualCost|reduce\([^)]*(?:cost|profit|billed|received)/i);
 });
 
+test('B1.9 executive summary renders the requested all-Project total cards from server-returned financial fields', () => {
+  const workspace = read(`${FEATURE}/components/dashboard-workspace.tsx`);
+  for (const label of ['Total projects', 'Total revenue', 'Supplier payables', 'Client received']) {
+    assert.match(workspace, new RegExp(label, 'i'));
+  }
+  assert.match(workspace, /item\.recognizedRevenue/);
+  assert.match(workspace, /item\.supplierPayableAmount/);
+  assert.match(workspace, /item\.receivedAmount/);
+  assert.match(workspace, /kept separate by currency/);
+  assert.doesNotMatch(workspace, /reduce\([^)]*(?:revenue|payable|received)/i);
+});
+
 test('B1.9 keeps Dashboard permissions visible in the page and API authoritative for preference writes', () => {
   const page = read(`${FEATURE}/pages/dashboard-page.tsx`);
   const workspace = read(`${FEATURE}/components/dashboard-workspace.tsx`);

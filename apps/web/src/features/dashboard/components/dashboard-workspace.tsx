@@ -329,12 +329,32 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
         {summaryQuery.data && (
           <>
             <div className="dashboard-metric-grid">
-              <div className="dashboard-metric dashboard-metric-primary"><span>Projects in scope</span><strong>{summaryQuery.data.projectCount}</strong><small>Permission-filtered portfolio</small></div>
-              {props.canReadProjects && <div className="dashboard-metric"><span>Average physical progress</span><strong>{visibleProgress.average.toFixed(1)}%</strong><small>{visibleProgress.reportedCount} reporting project(s) shown</small></div>}
-              {props.canReadProjects && <div className="dashboard-metric"><span>Operational alerts</span><strong>{alertsQuery.data?.alertCount ?? '—'}</strong><small>Warnings and critical items</small></div>}
-              {props.canReadFinance && summaryQuery.data.executiveSummary.financialsByCurrency?.map((item) => (
-                <MoneyMetric key={`${item.currency}-profit`} label={`${item.currency} profit / loss`} value={item.profitAmount} currency={item.currency} />
-              ))}
+              <div className="dashboard-metric dashboard-metric-primary"><span>Total projects</span><strong>{summaryQuery.data.projectCount}</strong><small>Permission-filtered portfolio</small></div>
+              {props.canReadFinance && (
+                <>
+                  <div className="dashboard-metric">
+                    <span>Total revenue</span>
+                    {(summaryQuery.data.executiveSummary.financialsByCurrency ?? []).length === 0
+                      ? <strong>—</strong>
+                      : summaryQuery.data.executiveSummary.financialsByCurrency?.map((item) => <strong key={`${item.currency}-revenue`}>{displayMoney(item.recognizedRevenue, item.currency)}</strong>)}
+                    <small>All permission-visible Projects · kept separate by currency</small>
+                  </div>
+                  <div className="dashboard-metric">
+                    <span>Supplier payables</span>
+                    {(summaryQuery.data.executiveSummary.financialsByCurrency ?? []).length === 0
+                      ? <strong>—</strong>
+                      : summaryQuery.data.executiveSummary.financialsByCurrency?.map((item) => <strong key={`${item.currency}-supplier-payable`}>{displayMoney(item.supplierPayableAmount, item.currency)}</strong>)}
+                    <small>All permission-visible Projects · kept separate by currency</small>
+                  </div>
+                  <div className="dashboard-metric">
+                    <span>Client received</span>
+                    {(summaryQuery.data.executiveSummary.financialsByCurrency ?? []).length === 0
+                      ? <strong>—</strong>
+                      : summaryQuery.data.executiveSummary.financialsByCurrency?.map((item) => <strong key={`${item.currency}-received`}>{displayMoney(item.receivedAmount, item.currency)}</strong>)}
+                    <small>All permission-visible Projects · kept separate by currency</small>
+                  </div>
+                </>
+              )}
             </div>
             {props.canReadFinance && summaryQuery.data.executiveSummary.financialsByCurrency && (
               <div className="table-wrap dashboard-section-space">

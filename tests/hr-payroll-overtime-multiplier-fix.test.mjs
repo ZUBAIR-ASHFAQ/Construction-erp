@@ -40,7 +40,7 @@ test('multiplier is stored on the mutable Payroll Run and reused during finaliza
 test('calculate API and React workspace carry the multiplier without changing the route shape', () => {
   assert.match(schema, /calculatePayrollRunBodySchema = z\.object\([\s\S]*overtimeMultiplier/);
   assert.match(routes, /CALCULATE_PAYROLL_BODY_JSON_SCHEMA/);
-  assert.match(api, /CalculatePayrollRunInput = Readonly<\{ overtimeMultiplier\?: string \}>/);
+  assert.match(api, /CalculatePayrollRunInput = Readonly<\{[^}]*overtimeMultiplier\?: string[^}]*\}>/);
   assert.match(hooks, /mutationFn: \(input: CalculatePayrollRunInput\) => calculatePayrollRun\(payrollRunId, input\)/);
   assert.match(workspace, /Hourly overtime multiplier/);
   assert.match(workspace, /calculateMutation\.mutate\(overtimeMultiplier \? \{ overtimeMultiplier \} : \{\}\)/);

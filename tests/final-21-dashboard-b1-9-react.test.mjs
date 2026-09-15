@@ -68,13 +68,15 @@ test('B1.9 renders all required Dashboard management views from server-returned 
   for (const label of [
     'Executive summary', 'Project health & progress', 'Stage progress snapshot',
     'Budget', 'Actual cost', 'Billed', 'Received', 'Outstanding',
-    'Supplier payable', 'Profit / loss', 'Alerts', 'Saved filters & preferences'
+    'Supplier payable', 'Profit / loss'
   ]) assert.match(workspace, new RegExp(label.replace(/[&/]/g, (value) => `\\${value}`), 'i'));
 
-  assert.match(workspace, /Cash received is not profit/);
   assert.match(workspace, /overallPhysicalProgressPercent/);
   assert.match(workspace, /stage\.weightPercent/);
   assert.match(workspace, /stage\.approvedPhysicalProgressPercent/);
+  assert.doesNotMatch(workspace, /<h2>Alerts<\/h2>/);
+  assert.doesNotMatch(workspace, /Saved filters & preferences/);
+  assert.doesNotMatch(workspace, /useDashboardAlerts|alertsQuery|DashboardSavedFilter|summaryQuery\.data\??\.savedFilters|summaryQuery\.data\.savedFilters/);
   assert.doesNotMatch(workspace, /receivedAmount\s*[-+*/]|recognizedRevenue\s*[-+]\s*actualCost|reduce\([^)]*(?:cost|profit|billed|received)/i);
 });
 
@@ -87,6 +89,9 @@ test('B1.9 executive summary renders the requested all-Project total cards from 
   assert.match(workspace, /item\.supplierPayableAmount/);
   assert.match(workspace, /item\.receivedAmount/);
   assert.match(workspace, /kept separate by currency/);
+  assert.doesNotMatch(workspace, /Financial summary covers/);
+  assert.doesNotMatch(workspace, /Cash received is not profit/);
+  assert.doesNotMatch(workspace, /<th>Currency<\/th><th>Projects<\/th><th>Recognized revenue<\/th>/);
   assert.doesNotMatch(workspace, /reduce\([^)]*(?:revenue|payable|received)/i);
 });
 
@@ -99,7 +104,7 @@ test('B1.9 keeps Dashboard permissions visible in the page and API authoritative
   assert.match(workspace, /props\.canReadProjects/);
   assert.match(workspace, /props\.canReadFinance/);
   assert.match(workspace, /props\.canManagePreferences/);
-  assert.match(workspace, /API remains authoritative/);
+  assert.match(workspace, /preferencesMutation\.mutate/);
 });
 
 test('B1.9 integrates Dashboard as the first permission-aware workspace while preserving Reports after Project Profitability', () => {

@@ -13,6 +13,7 @@ export type RequisitionItem = Readonly<{
   id: string;
   requisitionId: string;
   materialId: string | null;
+  materialName: string | null;
   description: string;
   quantity: string;
   unit: string;
@@ -25,6 +26,7 @@ export type PurchaseRequisition = Readonly<{
   stageId: string | null;
   requestNo: string;
   requestedBy: string;
+  requestedByName: string | null;
   requiredDate: string;
   status: string;
   notes: string | null;
@@ -36,6 +38,7 @@ export type PurchaseOrderItem = Readonly<{
   purchaseOrderId: string;
   requisitionItemId: string | null;
   materialId: string | null;
+  materialName: string | null;
   stageId: string | null;
   description: string;
   quantity: string;

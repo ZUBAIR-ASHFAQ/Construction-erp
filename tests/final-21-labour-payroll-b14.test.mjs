@@ -40,6 +40,7 @@ test('B14 exposes the Labour Payroll and salary-settlement routes', () => {
     "POST', route: '/api/v1/payroll/runs/:id/calculate'",
     "POST', route: '/api/v1/payroll/runs/:id/finalize'",
     "GET', route: '/api/v1/payroll/runs/:id'",
+    "GET', route: '/api/v1/payroll/runs/:id/eligible-employees'",
     "GET', route: '/api/v1/payroll/cash-bank-accounts'",
     "GET', route: '/api/v1/payroll/payments'",
     "POST', route: '/api/v1/payroll/payments'",
@@ -50,7 +51,7 @@ test('B14 exposes the Labour Payroll and salary-settlement routes', () => {
     "GET', route: '/api/v1/payroll/employees/:id/ledger'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 17);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/(?:attendance|payroll)/g) ?? []).length, 18);
   assert.doesNotMatch(schema, /timesheets|leave-requests|payslip\.self_read/i);
 });
 

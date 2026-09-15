@@ -50,6 +50,8 @@ type ClientReceiptsWorkspaceProps = Readonly<{
   view?: 'payment' | 'ledger';
   canRead: boolean;
   canCreate: boolean;
+  createModalOpen: boolean;
+  onCloseCreateModal: () => void;
   canAllocate: boolean;
   canReverse: boolean;
   canReadClients: boolean;
@@ -178,6 +180,17 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   );
   const correctReceipt = useCorrectClientReceipt(editingReceipt?.id ?? null);
 
+  /** Close the New Payment dialog and clear draft-only browser state. */
+  function closeCreateReceiptModal(): void {
+    receiptForm.reset(EMPTY_RECEIPT_FORM);
+    setReceiptEvidence(null);
+    setReceiptEvidenceInputKey((value) => value + 1);
+    setEvidenceMessage(null);
+    setEvidenceError(null);
+    createReceipt.reset();
+    props.onCloseCreateModal();
+  }
+
   useEffect(() => {
     if (!selectedReceiptId && !editingReceipt) return undefined;
     /** Close the active receipt detail dialog without changing register filters. */
@@ -221,7 +234,10 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
       clientInvoiceId: values.clientInvoiceId || null
     });
     receiptForm.reset(EMPTY_RECEIPT_FORM);
-    if (!receiptEvidence) return;
+    if (!receiptEvidence) {
+      closeCreateReceiptModal();
+      return;
+    }
     if (!props.canUploadDocuments || !props.canLinkDocuments) {
       setEvidenceError(`Payment ${created.receiptNo} was posted, but your role cannot upload and link its evidence.`);
       return;
@@ -239,8 +255,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
         link: { versionId: uploaded.version.id, resourceType: 'client_receipt', resourceId: created.id }
       });
       setEvidenceMessage(`Payment ${created.receiptNo} and ${receiptEvidence.name} were saved successfully.`);
-      setReceiptEvidence(null);
-      setReceiptEvidenceInputKey((value) => value + 1);
+      closeCreateReceiptModal();
     } catch (error) {
       setReceiptEvidence(null);
       setReceiptEvidenceInputKey((value) => value + 1);
@@ -431,68 +446,82 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
 
   return (
     <div className="admin-stack">
-      {props.canCreate && props.view !== 'ledger' && (
-        <section className="admin-card">
-          <h2>New Client Receipt</h2>
-          <p className="muted">Receipt cash is posted immediately to Cash/Bank and Client Advance. It is not profit: this does not treat cash received as profit, and AR changes only when the receipt is allocated to an issued Client Invoice.</p>
-          <form className="admin-form" onSubmit={receiptForm.handleSubmit(submitReceipt)}>
-            <div className="two-column-form">
-              <label>Client
-                {props.canReadClients ? (
-                  <select {...receiptForm.register('clientId')}>
-                    <option value="">Select client</option>
-                    {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
-                  </select>
-                ) : <><input type="hidden" {...receiptForm.register('clientId')} /><span className="muted">Derived from selected Project</span></>}
-                <span className="field-error">{receiptForm.formState.errors.clientId?.message}</span>
-              </label>
-              <label>Project
-                <select {...receiptForm.register('projectId')}>
-                  <option value="">Select project</option>
-                  {projects.filter((project) => !receiptClientId || project.clientId === receiptClientId).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
-                </select>
-                <span className="field-error">{receiptForm.formState.errors.projectId?.message}</span>
-              </label>
-              <label>Stage (optional)
-                <select {...receiptForm.register('stageId')} disabled={!receiptProjectId || !props.canReadStages}>
-                  <option value="">Project level</option>
-                  {(receiptStagesQuery.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
-                </select>
-                {!props.canReadStages ? <small className="muted">Stage selection requires Project Stage read access.</small> : null}
-              </label>
-              <label>Receipt date<input type="date" {...receiptForm.register('receiptDate')} /><span className="field-error">{receiptForm.formState.errors.receiptDate?.message}</span></label>
-              <label>Amount<input inputMode="decimal" {...receiptForm.register('amount')} /><span className="field-error">{receiptForm.formState.errors.amount?.message}</span></label>
-              <label>Payment method<select {...receiptForm.register('paymentMethod')}><option value="BANK">Bank</option><option value="CASH">Cash</option></select></label>
-              <label>Cash / Bank account
-                <select {...receiptForm.register('cashBankAccountId')} disabled={!props.canReadFinance}>
-                  <option value="">Select matching account</option>
-                  {matchingCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}
-                </select>
-                <span className="field-error">{receiptForm.formState.errors.cashBankAccountId?.message}</span>
-              </label>
-              <input type="hidden" {...receiptForm.register('receiptType')} />
-              <label>Pending Client Invoice (optional)
-                <select {...receiptForm.register('clientInvoiceId')} disabled={!receiptProjectId || !props.canReadInvoices}>
-                  <option value="">Direct payment (no invoice)</option>
-                  {pendingReceiptInvoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Paid {displayMoney(invoice.allocatedAmount)} · Due {displayMoney(invoice.outstandingAmount)}</option>)}
-                </select>
-                <span className="field-error">{receiptForm.formState.errors.clientInvoiceId?.message}</span>
-                {receiptProjectId && props.canReadInvoices && !receiptInvoicesQuery.isLoading && pendingReceiptInvoices.length === 0 ? <small className="muted">No pending Client Invoices for the selected Client and Project. Leave Direct payment selected to post without an Invoice.</small> : null}
-              </label>
-              <label>Reference (optional)<input {...receiptForm.register('reference')} /></label>
-              <label>Payment evidence (optional)
-                <input key={receiptEvidenceInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setReceiptEvidence(event.target.files?.[0] ?? null)} />
-                <small className="muted">Upload the client payment receipt, bank slip or cash evidence as JPG, PNG or PDF.</small>
-              </label>
+      {props.canCreate && props.view !== 'ledger' && props.createModalOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateReceiptModal(); }}>
+          <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="client-payment-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateReceiptModal(); }}>
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Client payment</p>
+                <h2 id="client-payment-create-title">New Client Receipt</h2>
+                <p>Record a Client payment against the selected Project and Cash / Bank account.</p>
+              </div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close new payment" onClick={closeCreateReceiptModal}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p className="client-payment-create-note">Receipt cash is posted immediately to Cash/Bank and Client Advance. It is not profit: this does not treat cash received as profit, and AR changes only when the receipt is allocated to an issued Client Invoice.</p>
+              <form className="admin-form client-payment-create-form" onSubmit={receiptForm.handleSubmit(submitReceipt)}>
+                <div className="client-payment-create-grid">
+                  <label>Client
+                    {props.canReadClients ? (
+                      <select {...receiptForm.register('clientId')}>
+                        <option value="">Select client</option>
+                        {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
+                      </select>
+                    ) : <><input type="hidden" {...receiptForm.register('clientId')} /><span className="muted">Derived from selected Project</span></>}
+                    <span className="field-error">{receiptForm.formState.errors.clientId?.message}</span>
+                  </label>
+                  <label>Project
+                    <select {...receiptForm.register('projectId')}>
+                      <option value="">Select project</option>
+                      {projects.filter((project) => !receiptClientId || project.clientId === receiptClientId).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+                    </select>
+                    <span className="field-error">{receiptForm.formState.errors.projectId?.message}</span>
+                  </label>
+                  <label>Stage (optional)
+                    <select {...receiptForm.register('stageId')} disabled={!receiptProjectId || !props.canReadStages}>
+                      <option value="">Project level</option>
+                      {(receiptStagesQuery.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                    </select>
+                    {!props.canReadStages ? <small className="muted">Stage selection requires Project Stage read access.</small> : null}
+                  </label>
+                  <label>Receipt date<input type="date" {...receiptForm.register('receiptDate')} /><span className="field-error">{receiptForm.formState.errors.receiptDate?.message}</span></label>
+                  <label>Amount<input inputMode="decimal" {...receiptForm.register('amount')} /><span className="field-error">{receiptForm.formState.errors.amount?.message}</span></label>
+                  <label>Payment method<select {...receiptForm.register('paymentMethod')}><option value="BANK">Bank</option><option value="CASH">Cash</option></select></label>
+                  <label>Cash / Bank account
+                    <select {...receiptForm.register('cashBankAccountId')} disabled={!props.canReadFinance}>
+                      <option value="">Select matching account</option>
+                      {matchingCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}
+                    </select>
+                    <span className="field-error">{receiptForm.formState.errors.cashBankAccountId?.message}</span>
+                  </label>
+                  <input type="hidden" {...receiptForm.register('receiptType')} />
+                  <label>Pending Client Invoice (optional)
+                    <select {...receiptForm.register('clientInvoiceId')} disabled={!receiptProjectId || !props.canReadInvoices}>
+                      <option value="">Direct payment (no invoice)</option>
+                      {pendingReceiptInvoices.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Paid {displayMoney(invoice.allocatedAmount)} · Due {displayMoney(invoice.outstandingAmount)}</option>)}
+                    </select>
+                    <span className="field-error">{receiptForm.formState.errors.clientInvoiceId?.message}</span>
+                    {receiptProjectId && props.canReadInvoices && !receiptInvoicesQuery.isLoading && pendingReceiptInvoices.length === 0 ? <small className="muted">No pending Client Invoices for the selected Client and Project. Leave Direct payment selected to post without an Invoice.</small> : null}
+                  </label>
+                  <label>Reference (optional)<input {...receiptForm.register('reference')} /></label>
+                  <label>Payment evidence (optional)
+                    <input key={receiptEvidenceInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setReceiptEvidence(event.target.files?.[0] ?? null)} />
+                    <small className="muted">Upload the client payment receipt, bank slip or cash evidence as JPG, PNG or PDF.</small>
+                  </label>
+                </div>
+                <p className="muted client-payment-create-help">Select a pending Invoice to create the payment and apply the entered amount in the same server transaction. Leave Direct payment selected to post without an Invoice.</p>
+                {!props.canReadProjects || !props.canReadFinance ? <p className="muted">Project and Finance read access are required for safe selectors; raw IDs are not accepted by this UI.</p> : null}
+                {mutationMessage(createReceipt.error) && <p className="field-error">{mutationMessage(createReceipt.error)}</p>}
+                {evidenceMessage ? <p className="muted">{evidenceMessage}</p> : null}
+                {evidenceError ? <div className="form-error" role="alert">{evidenceError}</div> : null}
+                <div className="form-actions client-payment-create-actions">
+                  <button type="button" className="secondary-button" disabled={createReceipt.isPending || uploadReceiptDocument.isPending || linkReceiptDocument.isPending} onClick={closeCreateReceiptModal}>Cancel</button>
+                  <button type="submit" disabled={createReceipt.isPending || uploadReceiptDocument.isPending || linkReceiptDocument.isPending || !props.canReadProjects || !props.canReadFinance}>{createReceipt.isPending || uploadReceiptDocument.isPending || linkReceiptDocument.isPending ? 'Saving payment…' : 'Create & post receipt'}</button>
+                </div>
+              </form>
             </div>
-            <p className="muted">Select a pending Invoice here to create the payment and apply the entered amount in the same server transaction. Leave Direct payment selected to post without an Invoice; existing manual allocation remains available only for later unapplied receipts.</p>
-            <button type="submit" disabled={createReceipt.isPending || uploadReceiptDocument.isPending || linkReceiptDocument.isPending || !props.canReadProjects || !props.canReadFinance}>{createReceipt.isPending || uploadReceiptDocument.isPending || linkReceiptDocument.isPending ? 'Saving payment…' : 'Create & post receipt'}</button>
-            {!props.canReadProjects || !props.canReadFinance ? <p className="muted">Project and Finance read access are required for safe selectors; raw IDs are not accepted by this UI.</p> : null}
-            {mutationMessage(createReceipt.error) && <p className="field-error">{mutationMessage(createReceipt.error)}</p>}
-            {evidenceMessage ? <p className="muted">{evidenceMessage}</p> : null}
-            {evidenceError ? <div className="form-error" role="alert">{evidenceError}</div> : null}
-          </form>
-        </section>
+          </section>
+        </div>
       )}
 
       <section className="admin-card">

@@ -14,7 +14,6 @@ function unlabeledCells(source) {
 
 test('Dashboard dense tables provide responsive cell labels', () => {
   assert.equal(unlabeledCells(dashboard).length, 0);
-  assert.match(dashboard, /data-label="Recognized revenue"/);
   assert.match(dashboard, /data-label="Physical progress"/);
   assert.match(dashboard, /data-label="Outstanding"/);
 });

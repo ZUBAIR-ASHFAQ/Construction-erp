@@ -19,6 +19,7 @@ import {
   useEmployeeAdvances,
   useFinalizePayrollRun,
   usePayrollRun,
+  usePayrollEligibleEmployees,
   usePayrollRuns,
   usePayrollCashBankAccounts,
   usePayrollPayments,
@@ -156,7 +157,7 @@ function SalaryPaymentModal({ line, run, accounts, canManageAccounts, onAddAccou
     onClose();
   }
 
-  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="salary-payment-title"><header className="finance-modal-header"><div><p className="eyebrow">Employee salary settlement</p><h2 id="salary-payment-title">Pay {line.employeeName}</h2><p>{run.periodStart} to {run.periodEnd} · Outstanding <Money value={line.outstandingAmount} /></p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close salary payment">×</button></header><div className="finance-modal-body"><form className="admin-form" onSubmit={form.handleSubmit(submit)}><div className="form-grid"><label>Payment date<input type="date" min={run.periodEnd} {...form.register('paymentDate')} /><span className="field-error">{form.formState.errors.paymentDate?.message}</span></label><label>Amount<input inputMode="decimal" {...form.register('amount')} /><span className="field-error">{form.formState.errors.amount?.message}</span></label><label>Cash / Bank account<select {...form.register('cashBankAccountId')}><option value="">Select account</option>{eligibleAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}{account.accountNumber ? ` · ${account.accountNumber}` : ''} · Balance ${account.balance}</option>)}</select><span className="field-error">{form.formState.errors.cashBankAccountId?.message}</span></label><label>Reference (optional)<input {...form.register('reference')} /></label></div>{projectId && eligibleAccounts.length === 0 && canManageAccounts && <div className="form-actions"><button type="button" className="secondary-button" onClick={() => onAddAccount(projectId)}>Add Cash / Bank account</button></div>}{!projectId && <p className="muted">This salary spans multiple Projects and must be settled by an administrator using a Company account.</p>}<p className="muted">This reduces Payroll Payable and the selected Cash/Bank balance. It does not add Project cost again.</p>{errorMessage(mutation.error) && <p className="field-error">{errorMessage(mutation.error)}</p>}<div className="form-actions"><button type="submit" disabled={mutation.isPending || eligibleAccounts.length === 0}>{mutation.isPending ? 'Posting…' : 'Post salary payment'}</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></div></form></div></section></div>;
+  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="salary-payment-title"><header className="finance-modal-header"><div><p className="eyebrow">Employee salary settlement</p><h2 id="salary-payment-title">Pay {line.employeeName}</h2><p>{run.periodStart} to {run.periodEnd} · Outstanding <Money value={line.outstandingAmount} /></p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close salary payment">×</button></header><div className="finance-modal-body"><form className="admin-form" onSubmit={form.handleSubmit(submit)}><div className="form-grid"><label>Payment date<input type="date" min={run.periodEnd} {...form.register('paymentDate')} /><span className="field-error">{form.formState.errors.paymentDate?.message}</span></label><label>Amount<input inputMode="decimal" {...form.register('amount')} /><span className="field-error">{form.formState.errors.amount?.message}</span></label><label>Cash / Bank account<select {...form.register('cashBankAccountId')}><option value="">Select account</option>{eligibleAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}{account.accountNumber ? ` · ${account.accountNumber}` : ''} · Balance ${account.balance}</option>)}</select><span className="field-error">{form.formState.errors.cashBankAccountId?.message}</span></label><label>Reference (optional)<input {...form.register('reference')} /></label></div>{projectId && eligibleAccounts.length === 0 && canManageAccounts && <div className="form-actions"><button type="button" className="secondary-button" onClick={() => onAddAccount(projectId)}>Add Cash / Bank account</button></div>}{!projectId && <p className="muted">This salary spans multiple Projects and must be settled by an administrator using a Company account.</p>}<p className="muted">This reduces Payroll Payable and the selected Cash/Bank balance, and the posted payment appears automatically in the Employee Ledger. A second payment for this Employee and Payroll on the same date is blocked.</p>{errorMessage(mutation.error) && <p className="field-error">{errorMessage(mutation.error)}</p>}<div className="form-actions"><button type="submit" disabled={mutation.isPending || eligibleAccounts.length === 0}>{mutation.isPending ? 'Posting…' : 'Post salary payment'}</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></div></form></div></section></div>;
 }
 
 /** Render an immediate advance-payment dialog for an Employee in an open Payroll Run. */
@@ -240,7 +241,11 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const showPayrollCreation = props.view === 'daily-payroll' || props.view === 'monthly-payroll';
   const showPayments = props.view === 'payments';
   const showLedger = props.view === 'ledger';
-  const canAccessPayrollRuns = props.canReadPayroll || props.canCreatePayrollPayment;
+  const canAccessPayrollRuns = props.canReadPayroll
+    || props.canCreatePayroll
+    || props.canCalculatePayroll
+    || props.canFinalizePayroll
+    || props.canCreatePayrollPayment;
   const activeEmployees = useEmployees({ status: 'ACTIVE', pageSize: 100 }, !showLedger && (showAttendance || showAdvances || showPayrollRuns));
   const ledgerEmployees = useEmployees({ pageSize: 100 }, showLedger);
   const employees = showLedger ? ledgerEmployees : activeEmployees;
@@ -255,6 +260,8 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const createAdvanceMutation = useCreateEmployeeAdvance();
   const [selectedAttendance, setSelectedAttendance] = useState<AttendanceEntry | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [selectedPayrollProjectId, setSelectedPayrollProjectId] = useState('');
+  const [selectedPayrollEmployeeId, setSelectedPayrollEmployeeId] = useState('');
   const [overtimeMultiplier, setOvertimeMultiplier] = useState('');
   const [paymentLine, setPaymentLine] = useState<PayrollLine | null>(null);
   const [advanceLine, setAdvanceLine] = useState<PayrollLine | null>(null);
@@ -263,6 +270,15 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const [reversalAdvance, setReversalAdvance] = useState<EmployeeAdvance | null>(null);
   const [accountProjectId, setAccountProjectId] = useState<string | null>(null);
   const selectedRun = usePayrollRun(selectedRunId, canAccessPayrollRuns);
+  const eligiblePayrollEmployees = usePayrollEligibleEmployees(
+    selectedRunId,
+    selectedPayrollProjectId,
+    showPayrollCreation
+      && props.canCalculatePayroll
+      && (selectedRun.data?.payCycle === 'MONTHLY' || selectedRun.data?.payCycle === 'DAILY')
+      && selectedRun.data.status !== 'FINALIZED'
+      && selectedPayrollProjectId.length > 0
+  );
   const overtimeMultiplierValid = overtimeMultiplier === ''
     || (/^(?:[1-9]\d{0,2})(?:\.\d{1,4})?$/.test(overtimeMultiplier) && Number(overtimeMultiplier) <= 10);
   const selectedPayrollPeriodClosed = Boolean(selectedRun.data && new Date().toISOString().slice(0, 10) >= selectedRun.data.periodEnd);
@@ -270,6 +286,20 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   useEffect(() => {
     setOvertimeMultiplier(selectedRun.data?.overtimeMultiplier ?? '');
   }, [selectedRun.data?.id, selectedRun.data?.overtimeMultiplier]);
+
+  /** Reset the Employee target when a different Payroll Run opens. */
+  useEffect(() => {
+    setSelectedPayrollEmployeeId('');
+  }, [selectedRunId]);
+
+  /** Default the calculation Project when only one permitted Project is available. */
+  useEffect(() => {
+    if (!showPayrollCreation || (selectedRun.data?.payCycle !== 'MONTHLY' && selectedRun.data?.payCycle !== 'DAILY')) return;
+    const availableProjects = projects.data?.items ?? [];
+    if (selectedPayrollProjectId && availableProjects.some((project) => project.id === selectedPayrollProjectId)) return;
+    setSelectedPayrollProjectId(availableProjects.length === 1 ? availableProjects[0]?.id ?? '' : '');
+    setSelectedPayrollEmployeeId('');
+  }, [projects.data?.items, selectedPayrollProjectId, selectedRun.data?.payCycle, showPayrollCreation]);
 
   const attendanceForm = useForm<AttendanceFormValues>({
     resolver: zodResolver(attendanceFormSchema),
@@ -430,6 +460,23 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
     setSelectedAttendance(null);
   }
 
+  /** Calculate one selected Employee for current daily/monthly runs, preserving legacy whole-run behavior. */
+  function calculateSelectedRun(): void {
+    const run = selectedRun.data;
+    if (!run) return;
+    if (run.payCycle === 'MONTHLY') {
+      if (!selectedPayrollProjectId || !selectedPayrollEmployeeId) return;
+      calculateMutation.mutate({ projectId: selectedPayrollProjectId, employeeId: selectedPayrollEmployeeId });
+      return;
+    }
+    if (run.payCycle === 'DAILY') {
+      if (!selectedPayrollProjectId || !selectedPayrollEmployeeId) return;
+      calculateMutation.mutate({ projectId: selectedPayrollProjectId, employeeId: selectedPayrollEmployeeId, ...(overtimeMultiplier ? { overtimeMultiplier } : {}) });
+      return;
+    }
+    calculateMutation.mutate(overtimeMultiplier ? { overtimeMultiplier } : {});
+  }
+
   /** Confirm the irreversible accounting and Project-cost posting before finalization. */
   function confirmFinalize(): void {
     if (!selectedRun.data || !window.confirm(`Finalize payroll for ${selectedRun.data.periodStart} to ${selectedRun.data.periodEnd}? This posts Finance and Project costs and cannot be edited afterward.`)) return;
@@ -556,23 +603,81 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
       )}
 
       {showPayrollRuns && selectedRunId && selectedRun.data && (
-        <section className="admin-card">
-          <h2>Payroll calculation preview</h2>
-          <p><span className={`payroll-cycle-badge payroll-cycle-badge-${selectedRun.data.payCycle.toLowerCase()}`}>{payCycleLabel(selectedRun.data.payCycle)}</span> <strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status} · Created by {selectedRun.data.createdByName} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
-          <p><strong>Salary before absence:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.salaryBeforeAbsence))} · <strong>Absence deduction:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.absenceDeduction))} · <strong>Earned salary:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.grossAmount))} · <strong>Advance recovery:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.advanceDeduction))} · <strong>Net payroll:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.netAmount))}</p>
-          {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && (
-            <label>Hourly overtime multiplier (optional)<input type="number" inputMode="decimal" min="1" max="10" step="0.0001" value={overtimeMultiplier} onChange={(event) => setOvertimeMultiplier(event.target.value)} placeholder="Example: 1.5" /><small className="muted">Only enter this when an hourly-paid Employee has overtime. Enter 1.5 for 150% pay—not an hourly rate or percentage.</small>{!overtimeMultiplierValid && <span className="field-error">Enter a multiplier between 1 and 10.</span>}</label>
-          )}
-          <div className="form-actions">
-            {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && <button type="button" onClick={() => calculateMutation.mutate(overtimeMultiplier ? { overtimeMultiplier } : {})} disabled={calculateMutation.isPending || !overtimeMultiplierValid}>Calculate</button>}
-            {props.canFinalizePayroll && selectedRun.data.status === 'CALCULATED' && <button type="button" onClick={confirmFinalize} disabled={finalizeMutation.isPending || !selectedPayrollPeriodClosed}>Finalize & post</button>}
+        <section className="admin-card payroll-preview-card">
+          <div className="payroll-preview-header">
+            <div>
+              <p className="eyebrow">Payroll calculation preview</p>
+              <h2>{payCycleLabel(selectedRun.data.payCycle)} · {selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</h2>
+              <p className="muted">Created by {selectedRun.data.createdByName} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
+            </div>
+            <span className={`payroll-status-pill payroll-status-${selectedRun.data.status.toLowerCase()}`}>{selectedRun.data.status}</span>
           </div>
-          {selectedRun.data.status === 'CALCULATED' && !selectedPayrollPeriodClosed && <p className="muted">This is an open Payroll period. It can be reviewed now and finalized on or after {selectedRun.data.periodEnd}.</p>}
+
+          <div className="payroll-summary-grid" aria-label="Payroll totals">
+            {selectedRun.data.payCycle === 'DAILY' ? (
+              <>
+                <article><span>Gross daily earnings</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.grossAmount))} /></strong></article>
+                <article><span>Advance recovery</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.advanceDeduction))} /></strong></article>
+                <article><span>Net payable</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.netAmount))} /></strong></article>
+                <article><span>Paid</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.paidAmount))} /></strong></article>
+                <article><span>Outstanding</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.outstandingAmount))} /></strong></article>
+              </>
+            ) : (
+              <>
+                <article><span>Salary before absence</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.salaryBeforeAbsence))} /></strong></article>
+                <article><span>Absence deduction</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.absenceDeduction))} /></strong></article>
+                <article><span>Earned salary</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.grossAmount))} /></strong></article>
+                <article><span>Advance recovery</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.advanceDeduction))} /></strong></article>
+                <article><span>Net payroll</span><strong><Money value={sumMoney(selectedRun.data.lines.map((line) => line.netAmount))} /></strong></article>
+              </>
+            )}
+          </div>
+
+          {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && (selectedRun.data.payCycle === 'MONTHLY' || selectedRun.data.payCycle === 'DAILY') && (
+            <div className="payroll-calculation-panel">
+              <div className="payroll-calculation-copy">
+                <p className="eyebrow">Calculate employee</p>
+                <h3>{selectedRun.data.payCycle === 'DAILY' ? 'Select the Project and daily-paid Employee' : 'Select the Project and monthly-salary Employee'}</h3>
+                <p className="muted">{selectedRun.data.payCycle === 'DAILY' ? 'Only active daily/hourly Employees with present attendance in the selected Project on this settlement date are available.' : 'Only active Employees assigned to the selected Project with effective monthly salary are available.'}</p>
+              </div>
+              <div className="payroll-selector-grid">
+                <label>Project
+                  <select value={selectedPayrollProjectId} onChange={(event) => { setSelectedPayrollProjectId(event.target.value); setSelectedPayrollEmployeeId(''); }}>
+                    <option value="">Select Project</option>
+                    {(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+                  </select>
+                </label>
+                <label>{selectedRun.data.payCycle === 'DAILY' ? 'Daily / hourly Employee' : 'Monthly salary Employee'}
+                  <select value={selectedPayrollEmployeeId} onChange={(event) => setSelectedPayrollEmployeeId(event.target.value)} disabled={!selectedPayrollProjectId || eligiblePayrollEmployees.isPending}>
+                    <option value="">{eligiblePayrollEmployees.isPending ? 'Loading Employees…' : 'Select Employee'}</option>
+                    {(eligiblePayrollEmployees.data ?? []).map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name} · {employee.payType === 'HOURLY' ? `Hourly ${employee.hourlyRate ?? '—'}` : employee.payType === 'DAILY' ? `Daily ${employee.baseSalary ?? '—'}` : `Base ${employee.baseSalary ?? '—'}`}{selectedRun.data.lines.some((line) => line.employeeId === employee.id) ? ' · calculated' : ''}</option>)}
+                  </select>
+                </label>
+              </div>
+              {errorMessage(eligiblePayrollEmployees.error) && <p className="field-error">{errorMessage(eligiblePayrollEmployees.error)}</p>}
+              {!eligiblePayrollEmployees.isPending && selectedPayrollProjectId && (eligiblePayrollEmployees.data?.length ?? 0) === 0 && <p className="muted payroll-empty-note">{selectedRun.data.payCycle === 'DAILY' ? 'No present daily/hourly Employees are available in this Project for the settlement date.' : 'No active monthly-salary Employees are assigned to this Project for the Payroll period.'}</p>}
+            </div>
+          )}
+
+          {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && selectedRun.data.payCycle !== 'MONTHLY' && (
+            <label className="payroll-overtime-field">Hourly overtime multiplier (optional)<input type="number" inputMode="decimal" min="1" max="10" step="0.0001" value={overtimeMultiplier} onChange={(event) => setOvertimeMultiplier(event.target.value)} placeholder="Example: 1.5" /><small className="muted">Only enter this when an hourly-paid Employee has overtime. Enter 1.5 for 150% pay—not an hourly rate or percentage.</small>{!overtimeMultiplierValid && <span className="field-error">Enter a multiplier between 1 and 10.</span>}</label>
+          )}
+
+          <div className="payroll-preview-actions">
+            {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && <button type="button" onClick={calculateSelectedRun} disabled={calculateMutation.isPending || !overtimeMultiplierValid || ((selectedRun.data.payCycle === 'MONTHLY' || selectedRun.data.payCycle === 'DAILY') && (!selectedPayrollProjectId || !selectedPayrollEmployeeId))}>{calculateMutation.isPending ? 'Calculating…' : selectedRun.data.payCycle === 'MONTHLY' ? 'Calculate employee salary' : selectedRun.data.payCycle === 'DAILY' ? 'Calculate employee pay' : 'Calculate'}</button>}
+            {props.canFinalizePayroll && selectedRun.data.status === 'CALCULATED' && <button type="button" className="secondary-button" onClick={confirmFinalize} disabled={finalizeMutation.isPending || !selectedPayrollPeriodClosed}>Finalize & post</button>}
+          </div>
+          {selectedRun.data.status === 'CALCULATED' && !selectedPayrollPeriodClosed && <p className="muted payroll-period-note">This is an open Payroll period. It can be reviewed now and finalized on or after {selectedRun.data.periodEnd}.</p>}
           {errorMessage(calculateMutation.error) && <p className="field-error">{errorMessage(calculateMutation.error)}</p>}
           {errorMessage(finalizeMutation.error) && <p className="field-error">{errorMessage(finalizeMutation.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Salary before absence</th><th>Absence deduction</th><th>Earned salary</th><th>Advance recovery</th><th>Net</th><th>Paid</th><th>Outstanding</th><th>Project / Stage Employee Salary cost</th><th>Payslip</th><th>Action</th></tr></thead><tbody>
-            {selectedRun.data.lines.map((line) => <tr key={line.id}><td><strong>{line.employeeName}</strong><br /><small className="muted">{line.employeeNo}</small></td><td><Money value={line.salaryBeforeAbsence} /></td><td><Money value={line.absenceDeduction} /></td><td><Money value={line.grossAmount} /></td><td><Money value={line.advanceDeduction} /></td><td><Money value={line.netAmount} /></td><td><Money value={line.paidAmount} /></td><td><strong><Money value={line.outstandingAmount} /></strong></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? 'Project'} / {allocation.stageId ? 'Selected stage' : 'Project level'} · {allocation.category === 'security' ? 'Security Employee Salary' : 'Employee Salary'} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}</> : 'Not generated'}</td><td><div className="button-row">{showPayments && Number(line.outstandingAmount) > 0 && selectedRun.data.status === 'FINALIZED' && props.canCreatePayrollPayment && <button type="button" title="Pay finalized salary from a Cash or Bank account" onClick={() => setPaymentLine(line)}>Pay salary from account</button>}{showPayrollCreation && Number(line.outstandingAmount) > 0 && selectedRun.data.status !== 'FINALIZED' && props.canCreateEmployeeAdvance && <button type="button" className="secondary-button" title="Record an advance against this open Payroll" onClick={() => setAdvanceLine(line)}>Pay advance</button>}{props.canReadPayroll && <button type="button" className="secondary-button" onClick={() => setLedgerEmployeeId(line.employeeId)}>Ledger</button>}</div></td></tr>)}
-            {selectedRun.data.lines.length === 0 && <tr><td colSpan={11} className="muted">Calculate this run to create Employee Payroll lines.</td></tr>}
+
+          <div className="payroll-results-heading">
+            <div><h3>Calculated Employees</h3><p className="muted">{selectedRun.data.payCycle === 'DAILY' ? 'Calculate one present daily/hourly Employee at a time; previously calculated workers stay in this settlement.' : 'Each calculation updates only the selected Employee and keeps previously calculated Employees in this run.'}</p></div>
+            <span>{selectedRun.data.lines.length} employee{selectedRun.data.lines.length === 1 ? '' : 's'}</span>
+          </div>
+          <div className="table-scroll payroll-results-table"><table><thead><tr><th>Employee</th>{selectedRun.data.payCycle === 'DAILY' ? <><th>Gross earnings</th><th>Advance recovery</th><th>Net payable</th><th>Paid</th><th>Outstanding</th></> : <><th>Salary before absence</th><th>Absence deduction</th><th>Earned salary</th><th>Advance recovery</th><th>Net</th><th>Paid</th><th>Outstanding</th></>}<th>Project / Stage Employee Salary cost</th><th>Payslip</th><th>Action</th></tr></thead><tbody>
+            {selectedRun.data.lines.map((line) => <tr key={line.id}><td><strong>{line.employeeName}</strong><br /><small className="muted">{line.employeeNo}</small></td>{selectedRun.data.payCycle === 'DAILY' ? <><td><Money value={line.grossAmount} /></td><td><Money value={line.advanceDeduction} /></td><td><strong><Money value={line.netAmount} /></strong></td><td><Money value={line.paidAmount} /></td><td><strong><Money value={line.outstandingAmount} /></strong></td></> : <><td><Money value={line.salaryBeforeAbsence} /></td><td><Money value={line.absenceDeduction} /></td><td><Money value={line.grossAmount} /></td><td><Money value={line.advanceDeduction} /></td><td><strong><Money value={line.netAmount} /></strong></td><td><Money value={line.paidAmount} /></td><td><strong><Money value={line.outstandingAmount} /></strong></td></>}<td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div className="payroll-allocation-line" key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? 'Project'} / {allocation.stageId ? 'Selected stage' : 'Project level'} · {allocation.category === 'security' ? 'Security Employee Salary' : 'Employee Salary'} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}</> : 'Not generated'}</td><td><div className="button-row">{showPayments && Number(line.outstandingAmount) > 0 && selectedRun.data.status === 'FINALIZED' && props.canCreatePayrollPayment && <button type="button" title="Pay finalized salary from a Cash or Bank account" onClick={() => setPaymentLine(line)}>Pay salary from account</button>}{showPayrollCreation && Number(line.outstandingAmount) > 0 && selectedRun.data.status !== 'FINALIZED' && props.canCreateEmployeeAdvance && <button type="button" className="secondary-button" title="Record an advance against this open Payroll" onClick={() => setAdvanceLine(line)}>Pay advance</button>}{props.canReadPayroll && <button type="button" className="secondary-button" onClick={() => setLedgerEmployeeId(line.employeeId)}>Ledger</button>}</div></td></tr>)}
+            {selectedRun.data.lines.length === 0 && <tr><td colSpan={selectedRun.data.payCycle === 'DAILY' ? 9 : 11} className="payroll-empty-result">{selectedRun.data.payCycle === 'DAILY' ? 'Select a Project and present daily/hourly Employee, then calculate to create the settlement preview.' : 'Select a Project and monthly-salary Employee, then calculate to create the Payroll preview.'}</td></tr>}
           </tbody></table></div>
         </section>
       )}

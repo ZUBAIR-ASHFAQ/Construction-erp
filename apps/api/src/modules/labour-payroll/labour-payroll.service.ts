@@ -16,6 +16,7 @@ import {
   type CreatePayrollPaymentBody,
   type CreateEmployeeAdvanceBody,
   type CalculatePayrollRunBody,
+  type PayrollEligibleEmployeesQuery,
   type LabourPayrollPermissionCode,
   type ListAttendanceAssignmentsQuery,
   type ListAttendanceQuery,
@@ -413,14 +414,23 @@ export class LabourPayrollService {
     if (!(await this.hasCompanyPermission(repository, permission, asOf))) throw new AuthorizationError();
   }
 
-  /** Resolve Payroll settlement visibility without granting Company-wide Payroll read access. */
+  /** Resolve Payroll Run visibility while keeping settlement-only users inside their Project scope. */
   private async payrollSettlementVisibility(repository: AdministrationRepository, asOf: Date): Promise<readonly string[] | null> {
     const security = requireRequestSecurityContext();
     if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
-    if (await this.hasCompanyPermission(repository, 'payroll.read', asOf)) {
+    const permissions = await repository.findEffectivePermissionCodes({
+      userId: security.actorUserId,
+      asOf,
+      assignmentStatuses: [ACTIVE],
+      roleStatuses: [ACTIVE]
+    });
+    if (permissions.includes('payroll.create')
+      || permissions.includes('payroll.calculate')
+      || permissions.includes('payroll.finalize')) return null;
+    if (permissions.includes('payroll.read')) {
       return security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null;
     }
-    if (security.projectScope.kind === 'restricted' && await this.hasCompanyPermission(repository, 'payroll.payments.create', asOf)) {
+    if (security.projectScope.kind === 'restricted' && permissions.includes('payroll.payments.create')) {
       return security.projectScope.projectIds;
     }
     throw new AuthorizationError();
@@ -653,14 +663,52 @@ export class LabourPayrollService {
     return result.response.body;
   }
 
+  /** List Employees eligible for targeted calculation in one mutable monthly or daily Payroll Run. */
+  async listPayrollEligibleEmployees(payrollRunId: string, query: PayrollEligibleEmployeesQuery) {
+    const repository = new LabourPayrollRepository(this.db);
+    const run = await repository.findPayrollRunById(payrollRunId);
+    if (!run) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
+    await this.requireProjectPermission(new AdministrationRepository(this.db), query.projectId, 'payroll.calculate', new Date());
+    if (run.status === PAYROLL_FINALIZED || run.payCycle === 'LEGACY') return [];
+    if (run.payCycle === 'MONTHLY') {
+      const employees = await repository.listMonthlyPayrollEligibleEmployees(query.projectId, run.periodStart, run.periodEnd);
+      return employees.flatMap((employee) => {
+        const compensation = employee.compensations[0];
+        if (!compensation?.baseSalary) return [];
+        return [{
+          id: employee.id, employeeNo: employee.employeeNo, name: employee.name, payType: 'SALARY' as const,
+          baseSalary: compensation.baseSalary.toString(), hourlyRate: null
+        }];
+      });
+    }
+    const employees = await repository.listDailyPayrollEligibleEmployees(query.projectId, run.periodStart);
+    return employees.flatMap((employee) => {
+      const compensation = employee.compensations[0];
+      if (!compensation || !['DAILY', 'HOURLY'].includes(compensation.payType)) return [];
+      if (compensation.payType === 'DAILY' && !compensation.baseSalary) return [];
+      if (compensation.payType === 'HOURLY' && !compensation.hourlyRate) return [];
+      return [{
+        id: employee.id, employeeNo: employee.employeeNo, name: employee.name, payType: compensation.payType as 'DAILY' | 'HOURLY',
+        baseSalary: compensation.baseSalary?.toString() ?? null, hourlyRate: compensation.hourlyRate?.toString() ?? null
+      }];
+    });
+  }
+
   /** Calculate server-owned Employee lines from attendance plus effective compensation. */
-  private async calculateDraftLines(repository: LabourPayrollRepository, periodStart: Date, periodEnd: Date, overtimeMultiplier: DecimalLike | null, payCycle = 'LEGACY'): Promise<PayrollDraftLine[]> {
-    const attendance = await repository.listPayrollAttendance(periodStart, periodEnd);
+  private async calculateDraftLines(
+    repository: LabourPayrollRepository,
+    periodStart: Date,
+    periodEnd: Date,
+    overtimeMultiplier: DecimalLike | null,
+    payCycle = 'LEGACY',
+    employeeIds?: readonly string[]
+  ): Promise<PayrollDraftLine[]> {
+    const attendance = await repository.listPayrollAttendance(periodStart, periodEnd, employeeIds);
     if (attendance.length === 0) throw createLabourPayrollError('PAYROLL_NO_ATTENDANCE');
-    const employeeIds = [...new Set(attendance.map((item) => item.employeeId))];
+    const attendanceEmployeeIds = [...new Set(attendance.map((item) => item.employeeId))];
     const drafts: PayrollDraftLine[] = [];
 
-    for (const employeeId of employeeIds) {
+    for (const employeeId of attendanceEmployeeIds) {
       const rows = attendance.filter((item) => item.employeeId === employeeId);
       const presentRows = rows.filter((item) => item.status === 'PRESENT');
       const employmentType = rows[0]?.employee?.employmentType ?? 'LABOUR';
@@ -781,18 +829,32 @@ export class LabourPayrollService {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'payroll.calculate', idempotencyKey, fingerprintInput: { payrollRunId, input }
     }, async (tx) => {
-      await this.requireCompanyPermission(new AdministrationRepository(tx), 'payroll.calculate', new Date());
+      const administration = new AdministrationRepository(tx);
+      if (input.projectId && input.employeeId) {
+        await this.requireProjectPermission(administration, input.projectId, 'payroll.calculate', new Date());
+      } else {
+        await this.requireCompanyPermission(administration, 'payroll.calculate', new Date());
+      }
       const repository = new LabourPayrollRepository(tx);
       const locked = await repository.lockPayrollRunForWrite(payrollRunId);
       if (!locked) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
       if (locked.status === PAYROLL_FINALIZED) throw createLabourPayrollError('PAYROLL_LOCKED');
       if (![PAYROLL_DRAFT, PAYROLL_CALCULATED].includes(locked.status)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      if (input.projectId && input.employeeId) {
+        if (locked.payCycle === 'LEGACY') throw createLabourPayrollError('PAYROLL_NOT_READY');
+        const eligible = locked.payCycle === 'MONTHLY'
+          ? await repository.listMonthlyPayrollEligibleEmployees(input.projectId, locked.periodStart, locked.periodEnd)
+          : await repository.listDailyPayrollEligibleEmployees(input.projectId, locked.periodStart);
+        if (!eligible.some((employee) => employee.id === input.employeeId)) throw createLabourPayrollError('EMPLOYEE_NOT_ASSIGNED');
+      }
       const overtimeMultiplier = input.overtimeMultiplier ?? locked.overtimeMultiplier?.toString() ?? null;
       if (input.overtimeMultiplier && input.overtimeMultiplier !== locked.overtimeMultiplier?.toString()) {
         if (!(await repository.updatePayrollRunOvertimeMultiplier(payrollRunId, input.overtimeMultiplier))) throw createLabourPayrollError('PAYROLL_NOT_READY');
       }
-      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier, locked.payCycle);
-      await repository.clearPayrollCalculation(payrollRunId);
+      const selectedEmployeeIds = input.employeeId ? [input.employeeId] : undefined;
+      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier, locked.payCycle, selectedEmployeeIds);
+      if (input.employeeId) await repository.clearPayrollCalculationForEmployee(payrollRunId, input.employeeId);
+      else await repository.clearPayrollCalculation(payrollRunId);
       for (const line of drafts) {
         await repository.createPayrollLine({
           payrollRunId,
@@ -1113,6 +1175,9 @@ export class LabourPayrollService {
       const paymentDate = inputDate(input.paymentDate);
       if (paymentDate < line.periodEnd) {
         throw new ValidationError({ fieldErrors: [{ field: 'paymentDate', message: 'Payment date cannot precede the finalized Payroll period end.' }] });
+      }
+      if (await repository.findPostedPayrollPaymentOnDate(line.id, line.employeeId, paymentDate)) {
+        throw createLabourPayrollError('PAYROLL_PAYMENT_ALREADY_PAID_ON_DATE');
       }
       const totals = await repository.sumPostedPayrollPayments(line.id);
       const paid = moneyCents(totals._sum.amount ?? ZERO_MONEY);

@@ -37,34 +37,92 @@ function warehouseVisibilityWhere(visibility: InventoryVisibility): WarehouseVis
 }
 
 
-/** Build a Project-safe Material predicate from trusted request scope. */
-function materialVisibilityWhere(visibility: MaterialVisibility): Record<string, unknown> {
-  if (visibility.projectId) return { projectId: visibility.projectId };
-  if (visibility.allowedProjectIds === null) return visibility.includeUnassigned ? {} : { projectId: { not: null } };
-  return { projectId: { in: [...new Set(visibility.allowedProjectIds)] } };
-}
-
 /** Persistence for Final Module 11 Inventory / Material Management. */
 export class InventoryRepository {
   /** Bind Inventory persistence to Prisma or one active service transaction. */
   constructor(private readonly db: RepositoryClient) {}
 
-  /** List Materials inside trusted Project visibility with deterministic pagination. */
+  /** List Materials inside trusted Project visibility without depending on generated-client rollout order. */
   async listMaterials(input: PageWindow & MaterialVisibility) {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
-    const where = scope.where(materialVisibilityWhere(input));
-    const [items, total] = await Promise.all([
-      this.db.material.findMany({ where, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
-      this.db.material.count({ where })
-    ]);
+    const allowedProjectIds = input.allowedProjectIds === null ? null : [...new Set(input.allowedProjectIds)];
+    const allowedProjectIdsCsv = allowedProjectIds?.join(',') ?? '';
+    const hasCompanyWideAccess = allowedProjectIds === null;
+    const requestedProjectId = input.projectId ?? null;
+
+    const rows = await this.db.$queryRaw<Array<{
+      id: string | null; companyId: string | null; projectId: string | null; code: string | null; name: string | null;
+      unit: string | null; category: string | null; status: string | null; total: number;
+    }>>`
+      WITH visible_materials AS (
+        SELECT
+          material.id,
+          material.company_id AS "companyId",
+          to_jsonb(material)->>'project_id' AS "projectId",
+          material.code,
+          material.name,
+          material.unit,
+          material.category,
+          material.status
+        FROM materials material
+        WHERE material.company_id = ${scope.companyId}::uuid
+          AND (
+            (${requestedProjectId}::text IS NOT NULL AND (
+              to_jsonb(material)->>'project_id' = ${requestedProjectId ?? ''}
+              OR (${input.includeUnassigned}::boolean AND NOT (to_jsonb(material) ? 'project_id'))
+            ))
+            OR (${requestedProjectId}::text IS NULL AND ${hasCompanyWideAccess}::boolean AND (
+              ${input.includeUnassigned}::boolean OR to_jsonb(material)->>'project_id' IS NOT NULL
+            ))
+            OR (${requestedProjectId}::text IS NULL AND NOT ${hasCompanyWideAccess}::boolean
+              AND to_jsonb(material)->>'project_id' = ANY(string_to_array(${allowedProjectIdsCsv}, ',')))
+          )
+      ), material_count AS (
+        SELECT COUNT(*)::int AS total FROM visible_materials
+      ), paged_materials AS (
+        SELECT * FROM visible_materials
+        ORDER BY code ASC, id ASC
+        OFFSET ${input.skip}
+        LIMIT ${input.take}
+      )
+      SELECT paged_materials.*, material_count.total
+      FROM material_count
+      LEFT JOIN paged_materials ON TRUE
+      ORDER BY paged_materials.code ASC NULLS LAST, paged_materials.id ASC NULLS LAST
+    `;
+
+    const total = rows[0]?.total ?? 0;
+    const items = rows.flatMap((row) => row.id && row.companyId && row.code && row.name && row.unit && row.status
+      ? [{
+          id: row.id, companyId: row.companyId, projectId: row.projectId, code: row.code, name: row.name,
+          unit: row.unit, category: row.category, status: row.status
+        }]
+      : []);
     return { items, total };
   }
 
-  /** Find one Company Material by identifier; callers enforce the business Project rule. */
+  /** Find one Company Material while tolerating an older generated client during Project-scope rollout. */
   async findMaterialById(materialId: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.material.findFirst({ where: scope.where({ id: materialId }) });
+    const rows = await this.db.$queryRaw<Array<{
+      id: string; companyId: string; projectId: string | null; code: string; name: string; unit: string; category: string | null; status: string;
+    }>>`
+      SELECT
+        material.id,
+        material.company_id AS "companyId",
+        to_jsonb(material)->>'project_id' AS "projectId",
+        material.code,
+        material.name,
+        material.unit,
+        material.category,
+        material.status
+      FROM materials material
+      WHERE material.company_id = ${scope.companyId}::uuid
+        AND material.id = ${materialId}::uuid
+      LIMIT 1
+    `;
+    return rows[0] ?? null;
   }
 
   /** Find one normalized Material code inside one Project. */

@@ -290,11 +290,109 @@ export class LabourPayrollRepository {
     await this.db.payrollLine.deleteMany({ where: { payrollRunId } });
   }
 
-  /** Read all attendance states so salaried absence proration includes fully absent Employees. */
-  async listPayrollAttendance(periodStart: Date, periodEnd: Date) {
+  /** Delete one Employee's mutable Payroll preview without disturbing other selected Employees. */
+  async clearPayrollCalculationForEmployee(payrollRunId: string, employeeId: string) {
+    await this.db.payslip.deleteMany({ where: { payrollLine: { payrollRunId, employeeId } } });
+    await this.db.payrollLine.deleteMany({ where: { payrollRunId, employeeId } });
+  }
+
+  /** List active monthly-salary Employees assigned to one Project during this Payroll period. */
+  async listMonthlyPayrollEligibleEmployees(projectId: string, periodStart: Date, periodEnd: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.employee.findMany({
+      where: scope.where({
+        status: 'ACTIVE',
+        joinDate: { lte: periodEnd },
+        OR: [{ endDate: null }, { endDate: { gte: periodStart } }],
+        projectTeamAssignments: {
+          some: {
+            projectId,
+            status: 'ACTIVE',
+            fromDate: { lte: periodEnd },
+            OR: [{ toDate: null }, { toDate: { gte: periodStart } }]
+          }
+        },
+        compensations: {
+          some: {
+            payType: 'SALARY',
+            baseSalary: { not: null },
+            effectiveFrom: { lte: periodEnd },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }]
+          }
+        }
+      }),
+      select: {
+        id: true,
+        employeeNo: true,
+        name: true,
+        compensations: {
+          where: {
+            payType: 'SALARY',
+            baseSalary: { not: null },
+            effectiveFrom: { lte: periodEnd },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: periodStart } }]
+          },
+          select: { baseSalary: true, effectiveFrom: true },
+          orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }],
+          take: 1
+        }
+      },
+      orderBy: [{ employeeNo: 'asc' }, { id: 'asc' }]
+    });
+  }
+
+  /** List active daily/hourly Employees with present attendance in one Project on the settlement date. */
+  async listDailyPayrollEligibleEmployees(projectId: string, workDate: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.employee.findMany({
+      where: scope.where({
+        status: 'ACTIVE',
+        joinDate: { lte: workDate },
+        OR: [{ endDate: null }, { endDate: { gte: workDate } }],
+        projectTeamAssignments: {
+          some: {
+            projectId,
+            status: 'ACTIVE',
+            fromDate: { lte: workDate },
+            OR: [{ toDate: null }, { toDate: { gte: workDate } }]
+          }
+        },
+        attendanceEntries: { some: { projectId, workDate, status: 'PRESENT' } },
+        compensations: {
+          some: {
+            payType: { in: ['DAILY', 'HOURLY'] },
+            effectiveFrom: { lte: workDate },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }]
+          }
+        }
+      }),
+      select: {
+        id: true,
+        employeeNo: true,
+        name: true,
+        compensations: {
+          where: {
+            payType: { in: ['DAILY', 'HOURLY'] },
+            effectiveFrom: { lte: workDate },
+            OR: [{ effectiveTo: null }, { effectiveTo: { gte: workDate } }]
+          },
+          select: { payType: true, baseSalary: true, hourlyRate: true, effectiveFrom: true },
+          orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }],
+          take: 1
+        }
+      },
+      orderBy: [{ employeeNo: 'asc' }, { id: 'asc' }]
+    });
+  }
+
+  /** Read Payroll attendance, optionally narrowed to selected Employees. */
+  async listPayrollAttendance(periodStart: Date, periodEnd: Date, employeeIds?: readonly string[]) {
     const scope = requireCompanyRepositoryScope();
     return this.db.attendanceEntry.findMany({
-      where: scope.where({ workDate: { gte: periodStart, lte: periodEnd } }),
+      where: scope.where({
+        workDate: { gte: periodStart, lte: periodEnd },
+        ...(employeeIds && employeeIds.length > 0 ? { employeeId: { in: [...new Set(employeeIds)] } } : {})
+      }),
       include: { employee: { select: { id: true, employmentType: true, joinDate: true, endDate: true } } },
       orderBy: [{ employeeId: 'asc' }, { workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
     });
@@ -481,6 +579,15 @@ export class LabourPayrollRepository {
     return this.db.payrollPayment.aggregate({
       where: scope.where({ payrollLineId, status: 'POSTED' }),
       _sum: { amount: true }
+    });
+  }
+
+  /** Find an existing posted salary payment for the same Payroll line and calendar day. */
+  async findPostedPayrollPaymentOnDate(payrollLineId: string, employeeId: string, paymentDate: Date) {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollPayment.findFirst({
+      where: scope.where({ payrollLineId, employeeId, paymentDate, status: 'POSTED' }),
+      select: { id: true }
     });
   }
 

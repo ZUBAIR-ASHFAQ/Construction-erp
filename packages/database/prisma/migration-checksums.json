@@ -119,6 +119,8 @@
     "20260912000400_project_cash_bank_account_scope": "5a1cd2842076c35480fbff07ccbc0c1a9e28dfa6a2b51c20929afec275c4a877",
     "20260912000500_site_manager_material_vendor_scope_fix": "80f7aeeac10cc92c51d5c5acf399e119cb26e6cc99fce28b8ab3b1fddfc1c9ad",
     "20260912000600_project_operational_resource_scope": "09e3f7dcaacdeef5a7645de2d650c68059b509db0ec2fb9f7d432ad85306996d",
-    "20260915000100_employee_pay_cycle_payroll": "a5d79dd7281d2cda1c33d52dfeb251be6d4219651bb93c94aa3d42ca515947db"
+    "20260915000100_employee_pay_cycle_payroll": "a5d79dd7281d2cda1c33d52dfeb251be6d4219651bb93c94aa3d42ca515947db",
+    "20260915000200_site_manager_purchase_order_create_repair": "0071d3a39c0df1e7059ee36b41110b25869c665e882e8233f386e7fe5459f01b",
+    "20260915000300_site_manager_inventory_command_scope": "de655c9ebe54497544a6b84efacbbd17392697d97a353366250bd9333b7637cc"
   }
 }

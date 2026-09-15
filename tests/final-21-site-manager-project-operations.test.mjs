@@ -5,6 +5,8 @@ import test from 'node:test';
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), 'utf8');
 const migrationName = '20260912000600_project_operational_resource_scope';
+const purchaseOrderRepairMigrationName = '20260915000200_site_manager_purchase_order_create_repair';
+const inventoryCommandScopeMigrationName = '20260915000300_site_manager_inventory_command_scope';
 
 test('Materials are Project-owned and restricted actors cannot list, create, procure, or consume another Project material', async () => {
   const prisma = await read('packages/database/prisma/schema.prisma');
@@ -35,6 +37,45 @@ test('Materials are Project-owned and restricted actors cannot list, create, pro
   assert.match(procurementApi, /new URLSearchParams\(\{ projectId, page: '1', pageSize: '100' \}\)/);
   assert.match(procurementHooks, /queryKey: \[\.\.\.PROCUREMENT_QUERY_KEY, 'vendors', projectId\]/);
   assert.match(procurementWorkspace, /useProcurementVendors\(props\.projectId \|\| null/);
+});
+
+test('Site Manager approved requirements remain eligible for Project-scoped Purchase Order creation', async () => {
+  const migration = await read(`packages/database/prisma/migrations/${purchaseOrderRepairMigrationName}/migration.sql`);
+  const procurementPage = await read('apps/web/src/features/procurement/pages/procurement-page.tsx');
+  const procurementWorkspace = await read('apps/web/src/features/procurement/components/procurement-workspace.tsx');
+  const procurementService = await read('apps/api/src/modules/procurement/procurement.service.ts');
+  const checksums = JSON.parse(await read('packages/database/prisma/migration-checksums.json'));
+  const gates = JSON.parse(await read('packages/database/prisma/migration-gates.json'));
+
+  assert.match(migration, /permission\."code" = 'purchase_orders\.create'/);
+  assert.match(migration, /role\."code" = 'site-manager'/);
+  assert.match(migration, /ON CONFLICT DO NOTHING/);
+  assert.match(procurementPage, /usePermission\('purchase_orders\.create'\)/);
+  assert.match(procurementWorkspace, /props\.canCreatePurchaseOrder && approvedRequisitions\.length > 0/);
+  assert.match(procurementService, /requireProjectPermission\(users, requisition\.projectId, 'purchase_orders\.create', now\)/);
+  assert.equal(checksums.migrations[purchaseOrderRepairMigrationName], createHash('sha256').update(migration).digest('hex'));
+  assert.ok(gates.gates.some((gate) => gate.gate === 'site-manager-purchase-order-create-repair' && gate.migrations.includes(purchaseOrderRepairMigrationName)));
+});
+
+test('Site Manager can issue and create direct stock but cannot transfer stock between Projects', async () => {
+  const migration = await read(`packages/database/prisma/migrations/${inventoryCommandScopeMigrationName}/migration.sql`);
+  const inventoryPage = await read('apps/web/src/features/inventory/pages/inventory-page.tsx');
+  const inventoryWorkspace = await read('apps/web/src/features/inventory/components/inventory-workspace.tsx');
+  const inventoryService = await read('apps/api/src/modules/inventory/inventory.service.ts');
+  const checksums = JSON.parse(await read('packages/database/prisma/migration-checksums.json'));
+  const gates = JSON.parse(await read('packages/database/prisma/migration-gates.json'));
+
+  assert.match(migration, /permission_code" = 'inventory\.transfer'/);
+  assert.match(migration, /permission\."code" = 'inventory\.adjust'/);
+  assert.match(migration, /role\."code" = 'site-manager'/);
+  assert.match(inventoryPage, /usePermission\('inventory\.issue'\)/);
+  assert.match(inventoryPage, /usePermission\('inventory\.transfer'\)/);
+  assert.match(inventoryPage, /usePermission\('inventory\.adjust'\)/);
+  assert.match(inventoryWorkspace, /<div className="inventory-action-toolbar"[\s\S]*Issue stock[\s\S]*Transfer stock[\s\S]*Direct stock[\s\S]*<section className="admin-card">/);
+  assert.match(inventoryService, /resolveVisibility\(users, 'inventory\.transfer', now\)/);
+  assert.match(inventoryService, /resolveVisibility\(users, 'inventory\.adjust', now\)/);
+  assert.equal(checksums.migrations[inventoryCommandScopeMigrationName], createHash('sha256').update(migration).digest('hex'));
+  assert.ok(gates.gates.some((gate) => gate.gate === 'site-manager-inventory-command-scope' && gate.migrations.includes(inventoryCommandScopeMigrationName)));
 });
 
 test('Site Manager receives only Project-safe procurement, supplier, client receipt/invoice and employee compensation grants', async () => {

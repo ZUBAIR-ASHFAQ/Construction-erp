@@ -103,7 +103,8 @@ export type UpdateAttendanceInput = Readonly<{
   overtimeHours?: string | null;
 }>;
 export type CreatePayrollRunInput = Readonly<{ payCycle: Exclude<PayrollPayCycle, 'LEGACY'>; periodStart: string; periodEnd: string }>;
-export type CalculatePayrollRunInput = Readonly<{ overtimeMultiplier?: string }>;
+export type CalculatePayrollRunInput = Readonly<{ projectId?: string; employeeId?: string; overtimeMultiplier?: string }>;
+export type PayrollEligibleEmployee = Readonly<{ id: string; employeeNo: string; name: string; payType: 'SALARY' | 'DAILY' | 'HOURLY'; baseSalary: string | null; hourlyRate: string | null }>;
 export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; projectId: string | null; projectCode: string | null; projectName: string | null; balance: string }>;
 export type PayrollPaymentStatus = 'POSTED' | 'REVERSED';
 export type PayrollPayment = Readonly<{
@@ -186,6 +187,12 @@ export function createPayrollRun(input: CreatePayrollRunInput): Promise<PayrollR
 /** Recalculate one DRAFT/CALCULATED Payroll Run from attendance and compensation. */
 export function calculatePayrollRun(payrollRunId: string, input: CalculatePayrollRunInput = {}): Promise<PayrollRun> {
   return authenticatedRequest<PayrollRun>(`payroll/runs/${payrollRunId}/calculate`, { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
+/** Load Employees eligible for targeted calculation in one mutable Payroll Run and Project. */
+export function listPayrollEligibleEmployees(payrollRunId: string, projectId: string): Promise<PayrollEligibleEmployee[]> {
+  const query = new URLSearchParams({ projectId });
+  return authenticatedRequest<PayrollEligibleEmployee[]>(`payroll/runs/${payrollRunId}/eligible-employees?${query}`);
 }
 
 /** Finalize Payroll and post Project cost plus Finance accounting atomically. */

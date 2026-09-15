@@ -120,6 +120,88 @@ test('B11 React Procurement keeps retry-safe commands qualified suppliers and op
   assert.match(workspace, /const open = item\.items\.reduce/);
 });
 
+/** Confirm requirement rows expose readable material/requester names without UUID or line-count UI. */
+test('B11 requirement register shows product quantity and requester name directly', () => {
+  const repository = read(`${backend}/procurement.repository.ts`);
+  const schema = read(`${backend}/procurement.schema.ts`);
+  const service = read(`${backend}/procurement.service.ts`);
+  const api = read(`${web}/api/procurement-api.ts`);
+  const workspace = read(`${web}/components/procurement-workspace.tsx`);
+
+  assert.match(repository, /requester: \{ select: \{ name: true \} \}/);
+  assert.match(repository, /inventoryItem: \{ select: \{ name: true \} \}/);
+  assert.match(schema, /materialName: textSchema\.nullable\(\)/);
+  assert.match(schema, /requestedByName: textSchema\.nullable\(\)/);
+  assert.match(service, /requestedByName: row\.requester\.name\.trim\(\) \|\| null/);
+  assert.match(service, /materialName: item\.inventoryItem\?\.name\.trim\(\) \|\| null/);
+  assert.match(api, /materialName: string \| null/);
+  assert.match(api, /requestedByName: string \| null/);
+  assert.match(workspace, /<th>Product name<\/th><th>Quantity<\/th>\{showRequestedBy && <th>Requested by<\/th>\}/);
+  assert.match(workspace, /line\.materialName \?\? line\.description/);
+  assert.match(workspace, /line\.quantity\} \{line\.unit/);
+  assert.match(workspace, /const showRequestedBy = .*item\.requestedByName/);
+  assert.match(workspace, /showRequestedBy && <td>\{item\.requestedByName \?\? ''\}<\/td>/);
+  assert.doesNotMatch(workspace, /<th>Lines<\/th>/);
+  assert.doesNotMatch(workspace, /\{item\.requestedBy\}/);
+});
+
+/** Confirm Purchase Order rows and the receipt selector expose product identity and ordered value. */
+/** Confirm the decorative workflow overview is removed without touching active Procurement stages. */
+test('B11 Procurement page omits the purchase-to-pay progress overview', () => {
+  const workspace = read(`${web}/components/procurement-workspace.tsx`);
+  const styles = read('apps/web/src/styles.css');
+  assert.doesNotMatch(workspace, /ProcurementFlow|procurement-flow/);
+  assert.doesNotMatch(styles, /procurement-flow|procurement-commitment-branch/);
+  assert.match(workspace, /RFQ \/ Material requirement/);
+  assert.match(workspace, /Vendor sourcing &amp; Purchase Orders/);
+  assert.match(workspace, /Supplier delivery &amp; Goods Receipt/);
+});
+
+test('B11 Purchase Order register and issued PO selector show product quantity unit price and total amount', () => {
+  const repository = read(`${backend}/procurement.repository.ts`);
+  const schema = read(`${backend}/procurement.schema.ts`);
+  const service = read(`${backend}/procurement.service.ts`);
+  const api = read(`${web}/api/procurement-api.ts`);
+  const workspace = read(`${web}/components/procurement-workspace.tsx`);
+
+  assert.match(repository, /items: \{ include: \{ inventoryItem: \{ select: \{ name: true \} \} \}/);
+  assert.match(schema, /purchaseOrderItemResponseSchema[\s\S]*materialName: textSchema\.nullable\(\)/);
+  assert.match(service, /materialName: item\.inventoryItem\?\.name\.trim\(\) \|\| null/);
+  assert.match(api, /export type PurchaseOrderItem =[\s\S]*materialName: string \| null/);
+  assert.match(workspace, /<th>PO<\/th><th>Product name<\/th><th>Quantity<\/th><th>Unit price<\/th><th>Status<\/th>/);
+  assert.match(workspace, /line\.materialName \?\? line\.description/);
+  assert.match(workspace, /<td>\{item\.items\.map\(\(line\) => <div key=\{line\.id\}>\{line\.quantity\} \{line\.unit\}<\/div>\)\}<\/td>/);
+  assert.match(workspace, /item\.currency\} \{line\.unitPrice\}<small>per \{line\.unit\}<\/small>/);
+  assert.match(workspace, /item\.poNo\} · \{item\.items\.map[\s\S]*item\.currency\} \{item\.totalAmount\}/);
+});
+
+
+/** Confirm posted Goods Receipt feedback is a structured readable record rather than one loose text line. */
+test('B11 Goods Receipt result is organized as receipt metadata and line items', () => {
+  const workspace = read(`${web}/components/procurement-workspace.tsx`);
+  const styles = read('apps/web/src/styles.css');
+
+  assert.match(workspace, /className="goods-receipt-result" aria-live="polite"/);
+  assert.match(workspace, /<dt>Purchase order<\/dt>/);
+  assert.match(workspace, /<dt>Supplier<\/dt>/);
+  assert.match(workspace, /<dt>Warehouse<\/dt>/);
+  assert.match(workspace, /<dt>Received at<\/dt>/);
+  assert.match(workspace, /<th>Product<\/th><th>Delivered<\/th><th>Unit price<\/th><th>Accepted<\/th><th>Rejected<\/th><th>Batch<\/th>/);
+  assert.match(workspace, /const productName = item\.materialName \?\? item\.description/);
+  assert.match(workspace, /latestReceiptPurchaseOrder\.currency\} \${poLine\.unitPrice}/);
+  assert.match(styles, /\.goods-receipt-result-meta\s*\{[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
+});
+
+/** Confirm a successful receipt closes the entry form while preserving an explicit way to receive another delivery. */
+test('B11 Goods Receipt entry closes after a successful post', () => {
+  const workspace = read(`${web}/components/procurement-workspace.tsx`);
+
+  assert.match(workspace, /const \[receiptEntryOpen, setReceiptEntryOpen\] = useState\(true\)/);
+  assert.match(workspace, /await createGoodsReceipt\.mutateAsync\([\s\S]*setReceiptEntryOpen\(false\)/);
+  assert.match(workspace, /<form className="form-grid" hidden=\{!receiptEntryOpen\}[\s\S]*Post partial \/ full receipt/);
+  assert.match(workspace, /!receiptEntryOpen && <button[^>]*onClick=\{\(\) => \{ createGoodsReceipt\.reset\(\); setReceiptEntryOpen\(true\); \}\}>Receive another delivery<\/button>/);
+});
+
 /** Confirm the new migration hardens only active Final-21 Procurement structures. */
 test('B11 forward migration adds Stage receipt and supplier invariants without deleting Procurement history', () => {
   const migration = read(migrationPath);

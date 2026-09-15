@@ -1,11 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useInventoryStock, useMaterials } from '../../inventory/hooks/inventory.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import type { PurchaseOrder } from '../api/procurement-api.js';
-import { ProcurementFlow } from './procurement-flow.js';
 import {
   useApproveRequisition,
   useCancelProcurementPurchaseOrder,
@@ -108,6 +107,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const issuePurchaseOrder = useIssueProcurementPurchaseOrder();
   const cancelPurchaseOrder = useCancelProcurementPurchaseOrder();
   const createGoodsReceipt = useCreateGoodsReceipt();
+  const [receiptEntryOpen, setReceiptEntryOpen] = useState(true);
   const materials = useMaterials(props.projectId || undefined, props.canCreateRequisition && Boolean(props.projectId));
   const stock = useInventoryStock(undefined, props.canReadInventory && props.canCreateGoodsReceipt);
   const stages = useProjectStages(props.projectId, props.canReadStages && props.canCreateRequisition);
@@ -129,6 +129,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
     () => (requisitions.data?.items ?? []).filter((item) => item.status.toUpperCase() === 'APPROVED'),
     [requisitions.data]
   );
+  const showRequestedBy = (requisitions.data?.items ?? []).some((item) => Boolean(item.requestedByName?.trim()));
   const selectedRequisitionId = purchaseOrderForm.watch('requisitionId');
   const selectedRequisition = approvedRequisitions.find((item) => item.id === selectedRequisitionId) ?? null;
 
@@ -142,6 +143,13 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const selectedMaterialId = requisitionForm.watch('materialId');
   const selectedMaterial = materialOptions.find((item) => item.id === selectedMaterialId) ?? null;
   const warehouseOptions = (stock.data?.warehouses ?? []).filter((item) => item.status.toUpperCase() === 'ACTIVE');
+  const latestGoodsReceipt = createGoodsReceipt.data ?? null;
+  const latestReceiptPurchaseOrder = latestGoodsReceipt
+    ? (purchaseOrders.data?.items ?? []).find((item) => item.id === latestGoodsReceipt.purchaseOrderId) ?? receiptPurchaseOrder
+    : null;
+  const latestReceiptWarehouse = latestGoodsReceipt
+    ? warehouseOptions.find((item) => item.id === latestGoodsReceipt.warehouseId) ?? null
+    : null;
   const stageOptions = stages.data?.items ?? [];
 
   /** Submit one material requirement line for the selected Project. */
@@ -197,24 +205,25 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
     if (!receiptPurchaseOrder) return;
     let validationMessage: string | null = null;
     const receiptLines = receiptPurchaseOrder.items.flatMap((item) => {
+      const productName = item.materialName ?? item.description;
       const delivered = values.deliveredQuantities[item.id]?.trim() ?? '';
       if (delivered === '' || delivered === '0') return [];
       if (!positiveDecimalSchema.safeParse(delivered).success) {
-        validationMessage = `Enter a valid delivered quantity for ${item.description}.`;
+        validationMessage = `Enter a valid delivered quantity for ${productName}.`;
         return [];
       }
       const open = openQuantity(item.quantity, item.receivedQuantity);
       const rejected = values.rejectedQuantities[item.id]?.trim() || '0';
       if (!nonNegativeDecimalSchema.safeParse(rejected).success) {
-        validationMessage = `Enter a valid rejected quantity for ${item.description}.`;
+        validationMessage = `Enter a valid rejected quantity for ${productName}.`;
         return [];
       }
       if (decimalToScale4(delivered) > decimalToScale4(open)) {
-        validationMessage = `${item.description}: delivered quantity cannot exceed the open quantity (${open}).`;
+        validationMessage = `${productName}: delivered quantity cannot exceed the open quantity (${open}).`;
         return [];
       }
       if (decimalToScale4(rejected) > decimalToScale4(delivered)) {
-        validationMessage = `${item.description}: rejected quantity cannot exceed delivered quantity.`;
+        validationMessage = `${productName}: rejected quantity cannot exceed delivered quantity.`;
         return [];
       }
       const accepted = scale4ToDecimal(decimalToScale4(delivered) - decimalToScale4(rejected));
@@ -243,15 +252,11 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
       items: receiptLines
     });
     goodsReceiptForm.reset({ purchaseOrderId: receiptPurchaseOrder.id, warehouseId: values.warehouseId, deliveredQuantities: {}, rejectedQuantities: {}, batchNumbers: {} });
+    setReceiptEntryOpen(false);
   }
 
   return (
     <div className="admin-stack">
-      <ProcurementFlow
-        requisitions={requisitions.data?.items ?? []}
-        purchaseOrders={purchaseOrders.data?.items ?? []}
-        onOpen={(sectionId) => document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-      />
       <section className="admin-card procurement-stage-card" id="procurement-rfq">
         <p className="eyebrow">Step 1</p>
         <h2>RFQ / Material requirement</h2>
@@ -281,12 +286,15 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
         {Object.values(requisitionForm.formState.errors)[0]?.message && <p className="error-text">{String(Object.values(requisitionForm.formState.errors)[0]?.message)}</p>}
         {createRequisition.error && <p className="error-text">{mutationMessage(createRequisition.error)}</p>}
         <div className="table-wrap">
-          <table><thead><tr><th>No.</th><th>Required</th><th>Requested by</th><th>Status</th><th>Lines</th><th>Action</th></tr></thead><tbody>
+          <table><thead><tr><th>No.</th><th>Required</th><th>Product name</th><th>Quantity</th>{showRequestedBy && <th>Requested by</th>}<th>Status</th><th>Action</th></tr></thead><tbody>
             {(requisitions.data?.items ?? []).map((item) => (
               <tr key={item.id}>
                 <td>{item.requestNo}<br /><small>{item.notes ?? 'No notes'}</small></td>
-                <td>{item.requiredDate}</td><td>{item.requestedBy}</td><td>{item.status}</td>
-                <td><details><summary>{item.items.length} line(s)</summary>{item.items.map((line) => <div key={line.id}>{line.description} · {line.quantity} {line.unit}</div>)}</details></td>
+                <td>{item.requiredDate}</td>
+                <td>{item.items.map((line) => <div key={line.id}>{line.materialName ?? line.description}</div>)}</td>
+                <td>{item.items.map((line) => <div key={line.id}>{line.quantity} {line.unit}</div>)}</td>
+                {showRequestedBy && <td>{item.requestedByName ?? ''}</td>}
+                <td>{item.status}</td>
                 <td>{props.canApproveRequisition && item.status.toUpperCase() === 'DRAFT' && <button type="button" onClick={() => approveRequisition.mutate(item.id)}>Approve</button>}</td>
               </tr>
             ))}
@@ -312,7 +320,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
         )}
         {purchaseOrderForm.formState.errors.root?.message && <p className="error-text">{purchaseOrderForm.formState.errors.root.message}</p>}
         {createPurchaseOrder.error && <p className="error-text">{mutationMessage(createPurchaseOrder.error)}</p>}
-        <div className="table-wrap"><table><thead><tr><th>PO</th><th>Status</th><th>Total</th><th>Received</th><th>Open</th><th>Actions</th></tr></thead><tbody>
+        <div className="table-wrap"><table><thead><tr><th>PO</th><th>Product name</th><th>Quantity</th><th>Unit price</th><th>Status</th><th>Total</th><th>Received</th><th>Open</th><th>Actions</th></tr></thead><tbody>
           {(purchaseOrders.data?.items ?? []).map((item) => <PurchaseOrderRow key={item.id} item={item} vendorName={vendorNames.get(item.vendorId) ?? 'Unknown supplier'} canIssue={props.canIssuePurchaseOrder} onIssue={() => issuePurchaseOrder.mutate(item.id)} onCancel={() => cancelPurchaseOrder.mutate({ id: item.id, reason: 'Cancelled by authorized Procurement user.' })} />)}
         </tbody></table></div>
       </section>
@@ -322,8 +330,8 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
           <p className="eyebrow">Steps 9–11</p>
           <h2>Supplier delivery &amp; Goods Receipt</h2>
           <p className="muted">Receive only against an issued PO. Accepted quantities are posted to the selected warehouse and become Inventory stock.</p>
-          <form className="form-grid" onSubmit={goodsReceiptForm.handleSubmit((values) => void handleCreateGoodsReceipt(values))}>
-            <label>Issued PO<select {...goodsReceiptForm.register('purchaseOrderId')}><option value="">Select</option>{issuedPurchaseOrders.map((item) => <option key={item.id} value={item.id}>{item.poNo}</option>)}</select></label>
+          <form className="form-grid" hidden={!receiptEntryOpen} onSubmit={goodsReceiptForm.handleSubmit((values) => void handleCreateGoodsReceipt(values))}>
+            <label>Issued PO<select {...goodsReceiptForm.register('purchaseOrderId')}><option value="">Select</option>{issuedPurchaseOrders.map((item) => <option key={item.id} value={item.id}>{item.poNo} · {item.items.map((line) => line.materialName ?? line.description).join(', ')} · {item.currency} {item.totalAmount}</option>)}</select></label>
             <label>Warehouse
               <select {...goodsReceiptForm.register('warehouseId')} disabled={!props.canReadInventory}>
                 <option value="">{props.canReadInventory ? 'Select warehouse' : 'Inventory read permission required'}</option>
@@ -335,16 +343,17 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
                 <table className="goods-receipt-lines">
                   <thead><tr><th>Material</th><th>Ordered</th><th>Previously received</th><th>Open</th><th>Delivered now</th><th>Rejected</th><th>Accepted</th><th>Batch</th></tr></thead>
                   <tbody>{receiptPurchaseOrder.items.map((item) => {
+                    const productName = item.materialName ?? item.description;
                     const open = openQuantity(item.quantity, item.receivedQuantity);
                     const delivered = goodsReceiptForm.watch(`deliveredQuantities.${item.id}`) ?? '';
                     const rejected = goodsReceiptForm.watch(`rejectedQuantities.${item.id}`) ?? '';
                     return <tr key={item.id}>
-                      <td>{item.description}<small>{item.unit}</small></td>
+                      <td>{productName}<small>{item.unit}</small></td>
                       <td>{item.quantity}</td><td>{item.receivedQuantity}</td><td>{open}</td>
-                      <td><input aria-label={`${item.description} delivered now`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`deliveredQuantities.${item.id}`)} /></td>
-                      <td><input aria-label={`${item.description} rejected quantity`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`rejectedQuantities.${item.id}`)} /></td>
+                      <td><input aria-label={`${productName} delivered now`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`deliveredQuantities.${item.id}`)} /></td>
+                      <td><input aria-label={`${productName} rejected quantity`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`rejectedQuantities.${item.id}`)} /></td>
                       <td>{acceptedQuantityPreview(delivered, rejected)}</td>
-                      <td><input aria-label={`${item.description} batch number`} placeholder="Optional" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`batchNumbers.${item.id}`)} /></td>
+                      <td><input aria-label={`${productName} batch number`} placeholder="Optional" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`batchNumbers.${item.id}`)} /></td>
                     </tr>;
                   })}</tbody>
                 </table>
@@ -358,10 +367,39 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
           {goodsReceiptForm.formState.errors.root?.message && <p className="error-text">{goodsReceiptForm.formState.errors.root.message}</p>}
           {stock.error instanceof Error && <p className="error-text">Warehouses could not be loaded: {stock.error.message}</p>}
           {createGoodsReceipt.error && <p className="error-text">{mutationMessage(createGoodsReceipt.error)}</p>}
-          {createGoodsReceipt.data && (
-            <div className="muted">
-              <strong>{createGoodsReceipt.data.receiptNo}</strong> · {createGoodsReceipt.data.status} · Received {new Date(createGoodsReceipt.data.receivedAt).toLocaleString()} · Supplier {vendorNames.get(createGoodsReceipt.data.vendorId) ?? 'Unknown supplier'}
-              {createGoodsReceipt.data.items.map((line) => <div key={line.id}>{(materials.data?.items ?? []).find((material) => material.id === line.materialId)?.name ?? 'Material'} · Qty {line.quantity} · Accepted {line.acceptedQuantity} · Rejected {line.rejectedQuantity} · Batch {line.batchNo ?? '—'}</div>)}
+          {latestGoodsReceipt && (
+            <div className="goods-receipt-result" aria-live="polite">
+              <div className="goods-receipt-result-header">
+                <div>
+                  <p className="eyebrow">Latest goods receipt</p>
+                  <h3>{latestGoodsReceipt.receiptNo}</h3>
+                </div>
+                <span className="goods-receipt-result-status">{latestGoodsReceipt.status}</span>
+              </div>
+              <dl className="goods-receipt-result-meta">
+                <div><dt>Purchase order</dt><dd>{latestReceiptPurchaseOrder?.poNo ?? '—'}</dd></div>
+                <div><dt>Supplier</dt><dd>{vendorNames.get(latestGoodsReceipt.vendorId) ?? 'Unknown supplier'}</dd></div>
+                <div><dt>Warehouse</dt><dd>{latestReceiptWarehouse ? `${latestReceiptWarehouse.code} · ${latestReceiptWarehouse.name}` : '—'}</dd></div>
+                <div><dt>Received at</dt><dd>{new Date(latestGoodsReceipt.receivedAt).toLocaleString()}</dd></div>
+              </dl>
+              <div className="table-wrap goods-receipt-result-lines">
+                <table>
+                  <thead><tr><th>Product</th><th>Delivered</th><th>Unit price</th><th>Accepted</th><th>Rejected</th><th>Batch</th></tr></thead>
+                  <tbody>{latestGoodsReceipt.items.map((line) => {
+                    const poLine = latestReceiptPurchaseOrder?.items.find((item) => item.id === line.poItemId);
+                    const productName = poLine?.materialName ?? poLine?.description ?? 'Material';
+                    return <tr key={line.id}>
+                      <td>{productName}{poLine?.unit && <small>{poLine.unit}</small>}</td>
+                      <td>{line.quantity}</td>
+                      <td>{poLine && latestReceiptPurchaseOrder ? `${latestReceiptPurchaseOrder.currency} ${poLine.unitPrice} / ${poLine.unit}` : '—'}</td>
+                      <td>{line.acceptedQuantity}</td>
+                      <td>{line.rejectedQuantity}</td>
+                      <td>{line.batchNo ?? '—'}</td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+              {!receiptEntryOpen && <button type="button" className="secondary-button" onClick={() => { createGoodsReceipt.reset(); setReceiptEntryOpen(true); }}>Receive another delivery</button>}
             </div>
           )}
         </section>
@@ -379,6 +417,9 @@ function PurchaseOrderRow({ item, vendorName, canIssue, onIssue, onCancel }: Pur
   const open = item.items.reduce((total, line) => total + decimalToScale4(openQuantity(line.quantity, line.receivedQuantity)), 0n);
   return <tr>
     <td>{item.poNo}<br /><small>Supplier {vendorName} · {item.orderDate} · {item.currency}</small><details><summary>{item.items.length} line(s)</summary>{item.items.map((line) => <div key={line.id}>{line.description} · {line.quantity} {line.unit} × {line.unitPrice} · Tax {line.taxRate} · Line total {line.lineTotal} · Received {line.receivedQuantity}</div>)}</details></td>
+    <td>{item.items.map((line) => <div key={line.id}>{line.materialName ?? line.description}</div>)}</td>
+    <td>{item.items.map((line) => <div key={line.id}>{line.quantity} {line.unit}</div>)}</td>
+    <td>{item.items.map((line) => <div key={line.id}>{item.currency} {line.unitPrice}<small>per {line.unit}</small></div>)}</td>
     <td>{item.status}<br /><small>{item.cancelReason ?? 'No cancellation reason'}</small></td>
     <td>{item.totalAmount}<br /><small>Subtotal {item.subtotal} · Tax {item.taxAmount}</small></td>
     <td>{scale4ToDecimal(received)}</td><td>{scale4ToDecimal(open)}</td>

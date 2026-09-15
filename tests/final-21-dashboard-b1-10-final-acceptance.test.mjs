@@ -135,10 +135,11 @@ test('B1.10 adds one guarded live Dashboard reconciliation suite and registers i
   assert.match(read('scripts/testing/run-integration.mjs'), /final-21-dashboard-api\.integration\.test\.mjs/);
 });
 
-test('B1.10 adds one guarded Playwright workflow for Project health, Stage Progress, source alerts and preference saving', () => {
+test('B1.10 adds one guarded Playwright workflow for Project health, Stage Progress and preference saving with removed lower cards absent', () => {
   const e2e = read(E2E);
   const config = read('playwright.config.mjs');
-  for (const text of ['Project health', 'Stage Progress', 'source alerts', 'Current Project View', 'Cash received is not profit']) assert.match(e2e, new RegExp(text, 'i'));
+  for (const text of ['Project health', 'Stage Progress', 'Save current view', 'Saved filters & preferences', 'Cash received is not profit']) assert.match(e2e, new RegExp(text, 'i'));
+  assert.match(e2e, /pathname === '\/api\/v1\/dashboard\/alerts'/);
   assert.match(e2e, /isAllowedDashboardRequest/);
   assert.match(config, /RUN_FINAL_21_DASHBOARD_E2E/);
   assert.match(config, /final-21-dashboard-browser\.spec\.mjs/);

@@ -11,6 +11,7 @@ import {
   listAttendance,
   listAttendanceAssignments,
   listPayrollRuns,
+  listPayrollEligibleEmployees,
   listPayrollCashBankAccounts,
   listPayrollPayments,
   listEmployeeAdvances,
@@ -62,6 +63,16 @@ export function usePayrollRun(payrollRunId: string | null, enabled = true) {
     queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'run', payrollRunId],
     queryFn: () => getPayrollRun(payrollRunId as string),
     enabled: enabled && payrollRunId !== null,
+    retry: false
+  });
+}
+
+/** Load Employees eligible for targeted calculation in the selected Payroll Run and Project. */
+export function usePayrollEligibleEmployees(payrollRunId: string | null, projectId: string, enabled = true) {
+  return useQuery({
+    queryKey: [...LABOUR_PAYROLL_QUERY_KEY, 'eligible-employees', payrollRunId, projectId],
+    queryFn: () => listPayrollEligibleEmployees(payrollRunId as string, projectId),
+    enabled: enabled && payrollRunId !== null && projectId.length > 0,
     retry: false
   });
 }

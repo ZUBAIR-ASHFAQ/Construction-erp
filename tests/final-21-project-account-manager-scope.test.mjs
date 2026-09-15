@@ -63,7 +63,9 @@ test('Payroll settlement visibility, account choices, salary payments and advanc
   assert.match(repository, /listFinalizedPayrollRunsForSettlement/);
   assert.match(repository, /project_allocation_json AS "projectAllocationJson"/);
   assert.match(service, /payrollLineVisibleForSettlement/);
-  assert.match(service, /security\.projectScope\.kind === 'restricted'[\s\S]*payroll\.payments\.create/);
+  assert.match(service, /const permissions = await repository\.findEffectivePermissionCodes\(/);
+  assert.match(service, /permissions\.includes\('payroll\.create'\)[\s\S]*permissions\.includes\('payroll\.calculate'\)[\s\S]*permissions\.includes\('payroll\.finalize'\)[\s\S]*return null;/);
+  assert.match(service, /security\.projectScope\.kind === 'restricted'[\s\S]*permissions\.includes\('payroll\.payments\.create'\)/);
   assert.match(service, /allowedProjectIds: security\.projectScope\.kind === 'restricted' \? security\.projectScope\.projectIds : null/);
   assert.match(service, /accountMatchesProject = cashBank\?\.projectId === input\.projectId/);
   assert.match(service, /accountMatchesPayroll/);
@@ -87,7 +89,7 @@ test('Frontend keeps Project account creation contextual and lets restricted man
   assert.match(financePage, /\.\.\.\(values\.projectId \? \{ projectId: values\.projectId \} : \{\}\)/);
   assert.match(financePage, /Company account/);
   assert.match(payrollPage, /usePermission\('finance\.accounts\.manage'\)/);
-  assert.match(payrollWorkspace, /const canAccessPayrollRuns = props\.canReadPayroll \|\| props\.canCreatePayrollPayment/);
+  assert.match(payrollWorkspace, /const canAccessPayrollRuns = props\.canReadPayroll[\s\S]*props\.canCreatePayroll[\s\S]*props\.canCalculatePayroll[\s\S]*props\.canFinalizePayroll[\s\S]*props\.canCreatePayrollPayment/);
   assert.match(payrollWorkspace, /account\.projectId === projectId/);
   assert.match(payrollWorkspace, /ProjectAccountCreateModal/);
   assert.match(payrollWorkspace, /Add Cash \/ Bank account/);

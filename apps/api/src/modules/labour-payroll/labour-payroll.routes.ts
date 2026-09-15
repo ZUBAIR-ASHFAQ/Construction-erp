@@ -26,6 +26,8 @@ import {
   listEmployeeAdvancesQuerySchema,
   listEmployeeAdvancesResponseSchema,
   payrollCashBankAccountResponseSchema,
+  payrollEligibleEmployeeResponseSchema,
+  payrollEligibleEmployeesQuerySchema,
   payrollEntityIdParamsSchema,
   payrollPaymentResponseSchema,
   payrollRunIdParamsSchema,
@@ -69,7 +71,8 @@ const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
   properties: { payCycle: { type: 'string', enum: ['DAILY', 'MONTHLY'] }, periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
 } as const;
-const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
+const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { projectId: UUID_JSON_SCHEMA, employeeId: UUID_JSON_SCHEMA, overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
+const PAYROLL_ELIGIBLE_EMPLOYEES_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['projectId'], properties: { projectId: UUID_JSON_SCHEMA } } as const;
 const EMPTY_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, maxProperties: 0 } as const;
 const MONEY_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' } as const;
 const NULLABLE_TEXT_JSON_SCHEMA = { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] } as const;
@@ -178,6 +181,16 @@ export async function registerLabourPayrollRoutes(app: FastifyInstance, options:
     const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
     const body = parseRequest(calculatePayrollRunBodySchema, request.body ?? {}, 'body');
     const data = payrollRunResponseSchema.parse(await service.calculatePayrollRun(params.id, body, readIdempotencyKey(request)));
+    return reply.send({ data });
+  });
+
+  app.get('/api/v1/payroll/runs/:id/eligible-employees', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'listPayrollEligibleEmployees', summary: 'List Employees eligible for targeted Payroll calculation by Project', security: BEARER_SECURITY, params: ID_PARAMS_JSON_SCHEMA, querystring: PAYROLL_ELIGIBLE_EMPLOYEES_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_ARRAY_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
+    const query = parseRequest(payrollEligibleEmployeesQuerySchema, request.query, 'query');
+    const data = (await service.listPayrollEligibleEmployees(params.id, query)).map((employee) => payrollEligibleEmployeeResponseSchema.parse(employee));
     return reply.send({ data });
   });
 

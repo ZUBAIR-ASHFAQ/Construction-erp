@@ -46,6 +46,35 @@ test('B5.2 exposes the Final-21 Employee API and retires active legacy Employee 
   assert.match(finalPayrollRoutes, /\/api\/v1\/payroll\/runs/);
 });
 
+test('B5.2 Employee creation keeps the browser form minimal and generates Employee numbers on the server', () => {
+  const routes = read('apps/api/src/modules/employees/employees.routes.ts');
+  const schema = read('apps/api/src/modules/employees/employees.schema.ts');
+  const service = read('apps/api/src/modules/employees/employees.service.ts');
+  const repository = read('apps/api/src/modules/employees/employees.repository.ts');
+  const api = read('apps/web/src/features/employees/api/employees-api.ts');
+  const page = read('apps/web/src/features/employees/pages/employees-page.tsx');
+  const createInput = api.match(/export type CreateEmployeeInput = Readonly<\{[\s\S]*?\}>;/)?.[0] ?? '';
+  const createSchema = schema.match(/export const createEmployeeBodySchema = z\.object\(\{[\s\S]*?\}\)\.strict\(\)/)?.[0] ?? '';
+  const createRoute = routes.match(/const CREATE_EMPLOYEE_BODY_SCHEMA = \{[\s\S]*?\n\} as const;/)?.[0] ?? '';
+
+  for (const removedField of ['projectId', 'employeeNo', 'userId', 'department', 'employeeType']) {
+    assert.doesNotMatch(createInput, new RegExp(`\\b${removedField}\\b`));
+  }
+  for (const removedLabel of ['Project', 'Employee no.', 'Login user ID', 'Department', 'Work category']) {
+    assert.doesNotMatch(page, new RegExp(`<label>${removedLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  }
+  assert.doesNotMatch(createSchema, /employeeNo:/);
+  assert.match(createSchema, /department:\s*departmentSchema\.optional\(\)/);
+  assert.match(createSchema, /employeeType:\s*employeeTypeSchema\.optional\(\)/);
+  assert.doesNotMatch(createRoute.match(/required:\s*\[[^\]]*\]/)?.[0] ?? '', /employeeNo|department|employeeType/);
+  assert.match(service, /allocateCompanyNumber\(tx, \{ sequenceKey: EMPLOYEE_SEQUENCE_KEY \}\)/);
+  assert.match(service, /employeeNo:\s*employeeNumber\.formatted/);
+  assert.match(service, /department:\s*input\.department \?\? DEFAULT_DEPARTMENT/);
+  assert.match(service, /employeeType:\s*input\.employeeType \?\? DEFAULT_EMPLOYEE_TYPE/);
+  assert.match(repository, /sequenceKey:\s*'employee'/);
+  assert.match(repository, /prefix:\s*'EMP-'/);
+});
+
 test('B5.2 owns effective-dated compensation and employment history in Prisma', () => {
   const prisma = read('packages/database/prisma/schema.prisma');
   assert.match(prisma, /model Employee \{/);

@@ -29,6 +29,8 @@ export {
   listEmployeeAdvancesQuerySchema,
   listEmployeeAdvancesResponseSchema,
   payrollCashBankAccountResponseSchema,
+  payrollEligibleEmployeeResponseSchema,
+  payrollEligibleEmployeesQuerySchema,
   payrollEntityIdParamsSchema,
   payrollPaymentResponseSchema,
   payrollRunIdParamsSchema,
@@ -40,6 +42,7 @@ export {
 export type {
   AttendanceStatus,
   CalculatePayrollRunBody,
+  PayrollEligibleEmployeesQuery,
   CreateEmployeeAdvanceBody,
   CreateAttendanceBody,
   CreatePayrollPaymentBody,

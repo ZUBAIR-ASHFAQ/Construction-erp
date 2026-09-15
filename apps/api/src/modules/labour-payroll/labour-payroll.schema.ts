@@ -30,6 +30,7 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
   'OVERTIME_REQUIRES_HOURLY_COMPENSATION',
   'PAYROLL_PAYMENT_INVALID',
   'PAYROLL_PAYMENT_EXCEEDS_OUTSTANDING',
+  'PAYROLL_PAYMENT_ALREADY_PAID_ON_DATE',
   'PAYROLL_CASH_BANK_INVALID',
   'EMPLOYEE_ADVANCE_INVALID',
   'EMPLOYEE_ADVANCE_ALREADY_RECOVERED',
@@ -64,6 +65,7 @@ export const LABOUR_PAYROLL_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/runs/:id/calculate' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/runs/:id/finalize' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/runs/:id' }),
+  Object.freeze({ method: 'GET', route: '/api/v1/payroll/runs/:id/eligible-employees' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/cash-bank-accounts' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/payments' }),
@@ -249,9 +251,24 @@ export const createPayrollRunBodySchema = z.object({
   }
 });
 
-/** Validate optional Payroll-run overtime policy while keeping calculation server-owned. */
+/** Validate the optional Project/Employee target plus Payroll-run overtime policy. */
 export const calculatePayrollRunBodySchema = z.object({
+  projectId: uuidSchema.optional(),
+  employeeId: uuidSchema.optional(),
   overtimeMultiplier: overtimeMultiplierSchema.optional()
+}).strict().superRefine((value, context) => {
+  if (Boolean(value.projectId) !== Boolean(value.employeeId)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: value.projectId ? ['employeeId'] : ['projectId'],
+      message: 'projectId and employeeId must be supplied together.'
+    });
+  }
+});
+
+/** Validate the Project used to choose eligible Employees for one mutable Payroll Run. */
+export const payrollEligibleEmployeesQuerySchema = z.object({
+  projectId: uuidSchema
 }).strict();
 
 /** Validate the bodyless Payroll finalization command. */
@@ -325,6 +342,16 @@ export const attendanceAssignmentResponseSchema = z.object({
   stageName: z.string().nullable(),
   fromDate: dateSchema,
   toDate: dateSchema.nullable()
+}).strict();
+
+/** Validate one Employee available for targeted monthly or daily Payroll calculation. */
+export const payrollEligibleEmployeeResponseSchema = z.object({
+  id: uuidSchema,
+  employeeNo: z.string().min(1),
+  name: z.string().min(1),
+  payType: z.enum(['SALARY', 'DAILY', 'HOURLY']),
+  baseSalary: exactMoneySchema.nullable(),
+  hourlyRate: z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,4})?$/).nullable()
 }).strict();
 
 /** Validate one Cash/Bank selector row exposed only to salary-payment users. */
@@ -465,6 +492,7 @@ export type CreatePayrollPaymentBody = z.infer<typeof createPayrollPaymentBodySc
 export type ReversePayrollPaymentBody = z.infer<typeof reversePayrollPaymentBodySchema>;
 export type CreatePayrollRunBody = z.infer<typeof createPayrollRunBodySchema>;
 export type CalculatePayrollRunBody = z.infer<typeof calculatePayrollRunBodySchema>;
+export type PayrollEligibleEmployeesQuery = z.infer<typeof payrollEligibleEmployeesQuerySchema>;
 export type FinalizePayrollRunBody = z.infer<typeof finalizePayrollRunBodySchema>;
 
 const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.freeze({
@@ -480,6 +508,7 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   OVERTIME_REQUIRES_HOURLY_COMPENSATION: 'Overtime hours can only be recorded when the Employee has effective HOURLY compensation for the work date.',
   PAYROLL_PAYMENT_INVALID: 'The selected Employee salary payment or finalized Payroll line is invalid.',
   PAYROLL_PAYMENT_EXCEEDS_OUTSTANDING: 'The Employee salary payment exceeds the outstanding amount for this Payroll line.',
+  PAYROLL_PAYMENT_ALREADY_PAID_ON_DATE: 'Salary already paid to this Employee for this Payroll on the selected day.',
   PAYROLL_CASH_BANK_INVALID: 'Select an active same-Company Cash or Bank account.',
   EMPLOYEE_ADVANCE_INVALID: 'The selected Employee salary advance, Project, Stage, or Employee is invalid.',
   EMPLOYEE_ADVANCE_ALREADY_RECOVERED: 'This salary advance has already been recovered by finalized Payroll and cannot be reversed.',

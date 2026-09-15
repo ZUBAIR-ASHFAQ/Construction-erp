@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useProjects } from '../../projects/hooks/projects.js';
-import type { Subcontractor, VendorDetails, VendorQualificationStatus, VendorStatus } from '../api/vendors-subcontractors-api.js';
+import type { Subcontractor, Vendor, VendorDetails, VendorQualificationStatus, VendorStatus } from '../api/vendors-subcontractors-api.js';
 import {
   useCreateSubcontractor,
   useCreateVendor,
@@ -43,6 +43,8 @@ type ContactValues = z.infer<typeof contactSchema>;
 type SubcontractorValues = z.infer<typeof subcontractorSchema>;
 type SubcontractorEditValues = z.infer<typeof subcontractorEditSchema>;
 
+type VendorDialog = Readonly<{ kind: 'create' }> | Readonly<{ kind: 'edit'; vendor: Vendor }> | null;
+
 type WorkspaceProps = Readonly<{
   entity?: 'supplier' | 'subcontractor' | 'all';
   initialCreate?: boolean;
@@ -61,6 +63,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
   const [vendorStatus, setVendorStatus] = useState<VendorStatus | ''>('');
   const [qualification, setQualification] = useState<VendorQualificationStatus | ''>('');
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [vendorDialog, setVendorDialog] = useState<VendorDialog>(null);
   const [subcontractorSearch, setSubcontractorSearch] = useState('');
   const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | null>(null);
   const [projectFilter, setProjectFilter] = useState('');
@@ -90,8 +93,12 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
 
   useEffect(() => {
     if (!props.initialCreate) return;
-    requestAnimationFrame(() => document.getElementById(props.entity === 'subcontractor' ? 'add-subcontractor' : 'add-supplier')?.scrollIntoView({ block: 'start' }));
-  }, [props.entity, props.initialCreate]);
+    if (props.entity === 'subcontractor') {
+      requestAnimationFrame(() => document.getElementById('add-subcontractor')?.scrollIntoView({ block: 'start' }));
+      return;
+    }
+    if (props.canCreateVendors) setVendorDialog({ kind: 'create' });
+  }, [props.canCreateVendors, props.entity, props.initialCreate]);
 
   /** Create one supplier/vendor and open its detail after success. */
   async function handleCreateVendor(values: VendorCreateValues): Promise<void> {
@@ -106,6 +113,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
       qualificationStatus: values.qualificationStatus
     });
     vendorForm.reset();
+    setVendorDialog(null);
     setSelectedVendorId(vendor.id);
   }
 
@@ -133,7 +141,21 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
 
       {showSuppliers && props.canReadVendors && (
         <section className="admin-card">
-          <h2>Suppliers / Vendors</h2>
+          <div className="client-page-heading">
+            <div>
+              <h2>Suppliers / Vendors</h2>
+              <p className="muted">Search and maintain supplier master records without leaving the register.</p>
+            </div>
+            {props.canCreateVendors && (
+              <button
+                type="button"
+                className="client-primary-action"
+                onClick={() => { createVendorMutation.reset(); vendorForm.reset(); setVendorDialog({ kind: 'create' }); }}
+              >
+                <span aria-hidden="true">+</span> Add supplier
+              </button>
+            )}
+          </div>
           <div className="client-form-grid">
             <label>Search<input value={vendorSearch} onChange={(event) => setVendorSearch(event.target.value)} /></label>
             <label>Status<select value={vendorStatus} onChange={(event) => setVendorStatus(event.target.value as VendorStatus | '')}><option value="">All</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label>
@@ -142,7 +164,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
           <div className="table-wrap">
             <table className="admin-table">
               <thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Qualification</th><th>Action</th></tr></thead>
-              <tbody>{(vendors.data?.items ?? []).map((vendor) => <tr key={vendor.id}><td>{vendor.code}</td><td>{vendor.displayName}</td><td>{vendor.status}</td><td>{vendor.qualificationStatus ?? '—'}</td><td><button type="button" className="link-button" onClick={() => setSelectedVendorId(vendor.id)}>Open</button></td></tr>)}</tbody>
+              <tbody>{(vendors.data?.items ?? []).map((vendor) => <tr key={vendor.id}><td>{vendor.code}</td><td>{vendor.displayName}</td><td>{vendor.status}</td><td>{vendor.qualificationStatus ?? '—'}</td><td><div className="button-row"><button type="button" className="link-button" onClick={() => setSelectedVendorId(vendor.id)}>Open</button>{props.canUpdateVendors && <button type="button" className="link-button" onClick={() => setVendorDialog({ kind: 'edit', vendor })}>Edit</button>}</div></td></tr>)}</tbody>
             </table>
           </div>
           {vendors.isLoading && <p className="muted">Loading suppliers…</p>}
@@ -157,10 +179,9 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
         />
       )}
 
-      {showSuppliers && props.canCreateVendors && (
-        <section className="admin-card" id="add-supplier">
-          <h2>Add supplier / vendor</h2>
-          <form className="admin-form" onSubmit={vendorForm.handleSubmit(handleCreateVendor)} noValidate>
+      {showSuppliers && vendorDialog?.kind === 'create' && (
+        <SupplierModal title="Add supplier" eyebrow="Supplier master" onClose={() => { createVendorMutation.reset(); vendorForm.reset(); setVendorDialog(null); }}>
+          <form className="admin-form client-modal-form" onSubmit={vendorForm.handleSubmit(handleCreateVendor)} noValidate>
             <div className="client-form-grid">
               <label>Project<select {...vendorForm.register('projectId')}><option value="">Select Project</option>{(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
               <label>Code<input {...vendorForm.register('code')} /></label>
@@ -172,10 +193,17 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
               <label>Qualification<select {...vendorForm.register('qualificationStatus', { setValueAs: (value) => value || null })}><option value="">Not set</option><option value="QUALIFIED">Qualified</option><option value="PENDING">Pending</option></select></label>
             </div>
             {Object.values(vendorForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
-            {createVendorMutation.error instanceof Error && <div className="form-error">{createVendorMutation.error.message}</div>}
-            <button type="submit" disabled={createVendorMutation.isPending}>{createVendorMutation.isPending ? 'Creating…' : 'Create supplier'}</button>
+            {createVendorMutation.error instanceof Error && <div className="form-error" role="alert">{createVendorMutation.error.message}</div>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => { createVendorMutation.reset(); vendorForm.reset(); setVendorDialog(null); }}>Cancel</button>
+              <button type="submit" disabled={createVendorMutation.isPending}>{createVendorMutation.isPending ? 'Creating…' : 'Create supplier'}</button>
+            </div>
           </form>
-        </section>
+        </SupplierModal>
+      )}
+
+      {showSuppliers && vendorDialog?.kind === 'edit' && (
+        <SupplierEditModal vendor={vendorDialog.vendor} onClose={() => setVendorDialog(null)} />
       )}
 
       {showSubcontractors && props.canReadSubcontractors && (
@@ -222,19 +250,8 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
 function VendorDetail(props: Readonly<{ details: VendorDetails; canUpdate: boolean }>) {
   const details = props.details;
   const vendor = details.vendor;
-  const updateMutation = useUpdateVendor(vendor.id);
   const contactMutation = useCreateVendorContact(vendor.id);
-  const editForm = useForm<VendorEditValues>({ resolver: zodResolver(vendorEditSchema), defaultValues: { code: vendor.code, legalName: vendor.legalName, displayName: vendor.displayName, taxNo: vendor.taxNo ?? '', paymentTermsDays: vendor.paymentTermsDays, currency: vendor.currency ?? '', qualificationStatus: vendor.qualificationStatus, status: vendor.status } });
   const contactForm = useForm<ContactValues>({ resolver: zodResolver(contactSchema), defaultValues: { name: '', email: '', phone: '', role: '' } });
-
-  useEffect(() => {
-    editForm.reset({ code: vendor.code, legalName: vendor.legalName, displayName: vendor.displayName, taxNo: vendor.taxNo ?? '', paymentTermsDays: vendor.paymentTermsDays, currency: vendor.currency ?? '', qualificationStatus: vendor.qualificationStatus, status: vendor.status });
-  }, [vendor, editForm]);
-
-  /** Save supplier/vendor master changes through the final PATCH route. */
-  async function handleUpdate(values: VendorEditValues): Promise<void> {
-    await updateMutation.mutateAsync({ code: values.code, legalName: values.legalName, displayName: values.displayName, taxNo: values.taxNo || null, paymentTermsDays: values.paymentTermsDays, currency: values.currency ? values.currency.toUpperCase() : null, qualificationStatus: values.qualificationStatus, status: values.status });
-  }
 
   /** Add one optional-detail Contact under the selected supplier/vendor. */
   async function handleContact(values: ContactValues): Promise<void> {
@@ -257,8 +274,88 @@ function VendorDetail(props: Readonly<{ details: VendorDetails; canUpdate: boole
       <h3>Contacts</h3>
       {vendor.contacts.length ? <div className="table-wrap"><table className="admin-table"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Phone</th></tr></thead><tbody>{vendor.contacts.map((contact) => <tr key={contact.id}><td>{contact.name}</td><td>{contact.role ?? '—'}</td><td>{contact.email ?? '—'}</td><td>{contact.phone ?? '—'}</td></tr>)}</tbody></table></div> : <p className="muted">No contacts yet.</p>}
       {props.canUpdate && <form className="admin-form" onSubmit={contactForm.handleSubmit(handleContact)} noValidate><h3>Add contact</h3><div className="client-form-grid"><label>Name<input {...contactForm.register('name')} /></label><label>Role<input {...contactForm.register('role')} /></label><label>Email<input {...contactForm.register('email')} /></label><label>Phone<input {...contactForm.register('phone')} /></label></div><button type="submit" disabled={contactMutation.isPending}>Add contact</button></form>}
-      {props.canUpdate && <form className="admin-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate><h3>Edit supplier</h3><div className="client-form-grid"><label>Code<input {...editForm.register('code')} /></label><label>Display name<input {...editForm.register('displayName')} /></label><label>Legal name<input {...editForm.register('legalName')} /></label><label>Tax number<input {...editForm.register('taxNo')} /></label><label>Payment terms<input type="number" min="0" {...editForm.register('paymentTermsDays', { setValueAs: (value) => value === '' ? null : Number(value) })} /></label><label>Currency<input maxLength={3} {...editForm.register('currency')} /></label><label>Qualification<select {...editForm.register('qualificationStatus', { setValueAs: (value) => value || null })}><option value="">Not set</option><option value="QUALIFIED">Qualified</option><option value="PENDING">Pending</option></select></label><label>Status<select {...editForm.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label></div><button type="submit" disabled={updateMutation.isPending}>Save supplier</button></form>}
     </section>
+  );
+}
+
+/** Render one accessible Supplier modal using the existing professional modal surface. */
+function SupplierModal(props: Readonly<{ title: string; eyebrow: string; onClose: () => void; children: ReactNode }>) {
+  useEffect(() => {
+    /** Close only the active Supplier modal when Escape is pressed. */
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="supplier-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="client-modal-header">
+          <div><p className="eyebrow">{props.eyebrow}</p><h2 id="supplier-modal-title">{props.title}</h2></div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label={`Close ${props.title}`}><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
+    </div>
+  );
+}
+
+/** Edit Supplier master information in a dedicated list-level dialog. */
+function SupplierEditModal(props: Readonly<{ vendor: Vendor; onClose: () => void }>) {
+  const updateMutation = useUpdateVendor(props.vendor.id);
+  const editForm = useForm<VendorEditValues>({
+    resolver: zodResolver(vendorEditSchema),
+    defaultValues: {
+      code: props.vendor.code,
+      legalName: props.vendor.legalName,
+      displayName: props.vendor.displayName,
+      taxNo: props.vendor.taxNo ?? '',
+      paymentTermsDays: props.vendor.paymentTermsDays,
+      currency: props.vendor.currency ?? '',
+      qualificationStatus: props.vendor.qualificationStatus,
+      status: props.vendor.status
+    }
+  });
+
+  /** Save Supplier changes through the existing PATCH contract, then return to the register. */
+  async function handleUpdate(values: VendorEditValues): Promise<void> {
+    await updateMutation.mutateAsync({
+      code: values.code,
+      legalName: values.legalName,
+      displayName: values.displayName,
+      taxNo: values.taxNo || null,
+      paymentTermsDays: values.paymentTermsDays,
+      currency: values.currency ? values.currency.toUpperCase() : null,
+      qualificationStatus: values.qualificationStatus,
+      status: values.status
+    });
+    props.onClose();
+  }
+
+  return (
+    <SupplierModal title={`Edit ${props.vendor.displayName}`} eyebrow="Supplier master" onClose={props.onClose}>
+      <form className="admin-form client-modal-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
+        <div className="client-form-grid">
+          <label>Code<input {...editForm.register('code')} /></label>
+          <label>Display name<input {...editForm.register('displayName')} /></label>
+          <label>Legal name<input {...editForm.register('legalName')} /></label>
+          <label>Tax number<input {...editForm.register('taxNo')} /></label>
+          <label>Payment terms days<input type="number" min="0" {...editForm.register('paymentTermsDays', { setValueAs: (value) => value === '' ? null : Number(value) })} /></label>
+          <label>Currency<input maxLength={3} {...editForm.register('currency')} /></label>
+          <label>Qualification<select {...editForm.register('qualificationStatus', { setValueAs: (value) => value || null })}><option value="">Not set</option><option value="QUALIFIED">Qualified</option><option value="PENDING">Pending</option></select></label>
+          <label>Status<select {...editForm.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label>
+        </div>
+        {Object.values(editForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+        {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
+        <div className="client-modal-actions">
+          <button type="button" className="secondary-button" onClick={props.onClose}>Cancel</button>
+          <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save supplier'}</button>
+        </div>
+      </form>
+    </SupplierModal>
   );
 }
 

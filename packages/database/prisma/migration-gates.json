@@ -945,6 +945,22 @@
       "migrations": [
         "20260915000100_employee_pay_cycle_payroll"
       ]
+    },
+    {
+      "stage": 84,
+      "gate": "site-manager-purchase-order-create-repair",
+      "description": "Restores the Project-scoped Purchase Order creation permission for active Site Managers so approved requirements can proceed into PO creation.",
+      "migrations": [
+        "20260915000200_site_manager_purchase_order_create_repair"
+      ]
+    },
+    {
+      "stage": 85,
+      "gate": "site-manager-inventory-command-scope",
+      "description": "Keeps Site Managers limited to Project-scoped stock issue and direct stock entry while reserving cross-Project Inventory transfer for administrators.",
+      "migrations": [
+        "20260915000300_site_manager_inventory_command_scope"
+      ]
     }
   ]
 }

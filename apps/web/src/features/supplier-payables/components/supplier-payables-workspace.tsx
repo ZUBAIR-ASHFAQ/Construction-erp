@@ -77,8 +77,12 @@ type SupplierPayablesWorkspaceProps = Readonly<{
   initialTab?: WorkspaceTab;
   canRead: boolean;
   canCreateInvoice: boolean;
+  createInvoiceModalOpen: boolean;
+  onCloseCreateInvoiceModal: () => void;
   canPostInvoice: boolean;
   canCreatePayment: boolean;
+  createPaymentModalOpen: boolean;
+  onCloseCreatePaymentModal: () => void;
   canAllocatePayment: boolean;
   canReadProjects: boolean;
   canReadStages: boolean;
@@ -235,6 +239,26 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     allocationInvoiceOptions.find((invoice) => invoice.id === watchedAllocationInvoiceId) ?? null
   ), [allocationInvoiceOptions, watchedAllocationInvoiceId]);
 
+  /** Close the Supplier Invoice dialog and discard only its browser-side draft state. */
+  function closeCreateInvoiceModal(): void {
+    invoiceForm.reset(EMPTY_INVOICE_FORM);
+    setInvoiceImage(null);
+    setInvoiceImageInputKey((value) => value + 1);
+    setAttachmentError(null);
+    createInvoice.reset();
+    postInvoice.reset();
+    uploadInvoiceDocument.reset();
+    linkInvoiceDocument.reset();
+    props.onCloseCreateInvoiceModal();
+  }
+
+  /** Close the Supplier New Payment dialog and discard only its browser-side draft state. */
+  function closeCreatePaymentModal(): void {
+    paymentForm.reset(EMPTY_PAYMENT_FORM);
+    createPayment.reset();
+    props.onCloseCreatePaymentModal();
+  }
+
   useEffect(() => {
     if (!selectedInvoiceId && invoiceQuery.data?.items[0]) setSelectedInvoiceId(invoiceQuery.data.items[0].id);
   }, [invoiceQuery.data?.items, selectedInvoiceId]);
@@ -302,6 +326,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
       setInvoiceImage(null);
       setInvoiceImageInputKey((value) => value + 1);
       invoiceForm.reset(EMPTY_INVOICE_FORM);
+      if (props.initialTab === 'invoices') props.onCloseCreateInvoiceModal();
     } catch (error) {
       setAttachmentError(`Supplier Invoice ${created.invoiceNo} remains a draft. Attach its image and post it from the invoice details: ${error instanceof Error ? error.message : 'Upload failed.'}`);
     }
@@ -351,7 +376,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
       reference: values.reference.trim() || null
     });
     setSelectedPayment(Number(created.remainingAmount) > 0 ? created : null);
-    paymentForm.reset(EMPTY_PAYMENT_FORM);
+    closeCreatePaymentModal();
   }
 
   /** Reverse one posted Supplier Payment and clear any now-invalid allocation selection. */
@@ -410,6 +435,129 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
 
   return (
     <div className="admin-stack">
+      {props.initialTab === 'invoices' && props.canCreateInvoice && props.createInvoiceModalOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateInvoiceModal(); }}>
+          <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-invoice-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateInvoiceModal(); }}>
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Supplier invoice</p>
+                <h2 id="supplier-invoice-create-title">New Supplier Invoice</h2>
+                <p>Record a direct or Purchase Order-backed Supplier invoice with its original evidence.</p>
+              </div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close new supplier invoice" onClick={closeCreateInvoiceModal}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p className="client-payment-create-note">Select the Supplier and Project, optionally link an issued Purchase Order and received delivery, then attach the original invoice image or PDF. Accounting and posting rules remain server-controlled.</p>
+              <form className="admin-form client-payment-create-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
+                <div className="client-payment-create-grid">
+                  <label>Vendor
+                    <select {...invoiceForm.register('vendorId')}>
+                      <option value="">Select vendor</option>
+                      {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}
+                    </select>
+                    <span className="field-error">{invoiceForm.formState.errors.vendorId?.message}</span>
+                  </label>
+                  <label>Project
+                    <select {...invoiceForm.register('projectId')}>
+                      <option value="">Select project</option>
+                      {projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+                    </select>
+                    <span className="field-error">{invoiceForm.formState.errors.projectId?.message}</span>
+                  </label>
+                  <label>Supplier invoice no.<input {...invoiceForm.register('invoiceNo')} /><span className="field-error">{invoiceForm.formState.errors.invoiceNo?.message}</span></label>
+                  <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
+                  <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
+                  <label>Purchase Order (optional)
+                    <select {...invoiceForm.register('purchaseOrderId')}>
+                      <option value="">Direct invoice (no PO)</option>
+                      {availablePurchaseOrders.map((purchaseOrder) => <option key={purchaseOrder.id} value={purchaseOrder.id}>{purchaseOrder.poNo} · {purchaseOrder.status}</option>)}
+                    </select>
+                  </label>
+                  <label>Goods Receipt (optional)
+                    <select {...invoiceForm.register('goodsReceiptId')} disabled={!watchedPurchaseOrderId}>
+                      <option value="">{watchedPurchaseOrderId ? 'No Goods Receipt' : 'Not applicable for direct invoice'}</option>
+                      {availableGoodsReceipts.map((receipt) => (
+                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()}</option>
+                      ))}
+                    </select>
+                    <small className="muted">Only received deliveries for the selected issued PO are shown.</small>
+                    <span className="field-error">{invoiceForm.formState.errors.goodsReceiptId?.message}</span>
+                  </label>
+                  <label>Tax amount<input inputMode="decimal" {...invoiceForm.register('taxAmount')} /><span className="field-error">{invoiceForm.formState.errors.taxAmount?.message}</span></label>
+                  <label>Supplier invoice image / PDF (required)
+                    <input key={invoiceImageInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setInvoiceImage(event.target.files?.[0] ?? null)} />
+                    <small className="muted">Every Supplier invoice must have its original JPG, PNG or PDF attached before posting.</small>
+                  </label>
+                </div>
+
+                <h3>Invoice lines</h3>
+                {invoiceLines.fields.map((field, index) => (
+                  <div className="admin-card" key={field.id}>
+                    <div className="client-payment-create-grid">
+                      <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
+                      <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                      <input type="hidden" {...invoiceForm.register(`lines.${index}.stageId`)} />
+                      <input type="hidden" {...invoiceForm.register(`lines.${index}.expenseOrInventoryAccountId`)} />
+                    </div>
+                    {invoiceLines.fields.length > 1 && <button type="button" className="secondary-button" onClick={() => invoiceLines.remove(index)}>Remove line</button>}
+                  </div>
+                ))}
+                <div className="form-actions client-payment-create-actions">
+                  <button type="button" className="secondary-button" onClick={() => invoiceLines.append({ stageId: '', description: '', amount: '', expenseOrInventoryAccountId: '' })}>Add line</button>
+                  <button type="button" className="secondary-button" disabled={createInvoice.isPending || postInvoice.isPending || uploadInvoiceDocument.isPending || linkInvoiceDocument.isPending} onClick={closeCreateInvoiceModal}>Cancel</button>
+                  <button type="submit" disabled={!invoiceImage || !props.canUploadDocuments || !props.canLinkDocuments || createInvoice.isPending || postInvoice.isPending || uploadInvoiceDocument.isPending || linkInvoiceDocument.isPending}>{createInvoice.isPending || postInvoice.isPending || uploadInvoiceDocument.isPending || linkInvoiceDocument.isPending ? 'Saving invoice…' : props.canPostInvoice ? 'Create invoice & post' : 'Create invoice draft'}</button>
+                </div>
+                {mutationMessage(createInvoice.error) && <p className="field-error">{mutationMessage(createInvoice.error)}</p>}
+                {mutationMessage(postInvoice.error) && <p className="field-error">Invoice was saved as a draft but could not be posted: {mutationMessage(postInvoice.error)}</p>}
+                {attachmentError && <div className="form-error" role="alert">{attachmentError}</div>}
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {props.initialTab === 'payments' && props.canCreatePayment && props.createPaymentModalOpen && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreatePaymentModal(); }}>
+          <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-payment-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreatePaymentModal(); }}>
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Supplier payment</p>
+                <h2 id="supplier-payment-create-title">New Supplier Payment</h2>
+                <p>Post a partial or full Supplier payment from the selected Cash / Bank account.</p>
+              </div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close new supplier payment" onClick={closeCreatePaymentModal}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p className="client-payment-create-note">Select a Supplier and optionally a Project and posted Supplier Invoice. Direct payments remain supported; invoice allocation is optional and all posting rules stay server-controlled.</p>
+              <form className="admin-form client-payment-create-form" onSubmit={paymentForm.handleSubmit(submitPayment)}>
+                <div className="client-payment-create-grid">
+                  <label>Vendor<select {...paymentForm.register('vendorId')} onChange={(event) => { paymentForm.setValue('vendorId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); paymentForm.setValue('projectId', ''); }}><option value="">Select vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select><span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span></label>
+                  <label>Project (optional)<select {...paymentForm.register('projectId')} onChange={(event) => { paymentForm.setValue('projectId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); }}><option value="">Company-level direct payment</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select><small className="muted">Select a project to load that project&apos;s supplier invoices.</small></label>
+                  <label>Invoice (optional)
+                    <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
+                      <option value="">Direct payment (no invoice)</option>
+                      {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
+                    </select>
+                    <small className="muted">Only posted invoices with an outstanding balance for the selected supplier are shown; selecting a project narrows the list.</small>
+                    <span className="field-error">{paymentForm.formState.errors.supplierInvoiceId?.message}</span>
+                  </label>
+                  <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /><span className="field-error">{paymentForm.formState.errors.paymentDate?.message}</span></label>
+                  <label>Payment amount (partial or full)<input inputMode="decimal" {...paymentForm.register('amount')} /><span className="field-error">{paymentForm.formState.errors.amount?.message}</span></label>
+                  <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{paymentCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select><span className="field-error">{paymentForm.formState.errors.cashBankAccountId?.message}</span></label>
+                  <label>Reference (optional)<input {...paymentForm.register('reference')} /><span className="field-error">{paymentForm.formState.errors.reference?.message}</span></label>
+                </div>
+                <p className="muted client-payment-create-help">To pay from two accounts, post one partial payment from each account and allocate them independently if required.</p>
+                {mutationMessage(createPayment.error) && <p className="field-error">{mutationMessage(createPayment.error)}</p>}
+                <div className="form-actions client-payment-create-actions">
+                  <button type="button" className="secondary-button" disabled={createPayment.isPending} onClick={closeCreatePaymentModal}>Cancel</button>
+                  <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting payment…' : 'Create & post payment'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
       <section className="admin-card">
         <div className="button-row" role="tablist" aria-label="Supplier Payables views">
           <button type="button" className={tab === 'invoices' ? 'nav-button active' : 'nav-button'} onClick={() => setTab('invoices')}>Invoices</button>
@@ -434,7 +582,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
 
       {tab === 'invoices' && (
         <>
-          {props.canCreateInvoice && (
+          {props.canCreateInvoice && props.initialTab !== 'invoices' && (
             <section className="admin-card">
               <h2>New Supplier Invoice</h2>
               <p className="muted">For a Procurement invoice, select its PO and Goods Receipt. For a direct purchase or service, choose Direct invoice (no PO); no receipt is required.</p>
@@ -569,7 +717,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
 
       {tab === 'payments' && (
         <>
-          {props.canCreatePayment && (
+          {props.canCreatePayment && props.initialTab !== 'payments' && (
             <section className="admin-card">
               <h2>New Supplier Payment — partial or full</h2>
               <p className="muted">Enter any partial amount and select the cash/bank account paying it. Invoice allocation is optional, so this also supports direct payments without an invoice. To pay from two accounts, create one partial payment from each account, then optionally allocate both to the same invoice.</p>

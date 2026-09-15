@@ -5,11 +5,9 @@ import { z } from 'zod';
 import type {
   DashboardPreference,
   DashboardPreferenceFilters,
-  DashboardProject,
-  DashboardSavedFilter
+  DashboardProject
 } from '../api/dashboard-api.js';
 import {
-  useDashboardAlerts,
   useDashboardProjects,
   useDashboardSummary,
   useProjectDashboard,
@@ -96,23 +94,6 @@ function valuesFromPreference(preference: DashboardPreference): DashboardFilterV
   };
 }
 
-/** Convert a server-returned saved filter into the supported visible fields when valid. */
-function valuesFromSavedFilter(saved: DashboardSavedFilter): DashboardFilterValues | null {
-  if (typeof saved.filterJson !== 'object' || saved.filterJson === null || Array.isArray(saved.filterJson)) return null;
-  const stored = saved.filterJson as Record<string, unknown>;
-  const candidate = {
-    ...EMPTY_FILTERS,
-    projectId: typeof stored.projectId === 'string' ? stored.projectId : '',
-    search: typeof stored.search === 'string' ? stored.search : '',
-    status: typeof stored.status === 'string' ? stored.status : '',
-    fromDate: typeof stored.fromDate === 'string' ? stored.fromDate : '',
-    toDate: typeof stored.toDate === 'string' ? stored.toDate : '',
-    asOfDate: typeof stored.asOfDate === 'string' ? stored.asOfDate : EMPTY_FILTERS.asOfDate
-  };
-  const parsed = dashboardFilterSchema.safeParse(candidate);
-  return parsed.success ? parsed.data : null;
-}
-
 /** Render one source-derived money metric without recomputing business values in the browser. */
 function MoneyMetric({ label, value, currency }: Readonly<{ label: string; value: string; currency: string }>) {
   return (
@@ -163,7 +144,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
   const form = useForm<DashboardFilterValues>({ resolver: zodResolver(dashboardFilterSchema), defaultValues: EMPTY_FILTERS });
   const [appliedFilters, setAppliedFilters] = useState<DashboardFilterValues>(EMPTY_FILTERS);
   const [projectPage, setProjectPage] = useState(1);
-  const [alertPage, setAlertPage] = useState(1);
   const [preferencesApplied, setPreferencesApplied] = useState(false);
 
   const summaryQuery = useDashboardSummary({
@@ -183,14 +163,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
     ...(appliedFilters.toDate ? { toDate: appliedFilters.toDate } : {}),
     ...(appliedFilters.asOfDate ? { asOfDate: appliedFilters.asOfDate } : {})
   }, props.canRead && props.canReadProjects);
-  const alertsQuery = useDashboardAlerts({
-    ...(selectedProjectId ? { projectId: selectedProjectId } : {}),
-    ...(appliedFilters.fromDate ? { fromDate: appliedFilters.fromDate } : {}),
-    ...(appliedFilters.toDate ? { toDate: appliedFilters.toDate } : {}),
-    ...(appliedFilters.asOfDate ? { asOfDate: appliedFilters.asOfDate } : {}),
-    page: selectedProjectId ? 1 : alertPage,
-    pageSize: selectedProjectId ? 1 : 10
-  }, props.canRead && props.canReadProjects);
   const preferencesMutation = useUpdateDashboardPreferences();
 
   const projectOptions = useMemo(() => {
@@ -200,7 +172,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
     return [...options.values()];
   }, [projectQuery.data, projectsQuery.data?.items]);
   const projectPageCount = projectsQuery.data ? Math.max(1, Math.ceil(projectsQuery.data.total / projectsQuery.data.pageSize)) : 1;
-  const alertPageCount = alertsQuery.data ? Math.max(1, Math.ceil(alertsQuery.data.projectTotal / alertsQuery.data.pageSize)) : 1;
   const cashBank = projectQuery.data?.cashBank ?? summaryQuery.data?.cashBank ?? null;
   const visibleProgress = useMemo(() => {
     const items = projectsQuery.data?.items ?? [];
@@ -223,7 +194,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
   function handleApplyFilters(values: DashboardFilterValues): void {
     setAppliedFilters(values);
     setProjectPage(1);
-    setAlertPage(1);
   }
 
   /** Open one Project from the permission-scoped health table without raw identifier input. */
@@ -231,7 +201,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
     const next = { ...appliedFilters, projectId };
     form.reset(next);
     setAppliedFilters(next);
-    setAlertPage(1);
   }
 
   /** Save the current validated Dashboard view as the authenticated user's default preference. */
@@ -242,16 +211,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
         defaultFilters: preferenceFilters(values)
       });
     })();
-  }
-
-  /** Apply one valid server-returned saved filter without accepting arbitrary browser expressions. */
-  function handleApplySavedFilter(saved: DashboardSavedFilter): void {
-    const next = valuesFromSavedFilter(saved);
-    if (!next) return;
-    form.reset(next);
-    setAppliedFilters(next);
-    setProjectPage(1);
-    setAlertPage(1);
   }
 
   if (!props.canRead) {
@@ -297,11 +256,11 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
             </>
           )}
           <label>
-            Alerts from
+            From date
             <input type="date" {...form.register('fromDate')} />
           </label>
           <label>
-            Alerts to
+            To date
             <input type="date" {...form.register('toDate')} />
             {form.formState.errors.toDate && <span className="field-error">{form.formState.errors.toDate.message}</span>}
           </label>
@@ -356,31 +315,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
                 </>
               )}
             </div>
-            {props.canReadFinance && summaryQuery.data.executiveSummary.financialsByCurrency && (
-              <div className="table-wrap dashboard-section-space">
-                <table className="admin-table dashboard-table">
-                  <thead><tr><th>Currency</th><th>Projects</th><th>Recognized revenue</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated</th><th>Advance / unallocated</th><th>Outstanding</th><th>Supplier payable</th><th>Profit / loss</th></tr></thead>
-                  <tbody>
-                    {summaryQuery.data.executiveSummary.financialsByCurrency.map((item) => (
-                      <tr key={item.currency}>
-                        <td data-label="Currency">{item.currency}</td><td data-label="Projects">{item.projectCount}</td>
-                        <td data-label="Recognized revenue">{displayMoney(item.recognizedRevenue, item.currency)}</td><td data-label="Actual cost">{displayMoney(item.actualCost, item.currency)}</td>
-                        <td data-label="Billed">{displayMoney(item.billedAmount, item.currency)}</td><td data-label="Received">{displayMoney(item.receivedAmount, item.currency)}</td>
-                        <td data-label="Allocated">{displayMoney(item.allocatedAmount, item.currency)}</td><td data-label="Advance / unallocated">{displayMoney(item.advanceAmount, item.currency)}</td>
-                        <td data-label="Outstanding">{displayMoney(item.outstandingAmount, item.currency)}</td>
-                        <td data-label="Supplier payable">{displayMoney(item.supplierPayableAmount, item.currency)}</td><td data-label="Profit / loss">{displayMoney(item.profitAmount, item.currency)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {summaryQuery.data.executiveSummary.financialCoverage && (
-              <p className="muted">
-                Financial summary covers {summaryQuery.data.executiveSummary.financialCoverage.includedProjects} of {summaryQuery.data.executiveSummary.financialCoverage.totalProjects} Projects as of {summaryQuery.data.executiveSummary.financialCoverage.asOfDate}. Coverage is {summaryQuery.data.executiveSummary.financialCoverage.complete ? 'complete' : 'partial'}.
-              </p>
-            )}
-            <p className="dashboard-cash-note"><strong>Cash received is not profit.</strong> Dashboard displays received cash, outstanding, advances, costs and profit as separate source-derived measures.</p>
           </>
         )}
       </section>
@@ -543,51 +477,6 @@ export function DashboardWorkspace(props: DashboardWorkspaceProps) {
         </section>
       )}
 
-      {props.canReadProjects && (
-        <section className="admin-card">
-          <h2>Alerts</h2>
-          {alertsQuery.isPending && <p>Loading alerts…</p>}
-          {errorMessage(alertsQuery.error) && <div className="form-error" role="alert">{errorMessage(alertsQuery.error)}</div>}
-          {alertsQuery.data && <p className="muted">{alertsQuery.data.alertCount} alert(s) as of {alertsQuery.data.asOfDate} · Page {alertsQuery.data.page} · {alertsQuery.data.pageSize} Project(s) per scan · {alertsQuery.data.scannedProjectCount} scanned of {alertsQuery.data.projectTotal}</p>}
-          {alertsQuery.data && alertsQuery.data.items.length === 0 && <p className="muted">No source-module alerts matched the current filters.</p>}
-          {alertsQuery.data && alertsQuery.data.items.length > 0 && (
-            <div className="dashboard-alert-list">
-              {alertsQuery.data.items.map((alert, index) => (
-                <article key={`${alert.code}-${alert.projectId}-${alert.stageId ?? 'project'}-${index}`} className="dashboard-alert-item">
-                  <div><strong>{alert.severity} · {alert.code} · {alert.projectCode}</strong><span>{alert.projectName} · {alert.title}</span></div>
-                  <span className="muted">Source {alert.sourceModule} · Project {alert.projectId}{alert.stageId ? ` · Stage ${alert.stageId}` : ''} · {alert.dueDate ? `Due ${alert.dueDate}` : 'No due date'} · {alert.value === null ? 'No value' : alert.currency ? displayMoney(alert.value, alert.currency) : `${alert.value}%`}</span>
-                </article>
-              ))}
-            </div>
-          )}
-          {alertsQuery.data && !selectedProjectId && alertsQuery.data.projectTotal > alertsQuery.data.pageSize && (
-            <div className="pagination-row">
-              <button type="button" className="secondary-button" disabled={alertPage <= 1} onClick={() => setAlertPage((page) => Math.max(1, page - 1))}>Previous</button>
-              <span>Alert scan page {alertPage} of {alertPageCount} · {alertsQuery.data.scannedProjectCount} Project(s) scanned on this page</span>
-              <button type="button" className="secondary-button" disabled={alertPage >= alertPageCount} onClick={() => setAlertPage((page) => page + 1)}>Next</button>
-            </div>
-          )}
-        </section>
-      )}
-
-      <section className="admin-card">
-        <h2>Saved filters & preferences</h2>
-        <p className="muted">Saved filters are read from the existing Dashboard store. The API remains authoritative for Project scope and preference changes.</p>
-        {summaryQuery.data?.preference && (
-          <p className="muted">
-            Current preference updated {new Date(summaryQuery.data.preference.updatedAt).toLocaleString()} · Widgets {(summaryQuery.data.preference.widgetCodes ?? []).join(', ') || 'default'} · Default Project {summaryQuery.data.preference.defaultProjectId ?? 'none'} · Filters <code>{JSON.stringify(summaryQuery.data.preference.defaultFilters ?? {})}</code>
-          </p>
-        )}
-        {summaryQuery.data?.savedFilters.length === 0 && <p className="muted">No saved Dashboard filters are available.</p>}
-        {summaryQuery.data && summaryQuery.data.savedFilters.length > 0 && (
-          <div className="dashboard-saved-list">
-            {summaryQuery.data.savedFilters.map((saved) => {
-              const values = valuesFromSavedFilter(saved);
-              return <button key={saved.id} type="button" className="secondary-button" disabled={!values} onClick={() => handleApplySavedFilter(saved)}>{saved.name} · {new Date(saved.createdAt).toLocaleString()} · {saved.id} · {JSON.stringify(saved.filterJson)}</button>;
-            })}
-          </div>
-        )}
-      </section>
     </div>
   );
 }

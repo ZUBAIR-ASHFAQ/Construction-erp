@@ -35,6 +35,8 @@ type ClientBillingWorkspaceProps = Readonly<{
   canCreateInvoices: boolean;
   canReadInvoices: boolean;
   canReadStages: boolean;
+  createModalOpen: boolean;
+  onCloseCreateModal: () => void;
 }>;
 
 /** Return today's local browser date for a date input without UTC rollover. */
@@ -101,6 +103,13 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
     return () => window.removeEventListener('keydown', closeInvoiceOnEscape);
   }, [selectedInvoiceId]);
 
+  /** Close direct Client Invoice entry and discard only the unsaved modal state. */
+  function closeCreateInvoiceModal(): void {
+    invoiceForm.reset(emptyDirectInvoiceForm());
+    createDirectInvoice.reset();
+    props.onCloseCreateModal();
+  }
+
   /** Return a Stage label while avoiding raw identifiers. */
   function stageLabel(stageId: string | null): string {
     if (!stageId) return 'Project level';
@@ -117,6 +126,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
       lines: values.lines.map((line) => ({ stageId: line.stageId || null, description: line.description.trim(), amount: line.amount }))
     });
     invoiceForm.reset(emptyDirectInvoiceForm());
+    props.onCloseCreateModal();
     setSelectedInvoiceId(invoice.id);
   }
 
@@ -125,7 +135,7 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
   return (
     <div className="admin-stack">
       <section className="admin-card">
-        <h2>Client and project</h2>
+        <div className="section-heading compact-heading"><h2>Invoice register filters</h2><span className="muted">Choose a Client and Project to review invoices</span></div>
         <div className="two-column-form">
           <label>Client
             {props.canReadClients ? (
@@ -148,37 +158,71 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
         </div>
       </section>
 
-      {projectId && props.canCreateInvoices ? (
-        <section className="admin-card">
-          <h2>Create client invoice</h2>
-          <p className="muted">Client {selectedProject ? clientNames.get(selectedProject.clientId) ?? 'Selected client' : 'Selected client'} · Project {selectedProject?.name ?? 'Selected project'}. Invoice number and totals are controlled by the server.</p>
-          <form className="admin-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
-            <div className="two-column-form">
-              <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
-              <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
-            </div>
-            {invoiceLines.fields.map((field, index) => (
-              <div className="admin-card" key={field.id}>
-                <div className="two-column-form">
-                  <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
-                  <label>Stage (optional)
-                    <select {...invoiceForm.register(`lines.${index}.stageId`)} disabled={!props.canReadStages}>
-                      <option value="">Project level</option>
-                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+      {props.canCreateInvoices && props.createModalOpen ? (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateInvoiceModal(); }}>
+          <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="client-invoice-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateInvoiceModal(); }}>
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Client invoice</p>
+                <h2 id="client-invoice-create-title">New Client Invoice</h2>
+                <p>Create an issued invoice for the selected Client and Project. Invoice number and totals remain server controlled.</p>
+              </div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close new invoice" onClick={closeCreateInvoiceModal}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <form className="admin-form client-payment-create-form" aria-label="Create client invoice" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
+                <div className="client-payment-create-grid">
+                  <label>Client
+                    {props.canReadClients ? (
+                      <select value={clientId} onChange={(event) => { setClientId(event.target.value); setProjectId(''); }}>
+                        <option value="">Select client</option>
+                        {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
+                      </select>
+                    ) : <span className="muted">Derived from selected Project</span>}
+                  </label>
+                  <label>Project
+                    <select value={projectId} disabled={props.canReadClients && !clientId} onChange={(event) => {
+                      const nextProjectId = event.target.value;
+                      setProjectId(nextProjectId);
+                      if (!props.canReadClients) setClientId(projects.find((project) => project.id === nextProjectId)?.clientId ?? '');
+                    }}>
+                      <option value="">Select project</option>
+                      {clientProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
                     </select>
                   </label>
-                  <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                  <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
+                  <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
                 </div>
-                {invoiceLines.fields.length > 1 ? <button type="button" className="secondary-button" onClick={() => invoiceLines.remove(index)}>Remove line</button> : null}
-              </div>
-            ))}
-            <div className="admin-actions">
-              <button type="button" className="secondary-button" onClick={() => invoiceLines.append({ stageId: '', description: '', amount: '' })}>Add invoice line</button>
-              <button type="submit" disabled={createDirectInvoice.isPending}>{createDirectInvoice.isPending ? 'Creating…' : 'Create invoice'}</button>
+
+                {projectId ? <p className="muted">Client {selectedProject ? clientNames.get(selectedProject.clientId) ?? 'Selected client' : 'Selected client'} · Project {selectedProject?.name ?? 'Selected project'} · {selectedProject?.currency ?? 'Project currency'}</p> : null}
+
+                {invoiceLines.fields.map((field, index) => (
+                  <div className="admin-card" key={field.id}>
+                    <div className="section-heading compact-heading"><h3>Invoice line {index + 1}</h3>{invoiceLines.fields.length > 1 ? <button type="button" className="secondary-button" onClick={() => invoiceLines.remove(index)}>Remove line</button> : null}</div>
+                    <div className="client-payment-create-grid">
+                      <label>Description<input {...invoiceForm.register(`lines.${index}.description`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.description?.message}</span></label>
+                      <label>Amount<input inputMode="decimal" {...invoiceForm.register(`lines.${index}.amount`)} /><span className="field-error">{invoiceForm.formState.errors.lines?.[index]?.amount?.message}</span></label>
+                      <label>Stage (optional)
+                        <select {...invoiceForm.register(`lines.${index}.stageId`)} disabled={!projectId || !props.canReadStages}>
+                          <option value="">Project level</option>
+                          {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+                ))}
+                <div className="admin-actions">
+                  <button type="button" className="secondary-button" onClick={() => invoiceLines.append({ stageId: '', description: '', amount: '' })}>Add invoice line</button>
+                  <div className="admin-actions client-payment-create-actions">
+                    <button type="button" className="secondary-button" disabled={createDirectInvoice.isPending} onClick={closeCreateInvoiceModal}>Cancel</button>
+                    <button type="submit" disabled={createDirectInvoice.isPending || !projectId}>{createDirectInvoice.isPending ? 'Creating…' : 'Create invoice'}</button>
+                  </div>
+                </div>
+                {mutationMessage(createDirectInvoice.error) ? <div className="form-error" role="alert">{mutationMessage(createDirectInvoice.error)}</div> : null}
+              </form>
             </div>
-            {mutationMessage(createDirectInvoice.error) ? <div className="form-error" role="alert">{mutationMessage(createDirectInvoice.error)}</div> : null}
-          </form>
-        </section>
+          </section>
+        </div>
       ) : null}
 
       {projectId && props.canReadInvoices ? (

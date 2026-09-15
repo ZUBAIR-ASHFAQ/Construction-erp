@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import {
@@ -11,8 +11,6 @@ import {
 import type { EmployeePayType } from '../api/employees-api.js';
 
 const updateEmployeeSchema = z.object({
-  employeeNo: z.string().trim().min(1, 'Employee number is required.').max(100),
-  userId: z.union([z.string().trim().uuid('Use a valid User UUID.'), z.literal('')]),
   name: z.string().trim().min(1, 'Name is required.').max(200),
   cnicOrId: z.string().trim().max(100),
   phone: z.string().trim().max(50),
@@ -48,8 +46,9 @@ const compensationSchema = z.object({
 type UpdateEmployeeValues = z.infer<typeof updateEmployeeSchema>;
 type CompensationValues = z.infer<typeof compensationSchema>;
 
-type EmployeeDetailsPanelProps = Readonly<{
+export type EmployeeDetailsPanelProps = Readonly<{
   employeeId: string | null;
+  mode?: 'details' | 'edit';
   canUpdate: boolean;
   canManageCompensation: boolean;
 }>;
@@ -70,18 +69,26 @@ function compensationLabel(payType: EmployeePayType): string {
   return 'Hourly rate';
 }
 
-/** Render Employee detail, editable master fields, lifecycle status and salary history. */
-export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
-  const detailQuery = useEmployee(props.employeeId, props.employeeId !== null);
+/** Render Employee detail or the dedicated Employee/salary editor. */
+export function EmployeeDetailsPanel({
+  employeeId,
+  mode = 'details',
+  canUpdate,
+  canManageCompensation
+}: EmployeeDetailsPanelProps) {
+  const detailQuery = useEmployee(employeeId, employeeId !== null);
   const employee = detailQuery.data?.employee ?? null;
-  const updateMutation = useUpdateEmployee(props.employeeId ?? '');
-  const statusMutation = useUpdateEmployeeStatus(props.employeeId ?? '');
-  const compensationMutation = useCreateEmployeeCompensation(props.employeeId ?? '');
+  const compensationHistory = detailQuery.data?.compensationHistory ?? null;
+  const hasCompensation = (compensationHistory?.length ?? 0) > 0;
+  const updateMutation = useUpdateEmployee(employeeId ?? '');
+  const statusMutation = useUpdateEmployeeStatus(employeeId ?? '');
+  const compensationMutation = useCreateEmployeeCompensation(employeeId ?? '');
+  const [salaryEditorOpen, setSalaryEditorOpen] = useState(false);
   const updateForm = useForm<UpdateEmployeeValues>({
     resolver: zodResolver(updateEmployeeSchema),
     defaultValues: {
-      employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
-      jobTitle: '', employeeType: '', joiningDate: '', employmentEndDate: ''
+      name: '', cnicOrId: '', phone: '', email: '', department: '', jobTitle: '', employeeType: '',
+      joiningDate: '', employmentEndDate: ''
     }
   });
   const compensationForm = useForm<CompensationValues>({
@@ -90,12 +97,10 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
   });
   const payType = compensationForm.watch('payType');
 
-  /** Reset the edit form whenever another Employee is selected. */
+  /** Reset the Employee editor whenever another Employee is selected. */
   useEffect(() => {
     if (!employee) return;
     updateForm.reset({
-      employeeNo: employee.employeeNo,
-      userId: employee.userId ?? '',
       name: employee.name,
       cnicOrId: employee.cnicOrId ?? '',
       phone: employee.phone ?? '',
@@ -108,13 +113,17 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
     });
   }, [employee, updateForm]);
 
-  if (!props.employeeId) return null;
+  /** Close transient salary editing when switching Employee or dialog mode. */
+  useEffect(() => {
+    setSalaryEditorOpen(false);
+    compensationForm.reset({ payType: 'SALARY', amount: '', effectiveFrom: '' });
+  }, [employeeId, mode, compensationForm]);
+
+  if (!employeeId) return null;
 
   /** Persist the editable Employee master fields without changing salary or status. */
   async function handleUpdate(values: UpdateEmployeeValues): Promise<void> {
     await updateMutation.mutateAsync({
-      employeeNo: values.employeeNo,
-      userId: values.userId || null,
       name: values.name,
       cnicOrId: values.cnicOrId || null,
       phone: values.phone || null,
@@ -127,12 +136,25 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
     });
   }
 
-  /** Append one new effective salary/wage/rate record instead of overwriting history. */
+  /** Append one new effective salary/wage/rate record instead of overwriting Payroll history. */
   async function handleCompensation(values: CompensationValues): Promise<void> {
     await compensationMutation.mutateAsync(values.payType === 'HOURLY'
       ? { payType: 'HOURLY', hourlyRate: values.amount, effectiveFrom: values.effectiveFrom }
       : { payType: values.payType, baseSalaryOrWage: values.amount, effectiveFrom: values.effectiveFrom });
     compensationForm.reset({ payType: values.payType, amount: '', effectiveFrom: '' });
+    if (mode === 'edit') setSalaryEditorOpen(false);
+  }
+
+  /** Open the salary-change form with the current supported payment basis preselected. */
+  function openSalaryEditor(): void {
+    const latest = compensationHistory?.[compensationHistory.length - 1];
+    const editablePayType = latest?.payType === 'SALARY' || latest?.payType === 'DAILY' ? latest.payType : 'SALARY';
+    compensationForm.reset({
+      payType: editablePayType,
+      amount: latest?.payType === editablePayType ? (latest.baseSalaryOrWage ?? '') : '',
+      effectiveFrom: ''
+    });
+    setSalaryEditorOpen(true);
   }
 
   /** Toggle Employee active status through the explicit lifecycle command. */
@@ -144,42 +166,73 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
     });
   }
 
+  /** Render the shared effective-dated salary form for initial setup or a later change. */
+  function renderCompensationForm(submitLabel: string) {
+    return (
+      <form className="admin-form employee-salary-form" onSubmit={compensationForm.handleSubmit(handleCompensation)} noValidate>
+        <div className="module14b-form-grid">
+          <label>
+            Pay type
+            <select {...compensationForm.register('payType')}>
+              <option value="SALARY">Monthly employee</option>
+              <option value="DAILY">Daily-paid worker</option>
+            </select>
+          </label>
+          <label>
+            {compensationLabel(payType)}
+            <input inputMode="decimal" {...compensationForm.register('amount')} />
+          </label>
+          <label>Effective from<input type="date" {...compensationForm.register('effectiveFrom')} /></label>
+        </div>
+        {Object.values(compensationForm.formState.errors).map((error, index) => (
+          <span className="field-error" key={index}>{errorMessage(error)}</span>
+        ))}
+        {errorMessage(compensationMutation.error) && <div className="form-error" role="alert">{errorMessage(compensationMutation.error)}</div>}
+        <div className="button-row">
+          <button type="submit" disabled={compensationMutation.isPending}>{compensationMutation.isPending ? 'Saving…' : submitLabel}</button>
+          {mode === 'edit' && (
+            <button type="button" className="secondary-button" onClick={() => setSalaryEditorOpen(false)}>Cancel</button>
+          )}
+        </div>
+      </form>
+    );
+  }
+
   return (
-    <section className="admin-card" aria-labelledby="employee-detail-title">
-      <h2 id="employee-detail-title">Employee detail</h2>
+    <section className="employee-record-panel" aria-label={mode === 'edit' ? 'Edit employee' : 'Employee details'}>
       {detailQuery.isPending && <p>Loading Employee…</p>}
       {errorMessage(detailQuery.error) && <div className="form-error" role="alert">{errorMessage(detailQuery.error)}</div>}
 
       {employee && (
         <>
-          <div className="module14b-summary-grid">
-            <div><dt>Employee ID</dt><dd>{employee.id}</dd></div>
-            <div><dt>Employee</dt><dd>{employee.employeeNo} · {employee.name}</dd></div>
-            <div><dt>Status</dt><dd>{employee.status}</dd></div>
-            <div><dt>Type</dt><dd>{employee.employeeType}</dd></div>
-            <div><dt>Department</dt><dd>{employee.department}</dd></div>
-            <div><dt>Job title</dt><dd>{employee.jobTitle}</dd></div>
-            <div><dt>Joining date</dt><dd>{employee.joiningDate}</dd></div>
-            <div><dt>Employment end</dt><dd>{employee.employmentEndDate ?? 'Open-ended'}</dd></div>
-            <div><dt>User link</dt><dd>{employee.userId ?? 'Not linked'}</dd></div>
-            <div><dt>CNIC / ID</dt><dd>{employee.cnicOrId ?? '—'}</dd></div>
-            <div><dt>Phone</dt><dd>{employee.phone ?? '—'}</dd></div>
-            <div><dt>Email</dt><dd>{employee.email ?? '—'}</dd></div>
-          </div>
+          {mode === 'details' && (
+            <div className="module14b-summary-grid">
+              <div><dt>Employee ID</dt><dd>{employee.id}</dd></div>
+              <div><dt>Employee</dt><dd>{employee.employeeNo} · {employee.name}</dd></div>
+              <div><dt>Status</dt><dd>{employee.status}</dd></div>
+              <div><dt>Type</dt><dd>{employee.employeeType}</dd></div>
+              <div><dt>Department</dt><dd>{employee.department}</dd></div>
+              <div><dt>Job title</dt><dd>{employee.jobTitle}</dd></div>
+              <div><dt>Joining date</dt><dd>{employee.joiningDate}</dd></div>
+              <div><dt>Employment end</dt><dd>{employee.employmentEndDate ?? 'Open-ended'}</dd></div>
+              <div><dt>User link</dt><dd>{employee.userId ?? 'Not linked'}</dd></div>
+              <div><dt>CNIC / ID</dt><dd>{employee.cnicOrId ?? '—'}</dd></div>
+              <div><dt>Phone</dt><dd>{employee.phone ?? '—'}</dd></div>
+              <div><dt>Email</dt><dd>{employee.email ?? '—'}</dd></div>
+            </div>
+          )}
 
-          {props.canUpdate && (
+          {mode === 'edit' && canUpdate && (
             <form className="admin-form module14b-subsection" onSubmit={updateForm.handleSubmit(handleUpdate)} noValidate>
-              <h3>Edit Employee</h3>
+              <h3>Employee information</h3>
               <div className="module14b-form-grid">
-                <label>Employee no.<input {...updateForm.register('employeeNo')} /></label>
-                <label>Login user ID (optional)<input {...updateForm.register('userId')} placeholder="User UUID" /></label>
                 <label>Name<input {...updateForm.register('name')} /></label>
                 <label>CNIC / ID<input {...updateForm.register('cnicOrId')} /></label>
                 <label>Phone<input {...updateForm.register('phone')} /></label>
                 <label>Email<input type="email" {...updateForm.register('email')} /></label>
                 <label>Department<input {...updateForm.register('department')} /></label>
                 <label>Job title<input {...updateForm.register('jobTitle')} /></label>
-              <label>Work category<input {...updateForm.register('employeeType')} /></label>
+                <label>Work category<input {...updateForm.register('employeeType')} /></label>
                 <label>Joining date<input type="date" {...updateForm.register('joiningDate')} /></label>
                 <label>Employment end date (optional)<input type="date" min={updateForm.watch('joiningDate') || undefined} {...updateForm.register('employmentEndDate')} /></label>
               </div>
@@ -197,18 +250,36 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
             </form>
           )}
 
-          <section className="module14b-subsection" aria-labelledby="employee-compensation-title">
-            <h3 id="employee-compensation-title">Payment basis & compensation history</h3>
-            {!props.canManageCompensation && <p className="muted">Your role cannot view or change Employee salary history.</p>}
-            {props.canManageCompensation && detailQuery.data?.compensationHistory && (
+          {mode === 'details' && canManageCompensation && compensationHistory?.length === 0 && employee.status === 'ACTIVE' && (
+            <section className="module14b-subsection" aria-labelledby="employee-initial-salary-title">
+              <h3 id="employee-initial-salary-title">Set salary</h3>
+              {renderCompensationForm('Set salary')}
+            </section>
+          )}
+
+          {mode === 'edit' && canManageCompensation && hasCompensation && compensationHistory && (
+            <section className="module14b-subsection" aria-labelledby="employee-compensation-title">
+              <div className="employee-compensation-heading">
+                <div>
+                  <h3 id="employee-compensation-title">Salary & compensation history</h3>
+                  <p className="muted">Salary changes stay effective-dated so finalized and historical Payroll remains traceable.</p>
+                </div>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  disabled={employee.status !== 'ACTIVE' || salaryEditorOpen}
+                  onClick={openSalaryEditor}
+                >
+                  Edit salary
+                </button>
+              </div>
+
               <div className="table-wrap">
                 <table className="admin-table">
-                  <thead><tr><th>Compensation ID</th><th>Employee ID</th><th>Effective from</th><th>Effective to</th><th>Pay type</th><th>Base salary / wage</th><th>Hourly rate</th></tr></thead>
+                  <thead><tr><th>Effective from</th><th>Effective to</th><th>Pay type</th><th>Base salary / wage</th><th>Hourly rate</th></tr></thead>
                   <tbody>
-                    {detailQuery.data.compensationHistory.map((compensation) => (
+                    {compensationHistory.map((compensation) => (
                       <tr key={compensation.id}>
-                        <td>{compensation.id}</td>
-                        <td>{compensation.employeeId}</td>
                         <td>{compensation.effectiveFrom}</td>
                         <td>{compensation.effectiveTo ?? 'Current'}</td>
                         <td>{compensation.payType}</td>
@@ -216,41 +287,22 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
                         <td>{compensation.hourlyRate ?? '—'}</td>
                       </tr>
                     ))}
-                    {detailQuery.data.compensationHistory.length === 0 && (
-                      <tr><td colSpan={7} className="muted">No compensation history yet.</td></tr>
-                    )}
                   </tbody>
                 </table>
               </div>
-            )}
 
-            {props.canManageCompensation && employee.status === 'ACTIVE' && (
-              <form className="admin-form" onSubmit={compensationForm.handleSubmit(handleCompensation)} noValidate>
-                <div className="module14b-form-grid">
-                  <label>
-                    Pay type
-                    <select {...compensationForm.register('payType')}>
-                      <option value="SALARY">Monthly employee</option>
-                      <option value="DAILY">Daily-paid worker</option>
-                    </select>
-                  </label>
-                  <label>
-                    {compensationLabel(payType)}
-                    <input inputMode="decimal" {...compensationForm.register('amount')} />
-                  </label>
-                  <label>Effective from<input type="date" {...compensationForm.register('effectiveFrom')} /></label>
+              {salaryEditorOpen && (
+                <div className="employee-salary-editor">
+                  <h4>Edit salary</h4>
+                  <p className="muted">Choose the date the new salary starts. The current rate is closed automatically the day before.</p>
+                  {renderCompensationForm('Save salary change')}
                 </div>
-                {Object.values(compensationForm.formState.errors).map((error, index) => (
-                  <span className="field-error" key={index}>{errorMessage(error)}</span>
-                ))}
-                {errorMessage(compensationMutation.error) && <div className="form-error" role="alert">{errorMessage(compensationMutation.error)}</div>}
-                <button type="submit" disabled={compensationMutation.isPending}>{compensationMutation.isPending ? 'Saving…' : 'Add compensation'}</button>
-              </form>
-            )}
-            {props.canManageCompensation && employee.status === 'INACTIVE' && (
-              <p className="muted">Inactive Employees keep their salary history but cannot receive new compensation.</p>
-            )}
-          </section>
+              )}
+              {employee.status === 'INACTIVE' && (
+                <p className="muted">Inactive Employees keep their salary history but cannot receive a new compensation rate.</p>
+              )}
+            </section>
+          )}
         </>
       )}
     </section>

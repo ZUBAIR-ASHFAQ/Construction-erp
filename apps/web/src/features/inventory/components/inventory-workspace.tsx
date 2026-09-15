@@ -10,12 +10,15 @@ type InventoryWorkspaceProps = Readonly<{
   canAdjust: boolean;
 }>;
 
+type InventoryAction = 'issue' | 'transfer' | 'direct';
+
 /** Render project-owned stock and stage issue controls. */
 export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   // Inventory history remains relevant after a Project leaves ACTIVE status, so
   // the selector must not hide Draft, Suspended, Completed, or Closed Projects.
   const projects = useProjects({ page: 1, pageSize: 100 }, props.canRead || props.canIssue || props.canAdjust);
   const [projectId, setProjectId] = useState('');
+  const [activeAction, setActiveAction] = useState<InventoryAction | null>(null);
   const materials = useMaterials(projectId || undefined, props.canRead && Boolean(projectId));
   const stock = useInventoryStock(projectId || undefined, props.canRead && Boolean(projectId));
   const ledger = useInventoryLedger(projectId || undefined, props.canRead && Boolean(projectId));
@@ -78,6 +81,15 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
     });
   }
 
+  /** Open one Inventory stock action without carrying stale request feedback into the dialog. */
+  function openAction(action: InventoryAction) {
+    if (!projectId) return;
+    if (action === 'issue') createIssue.reset();
+    if (action === 'transfer') transferStock.reset();
+    if (action === 'direct') addDirectStock.reset();
+    setActiveAction(action);
+  }
+
   const stockedWarehouseIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0).map((row) => row.warehouseId));
   const stockedMaterialIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0 && (!issueWarehouseId || row.warehouseId === issueWarehouseId)).map((row) => row.materialId));
   const warehouseOptions = (stock.data?.warehouses ?? []).filter((warehouse) => stockedWarehouseIds.has(warehouse.id));
@@ -92,15 +104,23 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const materialNames = new Map((materials.data?.items ?? []).map((material) => [material.id, material.name]));
   const stageNames = new Map((stages.data?.items ?? []).map((stage) => [stage.id, stage.name]));
   const selectedProject = (projects.data?.items ?? []).find((project) => project.id === projectId);
+  const selectedProjectLabel = selectedProject ? `${selectedProject.projectCode} · ${selectedProject.name}` : 'Selected project';
   const readError = [materials.error, stock.error, ledger.error].find((error): error is Error => error instanceof Error);
 
   return (
-    <div className="admin-stack">
+    <div className="admin-stack inventory-workspace">
+      {(props.canIssue || props.canTransfer || props.canAdjust) && (
+        <div className="inventory-action-toolbar" aria-label="Inventory stock actions">
+          {props.canIssue && <button type="button" disabled={!projectId || selectedProject?.status !== 'ACTIVE'} onClick={() => openAction('issue')}>Issue stock</button>}
+          {props.canTransfer && <button type="button" disabled={!projectId} onClick={() => openAction('transfer')}>Transfer stock</button>}
+          {props.canAdjust && <button type="button" disabled={!projectId} onClick={() => openAction('direct')}>Direct stock</button>}
+        </div>
+      )}
       <section className="admin-card">
         <h2>Project inventory</h2>
-        <p className="muted">Select a project to see its received stock and issue material to a project stage.</p>
+        <p className="muted">Select a project to see its received stock and manage stock movements.</p>
         <label>Project
-          <select disabled={projects.isPending} value={projectId} onChange={(event) => { setProjectId(event.target.value); setStageId(''); setIssueWarehouseId(''); setIssueMaterialId(''); }}>
+          <select disabled={projects.isPending} value={projectId} onChange={(event) => { setProjectId(event.target.value); setActiveAction(null); setStageId(''); setIssueWarehouseId(''); setIssueMaterialId(''); }}>
             <option value="">{projects.isPending ? 'Loading projects...' : 'Select project'}</option>
             {(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name} ({project.status.replaceAll('_', ' ')})</option>)}
           </select>
@@ -131,60 +151,9 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
         </section>
       )}
 
-      {props.canIssue && projectId && selectedProject?.status === 'ACTIVE' && (
-        <section className="admin-card">
-          <h2>Issue material to project / stage</h2>
-          <form className="form-grid" onSubmit={submitIssue}>
-            <label>Stage<select value={stageId} onChange={(event) => setStageId(event.target.value)}><option value="">Project level</option>{(stages.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label>
-            <label>Warehouse<select value={issueWarehouseId} onChange={(event) => { setIssueWarehouseId(event.target.value); setIssueMaterialId(''); }} required><option value="">Select warehouse</option>{warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
-            <label>Material<select value={issueMaterialId} onChange={(event) => setIssueMaterialId(event.target.value)} required><option value="">Select material</option>{materialOptions.map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name}</option>)}</select></label>
-            <label>Quantity<input value={issueQuantity} onChange={(event) => setIssueQuantity(event.target.value)} required /></label>
-            <label>Issue date<input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} required /></label>
-            <button type="submit" disabled={createIssue.isPending}>Issue material</button>
-          </form>
-          {createIssue.data && <p className="muted">Issued {createIssue.data.issueNo} · {createIssue.data.status} · {createIssue.data.issueDate}</p>}
-          {createIssue.error instanceof Error && <div className="form-error" role="alert">{createIssue.error.message}</div>}
-        </section>
-      )}
-
       {props.canIssue && projectId && selectedProject && selectedProject.status !== 'ACTIVE' && (
         <section className="admin-card">
           <p className="muted">This project is {selectedProject.status.replaceAll('_', ' ').toLowerCase()}. Its inventory remains available for review, but material can only be issued to an active project.</p>
-        </section>
-      )}
-
-      {props.canAdjust && projectId && (
-        <section className="admin-card">
-          <h2>Direct stock entry</h2>
-          <p className="muted">Use this only for opening stock or material received without Procurement. It is added directly to the selected project.</p>
-          <form className="form-grid" onSubmit={submitDirectStock}>
-            <label>Warehouse<select value={directWarehouseId} onChange={(event) => setDirectWarehouseId(event.target.value)} required><option value="">Select warehouse</option>{directWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
-            <label>Material<select value={directMaterialId} onChange={(event) => setDirectMaterialId(event.target.value)} required><option value="">Select material</option>{(materials.data?.items ?? []).map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name}</option>)}</select></label>
-            <label>Quantity<input inputMode="decimal" value={directQuantity} onChange={(event) => setDirectQuantity(event.target.value)} required /></label>
-            <label>Reason<input value={directReason} onChange={(event) => setDirectReason(event.target.value)} required /></label>
-            <button type="submit" disabled={addDirectStock.isPending}>{addDirectStock.isPending ? 'Adding…' : 'Add to project inventory'}</button>
-          </form>
-          {addDirectStock.data && <p className="muted">Stock added successfully. The project balance and ledger have been updated.</p>}
-          {addDirectStock.error instanceof Error && <div className="form-error" role="alert">{addDirectStock.error.message}</div>}
-        </section>
-      )}
-
-      {props.canTransfer && projectId && (
-        <section className="admin-card">
-          <h2>Transfer unused stock to another project</h2>
-          <p className="muted">The source Project stock and material expense decrease, while the destination Project receives the same stock and material expense at the source average unit cost.</p>
-          <form className="form-grid" onSubmit={submitProjectTransfer}>
-            <label>Source warehouse<select value={transferSourceWarehouseId} onChange={(event) => { setTransferSourceWarehouseId(event.target.value); setTransferMaterialId(''); }} required><option value="">Select source warehouse</option>{warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
-            <label>Material<select value={transferMaterialId} onChange={(event) => setTransferMaterialId(event.target.value)} required><option value="">Select available material</option>{transferMaterialOptions.map((material) => { const position = (stock.data?.items ?? []).find((row) => row.warehouseId === transferSourceWarehouseId && row.materialId === material.id); return <option key={material.id} value={material.id}>{material.code} · {material.name}{position ? ` · ${position.quantityOnHand} ${position.unit} available` : ''}</option>; })}</select></label>
-            <label>Destination project<select value={destinationProjectId} onChange={(event) => { setDestinationProjectId(event.target.value); setDestinationStageId(''); setDestinationWarehouseId(''); }} required><option value="">Select destination project</option>{destinationProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
-            <label>Destination stage<select value={destinationStageId} onChange={(event) => setDestinationStageId(event.target.value)}><option value="">Project level</option>{(destinationStages.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label>
-            <label>Destination warehouse<select value={destinationWarehouseId} onChange={(event) => setDestinationWarehouseId(event.target.value)} required><option value="">Select destination warehouse</option>{destinationWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
-            <label>Quantity{transferSourcePosition && <small className="muted">Available: {transferSourcePosition.quantityOnHand} {transferSourcePosition.unit}</small>}<input inputMode="decimal" min="0.0001" max={transferSourcePosition?.quantityOnHand} step="0.0001" value={transferQuantity} onChange={(event) => setTransferQuantity(event.target.value)} required /></label>
-            <label>Transfer date<input type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} required /></label>
-            <button type="submit" disabled={transferStock.isPending}>{transferStock.isPending ? 'Transferring…' : 'Transfer stock'}</button>
-          </form>
-          {transferStock.data && <p className="muted">Transfer posted successfully. Source expense reduced and destination expense increased by {transferStock.data.lineCost}.</p>}
-          {transferStock.error instanceof Error && <div className="form-error" role="alert">{transferStock.error.message}</div>}
         </section>
       )}
 
@@ -195,6 +164,84 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
             {(ledger.data?.items ?? []).map((row) => <tr key={row.id}><td>{new Date(row.occurredAt).toLocaleString()}</td><td>{row.movementType}</td><td>{warehouseNames.get(row.warehouseId) ?? 'Unknown warehouse'}</td><td>{materialNames.get(row.materialId) ?? 'Unknown material'}</td><td>{projects.data?.items.find((project) => project.id === row.projectId)?.name ?? 'Company'}{row.stageId ? ` / ${stageNames.get(row.stageId) ?? 'Project stage'}` : ''}</td><td>{row.sourceType.replaceAll('_', ' ')}</td><td>{row.quantity}</td><td>{row.unitCost}</td></tr>)}
           </tbody></table></div>
         </section>
+      )}
+
+      {activeAction === 'issue' && props.canIssue && projectId && selectedProject?.status === 'ACTIVE' && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveAction(null); }}>
+          <section className="finance-modal inventory-action-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-issue-title">
+            <header className="finance-modal-header">
+              <div><p className="eyebrow">Inventory action</p><h2 id="inventory-issue-title">Issue material to project / stage</h2><p>{selectedProjectLabel}</p></div>
+              <button type="button" className="finance-modal-close" aria-label="Close issue stock form" onClick={() => setActiveAction(null)}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <form className="inventory-action-form" onSubmit={submitIssue}>
+                <div className="inventory-action-form-grid">
+                  <label>Stage<select value={stageId} onChange={(event) => setStageId(event.target.value)}><option value="">Project level</option>{(stages.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label>
+                  <label>Warehouse<select value={issueWarehouseId} onChange={(event) => { setIssueWarehouseId(event.target.value); setIssueMaterialId(''); }} required><option value="">Select warehouse</option>{warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+                  <label>Material<select value={issueMaterialId} onChange={(event) => setIssueMaterialId(event.target.value)} required><option value="">Select material</option>{materialOptions.map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name}</option>)}</select></label>
+                  <label>Quantity<input value={issueQuantity} onChange={(event) => setIssueQuantity(event.target.value)} required /></label>
+                  <label>Issue date<input type="date" value={issueDate} onChange={(event) => setIssueDate(event.target.value)} required /></label>
+                </div>
+                {createIssue.data && <p className="form-success">Issued {createIssue.data.issueNo} · {createIssue.data.status} · {createIssue.data.issueDate}</p>}
+                {createIssue.error instanceof Error && <div className="form-error" role="alert">{createIssue.error.message}</div>}
+                <div className="form-actions"><button type="submit" disabled={createIssue.isPending}>{createIssue.isPending ? 'Issuing…' : 'Issue stock'}</button><button type="button" className="secondary-button" onClick={() => setActiveAction(null)}>Cancel</button></div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {activeAction === 'transfer' && props.canTransfer && projectId && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveAction(null); }}>
+          <section className="finance-modal inventory-action-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-transfer-title">
+            <header className="finance-modal-header">
+              <div><p className="eyebrow">Inventory action</p><h2 id="inventory-transfer-title">Transfer unused stock to another project</h2><p>{selectedProjectLabel}</p></div>
+              <button type="button" className="finance-modal-close" aria-label="Close transfer stock form" onClick={() => setActiveAction(null)}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p className="muted inventory-action-note">The source Project stock and material expense decrease, while the destination Project receives the same stock and material expense at the source average unit cost.</p>
+              <form className="inventory-action-form" onSubmit={submitProjectTransfer}>
+                <div className="inventory-action-form-grid">
+                  <label>Source warehouse<select value={transferSourceWarehouseId} onChange={(event) => { setTransferSourceWarehouseId(event.target.value); setTransferMaterialId(''); }} required><option value="">Select source warehouse</option>{warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+                  <label>Material<select value={transferMaterialId} onChange={(event) => setTransferMaterialId(event.target.value)} required><option value="">Select available material</option>{transferMaterialOptions.map((material) => { const position = (stock.data?.items ?? []).find((row) => row.warehouseId === transferSourceWarehouseId && row.materialId === material.id); return <option key={material.id} value={material.id}>{material.code} · {material.name}{position ? ` · ${position.quantityOnHand} ${position.unit} available` : ''}</option>; })}</select></label>
+                  <label>Destination project<select value={destinationProjectId} onChange={(event) => { setDestinationProjectId(event.target.value); setDestinationStageId(''); setDestinationWarehouseId(''); }} required><option value="">Select destination project</option>{destinationProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
+                  <label>Destination stage<select value={destinationStageId} onChange={(event) => setDestinationStageId(event.target.value)}><option value="">Project level</option>{(destinationStages.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label>
+                  <label>Destination warehouse<select value={destinationWarehouseId} onChange={(event) => setDestinationWarehouseId(event.target.value)} required><option value="">Select destination warehouse</option>{destinationWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+                  <label>Quantity{transferSourcePosition && <small className="muted">Available: {transferSourcePosition.quantityOnHand} {transferSourcePosition.unit}</small>}<input inputMode="decimal" min="0.0001" max={transferSourcePosition?.quantityOnHand} step="0.0001" value={transferQuantity} onChange={(event) => setTransferQuantity(event.target.value)} required /></label>
+                  <label>Transfer date<input type="date" value={transferDate} onChange={(event) => setTransferDate(event.target.value)} required /></label>
+                </div>
+                {transferStock.data && <p className="form-success">Transfer posted successfully. Source expense reduced and destination expense increased by {transferStock.data.lineCost}.</p>}
+                {transferStock.error instanceof Error && <div className="form-error" role="alert">{transferStock.error.message}</div>}
+                <div className="form-actions"><button type="submit" disabled={transferStock.isPending}>{transferStock.isPending ? 'Transferring…' : 'Transfer stock'}</button><button type="button" className="secondary-button" onClick={() => setActiveAction(null)}>Cancel</button></div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {activeAction === 'direct' && props.canAdjust && projectId && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setActiveAction(null); }}>
+          <section className="finance-modal inventory-action-modal" role="dialog" aria-modal="true" aria-labelledby="inventory-direct-title">
+            <header className="finance-modal-header">
+              <div><p className="eyebrow">Inventory action</p><h2 id="inventory-direct-title">Direct stock entry</h2><p>{selectedProjectLabel}</p></div>
+              <button type="button" className="finance-modal-close" aria-label="Close direct stock form" onClick={() => setActiveAction(null)}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <p className="muted inventory-action-note">Use this only for opening stock or material received without Procurement. It is added directly to the selected project.</p>
+              <form className="inventory-action-form" onSubmit={submitDirectStock}>
+                <div className="inventory-action-form-grid">
+                  <label>Warehouse<select value={directWarehouseId} onChange={(event) => setDirectWarehouseId(event.target.value)} required><option value="">Select warehouse</option>{directWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+                  <label>Material<select value={directMaterialId} onChange={(event) => setDirectMaterialId(event.target.value)} required><option value="">Select material</option>{(materials.data?.items ?? []).map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name}</option>)}</select></label>
+                  <label>Quantity<input inputMode="decimal" value={directQuantity} onChange={(event) => setDirectQuantity(event.target.value)} required /></label>
+                  <label>Reason<input value={directReason} onChange={(event) => setDirectReason(event.target.value)} required /></label>
+                </div>
+                {addDirectStock.data && <p className="form-success">Stock added successfully. The project balance and ledger have been updated.</p>}
+                {addDirectStock.error instanceof Error && <div className="form-error" role="alert">{addDirectStock.error.message}</div>}
+                <div className="form-actions"><button type="submit" disabled={addDirectStock.isPending}>{addDirectStock.isPending ? 'Adding…' : 'Add direct stock'}</button><button type="button" className="secondary-button" onClick={() => setActiveAction(null)}>Cancel</button></div>
+              </form>
+            </div>
+          </section>
+        </div>
       )}
     </div>
   );

@@ -50,8 +50,20 @@ const EMPLOYEE_MASTER_PROPERTIES = {
 const CREATE_EMPLOYEE_BODY_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['employeeNo', 'name', 'department', 'jobTitle', 'employeeType', 'joiningDate'],
-  properties: EMPLOYEE_MASTER_PROPERTIES
+  required: ['name', 'jobTitle', 'joiningDate'],
+  properties: {
+    projectId: { type: 'string', format: 'uuid' },
+    userId: EMPLOYEE_MASTER_PROPERTIES.userId,
+    name: EMPLOYEE_MASTER_PROPERTIES.name,
+    cnicOrId: EMPLOYEE_MASTER_PROPERTIES.cnicOrId,
+    phone: EMPLOYEE_MASTER_PROPERTIES.phone,
+    email: EMPLOYEE_MASTER_PROPERTIES.email,
+    department: EMPLOYEE_MASTER_PROPERTIES.department,
+    jobTitle: EMPLOYEE_MASTER_PROPERTIES.jobTitle,
+    employeeType: EMPLOYEE_MASTER_PROPERTIES.employeeType,
+    joiningDate: EMPLOYEE_MASTER_PROPERTIES.joiningDate,
+    employmentEndDate: EMPLOYEE_MASTER_PROPERTIES.employmentEndDate
+  }
 } as const;
 const UPDATE_EMPLOYEE_BODY_SCHEMA = {
   type: 'object',

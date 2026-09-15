@@ -2,6 +2,7 @@ import { recordAudit } from '@construction-erp/audit';
 import type { DatabaseClient, TransactionClient } from '@construction-erp/database';
 import { AuthorizationError, ValidationError } from '@construction-erp/errors';
 import { executeIdempotentCommand } from '@construction-erp/idempotency';
+import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { recordOutboxEvent } from '@construction-erp/outbox';
 import { hasPermission, requireRequestSecurityContext } from '@construction-erp/request-context';
 import { EmployeesRepository } from './employees.repository.js';
@@ -17,6 +18,9 @@ import {
 
 const EMPLOYEE_ACTIVE = 'ACTIVE';
 const EMPLOYEE_INACTIVE = 'INACTIVE';
+const EMPLOYEE_SEQUENCE_KEY = 'employee';
+const DEFAULT_DEPARTMENT = 'GENERAL';
+const DEFAULT_EMPLOYEE_TYPE = 'LABOUR';
 const DEFAULT_PAGE_SIZE = 25;
 
 type DecimalLike = string | Readonly<{ toString(): string }>;
@@ -122,14 +126,15 @@ export class EmployeesService {
     return security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null;
   }
 
-  /** Require a Project selection for restricted Employee creation and reject forged Project ids. */
+  /** Resolve optional Project assignment while keeping restricted creation inside trusted Project scope. */
   private creationProjectId(projectId?: string): string | null {
     const allowedProjectIds = this.allowedProjectIds();
-    if (allowedProjectIds !== null && !projectId) {
-      throw new ValidationError({ fieldErrors: [{ field: 'projectId', message: 'Select one of your assigned Projects.' }] });
-    }
     if (projectId && allowedProjectIds !== null && !allowedProjectIds.includes(projectId)) throw new AuthorizationError();
-    return projectId ?? null;
+    if (projectId || allowedProjectIds === null) return projectId ?? null;
+    if (allowedProjectIds.length === 1) return allowedProjectIds[0] ?? null;
+    throw new ValidationError({
+      fieldErrors: [{ field: 'projectId', message: 'Employee creation without a Project selection requires exactly one assigned Project.' }]
+    });
   }
 
   /** Validate an optional linked login User inside the same Company. */
@@ -211,17 +216,19 @@ export class EmployeesService {
     }
     await this.requireUniqueIdentity(repository, input);
     await this.requireCompanyUser(repository, input.userId);
+    await repository.ensureEmployeeNumberSequence();
+    const employeeNumber = await allocateCompanyNumber(tx, { sequenceKey: EMPLOYEE_SEQUENCE_KEY });
 
     const employee = await repository.createEmployee({
-      employeeNo: input.employeeNo,
+      employeeNo: employeeNumber.formatted,
       ...(input.userId === undefined ? {} : { userId: input.userId }),
       name: input.name,
       ...(input.cnicOrId === undefined ? {} : { cnicOrId: input.cnicOrId }),
       ...(input.phone === undefined ? {} : { phone: input.phone }),
       ...(input.email === undefined ? {} : { email: input.email }),
-      department: input.department,
+      department: input.department ?? DEFAULT_DEPARTMENT,
       jobTitle: input.jobTitle,
-      employeeType: input.employeeType,
+      employeeType: input.employeeType ?? DEFAULT_EMPLOYEE_TYPE,
       joiningDate: inputDate(input.joiningDate),
       ...(input.employmentEndDate === undefined ? {} : { employmentEndDate: input.employmentEndDate ? inputDate(input.employmentEndDate) : null }),
       status: EMPLOYEE_ACTIVE

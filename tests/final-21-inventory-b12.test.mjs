@@ -90,6 +90,22 @@ test('B12 Inventory no longer depends on WBS Cost Codes Cost Types or cost struc
   }
 });
 
+/** Confirm Project-filtered material reads do not require a freshly generated Prisma Material field. */
+test('B12 keeps Project material reads compatible during Prisma Project-scope rollout', () => {
+  const repository = read(`${backend}/inventory.repository.ts`);
+  const service = read(`${backend}/inventory.service.ts`);
+  const hooks = read(`${web}/hooks/inventory.ts`);
+  const api = read(`${web}/api/inventory-api.ts`);
+
+  assert.match(repository, /to_jsonb\(material\)->>'project_id'/);
+  assert.match(repository, /material\.company_id = \${scope\.companyId}::uuid/);
+  assert.match(repository, /NOT \(to_jsonb\(material\) \? 'project_id'\)/);
+  assert.match(repository, /async findMaterialById[\s\S]*?to_jsonb\(material\)->>'project_id'/);
+  assert.match(service, /query\.projectId[\s\S]*?allowedProjectIds\.includes\(query\.projectId\)/);
+  assert.match(hooks, /listMaterials\(\{ page: 1, pageSize: 100, \.\.\.\(projectId \? \{ projectId \} : \{\}\) \}\)/);
+  assert.match(api, /inventory\/materials\$\{queryString\(input\)\}/);
+});
+
 /** Confirm stock balance is derived from immutable ledger history and protected against races. */
 test('B12 derives stock from an append-only ledger and serializes stock-key writes', () => {
   const repository = read(`${backend}/inventory.repository.ts`);

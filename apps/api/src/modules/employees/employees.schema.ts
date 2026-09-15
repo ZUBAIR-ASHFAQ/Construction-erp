@@ -91,15 +91,14 @@ export const listEmployeesQuerySchema = z.object({
 /** Validate one new Employee master record without accepting Company or lifecycle authority. */
 export const createEmployeeBodySchema = z.object({
   projectId: uuidSchema.optional(),
-  employeeNo: employeeNoSchema,
   userId: uuidSchema.nullable().optional(),
   name: employeeNameSchema,
   cnicOrId: identitySchema.nullable().optional(),
   phone: phoneSchema.nullable().optional(),
   email: emailSchema.nullable().optional(),
-  department: departmentSchema,
+  department: departmentSchema.optional(),
   jobTitle: jobTitleSchema,
-  employeeType: employeeTypeSchema,
+  employeeType: employeeTypeSchema.optional(),
   joiningDate: dateSchema,
   employmentEndDate: dateSchema.nullable().optional()
 }).strict().refine((value) => !value.employmentEndDate || value.employmentEndDate >= value.joiningDate, {

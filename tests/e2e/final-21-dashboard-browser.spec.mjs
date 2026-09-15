@@ -8,7 +8,6 @@ const PROJECT_ID = '00000000-0000-4000-8000-000000021140';
 const STAGE_ID = '00000000-0000-4000-8000-000000021150';
 const BASELINE_ID = '00000000-0000-4000-8000-000000021151';
 const PROGRESS_ID = '00000000-0000-4000-8000-000000021152';
-const SAVED_FILTER_ID = '00000000-0000-4000-8000-000000021160';
 const EMAIL = 'b1-10-dashboard-browser@example.test';
 const PASSWORD = 'Final21-dashboard-B1.10-browser-password!';
 const DASHBOARD_PERMISSIONS = ['dashboard.read', 'dashboard.project.read', 'dashboard.manage_preferences', 'stages.read'];
@@ -37,7 +36,6 @@ async function seedDashboardBrowserScenario() {
   await database.projectStage.create({ data: { id: STAGE_ID, companyId: COMPANY_ID, projectId: PROJECT_ID, code: 'GREY', name: 'Grey Structure', sequenceNo: 1, weightPercent: '100.0000', plannedAmount: '1000.00', plannedEndDate: new Date('2026-08-10T00:00:00.000Z'), status: 'ACTIVE' } });
   await database.stageProgressBaseline.create({ data: { id: BASELINE_ID, projectId: PROJECT_ID, versionNo: 1, status: 'FROZEN', totalWeightPercent: '100.0000', frozenAt: new Date('2026-08-01T12:00:00.000Z'), frozenBy: USER_ID } });
   await database.stageProgressUpdate.create({ data: { id: PROGRESS_ID, stageId: STAGE_ID, progressPercent: '60.0000', progressDate: new Date('2026-08-20T00:00:00.000Z'), enteredBy: USER_ID, approvedBy: USER_ID, approvedAt: new Date('2026-08-20T12:00:00.000Z'), status: 'APPROVED' } });
-  await database.dashboardSavedFilter.create({ data: { id: SAVED_FILTER_ID, companyId: COMPANY_ID, userId: USER_ID, name: 'Current Project View', filterJson: { projectId: PROJECT_ID, asOfDate: '2026-08-31' } } });
 }
 
 /** Sign in through the shared Final-21 authentication form. */
@@ -70,13 +68,19 @@ function isAllowedDashboardRequest(method, pathname) {
 test.beforeAll(async () => { await seedDashboardBrowserScenario(); });
 test.afterAll(async () => { await database?.$disconnect(); });
 
-test('Final-21 Dashboard -> Project health -> Stage Progress -> source alerts -> preference stays permission-safe and server-derived', async ({ page }) => {
+test('Final-21 Dashboard -> Project health -> Stage Progress -> preference stays permission-safe with removed lower cards absent', async ({ page }) => {
   const requests = trackDashboardRequests(page);
   await signIn(page);
   await expect(page.getByRole('heading', { name: 'Dashboard', exact: true })).toBeVisible();
-  await expect(page.getByText('Cash received is not profit.')).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Executive summary' })).toBeVisible();
+  await expect(page.getByText('Total projects')).toBeVisible();
+  await expect(page.getByText('Cash received is not profit.')).toHaveCount(0);
+  await expect(page.getByText(/Financial summary covers/)).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Alerts', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('heading', { name: 'Saved filters & preferences', exact: true })).toHaveCount(0);
 
-  await page.getByRole('button', { name: 'Current Project View' }).click();
+  await page.getByLabel('Project').selectOption(PROJECT_ID);
+  await page.getByRole('button', { name: 'Apply filters' }).click();
   await expect(page.getByLabel('Project')).toHaveValue(PROJECT_ID);
   const projectSnapshot = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Project financial & physical snapshot' }) });
   await expect(projectSnapshot).toContainText('B110-BROWSER');
@@ -86,14 +90,11 @@ test('Final-21 Dashboard -> Project health -> Stage Progress -> source alerts ->
   await expect(stages).toContainText('Grey Structure');
   await expect(stages).toContainText('60');
 
-  const alerts = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Alerts' }) });
-  await expect(alerts).toContainText('Project planned end date has passed.');
-  await expect(alerts).toContainText('Grey Structure is past its planned end date.');
-
   await page.getByRole('button', { name: 'Save current view' }).click();
   await expect(page.getByText(/Preferences saved/)).toBeVisible();
 
   expect(requests.length).toBeGreaterThan(0);
   for (const request of requests) expect(isAllowedDashboardRequest(request.method, request.pathname)).toBe(true);
+  expect(requests.some((request) => request.pathname === '/api/v1/dashboard/alerts')).toBe(false);
   expect(requests.some((request) => request.method === 'POST' || request.method === 'PUT' || request.method === 'DELETE')).toBe(false);
 });

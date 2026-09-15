@@ -120,6 +120,25 @@ export class EmployeesRepository {
     });
   }
 
+  /** Ensure Employee numbering exists for companies created before server-generated Employee codes. */
+  async ensureEmployeeNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'employee' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'employee',
+        prefix: 'EMP-',
+        suffix: '',
+        padWidth: 6,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Find one Employee number only inside the authenticated Company. */
   async findEmployeeByNumber(employeeNo: string) {
     const scope = requireCompanyRepositoryScope();

@@ -18,8 +18,11 @@ const createEmployeeSchema = z.object({
   email: z.string().trim().max(320),
   department: z.string().trim().min(1, 'Department is required.').max(160),
   jobTitle: z.string().trim().min(1, 'Job title is required.').max(160),
-  employeeType: z.string().trim().min(1, 'Employee type is required.').max(64),
-  joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')
+  employeeType: z.string().trim().min(1, 'Work category is required.').max(64),
+  joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.'),
+  employmentEndDate: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')])
+}).refine((value) => !value.employmentEndDate || value.employmentEndDate >= value.joiningDate, {
+  path: ['employmentEndDate'], message: 'Employment end date cannot precede joining date.'
 });
 
 type CreateEmployeeValues = z.infer<typeof createEmployeeSchema>;
@@ -33,8 +36,10 @@ function errorMessage(error: unknown): string | null {
   return null;
 }
 
-/** Render the Final-21 Employee master and salary foundation workspace. */
-export function EmployeesPage() {
+export type EmployeesPageView = 'list' | 'create';
+
+/** Render one focused Employee master-data task instead of a combined maintenance screen. */
+export function EmployeesPage({ view = 'list' }: Readonly<{ view?: EmployeesPageView }>) {
   const canRead = usePermission('employees.read');
   const canCreate = usePermission('employees.create');
   const canUpdate = usePermission('employees.update');
@@ -49,21 +54,21 @@ export function EmployeesPage() {
     ...(status ? { status } : {}),
     page,
     pageSize: 25
-  }, canRead);
+  }, canRead && view === 'list');
   const createMutation = useCreateEmployee();
-  const projectsQuery = useProjects({ page: 1, pageSize: 100 });
+  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, canCreate && view === 'create');
   const createForm = useForm<CreateEmployeeValues>({
     resolver: zodResolver(createEmployeeSchema),
     defaultValues: {
       projectId: '', employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
-      jobTitle: '', employeeType: '', joiningDate: ''
+      jobTitle: '', employeeType: '', joiningDate: '', employmentEndDate: ''
     }
   });
 
   if (!canRead) {
     return (
       <section className="admin-card">
-        <h1>Employee & Labour Management</h1>
+        <h1>{view === 'create' ? 'Add Employee' : 'Employee List'}</h1>
         <p className="muted">Your current role does not include Employee read access.</p>
       </section>
     );
@@ -92,9 +97,10 @@ export function EmployeesPage() {
       department: values.department,
       jobTitle: values.jobTitle,
       employeeType: values.employeeType,
-      joiningDate: values.joiningDate
+      joiningDate: values.joiningDate,
+      employmentEndDate: values.employmentEndDate || null
     });
-    createForm.reset({ projectId: '', employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '', jobTitle: '', employeeType: '', joiningDate: '' });
+    createForm.reset({ projectId: '', employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '', jobTitle: '', employeeType: '', joiningDate: '', employmentEndDate: '' });
     setSelectedEmployeeId(employee.id);
   }
 
@@ -102,11 +108,13 @@ export function EmployeesPage() {
     <section className="admin-stack" aria-labelledby="employees-title">
       <div className="section-heading">
         <p className="eyebrow">People</p>
-        <h1 id="employees-title">Employee & Labour Management</h1>
-        <p className="muted">Maintain Employee identity, employment status and effective-dated monthly salary, daily wage or hourly rate. Attendance and Payroll calculation remain in the later Payroll module.</p>
+        <h1 id="employees-title">{view === 'create' ? 'Add Employee' : 'Employee List'}</h1>
+        <p className="muted">{view === 'create'
+          ? 'Create the Employee master first. Salary basis and effective compensation can be configured immediately after creation.'
+          : 'Search Employee records, review Project ownership, update details and maintain effective salary history without mixing attendance or payment work into this screen.'}</p>
       </div>
 
-      <section className="admin-card">
+      {view === 'list' && <section className="admin-card">
         <form className="client-filter-row" onSubmit={handleSearch}>
           <label>Search Employees<input value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="No., name, CNIC, email or phone" /></label>
           <label>
@@ -125,18 +133,19 @@ export function EmployeesPage() {
         {employeesQuery.data && (
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Employee</th><th>Type</th><th>Department</th><th>Status</th><th>Action</th></tr></thead>
+              <thead><tr><th>Employee</th><th>Work category</th><th>Payment basis</th><th>Department</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
                 {employees.map((employee) => (
                   <tr key={employee.id} className={employee.id === selectedEmployeeId ? 'selected-row' : undefined}>
                     <td><strong>{employee.name}</strong><span>{employee.employeeNo} · {employee.jobTitle}</span></td>
                     <td>{employee.employeeType}</td>
+                    <td>{employee.currentPayType === 'SALARY' ? 'Monthly' : employee.currentPayType === 'DAILY' ? 'Daily' : employee.currentPayType === 'HOURLY' ? 'Daily / hourly (legacy)' : 'Not configured'}</td>
                     <td>{employee.department}</td>
                     <td>{employee.status}</td>
                     <td><button type="button" className="link-button" onClick={() => setSelectedEmployeeId(employee.id)}>Open</button></td>
                   </tr>
                 ))}
-                {employees.length === 0 && <tr><td colSpan={5} className="muted">No Employees found.</td></tr>}
+                {employees.length === 0 && <tr><td colSpan={6} className="muted">No Employees found.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -147,9 +156,9 @@ export function EmployeesPage() {
           <span>Page {page} of {pageCount}</span>
           <button type="button" className="secondary-button" disabled={page >= pageCount} onClick={() => setPage((value) => value + 1)}>Next</button>
         </div>
-      </section>
+      </section>}
 
-      {canCreate && (
+      {view === 'create' && canCreate && (
         <section className="admin-card">
           <h2>Create Employee</h2>
           <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
@@ -163,8 +172,9 @@ export function EmployeesPage() {
               <label>Email<input type="email" {...createForm.register('email')} /></label>
               <label>Department<input {...createForm.register('department')} /></label>
               <label>Job title<input {...createForm.register('jobTitle')} /></label>
-              <label>Employee type<input {...createForm.register('employeeType')} placeholder="STAFF, LABOUR, SECURITY…" /></label>
+              <label>Work category<input {...createForm.register('employeeType')} placeholder="STAFF, LABOUR, SECURITY…" /></label>
               <label>Joining date<input type="date" {...createForm.register('joiningDate')} /></label>
+              <label>Employment end date (optional)<input type="date" min={createForm.watch('joiningDate') || undefined} {...createForm.register('employmentEndDate')} /></label>
             </div>
             {Object.values(createForm.formState.errors).map((error, index) => (
               <span className="field-error" key={index}>{errorMessage(error)}</span>
@@ -175,11 +185,29 @@ export function EmployeesPage() {
         </section>
       )}
 
-      <EmployeeDetailsPanel
-        employeeId={selectedEmployeeId}
-        canUpdate={canUpdate}
-        canManageCompensation={canManageCompensation}
-      />
+      {view === 'create' && !canCreate && (
+        <section className="admin-card">
+          <p className="muted">Your current role can view Employees but cannot create a new Employee.</p>
+        </section>
+      )}
+
+      {selectedEmployeeId && (
+        <div className="finance-modal-backdrop" role="presentation">
+          <section className="finance-modal finance-modal-wide employee-detail-modal" role="dialog" aria-modal="true" aria-labelledby="employee-record-title">
+            <header className="finance-modal-header">
+              <div><p className="eyebrow">Employee record</p><h2 id="employee-record-title">Details & compensation</h2></div>
+              <button type="button" className="finance-modal-close" onClick={() => setSelectedEmployeeId(null)} aria-label="Close Employee details">×</button>
+            </header>
+            <div className="finance-modal-body">
+              <EmployeeDetailsPanel
+                employeeId={selectedEmployeeId}
+                canUpdate={canUpdate}
+                canManageCompensation={canManageCompensation}
+              />
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

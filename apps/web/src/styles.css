@@ -4205,6 +4205,405 @@ textarea {
   }
 }
 
+/* Professional executive dashboard */
+.dashboard-workspace .dashboard-hero {
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: linear-gradient(135deg, #0b1f3a 0%, #123b67 58%, #1f5fa8 100%);
+  box-shadow: 0 14px 34px rgb(15 42 75 / 18%);
+}
+
+.dashboard-hero-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: center;
+  padding: 22px 24px 18px;
+}
+
+.dashboard-hero-heading h1,
+.dashboard-hero-heading .muted,
+.dashboard-hero-heading .eyebrow {
+  color: #ffffff;
+}
+
+.dashboard-hero-heading .muted {
+  max-width: 700px;
+  color: #c8dcf2;
+}
+
+.dashboard-asof-badge {
+  display: grid;
+  flex: 0 0 auto;
+  gap: 3px;
+  min-width: 150px;
+  padding: 11px 14px;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 10px;
+  background: rgb(255 255 255 / 10%);
+  color: #ffffff;
+}
+
+.dashboard-asof-badge span {
+  color: #c8dcf2;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dashboard-hero .dashboard-filter-grid {
+  margin: 0;
+  padding: 16px 24px 22px;
+  border: 0;
+  border-top: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0;
+  background: rgb(4 20 38 / 24%);
+}
+
+.dashboard-hero .dashboard-filter-grid label {
+  color: #d9e8f7;
+}
+
+.dashboard-card-heading,
+.dashboard-table-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: center;
+}
+
+.dashboard-card-heading {
+  margin-bottom: 16px;
+}
+
+.dashboard-card-heading h2,
+.dashboard-table-heading h3 {
+  margin: 0;
+}
+
+.dashboard-live-indicator {
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1px solid #b7ead4;
+  border-radius: 999px;
+  background: #edfbf5;
+  color: #067647;
+  font-size: 0.68rem;
+  font-weight: 800;
+}
+
+.dashboard-live-indicator::before {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #12b76a;
+  content: "";
+}
+
+.dashboard-workspace .dashboard-metric-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboard-workspace .dashboard-metric {
+  min-height: 108px;
+  align-content: center;
+  padding: 16px;
+  border: 1px solid #e4eaf1;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.dashboard-workspace .dashboard-metric-primary {
+  border-color: #b9d4ff;
+  background: linear-gradient(145deg, #eef5ff 0%, #f8fbff 100%);
+}
+
+.dashboard-workspace .dashboard-metric strong {
+  color: #132238;
+  font-size: 1.2rem;
+  letter-spacing: -0.025em;
+}
+
+.dashboard-workspace .dashboard-metric small {
+  color: #7a8ba3;
+  font-size: 0.67rem;
+}
+
+.dashboard-progress-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
+  margin-bottom: 20px;
+}
+
+.dashboard-progress-chart,
+.dashboard-progress-summary {
+  border: 1px solid #e3eaf2;
+  border-radius: 12px;
+  background: #fbfcfe;
+}
+
+.dashboard-progress-chart {
+  display: grid;
+  gap: 2px;
+  padding: 10px;
+}
+
+.dashboard-progress-row {
+  display: grid;
+  grid-template-columns: minmax(135px, 0.8fr) minmax(150px, 1.7fr) 58px;
+  gap: 14px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1d2939;
+  text-align: left;
+  box-shadow: none;
+}
+
+.dashboard-progress-row:hover {
+  background: #f0f5fb;
+}
+
+.dashboard-progress-project {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.dashboard-progress-project strong,
+.dashboard-progress-project small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dashboard-progress-project small {
+  color: #73839a;
+  font-size: 0.65rem;
+}
+
+.dashboard-progress-bar,
+.dashboard-progress-track {
+  display: block;
+  overflow: hidden;
+  height: 9px;
+  border-radius: 999px;
+  background: #e7edf5;
+}
+
+.dashboard-progress-bar > span,
+.dashboard-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #2d6cdf 0%, #45a7e8 100%);
+}
+
+.dashboard-progress-value {
+  color: #1d4f91;
+  font-size: 0.78rem;
+  text-align: right;
+}
+
+.dashboard-progress-summary {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  padding: 16px;
+}
+
+.dashboard-progress-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto;
+}
+
+.dashboard-progress-ring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.dashboard-progress-ring circle {
+  fill: none;
+  stroke-width: 10;
+}
+
+.dashboard-ring-track {
+  stroke: #e7edf5;
+}
+
+.dashboard-ring-value {
+  stroke: #2d6cdf;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 300ms ease;
+}
+
+.dashboard-progress-ring > div {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.dashboard-progress-ring strong {
+  color: #142b4a;
+  font-size: 1.25rem;
+}
+
+.dashboard-progress-ring span,
+.dashboard-progress-stat span {
+  color: #718198;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+.dashboard-progress-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 9px;
+  border-top: 1px solid #e5ebf2;
+}
+
+.dashboard-progress-stat strong {
+  color: #263b56;
+  font-size: 0.76rem;
+}
+
+.dashboard-table-heading {
+  margin: 4px 0 10px;
+}
+
+.dashboard-table-heading span {
+  color: #78879b;
+  font-size: 0.68rem;
+}
+
+.dashboard-status {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eef2f6;
+  color: #475467;
+  font-size: 0.65rem;
+  font-weight: 800;
+}
+
+.dashboard-status-active,
+.dashboard-status-completed {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.dashboard-status-suspended {
+  background: #fff4e5;
+  color: #b54708;
+}
+
+.dashboard-status-closed {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.dashboard-stage-progress-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.dashboard-progress {
+  display: grid;
+  gap: 7px;
+  padding: 12px;
+  border: 1px solid #e4eaf1;
+  border-radius: 10px;
+  background: #fbfcfe;
+}
+
+.dashboard-progress-copy {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: #344054;
+  font-size: 0.72rem;
+}
+
+.dashboard-project-snapshot .dashboard-card-heading .dashboard-progress-ring {
+  width: 104px;
+  height: 104px;
+  margin: -4px 0;
+}
+
+.dashboard-empty-chart {
+  padding: 28px 14px;
+  color: #718198;
+  text-align: center;
+}
+
+@media (max-width: 1050px) {
+  .dashboard-workspace .dashboard-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-progress-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-progress-summary {
+    grid-template-columns: 160px repeat(2, minmax(0, 1fr));
+    align-items: center;
+  }
+}
+
+@media (max-width: 680px) {
+  .dashboard-hero-heading,
+  .dashboard-card-heading,
+  .dashboard-table-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .dashboard-asof-badge {
+    width: 100%;
+  }
+
+  .dashboard-workspace .dashboard-metric-grid,
+  .dashboard-stage-progress-grid,
+  .dashboard-progress-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-progress-row {
+    grid-template-columns: minmax(0, 1fr) 50px;
+  }
+
+  .dashboard-progress-row .dashboard-progress-bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+
+  .dashboard-progress-value {
+    grid-column: 2;
+    grid-row: 1;
+  }
+}
+
 /* R13: Project Management list-first workflow with focused create/open/edit dialogs. */
 .project-management-page {
   position: relative;
@@ -5934,5 +6333,246 @@ body,
   .documents-workspace .pagination-row > * {
     width: 100%;
     text-align: center;
+  }
+}
+
+/* Keep graph rows as lightweight interactive data rows after global button theming. */
+.admin-content .dashboard-workspace button.dashboard-progress-row {
+  min-height: 58px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #1d2939;
+  text-align: left;
+  box-shadow: none;
+}
+
+.admin-content .dashboard-workspace button.dashboard-progress-row:hover:not(:disabled) {
+  background: #f0f5fb;
+  box-shadow: none;
+}
+
+/* Employee daily/monthly settlement workflow */
+.payroll-cycle-overview {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.payroll-cycle-overview article {
+  display: flex;
+  gap: 0.9rem;
+  align-items: flex-start;
+  padding: 1rem;
+  border: 1px solid #dbe5f1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f6f9fd);
+}
+
+.payroll-cycle-overview article p {
+  margin: 0.3rem 0 0;
+  color: #64748b;
+  line-height: 1.55;
+}
+
+.payroll-cycle-icon {
+  display: grid;
+  flex: 0 0 2.4rem;
+  width: 2.4rem;
+  height: 2.4rem;
+  place-items: center;
+  border-radius: 10px;
+  color: #ffffff;
+  background: #2563eb;
+  font-weight: 800;
+}
+
+.payroll-cycle-overview article:nth-child(2) .payroll-cycle-icon {
+  background: #0f766e;
+}
+
+.payroll-cycle-guidance {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-left: 4px solid #2563eb;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #475569;
+}
+
+.payroll-cycle-guidance strong {
+  color: #0f172a;
+}
+
+.payroll-hidden-period-end {
+  visibility: hidden;
+}
+
+.payroll-cycle-badge {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  padding: 0.28rem 0.65rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.payroll-cycle-badge-daily {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.payroll-cycle-badge-monthly {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+@media (max-width: 760px) {
+  .payroll-cycle-overview {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-hidden-period-end {
+    display: none;
+  }
+}
+
+/* Focused Employee-management pages */
+.employee-module-home,
+.employee-task-page {
+  width: min(100%, 1540px);
+  margin-inline: auto;
+}
+
+.employee-workflow-card {
+  overflow: hidden;
+}
+
+.employee-workflow-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.employee-workflow-heading h2,
+.employee-workflow-note p {
+  margin: 0.25rem 0 0;
+}
+
+.employee-workflow-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.admin-content button.employee-workflow-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 0.75rem;
+  min-height: 150px;
+  padding: 1rem;
+  border: 1px solid #dbe5f1;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, #f7faff);
+  color: #172033;
+  text-align: left;
+  box-shadow: none;
+}
+
+.admin-content button.employee-workflow-step:hover:not(:disabled) {
+  border-color: #93b4ea;
+  background: #f1f6ff;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgb(30 64 175 / 9%);
+}
+
+.employee-workflow-step > span {
+  grid-row: 1 / span 3;
+  display: grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  place-items: center;
+  border-radius: 10px;
+  background: #eaf1ff;
+  color: #1d4ed8;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.employee-workflow-step > strong {
+  font-size: 1rem;
+}
+
+.employee-workflow-step > small {
+  color: #64748b;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.employee-workflow-step > i {
+  color: #2563eb;
+  font-size: 0.78rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
+.employee-workflow-note {
+  border-left: 4px solid #0f766e;
+  background: #f0fdfa;
+}
+
+.employee-task-page > .section-heading {
+  margin-bottom: 0;
+}
+
+.employee-ledger-launcher {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 0.55fr);
+  align-items: end;
+  gap: 1.25rem;
+}
+
+.employee-ledger-launcher h2,
+.employee-ledger-launcher p {
+  margin: 0;
+}
+
+.employee-ledger-launcher p {
+  margin-top: 0.4rem;
+}
+
+.employee-detail-modal .finance-modal-body > .admin-card {
+  margin: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+@media (max-width: 980px) {
+  .employee-workflow-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 680px) {
+  .employee-workflow-heading,
+  .employee-ledger-launcher {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .employee-workflow-grid {
+    grid-template-columns: 1fr;
   }
 }

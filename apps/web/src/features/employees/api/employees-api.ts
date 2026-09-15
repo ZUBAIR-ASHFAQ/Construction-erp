@@ -14,7 +14,9 @@ export type Employee = Readonly<{
   department: string;
   jobTitle: string;
   employeeType: string;
+  currentPayType: EmployeePayType | null;
   joiningDate: string;
+  employmentEndDate: string | null;
   status: EmployeeStatus;
 }>;
 
@@ -59,6 +61,7 @@ export type CreateEmployeeInput = Readonly<{
   jobTitle: string;
   employeeType: string;
   joiningDate: string;
+  employmentEndDate?: string | null;
 }>;
 
 export type UpdateEmployeeInput = Readonly<{
@@ -72,6 +75,7 @@ export type UpdateEmployeeInput = Readonly<{
   jobTitle?: string;
   employeeType?: string;
   joiningDate?: string;
+  employmentEndDate?: string | null;
 }>;
 
 export type CreateEmployeeCompensationInput =

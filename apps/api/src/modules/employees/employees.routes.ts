@@ -44,7 +44,8 @@ const EMPLOYEE_MASTER_PROPERTIES = {
   department: { type: 'string', minLength: 1, maxLength: 160 },
   jobTitle: { type: 'string', minLength: 1, maxLength: 160 },
   employeeType: { type: 'string', minLength: 1, maxLength: 64 },
-  joiningDate: { type: 'string', format: 'date' }
+  joiningDate: { type: 'string', format: 'date' },
+  employmentEndDate: { anyOf: [{ type: 'string', format: 'date' }, { type: 'null' }] }
 } as const;
 const CREATE_EMPLOYEE_BODY_SCHEMA = {
   type: 'object',

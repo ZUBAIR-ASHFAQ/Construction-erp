@@ -2,6 +2,7 @@ import { authenticatedRequest } from '../../administration/api/auth-api.js';
 
 export type AttendanceStatus = 'PRESENT' | 'ABSENT';
 export type PayrollRunStatus = 'DRAFT' | 'CALCULATED' | 'FINALIZED';
+export type PayrollPayCycle = 'DAILY' | 'MONTHLY' | 'LEGACY';
 
 export type AttendanceEntry = Readonly<{
   id: string;
@@ -60,6 +61,7 @@ export type PayrollLine = Readonly<{
 
 export type PayrollRun = Readonly<{
   id: string;
+  payCycle: PayrollPayCycle;
   periodStart: string;
   periodEnd: string;
   status: PayrollRunStatus;
@@ -100,7 +102,7 @@ export type UpdateAttendanceInput = Readonly<{
   hours?: string | null;
   overtimeHours?: string | null;
 }>;
-export type CreatePayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
+export type CreatePayrollRunInput = Readonly<{ payCycle: Exclude<PayrollPayCycle, 'LEGACY'>; periodStart: string; periodEnd: string }>;
 export type CalculatePayrollRunInput = Readonly<{ overtimeMultiplier?: string }>;
 export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; projectId: string | null; projectCode: string | null; projectName: string | null; balance: string }>;
 export type PayrollPaymentStatus = 'POSTED' | 'REVERSED';

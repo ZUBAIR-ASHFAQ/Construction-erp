@@ -52,8 +52,9 @@ const correctionFormSchema = z.object({
   if (total > 24) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['hours'], message: 'Daily hours cannot exceed 24.' });
   if (value.status === 'ABSENT' && total > 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['status'], message: 'Absent attendance cannot contain worked hours.' });
 });
-const payrollFormSchema = z.object({ periodStart: dateSchema, periodEnd: dateSchema }).refine((value) => value.periodEnd >= value.periodStart, {
-  path: ['periodEnd'], message: 'Period end must be on or after period start.'
+const payrollFormSchema = z.object({ payCycle: z.enum(['DAILY', 'MONTHLY']), periodStart: dateSchema, periodEnd: dateSchema }).superRefine((value, context) => {
+  if (value.periodEnd < value.periodStart) context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'Period end must be on or after period start.' });
+  if (value.payCycle === 'DAILY' && value.periodStart !== value.periodEnd) context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'Daily settlement uses one work date.' });
 });
 const paymentFormSchema = z.object({
   paymentDate: dateSchema,
@@ -78,7 +79,10 @@ type PayrollFormValues = z.infer<typeof payrollFormSchema>;
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 type AdvanceFormValues = z.infer<typeof advanceFormSchema>;
 
+export type LabourPayrollWorkspaceView = 'attendance' | 'advances' | 'daily-payroll' | 'monthly-payroll' | 'payments' | 'ledger';
+
 export type LabourPayrollWorkspaceProps = Readonly<{
+  view: LabourPayrollWorkspaceView;
   canReadAttendance: boolean;
   canCreateAttendance: boolean;
   canCorrectAttendance: boolean;
@@ -113,12 +117,19 @@ function sumMoney(values: readonly string[]): string {
 }
 
 /** Return the current calendar month used as the safe default Payroll period. */
-function currentPayrollPeriod(): Readonly<{ periodStart: string; periodEnd: string }> {
+function currentPayrollPeriod(): Readonly<{ payCycle: 'MONTHLY'; periodStart: string; periodEnd: string }> {
   const today = new Date();
   const year = today.getFullYear();
   const month = today.getMonth();
   const date = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  return { periodStart: date(1), periodEnd: date(new Date(year, month + 1, 0).getDate()) };
+  return { payCycle: 'MONTHLY', periodStart: date(1), periodEnd: date(new Date(year, month + 1, 0).getDate()) };
+}
+
+/** Return a readable settlement-cycle label, including immutable historical runs. */
+function payCycleLabel(payCycle: PayrollRun['payCycle']): string {
+  if (payCycle === 'DAILY') return 'Daily settlement';
+  if (payCycle === 'MONTHLY') return 'Monthly payroll';
+  return 'Legacy payroll';
 }
 
 /** Render a centered partial/full salary-payment form for one finalized Payroll line. */
@@ -223,14 +234,22 @@ function SalaryPaymentReversalModal({ payment, onClose }: Readonly<{ payment: Pa
 
 /** Render the final Attendance and Payroll workflows without duplicating Employee or Project ownership. */
 export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
+  const showAttendance = props.view === 'attendance';
+  const showAdvances = props.view === 'advances';
+  const showPayrollRuns = props.view === 'daily-payroll' || props.view === 'monthly-payroll' || props.view === 'payments';
+  const showPayrollCreation = props.view === 'daily-payroll' || props.view === 'monthly-payroll';
+  const showPayments = props.view === 'payments';
+  const showLedger = props.view === 'ledger';
   const canAccessPayrollRuns = props.canReadPayroll || props.canCreatePayrollPayment;
-  const employees = useEmployees({ status: 'ACTIVE', pageSize: 100 }, props.canCreateAttendance || props.canReadAttendance || props.canCreateEmployeeAdvance || props.canReadPayroll);
-  const projects = useProjects({ status: 'ACTIVE', pageSize: 100 }, props.canCreateAttendance || props.canReadAttendance || props.canCreateEmployeeAdvance || canAccessPayrollRuns);
-  const attendance = useAttendance({ pageSize: 100 }, props.canReadAttendance);
-  const runs = usePayrollRuns(canAccessPayrollRuns);
-  const cashBankAccounts = usePayrollCashBankAccounts(props.canCreatePayrollPayment || props.canCreateEmployeeAdvance);
-  const payments = usePayrollPayments({}, props.canReadPayroll);
-  const advances = useEmployeeAdvances({}, props.canReadPayroll);
+  const activeEmployees = useEmployees({ status: 'ACTIVE', pageSize: 100 }, !showLedger && (showAttendance || showAdvances || showPayrollRuns));
+  const ledgerEmployees = useEmployees({ pageSize: 100 }, showLedger);
+  const employees = showLedger ? ledgerEmployees : activeEmployees;
+  const projects = useProjects({ status: 'ACTIVE', pageSize: 100 }, showAttendance || showAdvances || showLedger || showPayrollRuns);
+  const attendance = useAttendance({ pageSize: 100 }, showAttendance && props.canReadAttendance);
+  const runs = usePayrollRuns(showPayrollRuns && canAccessPayrollRuns);
+  const cashBankAccounts = usePayrollCashBankAccounts((showPayments && props.canCreatePayrollPayment) || ((showAdvances || showPayrollCreation) && props.canCreateEmployeeAdvance));
+  const payments = usePayrollPayments({}, showPayments && props.canReadPayroll);
+  const advances = useEmployeeAdvances({}, showAdvances && props.canReadPayroll);
   const createAttendanceMutation = useCreateAttendance();
   const createRunMutation = useCreatePayrollRun();
   const createAdvanceMutation = useCreateEmployeeAdvance();
@@ -262,8 +281,11 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   });
   const payrollForm = useForm<PayrollFormValues>({
     resolver: zodResolver(payrollFormSchema),
-    defaultValues: currentPayrollPeriod()
+    defaultValues: props.view === 'daily-payroll'
+      ? { payCycle: 'DAILY', periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10) }
+      : currentPayrollPeriod()
   });
+  const payrollPayCycle = payrollForm.watch('payCycle');
   const advanceForm = useForm<AdvanceFormValues>({
     resolver: zodResolver(advanceFormSchema),
     defaultValues: { employeeId: '', projectId: '', stageId: '', advanceDate: new Date().toISOString().slice(0, 10), amount: '', cashBankAccountId: '', reason: '', reference: '' }
@@ -282,6 +304,12 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const finalizeMutation = useFinalizePayrollRun(selectedRunId ?? '00000000-0000-0000-0000-000000000000');
 
   const projectNames = useMemo(() => new Map((projects.data?.items ?? []).map((item) => [item.id, `${item.projectCode} · ${item.name}`])), [projects.data]);
+  const visibleRuns = useMemo(() => (runs.data?.items ?? []).filter((run) => {
+    if (props.view === 'daily-payroll') return run.payCycle === 'DAILY';
+    if (props.view === 'monthly-payroll') return run.payCycle === 'MONTHLY' || run.payCycle === 'LEGACY';
+    if (props.view === 'payments') return run.status === 'FINALIZED';
+    return true;
+  }), [props.view, runs.data?.items]);
   const advanceAccounts = (cashBankAccounts.data ?? []).filter((account) => account.projectId === advanceProjectId || account.projectId === null);
 
   const eligibleProjectIds = useMemo(() => new Set((attendanceAssignments.data ?? []).map((assignment) => assignment.projectId)), [attendanceAssignments.data]);
@@ -371,6 +399,16 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
     setSelectedRunId(created.id);
   }
 
+  /** Set safe dates whenever the operator changes between daily and monthly settlement. */
+  function changePayCycle(payCycle: PayrollFormValues['payCycle']): void {
+    if (payCycle === 'DAILY') {
+      const today = new Date().toISOString().slice(0, 10);
+      payrollForm.reset({ payCycle, periodStart: today, periodEnd: today });
+      return;
+    }
+    payrollForm.reset(currentPayrollPeriod());
+  }
+
   /** Pay an immediate Employee salary advance against one assigned Project. */
   async function submitAdvance(values: AdvanceFormValues): Promise<void> {
     await createAdvanceMutation.mutateAsync({ ...values, stageId: values.stageId || null, reference: values.reference || null });
@@ -398,15 +436,25 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
     finalizeMutation.mutate();
   }
 
-  return (
-    <div className="stack">
-      <section className="admin-card">
-        <p className="eyebrow">Module 13</p>
-        <h1>Labour / Attendance & Payroll</h1>
-        <p className="muted">Attendance is validated against Project Team assignments. Payroll uses effective Employee compensation, then finalization posts Employee Salary cost to the selected Project/Stage and Finance accounting atomically.</p>
-      </section>
+  const pageCopy: Record<LabourPayrollWorkspaceView, Readonly<{ eyebrow: string; title: string; description: string }>> = {
+    attendance: { eyebrow: 'Time & attendance', title: 'Attendance Register', description: 'Record daily presence against an active Employee Project/Stage assignment and correct unfinalized entries.' },
+    advances: { eyebrow: 'Employee settlements', title: 'Salary Advances', description: 'Pay urgent Employee advances from Cash/Bank, track recovery and retain reversal history.' },
+    'daily-payroll': { eyebrow: 'Daily-paid workers', title: 'Daily Settlements', description: 'Calculate one work date, finalize earned daily wages and create the Employee Salary payable.' },
+    'monthly-payroll': { eyebrow: 'Monthly employees', title: 'Monthly Payroll', description: 'Calculate salary proration, absence deductions and advance recovery for the selected month.' },
+    payments: { eyebrow: 'Payroll settlement', title: 'Salary Payments', description: 'Open a finalized Payroll, pay an outstanding Employee from Cash/Bank and review posted payment history.' },
+    ledger: { eyebrow: 'Employee account', title: 'Employee Ledger', description: 'Choose an Employee to review Project-wise salary, advance, payment and outstanding balances.' }
+  };
+  const activePageCopy = pageCopy[props.view];
 
-      {props.canCreateAttendance && (
+  return (
+    <div className="stack employee-task-page">
+      <div className="section-heading">
+        <p className="eyebrow">{activePageCopy.eyebrow}</p>
+        <h1>{activePageCopy.title}</h1>
+        <p className="muted">{activePageCopy.description}</p>
+      </div>
+
+      {showAttendance && props.canCreateAttendance && (
         <section className="admin-card">
           <h2>Mark attendance</h2>
           <form className="form-grid" onSubmit={attendanceForm.handleSubmit(submitAttendance)}>
@@ -427,7 +475,7 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
-      {props.canReadAttendance && (
+      {showAttendance && props.canReadAttendance && (
         <section className="admin-card">
           <h2>Attendance register <small className="muted">({attendance.data?.total ?? 0} total · page {attendance.data?.page ?? 1} · {attendance.data?.pageSize ?? 100} per page)</small></h2>
           {attendance.isLoading && <p className="muted">Loading attendance…</p>}
@@ -439,7 +487,7 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
-      {selectedAttendance && props.canCorrectAttendance && (
+      {showAttendance && selectedAttendance && props.canCorrectAttendance && (
         <section className="admin-card">
           <h2>Correct attendance</h2>
           <p className="muted">Employee and Project remain fixed. Finalized Payroll locks the source attendance history.</p>
@@ -454,7 +502,7 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
-      {props.canCreateEmployeeAdvance && (
+      {showAdvances && props.canCreateEmployeeAdvance && (
         <section className="admin-card">
           <h2>Pay Employee salary advance</h2>
           <p className="muted">Use this for money requested before month-end. Cash/Bank is reduced immediately, the advance is linked to the selected Project, and finalized Payroll recovers it automatically without adding Employee Salary cost twice.</p>
@@ -473,41 +521,44 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
-      {props.canReadPayroll && (
+      {showAdvances && props.canReadPayroll && (
         <section className="admin-card">
           <h2>Employee advance register <small className="muted">({advances.data?.total ?? 0} records)</small></h2>
           <div className="table-scroll"><table><thead><tr><th>Advance</th><th>Date</th><th>Employee</th><th>Project / Stage</th><th>Account</th><th>Amount</th><th>Recovered</th><th>Outstanding</th><th>Status</th><th>Action</th></tr></thead><tbody>{(advances.data?.items ?? []).map((advance) => <tr key={advance.id}><td><strong>{advance.advanceNo}</strong><br /><small>{advance.reason}</small></td><td>{advance.advanceDate}</td><td>{advance.employeeName}<br /><small>{advance.employeeNo}</small></td><td>{advance.projectCode} · {advance.projectName}{advance.stageName ? <><br /><small>{advance.stageName}</small></> : null}</td><td>{advance.cashBankAccountName}</td><td>{advance.amount}</td><td>{advance.recoveredAmount}</td><td><strong>{advance.outstandingAmount}</strong></td><td>{advance.status}</td><td><div className="button-row"><button type="button" className="secondary-button" onClick={() => setLedgerEmployeeId(advance.employeeId)}>Ledger</button>{props.canReverseEmployeeAdvance && advance.status === 'POSTED' && advance.recoveredAmount === '0.00' && <button type="button" className="secondary-button" onClick={() => setReversalAdvance(advance)}>Reverse</button>}</div></td></tr>)}{(advances.data?.items.length ?? 0) === 0 && <tr><td colSpan={10} className="muted">No Employee salary advances have been posted.</td></tr>}</tbody></table></div>
         </section>
       )}
 
-      {props.canCreatePayroll && (
+      {showPayrollCreation && props.canCreatePayroll && (
         <section className="admin-card">
-          <h2>Create payroll run</h2>
-          <p className="muted">Use a full calendar month for salaried Employees. Hourly Employees may use a shorter closed period.</p>
+          <h2>Create {props.view === 'daily-payroll' ? 'daily settlement' : 'monthly payroll'}</h2>
+          <p className="muted">The server includes only active Employees whose effective compensation belongs to this payment schedule.</p>
           <form className="form-grid" onSubmit={payrollForm.handleSubmit(submitPayrollRun)}>
-            <label>Period start<input type="date" {...payrollForm.register('periodStart')} /><span className="field-error">{payrollForm.formState.errors.periodStart?.message}</span></label>
-            <label>Period end<input type="date" {...payrollForm.register('periodEnd')} /><span className="field-error">{payrollForm.formState.errors.periodEnd?.message}</span></label>
-            <div className="form-actions"><button type="submit" disabled={createRunMutation.isPending}>Create run</button></div>
+            <label>Payment schedule<select value={payrollPayCycle} onChange={(event) => changePayCycle(event.target.value as PayrollFormValues['payCycle'])} disabled><option value="DAILY">Daily-paid workers</option><option value="MONTHLY">Monthly employees</option></select></label>
+            <input type="hidden" {...payrollForm.register('payCycle')} />
+            <label>{payrollPayCycle === 'DAILY' ? 'Work / settlement date' : 'Month start'}<input type="date" {...payrollForm.register('periodStart', { onChange: (event) => { if (payrollPayCycle === 'DAILY') payrollForm.setValue('periodEnd', event.target.value); } })} /><span className="field-error">{payrollForm.formState.errors.periodStart?.message}</span></label>
+            <label className={payrollPayCycle === 'DAILY' ? 'payroll-hidden-period-end' : undefined}>Month end<input type="date" readOnly={payrollPayCycle === 'DAILY'} {...payrollForm.register('periodEnd')} /><span className="field-error">{payrollForm.formState.errors.periodEnd?.message}</span></label>
+            <div className="payroll-cycle-guidance"><strong>{payrollPayCycle === 'DAILY' ? 'Daily close' : 'Month-end payroll'}</strong><span>{payrollPayCycle === 'DAILY' ? 'Pays one daily wage for each present worker after attendance is approved.' : 'Calculates monthly salary, joining-date proration, absence deduction and advance recovery.'}</span></div>
+            <div className="form-actions"><button type="submit" disabled={createRunMutation.isPending}>{createRunMutation.isPending ? 'Creating…' : `Create ${payrollPayCycle === 'DAILY' ? 'daily settlement' : 'monthly payroll'}`}</button></div>
           </form>
           {errorMessage(createRunMutation.error) && <p className="field-error">{errorMessage(createRunMutation.error)}</p>}
         </section>
       )}
 
-      {canAccessPayrollRuns && (
+      {showPayrollRuns && canAccessPayrollRuns && (
         <section className="admin-card">
-          <h2>Payroll runs <small className="muted">({runs.data?.total ?? 0} total · page {runs.data?.page ?? 1} · {runs.data?.pageSize ?? 50} per page)</small></h2>
+          <h2>{showPayments ? 'Finalized payroll available for payment' : `${props.view === 'daily-payroll' ? 'Daily settlement' : 'Monthly payroll'} runs`} <small className="muted">({visibleRuns.length} shown)</small></h2>
           {errorMessage(runs.error) && <p className="field-error">{errorMessage(runs.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
-            {(runs.data?.items ?? []).map((run) => <tr key={run.id}><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdByName}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
-            {(runs.data?.items.length ?? 0) === 0 && <tr><td colSpan={5} className="muted">No Payroll Runs.</td></tr>}
+          <div className="table-scroll"><table><thead><tr><th>Schedule</th><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
+            {visibleRuns.map((run) => <tr key={run.id}><td><span className={`payroll-cycle-badge payroll-cycle-badge-${run.payCycle.toLowerCase()}`}>{payCycleLabel(run.payCycle)}</span></td><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdByName}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
+            {visibleRuns.length === 0 && <tr><td colSpan={6} className="muted">{showPayments ? 'No finalized Payroll is available for payment.' : 'No Payroll Runs for this schedule.'}</td></tr>}
           </tbody></table></div>
         </section>
       )}
 
-      {selectedRunId && selectedRun.data && (
+      {showPayrollRuns && selectedRunId && selectedRun.data && (
         <section className="admin-card">
           <h2>Payroll calculation preview</h2>
-          <p><strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status} · Created by {selectedRun.data.createdByName} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
+          <p><span className={`payroll-cycle-badge payroll-cycle-badge-${selectedRun.data.payCycle.toLowerCase()}`}>{payCycleLabel(selectedRun.data.payCycle)}</span> <strong>{selectedRun.data.periodStart} → {selectedRun.data.periodEnd}</strong> · {selectedRun.data.status} · Created by {selectedRun.data.createdByName} · Finalized {selectedRun.data.finalizedAt ?? '—'}</p>
           <p><strong>Salary before absence:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.salaryBeforeAbsence))} · <strong>Absence deduction:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.absenceDeduction))} · <strong>Earned salary:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.grossAmount))} · <strong>Advance recovery:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.advanceDeduction))} · <strong>Net payroll:</strong> {sumMoney(selectedRun.data.lines.map((line) => line.netAmount))}</p>
           {props.canCalculatePayroll && selectedRun.data.status !== 'FINALIZED' && (
             <label>Hourly overtime multiplier (optional)<input type="number" inputMode="decimal" min="1" max="10" step="0.0001" value={overtimeMultiplier} onChange={(event) => setOvertimeMultiplier(event.target.value)} placeholder="Example: 1.5" /><small className="muted">Only enter this when an hourly-paid Employee has overtime. Enter 1.5 for 150% pay—not an hourly rate or percentage.</small>{!overtimeMultiplierValid && <span className="field-error">Enter a multiplier between 1 and 10.</span>}</label>
@@ -520,13 +571,13 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
           {errorMessage(calculateMutation.error) && <p className="field-error">{errorMessage(calculateMutation.error)}</p>}
           {errorMessage(finalizeMutation.error) && <p className="field-error">{errorMessage(finalizeMutation.error)}</p>}
           <div className="table-scroll"><table><thead><tr><th>Employee</th><th>Salary before absence</th><th>Absence deduction</th><th>Earned salary</th><th>Advance recovery</th><th>Net</th><th>Paid</th><th>Outstanding</th><th>Project / Stage Employee Salary cost</th><th>Payslip</th><th>Action</th></tr></thead><tbody>
-            {selectedRun.data.lines.map((line) => <tr key={line.id}><td><strong>{line.employeeName}</strong><br /><small className="muted">{line.employeeNo}</small></td><td><Money value={line.salaryBeforeAbsence} /></td><td><Money value={line.absenceDeduction} /></td><td><Money value={line.grossAmount} /></td><td><Money value={line.advanceDeduction} /></td><td><Money value={line.netAmount} /></td><td><Money value={line.paidAmount} /></td><td><strong><Money value={line.outstandingAmount} /></strong></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? 'Project'} / {allocation.stageId ? 'Selected stage' : 'Project level'} · {allocation.category === 'security' ? 'Security Employee Salary' : 'Employee Salary'} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}</> : 'Not generated'}</td><td><div className="button-row">{Number(line.outstandingAmount) > 0 && ((selectedRun.data.status === 'FINALIZED' && props.canCreatePayrollPayment) || (selectedRun.data.status !== 'FINALIZED' && props.canCreateEmployeeAdvance)) && <button type="button" title={selectedRun.data.status === 'FINALIZED' ? 'Pay finalized salary from a Cash or Bank account' : 'Pay an advance now; it will be recovered at month-end'} onClick={() => selectedRun.data.status === 'FINALIZED' ? setPaymentLine(line) : setAdvanceLine(line)}>{selectedRun.data.status === 'FINALIZED' ? 'Pay salary from account' : 'Pay advance now'}</button>}{props.canReadPayroll && <button type="button" className="secondary-button" onClick={() => setLedgerEmployeeId(line.employeeId)}>Ledger</button>}</div></td></tr>)}
+            {selectedRun.data.lines.map((line) => <tr key={line.id}><td><strong>{line.employeeName}</strong><br /><small className="muted">{line.employeeNo}</small></td><td><Money value={line.salaryBeforeAbsence} /></td><td><Money value={line.absenceDeduction} /></td><td><Money value={line.grossAmount} /></td><td><Money value={line.advanceDeduction} /></td><td><Money value={line.netAmount} /></td><td><Money value={line.paidAmount} /></td><td><strong><Money value={line.outstandingAmount} /></strong></td><td>{line.projectAllocation.length === 0 ? 'Historical allocation unavailable' : line.projectAllocation.map((allocation) => <div key={`${allocation.projectId}:${allocation.stageId ?? ''}:${allocation.category}`}>{projectNames.get(allocation.projectId) ?? 'Project'} / {allocation.stageId ? 'Selected stage' : 'Project level'} · {allocation.category === 'security' ? 'Security Employee Salary' : 'Employee Salary'} · <Money value={allocation.amount} /></div>)}</td><td>{line.payslip ? <>Generated {line.payslip.generatedAt ?? '—'}</> : 'Not generated'}</td><td><div className="button-row">{showPayments && Number(line.outstandingAmount) > 0 && selectedRun.data.status === 'FINALIZED' && props.canCreatePayrollPayment && <button type="button" title="Pay finalized salary from a Cash or Bank account" onClick={() => setPaymentLine(line)}>Pay salary from account</button>}{showPayrollCreation && Number(line.outstandingAmount) > 0 && selectedRun.data.status !== 'FINALIZED' && props.canCreateEmployeeAdvance && <button type="button" className="secondary-button" title="Record an advance against this open Payroll" onClick={() => setAdvanceLine(line)}>Pay advance</button>}{props.canReadPayroll && <button type="button" className="secondary-button" onClick={() => setLedgerEmployeeId(line.employeeId)}>Ledger</button>}</div></td></tr>)}
             {selectedRun.data.lines.length === 0 && <tr><td colSpan={11} className="muted">Calculate this run to create Employee Payroll lines.</td></tr>}
           </tbody></table></div>
         </section>
       )}
 
-      {props.canReadPayroll && (
+      {showPayments && props.canReadPayroll && (
         <section className="admin-card">
           <h2>Employee salary payments <small className="muted">({payments.data?.total ?? 0} records)</small></h2>
           <p className="muted">Payments settle finalized Payroll Payable from Cash/Bank. Reversed payments remain visible for audit history.</p>
@@ -536,10 +587,20 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
+      {showLedger && props.canReadPayroll && (
+        <section className="admin-card employee-ledger-launcher">
+          <div>
+            <h2>Open Employee ledger</h2>
+            <p className="muted">The ledger is source-derived and can be filtered by Project after it opens.</p>
+          </div>
+          <label>Employee<select value="" onChange={(event) => setLedgerEmployeeId(event.target.value || null)}><option value="">Select Employee</option>{(employees.data?.items ?? []).map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}</select></label>
+        </section>
+      )}
+
       {paymentLine && selectedRun.data && <SalaryPaymentModal line={paymentLine} run={selectedRun.data} accounts={cashBankAccounts.data ?? []} canManageAccounts={props.canManageAccounts} onAddAccount={setAccountProjectId} onClose={() => setPaymentLine(null)} />}
       {advanceLine && <OpenPayrollAdvanceModal line={advanceLine} projects={projects.data?.items ?? []} accounts={cashBankAccounts.data ?? []} canManageAccounts={props.canManageAccounts} onAddAccount={setAccountProjectId} onClose={() => setAdvanceLine(null)} />}
       {ledgerEmployeeId && props.canReadPayroll && <SalaryLedgerModal employeeId={ledgerEmployeeId} projects={projects.data?.items ?? []} onClose={() => setLedgerEmployeeId(null)} />}
-      {accountProjectId && <ProjectAccountCreateModal projectId={accountProjectId} projectLabel={projectNames.get(accountProjectId) ?? 'Project'} onCreated={() => cashBankAccounts.refetch()} onClose={() => setAccountProjectId(null)} />}
+      {accountProjectId && <ProjectAccountCreateModal projectId={accountProjectId} projectLabel={projectNames.get(accountProjectId) ?? 'Project'} onCreated={async () => { await cashBankAccounts.refetch(); }} onClose={() => setAccountProjectId(null)} />}
       {reversalPayment && <SalaryPaymentReversalModal payment={reversalPayment} onClose={() => setReversalPayment(null)} />}
       {reversalAdvance && <AdvanceReversalModal advance={reversalAdvance} onClose={() => setReversalAdvance(null)} />}
     </div>

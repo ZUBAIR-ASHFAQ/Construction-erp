@@ -21,6 +21,7 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
   'ATTENDANCE_DUPLICATE',
   'ATTENDANCE_DAILY_HOURS_EXCEEDED',
   'ATTENDANCE_BEFORE_JOINING_DATE',
+  'ATTENDANCE_AFTER_EMPLOYMENT_END',
   'EMPLOYEE_INACTIVE',
   'EMPLOYEE_NOT_ASSIGNED',
   'PAYROLL_NOT_FOUND',
@@ -228,11 +229,24 @@ export const reversePayrollPaymentBodySchema = z.object({ reversalDate: dateSche
 
 /** Validate one Payroll period. Salary runs intentionally use a date period only; posting date is the period end. */
 export const createPayrollRunBodySchema = z.object({
+  payCycle: z.enum(['DAILY', 'MONTHLY']).optional(),
   periodStart: dateSchema,
   periodEnd: dateSchema
-}).strict().refine((value) => value.periodEnd >= value.periodStart, {
-  message: 'periodEnd cannot precede periodStart.',
-  path: ['periodEnd']
+}).strict().superRefine((value, context) => {
+  if (value.periodEnd < value.periodStart) {
+    context.addIssue({ code: 'custom', message: 'periodEnd cannot precede periodStart.', path: ['periodEnd'] });
+  }
+  if (value.payCycle === 'DAILY' && value.periodStart !== value.periodEnd) {
+    context.addIssue({ code: 'custom', message: 'Daily settlement must use one work date.', path: ['periodEnd'] });
+  }
+  if (value.payCycle === 'MONTHLY') {
+    const start = new Date(`${value.periodStart}T00:00:00.000Z`);
+    const end = new Date(`${value.periodEnd}T00:00:00.000Z`);
+    const expectedEnd = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0));
+    if (start.getUTCDate() !== 1 || end.getTime() !== expectedEnd.getTime()) {
+      context.addIssue({ code: 'custom', message: 'Monthly payroll must cover one complete calendar month.', path: ['periodEnd'] });
+    }
+  }
 });
 
 /** Validate optional Payroll-run overtime policy while keeping calculation server-owned. */
@@ -418,6 +432,7 @@ export const employeeSalaryLedgerResponseSchema = z.object({
 /** Validate one Payroll Run detail. */
 export const payrollRunResponseSchema = z.object({
   id: uuidSchema,
+  payCycle: z.enum(['DAILY', 'MONTHLY', 'LEGACY']),
   periodStart: dateSchema,
   periodEnd: dateSchema,
   status: z.enum(PAYROLL_RUN_STATUS_VALUES),
@@ -456,6 +471,7 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   ATTENDANCE_DUPLICATE: 'Attendance already exists for this Employee, Project/Stage and work date.',
   ATTENDANCE_DAILY_HOURS_EXCEEDED: 'Employee attendance cannot exceed 24 total hours across all Projects on one work date.',
   ATTENDANCE_BEFORE_JOINING_DATE: 'Attendance cannot be recorded before the Employee joining date.',
+  ATTENDANCE_AFTER_EMPLOYMENT_END: 'Attendance cannot be recorded after the Employee employment end date.',
   EMPLOYEE_INACTIVE: 'Attendance cannot be recorded or corrected for an inactive Employee.',
   EMPLOYEE_NOT_ASSIGNED: 'The Employee has no valid Project/Stage assignment for this work date.',
   PAYROLL_NOT_FOUND: 'Payroll Run was not found.',
@@ -479,7 +495,7 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
 /** Create one stable Labour/Payroll business error. */
 export function createLabourPayrollError(code: LabourPayrollErrorCode): AppError {
   if (code === 'PAYROLL_NOT_FOUND') return new NotFoundError({ code, message: ERROR_MESSAGES[code] });
-  if (code === 'ATTENDANCE_DAILY_HOURS_EXCEEDED' || code === 'ATTENDANCE_BEFORE_JOINING_DATE' || code === 'OVERTIME_REQUIRES_HOURLY_COMPENSATION') {
+  if (code === 'ATTENDANCE_DAILY_HOURS_EXCEEDED' || code === 'ATTENDANCE_BEFORE_JOINING_DATE' || code === 'ATTENDANCE_AFTER_EMPLOYMENT_END' || code === 'OVERTIME_REQUIRES_HOURLY_COMPENSATION') {
     return new ValidationError({ code, message: ERROR_MESSAGES[code] });
   }
   return new ConflictError({ code, message: ERROR_MESSAGES[code] });

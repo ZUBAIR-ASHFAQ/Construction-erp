@@ -23,6 +23,7 @@ export type CreateEmployeeRepositoryInput = Readonly<{
   jobTitle: string;
   employeeType: string;
   joiningDate: Date;
+  employmentEndDate?: Date | null;
   status: string;
 }>;
 
@@ -37,6 +38,7 @@ export type UpdateEmployeeRepositoryInput = Readonly<{
   jobTitle?: string;
   employeeType?: string;
   joiningDate?: Date;
+  employmentEndDate?: Date | null;
 }>;
 
 export type CreateEmployeeCompensationRepositoryInput = Readonly<{
@@ -90,6 +92,7 @@ export class EmployeesRepository {
     const [items, total] = await Promise.all([
       this.db.employee.findMany({
         where,
+        include: { compensations: { select: { payType: true }, orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }], take: 1 } },
         orderBy: [{ employeeNo: 'asc' }, { id: 'asc' }],
         skip: input.skip,
         take: input.take
@@ -112,7 +115,8 @@ export class EmployeesRepository {
                 some: { projectId: { in: [...new Set(allowedProjectIds)] }, status: 'ACTIVE' }
               }
             })
-      })
+      }),
+      include: { compensations: { select: { payType: true }, orderBy: [{ effectiveFrom: 'desc' }, { id: 'desc' }], take: 1 } }
     });
   }
 
@@ -158,6 +162,7 @@ export class EmployeesRepository {
         jobTitle: input.jobTitle,
         employmentType: input.employeeType,
         joinDate: input.joiningDate,
+        endDate: input.employmentEndDate ?? null,
         status: input.status
       })
     });
@@ -210,7 +215,8 @@ export class EmployeesRepository {
         ...(input.department === undefined ? {} : { department: input.department }),
         ...(input.jobTitle === undefined ? {} : { jobTitle: input.jobTitle }),
         ...(input.employeeType === undefined ? {} : { employmentType: input.employeeType }),
-        ...(input.joiningDate === undefined ? {} : { joinDate: input.joiningDate })
+        ...(input.joiningDate === undefined ? {} : { joinDate: input.joiningDate }),
+        ...(input.employmentEndDate === undefined ? {} : { endDate: input.employmentEndDate })
       }
     });
     if (updated.count !== 1) return null;

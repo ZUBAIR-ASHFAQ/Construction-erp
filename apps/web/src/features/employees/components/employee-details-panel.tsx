@@ -19,8 +19,11 @@ const updateEmployeeSchema = z.object({
   email: z.string().trim().max(320),
   department: z.string().trim().min(1, 'Department is required.').max(160),
   jobTitle: z.string().trim().min(1, 'Job title is required.').max(160),
-  employeeType: z.string().trim().min(1, 'Employee type is required.').max(64),
-  joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')
+  employeeType: z.string().trim().min(1, 'Work category is required.').max(64),
+  joiningDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.'),
+  employmentEndDate: z.union([z.literal(''), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.')])
+}).refine((value) => !value.employmentEndDate || value.employmentEndDate >= value.joiningDate, {
+  path: ['employmentEndDate'], message: 'Employment end date cannot precede joining date.'
 });
 
 const compensationSchema = z.object({
@@ -78,7 +81,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
     resolver: zodResolver(updateEmployeeSchema),
     defaultValues: {
       employeeNo: '', userId: '', name: '', cnicOrId: '', phone: '', email: '', department: '',
-      jobTitle: '', employeeType: '', joiningDate: ''
+      jobTitle: '', employeeType: '', joiningDate: '', employmentEndDate: ''
     }
   });
   const compensationForm = useForm<CompensationValues>({
@@ -100,7 +103,8 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
       department: employee.department,
       jobTitle: employee.jobTitle,
       employeeType: employee.employeeType,
-      joiningDate: employee.joiningDate
+      joiningDate: employee.joiningDate,
+      employmentEndDate: employee.employmentEndDate ?? ''
     });
   }, [employee, updateForm]);
 
@@ -118,7 +122,8 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
       department: values.department,
       jobTitle: values.jobTitle,
       employeeType: values.employeeType,
-      joiningDate: values.joiningDate
+      joiningDate: values.joiningDate,
+      employmentEndDate: values.employmentEndDate || null
     });
   }
 
@@ -155,6 +160,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
             <div><dt>Department</dt><dd>{employee.department}</dd></div>
             <div><dt>Job title</dt><dd>{employee.jobTitle}</dd></div>
             <div><dt>Joining date</dt><dd>{employee.joiningDate}</dd></div>
+            <div><dt>Employment end</dt><dd>{employee.employmentEndDate ?? 'Open-ended'}</dd></div>
             <div><dt>User link</dt><dd>{employee.userId ?? 'Not linked'}</dd></div>
             <div><dt>CNIC / ID</dt><dd>{employee.cnicOrId ?? '—'}</dd></div>
             <div><dt>Phone</dt><dd>{employee.phone ?? '—'}</dd></div>
@@ -173,8 +179,9 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
                 <label>Email<input type="email" {...updateForm.register('email')} /></label>
                 <label>Department<input {...updateForm.register('department')} /></label>
                 <label>Job title<input {...updateForm.register('jobTitle')} /></label>
-                <label>Employee type<input {...updateForm.register('employeeType')} /></label>
+              <label>Work category<input {...updateForm.register('employeeType')} /></label>
                 <label>Joining date<input type="date" {...updateForm.register('joiningDate')} /></label>
+                <label>Employment end date (optional)<input type="date" min={updateForm.watch('joiningDate') || undefined} {...updateForm.register('employmentEndDate')} /></label>
               </div>
               {Object.values(updateForm.formState.errors).map((error, index) => (
                 <span className="field-error" key={index}>{errorMessage(error)}</span>
@@ -191,7 +198,7 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
           )}
 
           <section className="module14b-subsection" aria-labelledby="employee-compensation-title">
-            <h3 id="employee-compensation-title">Salary & compensation history</h3>
+            <h3 id="employee-compensation-title">Payment basis & compensation history</h3>
             {!props.canManageCompensation && <p className="muted">Your role cannot view or change Employee salary history.</p>}
             {props.canManageCompensation && detailQuery.data?.compensationHistory && (
               <div className="table-wrap">
@@ -223,9 +230,8 @@ export function EmployeeDetailsPanel(props: EmployeeDetailsPanelProps) {
                   <label>
                     Pay type
                     <select {...compensationForm.register('payType')}>
-                      <option value="SALARY">Monthly salary</option>
-                      <option value="DAILY">Daily wage</option>
-                      <option value="HOURLY">Hourly rate</option>
+                      <option value="SALARY">Monthly employee</option>
+                      <option value="DAILY">Daily-paid worker</option>
                     </select>
                   </label>
                   <label>

@@ -87,8 +87,8 @@ export class LabourPayrollRepository {
   /** Lock one Company Employee so lifecycle and same-day hour checks are concurrency-safe. */
   async lockEmployeeForAttendance(employeeId: string) {
     const scope = requireCompanyRepositoryScope();
-    const rows = await this.db.$queryRaw<Array<{ id: string; status: string; joinDate: Date }>>`
-      SELECT id, status, joining_date AS "joinDate"
+    const rows = await this.db.$queryRaw<Array<{ id: string; status: string; joinDate: Date; endDate: Date | null }>>`
+      SELECT id, status, joining_date AS "joinDate", employment_end_date AS "endDate"
       FROM employees
       WHERE id = ${employeeId}::uuid
         AND company_id = ${scope.companyId}::uuid
@@ -247,6 +247,7 @@ export class LabourPayrollRepository {
     const scope = requireCompanyRepositoryScope();
     const rows = await this.db.$queryRaw<Array<{
       id: string;
+      payCycle: string;
       periodStart: Date;
       periodEnd: Date;
       status: string;
@@ -254,7 +255,7 @@ export class LabourPayrollRepository {
       finalizedAt: Date | null;
       overtimeMultiplier: { toString(): string } | null;
     }>>`
-      SELECT id, period_start AS "periodStart", period_end AS "periodEnd", status,
+      SELECT id, pay_cycle AS "payCycle", period_start AS "periodStart", period_end AS "periodEnd", status,
              overtime_multiplier AS "overtimeMultiplier", created_by AS "createdBy", finalized_at AS "finalizedAt"
       FROM payroll_runs
       WHERE id = ${payrollRunId}::uuid AND company_id = ${scope.companyId}::uuid
@@ -264,17 +265,18 @@ export class LabourPayrollRepository {
   }
 
   /** Create one Company-owned DRAFT Payroll Run. */
-  async createPayrollRun(input: Readonly<{ periodStart: Date; periodEnd: Date; status: string; createdBy: string }>) {
+  async createPayrollRun(input: Readonly<{ payCycle: string; periodStart: Date; periodEnd: Date; status: string; createdBy: string }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.payrollRun.create({ data: scope.createData({ ...input, finalizedAt: null }), include: { creator: { select: { name: true } } } });
   }
 
   /** Find any other finalized Payroll Run that overlaps the candidate period. */
-  async findOverlappingFinalizedPayrollRun(periodStart: Date, periodEnd: Date, excludeId?: string) {
+  async findOverlappingFinalizedPayrollRun(periodStart: Date, periodEnd: Date, payCycle: string, excludeId?: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.payrollRun.findFirst({
       where: scope.where({
         status: 'FINALIZED',
+        payCycle: { in: payCycle === 'LEGACY' ? ['LEGACY'] : [payCycle, 'LEGACY'] },
         ...(excludeId ? { id: { not: excludeId } } : {}),
         periodStart: { lte: periodEnd },
         periodEnd: { gte: periodStart }
@@ -293,7 +295,7 @@ export class LabourPayrollRepository {
     const scope = requireCompanyRepositoryScope();
     return this.db.attendanceEntry.findMany({
       where: scope.where({ workDate: { gte: periodStart, lte: periodEnd } }),
-      include: { employee: { select: { id: true, employmentType: true, joinDate: true } } },
+      include: { employee: { select: { id: true, employmentType: true, joinDate: true, endDate: true } } },
       orderBy: [{ employeeId: 'asc' }, { workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
     });
   }

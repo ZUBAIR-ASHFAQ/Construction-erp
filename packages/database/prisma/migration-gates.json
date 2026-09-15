@@ -937,6 +937,14 @@
       "migrations": [
         "20260912000600_project_operational_resource_scope"
       ]
+    },
+    {
+      "stage": 83,
+      "gate": "employee-pay-cycle-payroll",
+      "description": "Separates auditable daily worker settlements from monthly Employee payroll while preserving legacy Payroll Run history.",
+      "migrations": [
+        "20260915000100_employee_pay_cycle_payroll"
+      ]
     }
   ]
 }

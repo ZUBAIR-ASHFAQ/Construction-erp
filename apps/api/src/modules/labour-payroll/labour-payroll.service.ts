@@ -232,6 +232,7 @@ function payrollLineVisibleForSettlement(value: unknown, allowedProjectIds: read
 /** Serialize one Payroll Run with optional calculated lines. */
 function payrollRunResponse(run: Readonly<{
   id: string;
+  payCycle: string;
   periodStart: Date;
   periodEnd: Date;
   status: string;
@@ -256,6 +257,7 @@ function payrollRunResponse(run: Readonly<{
 }>, allowedProjectIds: readonly string[] | null = null) {
   return {
     id: run.id,
+    payCycle: run.payCycle,
     periodStart: dateOnly(run.periodStart),
     periodEnd: dateOnly(run.periodEnd),
     status: run.status,
@@ -464,6 +466,7 @@ export class LabourPayrollService {
     if (!employee) throw createLabourPayrollError('EMPLOYEE_NOT_ASSIGNED');
     if (employee.status !== ACTIVE) throw createLabourPayrollError('EMPLOYEE_INACTIVE');
     if (workDate < employee.joinDate) throw createLabourPayrollError('ATTENDANCE_BEFORE_JOINING_DATE');
+    if (employee.endDate && workDate > employee.endDate) throw createLabourPayrollError('ATTENDANCE_AFTER_EMPLOYMENT_END');
     if (decimal4Units(overtimeHours) > 0n) {
       const compensation = await repository.findEffectiveEmployeeCompensation(employeeId, workDate);
       if (!compensation || compensation.payType !== 'HOURLY' || !compensation.hourlyRate) {
@@ -639,8 +642,9 @@ export class LabourPayrollService {
       const repository = new LabourPayrollRepository(tx);
       const periodStart = inputDate(input.periodStart);
       const periodEnd = inputDate(input.periodEnd);
-      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd)) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const created = await repository.createPayrollRun({ periodStart, periodEnd, status: PAYROLL_DRAFT, createdBy: requireRequestSecurityContext().actorUserId });
+      const payCycle = input.payCycle ?? 'LEGACY';
+      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, payCycle)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      const created = await repository.createPayrollRun({ payCycle, periodStart, periodEnd, status: PAYROLL_DRAFT, createdBy: requireRequestSecurityContext().actorUserId });
       const response = payrollRunResponse(created);
       await recordAudit(tx, { action: 'payroll.created', entityType: 'payroll_run', entityId: created.id, after: response });
       await recordOutboxEvent(tx, { eventType: 'payroll.created', resourceType: 'payroll_run', resourceId: created.id, payload: response });
@@ -650,7 +654,7 @@ export class LabourPayrollService {
   }
 
   /** Calculate server-owned Employee lines from attendance plus effective compensation. */
-  private async calculateDraftLines(repository: LabourPayrollRepository, periodStart: Date, periodEnd: Date, overtimeMultiplier: DecimalLike | null): Promise<PayrollDraftLine[]> {
+  private async calculateDraftLines(repository: LabourPayrollRepository, periodStart: Date, periodEnd: Date, overtimeMultiplier: DecimalLike | null, payCycle = 'LEGACY'): Promise<PayrollDraftLine[]> {
     const attendance = await repository.listPayrollAttendance(periodStart, periodEnd);
     if (attendance.length === 0) throw createLabourPayrollError('PAYROLL_NO_ATTENDANCE');
     const employeeIds = [...new Set(attendance.map((item) => item.employeeId))];
@@ -666,6 +670,8 @@ export class LabourPayrollService {
       const payTypes = new Set(rows.map((row) => compensationForDate(compensations, row.workDate)?.payType ?? 'MISSING'));
       if (payTypes.has('MISSING') || payTypes.size !== 1) throw createLabourPayrollError('PAYROLL_COMPENSATION_MISSING');
       const payType = [...payTypes][0];
+      if (payCycle === 'DAILY' && payType === 'SALARY') continue;
+      if (payCycle === 'MONTHLY' && payType !== 'SALARY') continue;
       if (payType !== 'HOURLY' && rows.some((row) => decimal4Units(row.overtimeHours) > 0n)) {
         throw createLabourPayrollError('OVERTIME_REQUIRES_HOURLY_COMPENSATION');
       }
@@ -690,9 +696,12 @@ export class LabourPayrollService {
         const eligibleStart = rows[0]?.employee?.joinDate && rows[0].employee.joinDate > periodStart
           ? rows[0].employee.joinDate
           : periodStart;
-        const compensationEnd = salaryCompensation.effectiveTo && salaryCompensation.effectiveTo < periodEnd
-          ? salaryCompensation.effectiveTo
+        const employeeEnd = rows[0]?.employee?.endDate && rows[0].employee.endDate < periodEnd
+          ? rows[0].employee.endDate
           : periodEnd;
+        const compensationEnd = salaryCompensation.effectiveTo && salaryCompensation.effectiveTo < employeeEnd
+          ? salaryCompensation.effectiveTo
+          : employeeEnd;
         const eligibleDays = inclusiveDays(eligibleStart, compensationEnd);
         salaryBeforeAbsenceCents = prorateCents(moneyCents(salaryCompensation.baseSalary), eligibleDays, periodDays);
         grossCents = prorateCents(moneyCents(salaryCompensation.baseSalary), BigInt(presentDates.size), periodDays);
@@ -763,6 +772,7 @@ export class LabourPayrollService {
       });
     }
 
+    if (drafts.length === 0) throw createLabourPayrollError('PAYROLL_NO_EARNINGS');
     return drafts.sort((a, b) => a.employeeId.localeCompare(b.employeeId));
   }
 
@@ -781,7 +791,7 @@ export class LabourPayrollService {
       if (input.overtimeMultiplier && input.overtimeMultiplier !== locked.overtimeMultiplier?.toString()) {
         if (!(await repository.updatePayrollRunOvertimeMultiplier(payrollRunId, input.overtimeMultiplier))) throw createLabourPayrollError('PAYROLL_NOT_READY');
       }
-      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier);
+      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier, locked.payCycle);
       await repository.clearPayrollCalculation(payrollRunId);
       for (const line of drafts) {
         await repository.createPayrollLine({
@@ -823,11 +833,11 @@ export class LabourPayrollService {
       }
       if (locked.status !== PAYROLL_CALCULATED) throw createLabourPayrollError('PAYROLL_NOT_READY');
       if (inputDate(dateOnly(new Date())) < locked.periodEnd) throw createLabourPayrollError('PAYROLL_PERIOD_OPEN');
-      if (await repository.findOverlappingFinalizedPayrollRun(locked.periodStart, locked.periodEnd, payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      if (await repository.findOverlappingFinalizedPayrollRun(locked.periodStart, locked.periodEnd, locked.payCycle, payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
 
       const snapshot = await repository.findPayrollRunById(payrollRunId);
       if (!snapshot || snapshot.lines.length === 0) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.overtimeMultiplier);
+      const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.overtimeMultiplier, locked.payCycle);
       const persistedDrafts: PayrollDraftLine[] = snapshot.lines.map((line) => ({
         employeeId: line.employeeId,
         salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),

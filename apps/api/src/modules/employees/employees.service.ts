@@ -62,7 +62,9 @@ function employeeResponse(employee: Readonly<{
   jobTitle: string;
   employmentType: string;
   joinDate: Date;
+  endDate: Date | null;
   status: string;
+  compensations?: readonly Readonly<{ payType: string }>[];
 }>) {
   return {
     id: employee.id,
@@ -75,7 +77,9 @@ function employeeResponse(employee: Readonly<{
     department: employee.department,
     jobTitle: employee.jobTitle,
     employeeType: employee.employmentType,
+    currentPayType: employee.compensations?.[0]?.payType ?? null,
     joiningDate: dateOnly(employee.joinDate),
+    employmentEndDate: employee.endDate ? dateOnly(employee.endDate) : null,
     status: employee.status
   };
 }
@@ -219,6 +223,7 @@ export class EmployeesService {
       jobTitle: input.jobTitle,
       employeeType: input.employeeType,
       joiningDate: inputDate(input.joiningDate),
+      ...(input.employmentEndDate === undefined ? {} : { employmentEndDate: input.employmentEndDate ? inputDate(input.employmentEndDate) : null }),
       status: EMPLOYEE_ACTIVE
     });
     await repository.createEmploymentHistory(employee.id, 'CREATED', inputDate(input.joiningDate), 'Employee record created.');
@@ -263,6 +268,13 @@ export class EmployeesService {
 
     await this.requireUniqueIdentity(repository, input, employeeId);
     await this.requireCompanyUser(repository, input.userId);
+    const joiningDate = input.joiningDate ? inputDate(input.joiningDate) : before.joinDate;
+    const employmentEndDate = input.employmentEndDate === undefined
+      ? before.endDate
+      : input.employmentEndDate ? inputDate(input.employmentEndDate) : null;
+    if (employmentEndDate && employmentEndDate < joiningDate) {
+      throw new ValidationError({ fieldErrors: [{ field: 'employmentEndDate', message: 'Employment end date cannot precede joining date.' }] });
+    }
     const updated = await repository.updateEmployee(employeeId, {
       ...(input.employeeNo === undefined ? {} : { employeeNo: input.employeeNo }),
       ...(input.userId === undefined ? {} : { userId: input.userId }),
@@ -273,7 +285,8 @@ export class EmployeesService {
       ...(input.department === undefined ? {} : { department: input.department }),
       ...(input.jobTitle === undefined ? {} : { jobTitle: input.jobTitle }),
       ...(input.employeeType === undefined ? {} : { employeeType: input.employeeType }),
-      ...(input.joiningDate === undefined ? {} : { joiningDate: inputDate(input.joiningDate) })
+      ...(input.joiningDate === undefined ? {} : { joiningDate: inputDate(input.joiningDate) }),
+      ...(input.employmentEndDate === undefined ? {} : { employmentEndDate })
     });
     if (!updated) throw createEmployeeError('EMPLOYEE_NOT_FOUND');
 

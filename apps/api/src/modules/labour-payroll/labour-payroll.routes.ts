@@ -67,7 +67,7 @@ const CREATE_ATTENDANCE_BODY_JSON_SCHEMA = {
 const UPDATE_ATTENDANCE_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: ATTENDANCE_BODY_PROPERTIES } as const;
 const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
-  properties: { periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
+  properties: { payCycle: { type: 'string', enum: ['DAILY', 'MONTHLY'] }, periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
 } as const;
 const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
 const EMPTY_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, maxProperties: 0 } as const;

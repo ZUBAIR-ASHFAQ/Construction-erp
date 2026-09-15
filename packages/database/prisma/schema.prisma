@@ -10,77 +10,77 @@ datasource db {
 /// Foundation-owned tenant/company master.
 /// Every future ERP company_id foreign key must resolve to companies.id.
 model Company {
-  id                       String                   @id @default(uuid()) @db.Uuid
-  legalName                String                   @map("legal_name") @db.VarChar(200)
-  displayName              String                   @map("display_name") @db.VarChar(200)
-  status                   String                   @db.VarChar(32)
-  baseCurrency             String                   @map("base_currency") @db.Char(3)
-  timeZone                 String                   @map("time_zone") @db.VarChar(100)
-  locale                   String                   @db.VarChar(35)
-  fiscalSettings           Json                     @map("fiscal_settings") @db.JsonB
-  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt                DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
-  auditLogs                AuditLog[]
-  outboxEvents             OutboxEvent[]
-  idempotencyRecords       IdempotencyRecord[]
-  numberSequences          NumberSequence[]
-  queueJobs                QueueJob[]
-  configuration            CompanyConfiguration?
-  initialBootstrapRuns     InitialBootstrapRun[]
-  users                    User[]
-  roles                    Role[]
-  roleAssignments          UserRole[]
-  userProjectScopes        UserProjectScope[]
-  departments              Department[]
-  documents                Document[]
-  documentUploadIntents    DocumentUploadIntent[]
-  documentLinks            DocumentLink[]
-  clients                  Client[]
-  clientContacts           ClientContact[]
-  projects                 Project[]
-  projectStages            ProjectStage[]
-  projectTeamAssignments   ProjectTeamAssignment[]
-  glAccounts               GlAccount[]
-  fiscalPeriods            FiscalPeriod[]
-  journals                 Journal[]
-  cashBankAccounts         CashBankAccount[]
-  projectBudgets           ProjectBudget[]
-  costCommitments          CostCommitment[]
-  costActuals              CostActual[]
-  vendors                  Vendor[]
-  vendorProjectAssignments VendorProjectAssignment[]
-  purchaseRequisitions     PurchaseRequisition[]
-  purchaseOrders           PurchaseOrder[]
-  materials                Material[]
-  warehouses               Warehouse[]
-  goodsReceipts            GoodsReceipt[]
-  stockLedger              StockLedger[]
-  materialIssues           MaterialIssue[]
-  subcontractors           Subcontractor[]
+  id                              String                           @id @default(uuid()) @db.Uuid
+  legalName                       String                           @map("legal_name") @db.VarChar(200)
+  displayName                     String                           @map("display_name") @db.VarChar(200)
+  status                          String                           @db.VarChar(32)
+  baseCurrency                    String                           @map("base_currency") @db.Char(3)
+  timeZone                        String                           @map("time_zone") @db.VarChar(100)
+  locale                          String                           @db.VarChar(35)
+  fiscalSettings                  Json                             @map("fiscal_settings") @db.JsonB
+  createdAt                       DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime                         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  auditLogs                       AuditLog[]
+  outboxEvents                    OutboxEvent[]
+  idempotencyRecords              IdempotencyRecord[]
+  numberSequences                 NumberSequence[]
+  queueJobs                       QueueJob[]
+  configuration                   CompanyConfiguration?
+  initialBootstrapRuns            InitialBootstrapRun[]
+  users                           User[]
+  roles                           Role[]
+  roleAssignments                 UserRole[]
+  userProjectScopes               UserProjectScope[]
+  departments                     Department[]
+  documents                       Document[]
+  documentUploadIntents           DocumentUploadIntent[]
+  documentLinks                   DocumentLink[]
+  clients                         Client[]
+  clientContacts                  ClientContact[]
+  projects                        Project[]
+  projectStages                   ProjectStage[]
+  projectTeamAssignments          ProjectTeamAssignment[]
+  glAccounts                      GlAccount[]
+  fiscalPeriods                   FiscalPeriod[]
+  journals                        Journal[]
+  cashBankAccounts                CashBankAccount[]
+  projectBudgets                  ProjectBudget[]
+  costCommitments                 CostCommitment[]
+  costActuals                     CostActual[]
+  vendors                         Vendor[]
+  vendorProjectAssignments        VendorProjectAssignment[]
+  purchaseRequisitions            PurchaseRequisition[]
+  purchaseOrders                  PurchaseOrder[]
+  materials                       Material[]
+  warehouses                      Warehouse[]
+  goodsReceipts                   GoodsReceipt[]
+  stockLedger                     StockLedger[]
+  materialIssues                  MaterialIssue[]
+  subcontractors                  Subcontractor[]
   subcontractorProjectAssignments SubcontractorProjectAssignment[]
-  subcontractContracts     SubcontractContract[]
-  subcontractPayments      SubcontractPayment[]
-  equipment                Equipment[]
-  employees                Employee[]
-  attendanceEntries        AttendanceEntry[]
-  employeeCompensations    EmployeeCompensation[]
-  payrollRuns              PayrollRun[]
-  payrollPayments          PayrollPayment[]
-  employeeAdvances         EmployeeAdvance[]
-  payrollAdvanceRecoveries PayrollAdvanceRecovery[]
-  expenseCategories        ExpenseCategory[]
-  siteExpenses             SiteExpense[]
-  supplierInvoices         SupplierInvoice[]
-  supplierPayments         SupplierPayment[]
-  projectBillingSettings   ProjectBillingSetting[]
-  progressClaims           ProgressClaim[]
-  clientInvoices           ClientInvoice[]
-  clientReceipts           ClientReceipt[]
-  reportDefinitions        ReportDefinition[]
-  reportRuns               ReportRun[]
-  savedReportFilters       SavedReportFilter[]
-  dashboardPreferences     DashboardPreference[]
-  dashboardSavedFilters    DashboardSavedFilter[]
+  subcontractContracts            SubcontractContract[]
+  subcontractPayments             SubcontractPayment[]
+  equipment                       Equipment[]
+  employees                       Employee[]
+  attendanceEntries               AttendanceEntry[]
+  employeeCompensations           EmployeeCompensation[]
+  payrollRuns                     PayrollRun[]
+  payrollPayments                 PayrollPayment[]
+  employeeAdvances                EmployeeAdvance[]
+  payrollAdvanceRecoveries        PayrollAdvanceRecovery[]
+  expenseCategories               ExpenseCategory[]
+  siteExpenses                    SiteExpense[]
+  supplierInvoices                SupplierInvoice[]
+  supplierPayments                SupplierPayment[]
+  projectBillingSettings          ProjectBillingSetting[]
+  progressClaims                  ProgressClaim[]
+  clientInvoices                  ClientInvoice[]
+  clientReceipts                  ClientReceipt[]
+  reportDefinitions               ReportDefinition[]
+  reportRuns                      ReportRun[]
+  savedReportFilters              SavedReportFilter[]
+  dashboardPreferences            DashboardPreference[]
+  dashboardSavedFilters           DashboardSavedFilter[]
 
   @@index([status], map: "companies_status_idx")
   @@map("companies")
@@ -686,45 +686,45 @@ model Project {
   createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  company                     Company                 @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  client                      Client                  @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  projectManager              User?                   @relation("ProjectManager", fields: [projectManagerUserId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  statusHistory               ProjectStatusHistory[]
-  stages                      ProjectStage[]
-  stageBaselines              StageProgressBaseline[]
-  teamAssignments             ProjectTeamAssignment[]
-  journalLines                JournalLine[]
-  userProjectScopes           UserProjectScope[]
-  documents                   Document[]              @relation("DocumentProject")
-  documentUploadIntents       DocumentUploadIntent[]  @relation("DocumentUploadIntentProject")
-  documentLinks               DocumentLink[]          @relation("DocumentLinkProject")
-  auditLogs                   AuditLog[]              @relation("AuditLogProject")
-  projectBudgets              ProjectBudget[]
-  costCommitments             CostCommitment[]
-  costActuals                 CostActual[]
-  forecastLines               ForecastLine[]
-  purchaseRequisitions        PurchaseRequisition[]
-  purchaseOrders              PurchaseOrder[]
-  warehouses                  Warehouse[]
-  goodsReceipts               GoodsReceipt[]
-  stockLedger                 StockLedger[]
-  materialIssues              MaterialIssue[]
-  materials                   Material[]
-  equipmentAssignments        EquipmentAssignment[]
-  attendanceEntries           AttendanceEntry[]
-  projectBillingSettings      ProjectBillingSetting[]
-  progressClaims              ProgressClaim[]
-  clientInvoices              ClientInvoice[]
-  siteExpenses                SiteExpense[]
-  supplierInvoices            SupplierInvoice[]
-  supplierPayments            SupplierPayment[]
-  vendorProjectAssignments    VendorProjectAssignment[]
+  company                         Company                          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  client                          Client                           @relation(fields: [clientId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  projectManager                  User?                            @relation("ProjectManager", fields: [projectManagerUserId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  statusHistory                   ProjectStatusHistory[]
+  stages                          ProjectStage[]
+  stageBaselines                  StageProgressBaseline[]
+  teamAssignments                 ProjectTeamAssignment[]
+  journalLines                    JournalLine[]
+  userProjectScopes               UserProjectScope[]
+  documents                       Document[]                       @relation("DocumentProject")
+  documentUploadIntents           DocumentUploadIntent[]           @relation("DocumentUploadIntentProject")
+  documentLinks                   DocumentLink[]                   @relation("DocumentLinkProject")
+  auditLogs                       AuditLog[]                       @relation("AuditLogProject")
+  projectBudgets                  ProjectBudget[]
+  costCommitments                 CostCommitment[]
+  costActuals                     CostActual[]
+  forecastLines                   ForecastLine[]
+  purchaseRequisitions            PurchaseRequisition[]
+  purchaseOrders                  PurchaseOrder[]
+  warehouses                      Warehouse[]
+  goodsReceipts                   GoodsReceipt[]
+  stockLedger                     StockLedger[]
+  materialIssues                  MaterialIssue[]
+  materials                       Material[]
+  equipmentAssignments            EquipmentAssignment[]
+  attendanceEntries               AttendanceEntry[]
+  projectBillingSettings          ProjectBillingSetting[]
+  progressClaims                  ProgressClaim[]
+  clientInvoices                  ClientInvoice[]
+  siteExpenses                    SiteExpense[]
+  supplierInvoices                SupplierInvoice[]
+  supplierPayments                SupplierPayment[]
+  vendorProjectAssignments        VendorProjectAssignment[]
   subcontractorProjectAssignments SubcontractorProjectAssignment[]
-  clientReceipts              ClientReceipt[]
-  dashboardDefaultPreferences DashboardPreference[]   @relation("DashboardPreferenceDefaultProject")
-  subcontractContracts        SubcontractContract[]
-  employeeAdvances            EmployeeAdvance[]
-  cashBankAccounts             CashBankAccount[]
+  clientReceipts                  ClientReceipt[]
+  dashboardDefaultPreferences     DashboardPreference[]            @relation("DashboardPreferenceDefaultProject")
+  subcontractContracts            SubcontractContract[]
+  employeeAdvances                EmployeeAdvance[]
+  cashBankAccounts                CashBankAccount[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -1172,13 +1172,13 @@ model Vendor {
   status              String  @db.VarChar(32)
   qualificationStatus String? @map("qualification_status") @db.VarChar(32)
 
-  company          Company           @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  contacts         VendorContact[]
-  purchaseOrders   PurchaseOrder[]
-  goodsReceipts    GoodsReceipt[]
-  subcontractors   Subcontractor[]
-  supplierInvoices SupplierInvoice[]
-  supplierPayments SupplierPayment[]
+  company            Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  contacts           VendorContact[]
+  purchaseOrders     PurchaseOrder[]
+  goodsReceipts      GoodsReceipt[]
+  subcontractors     Subcontractor[]
+  supplierInvoices   SupplierInvoice[]
+  supplierPayments   SupplierPayment[]
   projectAssignments VendorProjectAssignment[]
 
   @@unique([id, companyId], map: "vendors_id_company_uq")
@@ -1529,9 +1529,9 @@ model Subcontractor {
   status       String  @db.VarChar(32)
   defaultTerms String? @map("default_terms") @db.Text
 
-  company   Company               @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
-  vendor    Vendor?               @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
-  contracts SubcontractContract[]
+  company            Company                          @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  vendor             Vendor?                          @relation(fields: [vendorId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  contracts          SubcontractContract[]
   projectAssignments SubcontractorProjectAssignment[]
 
   @@unique([id, companyId], map: "subcontractors_id_company_uq")
@@ -1694,19 +1694,20 @@ model EquipmentMaintenance {
 /// Final Module 3 Company-owned Employee master used by Project Team and Payroll.
 /// Effective-dated salary/wage/rate history is owned only by EmployeeCompensation.
 model Employee {
-  id             String   @id @default(uuid()) @db.Uuid
-  companyId      String   @map("company_id") @db.Uuid
-  employeeNo     String   @map("employee_no") @db.VarChar(100)
-  userId         String?  @map("user_id") @db.Uuid
-  name           String   @db.VarChar(200)
-  cnicOrId       String?  @map("cnic_or_id") @db.VarChar(100)
-  phone          String?  @db.VarChar(50)
-  email          String?  @db.VarChar(320)
-  department     String   @db.VarChar(160)
-  jobTitle       String   @map("job_title") @db.VarChar(160)
-  employmentType String   @map("employee_type") @db.VarChar(64)
-  joinDate       DateTime @map("joining_date") @db.Date
-  status         String   @db.VarChar(32)
+  id             String    @id @default(uuid()) @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  employeeNo     String    @map("employee_no") @db.VarChar(100)
+  userId         String?   @map("user_id") @db.Uuid
+  name           String    @db.VarChar(200)
+  cnicOrId       String?   @map("cnic_or_id") @db.VarChar(100)
+  phone          String?   @db.VarChar(50)
+  email          String?   @db.VarChar(320)
+  department     String    @db.VarChar(160)
+  jobTitle       String    @map("job_title") @db.VarChar(160)
+  employmentType String    @map("employee_type") @db.VarChar(64)
+  joinDate       DateTime  @map("joining_date") @db.Date
+  endDate        DateTime? @map("employment_end_date") @db.Date
+  status         String    @db.VarChar(32)
 
   company                Company                     @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   loginUser              User?                       @relation("EmployeeLoginUser", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
@@ -1796,6 +1797,7 @@ model EmployeeCompensation {
 model PayrollRun {
   id                 String    @id @default(uuid()) @db.Uuid
   companyId          String    @map("company_id") @db.Uuid
+  payCycle           String    @default("LEGACY") @map("pay_cycle") @db.VarChar(16)
   periodStart        DateTime  @map("period_start") @db.Date
   periodEnd          DateTime  @map("period_end") @db.Date
   status             String    @db.VarChar(32)
@@ -1809,6 +1811,7 @@ model PayrollRun {
   lines   PayrollLine[]
 
   @@index([companyId, periodStart, periodEnd], map: "payroll_runs_company_period_idx")
+  @@index([companyId, payCycle, periodStart, periodEnd], map: "payroll_runs_company_cycle_period_idx")
   @@index([companyId, status, periodStart], map: "payroll_runs_company_status_period_idx")
   @@index([createdBy], map: "payroll_runs_created_by_idx")
   @@map("payroll_runs")

@@ -100,8 +100,11 @@ export const createEmployeeBodySchema = z.object({
   department: departmentSchema,
   jobTitle: jobTitleSchema,
   employeeType: employeeTypeSchema,
-  joiningDate: dateSchema
-}).strict();
+  joiningDate: dateSchema,
+  employmentEndDate: dateSchema.nullable().optional()
+}).strict().refine((value) => !value.employmentEndDate || value.employmentEndDate >= value.joiningDate, {
+  message: 'Employment end date cannot precede joining date.', path: ['employmentEndDate']
+});
 
 /** Validate editable Employee master fields while salary remains compensation-owned. */
 export const updateEmployeeBodySchema = z.object({
@@ -114,7 +117,8 @@ export const updateEmployeeBodySchema = z.object({
   department: departmentSchema.optional(),
   jobTitle: jobTitleSchema.optional(),
   employeeType: employeeTypeSchema.optional(),
-  joiningDate: dateSchema.optional()
+  joiningDate: dateSchema.optional(),
+  employmentEndDate: dateSchema.nullable().optional()
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: 'At least one editable Employee field must be provided.'
 });

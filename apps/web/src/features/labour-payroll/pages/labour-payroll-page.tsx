@@ -1,10 +1,11 @@
 import { usePermission } from '../../administration/hooks/auth.js';
-import { LabourPayrollWorkspace } from '../components/labour-payroll-workspace.js';
+import { LabourPayrollWorkspace, type LabourPayrollWorkspaceView } from '../components/labour-payroll-workspace.js';
 
-/** Bind Final-21 Labour/Payroll permissions to the workspace UI. */
-export function LabourPayrollPage() {
+/** Bind Labour/Payroll permissions to one focused Employee workflow page. */
+export function LabourPayrollPage({ view }: Readonly<{ view: LabourPayrollWorkspaceView }>) {
   return (
     <LabourPayrollWorkspace
+      view={view}
       canReadAttendance={usePermission('attendance.read')}
       canCreateAttendance={usePermission('attendance.create')}
       canCorrectAttendance={usePermission('attendance.correct')}

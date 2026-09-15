@@ -24,6 +24,7 @@ import { SubcontractContractsPage } from '../../vendors-subcontractors/pages/sub
 import { SubcontractPaymentsPage } from '../../vendors-subcontractors/pages/subcontract-payments-page.js';
 import { EquipmentPage } from '../../equipment/pages/equipment-page.js';
 import { EmployeesPage } from '../../employees/pages/employees-page.js';
+import { EmployeeModulePage, type EmployeeModuleDestination } from '../../employees/pages/employee-module-page.js';
 import { LabourPayrollPage } from '../../labour-payroll/pages/labour-payroll-page.js';
 import { SiteExpensesPage } from '../../site-expenses/pages/site-expenses-page.js';
 import { SupplierPayablesPage } from '../../supplier-payables/pages/supplier-payables-page.js';
@@ -38,7 +39,7 @@ import { RolesPage } from '../pages/roles-page.js';
 import { SignInPage } from '../pages/sign-in-page.js';
 import { UsersPage } from '../pages/users-page.js';
 
-// Stable feature names retained for module-contract discovery: Suppliers & Subcontractors, Supplier Payables, Client Receipts / Payments.
+// Stable feature names retained for module-contract discovery: Suppliers & Subcontractors, Supplier Payables, Client Receipts / Payments, Employees & Salaries, Attendance & Payroll.
 
 type WorkspaceView =
   | 'dashboard'
@@ -68,6 +69,13 @@ type WorkspaceView =
   | 'subcontractor-ledger'
   | 'equipment'
   | 'employees'
+  | 'employee-add'
+  | 'employee-attendance'
+  | 'employee-daily-payroll'
+  | 'employee-monthly-payroll'
+  | 'employee-advances'
+  | 'employee-payments'
+  | 'employee-ledger'
   | 'labour-payroll'
   | 'site-expenses'
   | 'supplier-payables'
@@ -153,6 +161,10 @@ const LABOUR_PAYROLL_PERMISSIONS = [
   'payroll.advances.create',
   'payroll.advances.reverse'
 ] as const;
+const ATTENDANCE_PERMISSIONS = ['attendance.read', 'attendance.create', 'attendance.correct'] as const;
+const PAYROLL_RUN_PERMISSIONS = ['payroll.read', 'payroll.create', 'payroll.calculate', 'payroll.finalize'] as const;
+const PAYROLL_ADVANCE_PERMISSIONS = ['payroll.read', 'payroll.advances.create', 'payroll.advances.reverse'] as const;
+const PAYROLL_PAYMENT_PERMISSIONS = ['payroll.read', 'payroll.payments.create', 'payroll.payments.reverse'] as const;
 const SITE_EXPENSE_PERMISSIONS = [
   'site_expenses.read',
   'site_expenses.create',
@@ -210,8 +222,15 @@ const WORKSPACE_VIEW_ORDER: readonly WorkspaceView[] = [
   'subcontractor-payment',
   'subcontractor-ledger',
   'equipment',
-  'employees',
   'labour-payroll',
+  'employees',
+  'employee-add',
+  'employee-attendance',
+  'employee-daily-payroll',
+  'employee-monthly-payroll',
+  'employee-advances',
+  'employee-payments',
+  'employee-ledger',
   'site-expenses',
   'supplier-payables',
   'client-billing',
@@ -251,8 +270,15 @@ const WORKSPACE_VIEW_META: Readonly<Record<WorkspaceView, { section: string; lab
   'subcontractor-payment': { section: 'Subcontractors', label: 'New Payment' },
   'subcontractor-ledger': { section: 'Subcontractors', label: 'Subcontractor Ledger' },
   equipment: { section: 'Operations', label: 'Equipment Management' },
-  employees: { section: 'People & Site', label: 'Employees & Salaries' },
-  'labour-payroll': { section: 'People & Site', label: 'Attendance & Payroll' },
+  'labour-payroll': { section: 'Employee Management', label: 'Overview' },
+  employees: { section: 'Employee Management', label: 'Employee List' },
+  'employee-add': { section: 'Employee Management', label: 'Add Employee' },
+  'employee-attendance': { section: 'Employee Management', label: 'Attendance' },
+  'employee-daily-payroll': { section: 'Employee Management', label: 'Daily Settlements' },
+  'employee-monthly-payroll': { section: 'Employee Management', label: 'Monthly Payroll' },
+  'employee-advances': { section: 'Employee Management', label: 'Salary Advances' },
+  'employee-payments': { section: 'Employee Management', label: 'Salary Payments' },
+  'employee-ledger': { section: 'Employee Management', label: 'Employee Ledger' },
   'site-expenses': { section: 'People & Site', label: 'Site Expenses' },
   'supplier-payables': { section: 'Billing', label: 'Supplier Payables' },
   'client-billing': { section: 'Billing', label: 'Client Billing' },
@@ -290,6 +316,10 @@ export function AdminShell() {
   const canUseEquipment = hasEquipmentCompanyPermission || hasRestrictedProjectMembership(auth.identity);
   const canUseEmployees = hasAnyIdentityPermission(auth.identity, EMPLOYEE_PERMISSIONS);
   const canUseLabourPayroll = canUseProjectScopedWorkspace(auth.identity, LABOUR_PAYROLL_PERMISSIONS);
+  const canUseAttendance = canUseProjectScopedWorkspace(auth.identity, ATTENDANCE_PERMISSIONS);
+  const canUsePayrollRuns = canUseProjectScopedWorkspace(auth.identity, PAYROLL_RUN_PERMISSIONS);
+  const canUsePayrollAdvances = canUseProjectScopedWorkspace(auth.identity, PAYROLL_ADVANCE_PERMISSIONS);
+  const canUsePayrollPayments = canUseProjectScopedWorkspace(auth.identity, PAYROLL_PAYMENT_PERMISSIONS);
   const hasSiteExpenseCompanyPermission = hasAnyIdentityPermission(auth.identity, SITE_EXPENSE_PERMISSIONS);
   const canUseSiteExpenses = hasSiteExpenseCompanyPermission || hasRestrictedProjectMembership(auth.identity);
   const canUseSupplierPayables = canUseProjectScopedWorkspace(auth.identity, SUPPLIER_PAYABLES_PERMISSIONS);
@@ -349,7 +379,14 @@ export function AdminShell() {
     'subcontractor-ledger': canUseVendorsSubcontractors,
     equipment: canUseEquipment,
     employees: canUseEmployees,
-    'labour-payroll': canUseLabourPayroll,
+    'employee-add': canUseEmployees,
+    'employee-attendance': canUseAttendance,
+    'employee-daily-payroll': canUsePayrollRuns,
+    'employee-monthly-payroll': canUsePayrollRuns,
+    'employee-advances': canUsePayrollAdvances,
+    'employee-payments': canUsePayrollPayments,
+    'employee-ledger': canUsePayrollRuns,
+    'labour-payroll': canUseEmployees || canUseLabourPayroll,
     'site-expenses': canUseSiteExpenses,
     'supplier-payables': canUseSupplierPayables,
     'client-billing': canUseClientBilling,
@@ -403,6 +440,11 @@ export function AdminShell() {
     setLinkedFinanceAccountId(accountId);
     setView('account-ledger');
     setIsSidebarOpen(false);
+  }
+
+  /** Open one focused Employee workflow from the module landing page. */
+  function showEmployeeModuleView(destination: EmployeeModuleDestination): void {
+    selectView(destination);
   }
 
   return (
@@ -545,14 +587,41 @@ export function AdminShell() {
             </details>
 
             <details className="nav-group" open>
+              <summary>Employee Management</summary>
+              <div className="nav-group-links">
+                {(canUseEmployees || canUseLabourPayroll) && (
+                  <button type="button" className={navigationButtonClass(activeView, 'labour-payroll')} onClick={() => selectView('labour-payroll')}>Overview</button>
+                )}
+                {canUseEmployees && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employees')} onClick={() => selectView('employees')}>Employee List</button>
+                )}
+                {canUseEmployees && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-add')} onClick={() => selectView('employee-add')}>Add Employee</button>
+                )}
+                {canUseAttendance && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-attendance')} onClick={() => selectView('employee-attendance')}>Attendance</button>
+                )}
+                {canUsePayrollAdvances && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-advances')} onClick={() => selectView('employee-advances')}>Salary Advances</button>
+                )}
+                {canUsePayrollRuns && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-daily-payroll')} onClick={() => selectView('employee-daily-payroll')}>Daily Settlements</button>
+                )}
+                {canUsePayrollRuns && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-monthly-payroll')} onClick={() => selectView('employee-monthly-payroll')}>Monthly Payroll</button>
+                )}
+                {canUsePayrollPayments && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-payments')} onClick={() => selectView('employee-payments')}>Salary Payments</button>
+                )}
+                {canUsePayrollRuns && (
+                  <button type="button" className={navigationButtonClass(activeView, 'employee-ledger')} onClick={() => selectView('employee-ledger')}>Employee Ledger</button>
+                )}
+              </div>
+            </details>
+
+            <details className="nav-group" open>
               <summary>People & Site</summary>
               <div className="nav-group-links">
-                {canUseEmployees && (
-                  <button type="button" className={navigationButtonClass(activeView, 'employees')} onClick={() => selectView('employees')}>Employees & Salaries</button>
-                )}
-                {canUseLabourPayroll && (
-                  <button type="button" className={navigationButtonClass(activeView, 'labour-payroll')} onClick={() => selectView('labour-payroll')}>Attendance & Payroll</button>
-                )}
                 {canUseSiteExpenses && (
                   <button type="button" className={navigationButtonClass(activeView, 'site-expenses')} onClick={() => { setView('site-expenses'); setIsSidebarOpen(false); }}>Site Expenses</button>
                 )}
@@ -635,8 +704,24 @@ export function AdminShell() {
           {activeView === 'subcontractor-payment' && <SubcontractPaymentsPage view="payment" />}
           {activeView === 'subcontractor-ledger' && <SubcontractPaymentsPage view="ledger" />}
           {activeView === 'equipment' && <EquipmentPage />}
-          {activeView === 'employees' && <EmployeesPage />}
-          {activeView === 'labour-payroll' && <LabourPayrollPage />}
+          {activeView === 'labour-payroll' && (
+            <EmployeeModulePage
+              onNavigate={showEmployeeModuleView}
+              canManageEmployees={canUseEmployees}
+              canUseAttendance={canUseAttendance}
+              canUsePayroll={canUsePayrollRuns}
+              canUseAdvances={canUsePayrollAdvances}
+              canUsePayments={canUsePayrollPayments}
+            />
+          )}
+          {activeView === 'employees' && <EmployeesPage view="list" />}
+          {activeView === 'employee-add' && <EmployeesPage view="create" />}
+          {activeView === 'employee-attendance' && <LabourPayrollPage view="attendance" />}
+          {activeView === 'employee-daily-payroll' && <LabourPayrollPage view="daily-payroll" />}
+          {activeView === 'employee-monthly-payroll' && <LabourPayrollPage view="monthly-payroll" />}
+          {activeView === 'employee-advances' && <LabourPayrollPage view="advances" />}
+          {activeView === 'employee-payments' && <LabourPayrollPage view="payments" />}
+          {activeView === 'employee-ledger' && <LabourPayrollPage view="ledger" />}
           {activeView === 'site-expenses' && <SiteExpensesPage />}
           {activeView === 'supplier-payables' && <SupplierPayablesPage />}
           {activeView === 'client-billing' && <ClientBillingPage />}

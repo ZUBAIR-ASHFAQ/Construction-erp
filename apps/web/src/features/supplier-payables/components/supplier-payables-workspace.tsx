@@ -190,6 +190,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const watchedPaymentVendorId = paymentForm.watch('vendorId');
   const watchedPaymentProjectId = paymentForm.watch('projectId');
   const cashBankQuery = useCashBankAccounts({ page: 1, pageSize: 100, status: 'ACTIVE' }, props.canReadFinance);
+  const paymentCashBankAccounts = useMemo(() => (cashBankQuery.data?.items ?? []).filter((account) => !watchedPaymentProjectId || account.projectId === watchedPaymentProjectId || account.projectId === null), [cashBankQuery.data?.items, watchedPaymentProjectId]);
   const paymentQuery = useSupplierPayments({
     ...(vendorFilter ? { vendorId: vendorFilter } : {}),
     ...(projectFilter ? { projectId: projectFilter } : {}),
@@ -586,7 +587,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                   </label>
                   <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /></label>
                   <label>Payment amount (partial or full)<input inputMode="decimal" {...paymentForm.register('amount')} /></label>
-                  <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{(cashBankQuery.data?.items ?? []).map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select></label>
+                  <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{paymentCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select></label>
                   <label>Reference (optional)<input {...paymentForm.register('reference')} /></label>
                 </div>
                 <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting payment…' : 'Create & post payment'}</button>

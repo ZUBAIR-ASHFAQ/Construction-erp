@@ -716,6 +716,14 @@ export class AdministrationService {
           if (projects.length !== siteManagerProjectIds.length) {
             throw createAdministrationError('PROJECT_SCOPE_INVALID');
           }
+          if (projects.some((project) => project.projectManagerUserId !== null)) {
+            throw new ValidationError({
+              fieldErrors: [{
+                field: 'siteManagerProjectIds',
+                message: 'Select only unassigned Projects. Site Manager assignment is managed from Administration → Users.'
+              }]
+            });
+          }
           for (const projectId of siteManagerProjectIds) this.requireActorProjectScope(projectId);
         }
 
@@ -741,6 +749,15 @@ export class AdministrationService {
             siteManagerProjectIds.map((projectId) => ({ projectId, roleCode: SITE_MANAGER_ROLE_CODE })),
             PROJECT_SCOPE_ACTIVE
           );
+          const assignedProjectCount = await repository.assignProjectManagerToProjects(user.id, siteManagerProjectIds);
+          if (assignedProjectCount !== siteManagerProjectIds.length) {
+            throw new ValidationError({
+              fieldErrors: [{
+                field: 'siteManagerProjectIds',
+                message: 'One or more selected Projects were assigned to another Site Manager before this login could be created.'
+              }]
+            });
+          }
         }
 
         if (!siteManagerRole) await issueInvitation(repository, tx, user.id);
@@ -1162,6 +1179,30 @@ export class AdministrationService {
       const projects = await repository.findCompanyProjectsByIds(projectIds);
       if (projects.length !== projectIds.length) throw createAdministrationError('PROJECT_SCOPE_INVALID');
 
+      const assignedRoles = await repository.listUserRoles(userId);
+      const isSystemAdministrator = assignedRoles.some((assignment) =>
+        assignment.status === ASSIGNMENT_ACTIVE
+        && assignment.role.code === SYSTEM_ADMIN_ROLE_CODE
+        && assignment.role.isSystem
+        && assignment.role.status === ROLE_ACTIVE
+      );
+      const isSiteManager = !isSystemAdministrator && assignedRoles.some((assignment) =>
+        assignment.status === ASSIGNMENT_ACTIVE
+        && assignment.role.code === SITE_MANAGER_ROLE_CODE
+        && assignment.role.isSystem
+        && assignment.role.status === ROLE_ACTIVE
+      );
+      if (isSiteManager && projects.some((project) =>
+        project.projectManagerUserId !== null && project.projectManagerUserId !== userId
+      )) {
+        throw new ValidationError({
+          fieldErrors: [{
+            field: 'projectScopes',
+            message: 'A selected Project is already assigned to another Site Manager.'
+          }]
+        });
+      }
+
       const beforeScopes = await repository.listUserProjectScopes(userId);
       for (const scope of beforeScopes) this.requireActorProjectScope(scope.projectId);
       for (const projectId of projectIds) this.requireActorProjectScope(projectId);
@@ -1179,6 +1220,23 @@ export class AdministrationService {
 
       await repository.deleteUserProjectScopes(userId);
       await repository.createUserProjectScopes(userId, projectScopes, PROJECT_SCOPE_ACTIVE);
+
+      if (isSiteManager) {
+        const nextProjectIdSet = new Set(projectIds);
+        const removedProjectIds = beforeScopes
+          .map((scope) => scope.projectId)
+          .filter((projectId) => !nextProjectIdSet.has(projectId));
+        await repository.clearProjectManagerFromProjects(userId, removedProjectIds);
+        const assignedProjectCount = await repository.assignProjectManagerToProjects(userId, projectIds);
+        if (assignedProjectCount !== projectIds.length) {
+          throw new ValidationError({
+            fieldErrors: [{
+              field: 'projectScopes',
+              message: 'One or more selected Projects were assigned to another Site Manager while access was being saved.'
+            }]
+          });
+        }
+      }
 
       const afterScopes = await repository.listUserProjectScopes(userId);
       const afterValues = afterScopes

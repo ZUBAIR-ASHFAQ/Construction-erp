@@ -63,6 +63,9 @@ export type TrialBalanceRepositoryInput = Readonly<{
 
 export type ListCashBankAccountsRepositoryInput = FinanceRepositoryPageWindow & Readonly<{
   status?: string | undefined;
+  projectId?: string | undefined;
+  allowedProjectIds?: readonly string[] | null | undefined;
+  includeCompanyAccounts?: boolean | undefined;
   journalStatuses: readonly string[];
 }>;
 
@@ -498,9 +501,17 @@ export class FinanceRepository {
   async listCashBankAccounts(input: ListCashBankAccountsRepositoryInput) {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
-    const where = scope.where(input.status ? { status: input.status } : {});
+    const allowedProjectIds = input.allowedProjectIds === null ? null : uniqueIds(input.allowedProjectIds ?? []);
+    const projectWhere = input.projectId
+      ? (input.includeCompanyAccounts ? { OR: [{ projectId: input.projectId }, { projectId: null }] } : { projectId: input.projectId })
+      : allowedProjectIds === null
+        ? {}
+        : input.includeCompanyAccounts
+          ? { OR: [{ projectId: null }, { projectId: { in: allowedProjectIds } }] }
+          : { projectId: { in: allowedProjectIds } };
+    const where = scope.where({ ...(input.status ? { status: input.status } : {}), ...projectWhere });
     const [items, total] = await Promise.all([
-      this.db.cashBankAccount.findMany({ where, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
+      this.db.cashBankAccount.findMany({ where, include: { project: { select: { projectCode: true, name: true } } }, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.cashBankAccount.count({ where })
     ]);
     const accountIds = items.map((item) => item.glAccountId);
@@ -537,7 +548,7 @@ export class FinanceRepository {
   }
 
   /** Create the minimal Cash/Bank master for a GL account whose type is CASH or BANK. */
-  async createCashBankAccountForGl(input: Readonly<{ code: string; name: string; accountType: string; glAccountId: string; bankName?: string | null; accountReference?: string | null; status: string }>) {
+  async createCashBankAccountForGl(input: Readonly<{ code: string; name: string; accountType: string; glAccountId: string; projectId?: string | null; bankName?: string | null; accountReference?: string | null; status: string }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.cashBankAccount.create({
       data: scope.createData({
@@ -545,6 +556,7 @@ export class FinanceRepository {
         name: input.name,
         accountType: input.accountType,
         glAccountId: input.glAccountId,
+        projectId: input.projectId ?? null,
         bankName: input.bankName ?? null,
         accountReference: input.accountReference ?? null,
         status: input.status
@@ -555,7 +567,7 @@ export class FinanceRepository {
   /** Find one Cash/Bank account only inside the authenticated Company. */
   async findCashBankAccountById(cashBankAccountId: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.cashBankAccount.findFirst({ where: scope.where({ id: cashBankAccountId }) });
+    return this.db.cashBankAccount.findFirst({ where: scope.where({ id: cashBankAccountId }), include: { project: { select: { projectCode: true, name: true } } } });
   }
 
   /** Update one Cash/Bank master and its mapped GL display/lifecycle fields atomically. */

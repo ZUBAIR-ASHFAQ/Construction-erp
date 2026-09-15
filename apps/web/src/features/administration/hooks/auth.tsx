@@ -2,6 +2,7 @@ import {
   createContext,
   type ReactNode,
   useContext,
+  useEffect,
   useState
 } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -9,9 +10,12 @@ import {
   clearSessionTokens,
   getCurrentIdentity,
   readAccessToken,
-  saveSessionTokens,
+  readAccessTokenExpiresAt,
+  refreshStoredSession,
+  saveAccessToken,
   signIn as signInRequest,
   signOut as signOutRequest,
+  type AuthSessionResult,
   type CurrentIdentity,
   type SignInInput
 } from '../api/auth-api.js';
@@ -28,11 +32,23 @@ type AuthContextValue = Readonly<{
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AUTH_QUERY_KEY = ['module-24a', 'current-identity'] as const;
+const ACCESS_REFRESH_LEAD_MS = 60 * 1000;
+
+/** Keep the query cache aligned with the server-derived identity returned by login/refresh. */
+function identityFromSession(result: AuthSessionResult): CurrentIdentity {
+  return {
+    user: result.user,
+    permissions: result.permissions,
+    projectScope: result.projectScope
+  };
+}
 
 /** Provide the current Administration session and auth actions to the React tree. */
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const queryClient = useQueryClient();
-  const [hasSession, setHasSession] = useState(() => readAccessToken() !== null);
+  // Always try the HttpOnly refresh cookie once on startup. This restores a
+  // valid server session after a reload/new tab even when sessionStorage is empty.
+  const [hasSession, setHasSession] = useState(true);
 
   const identityQuery = useQuery({
     queryKey: AUTH_QUERY_KEY,
@@ -41,16 +57,40 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     retry: false
   });
 
+  useEffect(() => {
+    if (identityQuery.isError && readAccessToken() === null) {
+      setHasSession(false);
+    }
+  }, [identityQuery.isError]);
+
+  useEffect(() => {
+    if (!hasSession || !identityQuery.data) return undefined;
+
+    const expiresAt = readAccessTokenExpiresAt();
+    if (expiresAt === null) return undefined;
+
+    const delay = Math.max(0, expiresAt - Date.now() - ACCESS_REFRESH_LEAD_MS);
+    const timer = window.setTimeout(() => {
+      void refreshStoredSession()
+        .then((result) => {
+          queryClient.setQueryData<CurrentIdentity>(AUTH_QUERY_KEY, identityFromSession(result));
+        })
+        .catch(() => {
+          // Keep the current browser state on transient refresh failures. The
+          // next protected request still retries refresh and only clears the
+          // session when the server explicitly returns 401.
+        });
+    }, delay);
+
+    return () => window.clearTimeout(timer);
+  }, [hasSession, identityQuery.data, queryClient]);
+
   const signInMutation = useMutation({
     mutationFn: signInRequest,
     onSuccess(result) {
-      saveSessionTokens(result.accessToken, result.refreshToken);
+      saveAccessToken(result.accessToken, result.session.accessExpiresAt);
       setHasSession(true);
-      queryClient.setQueryData<CurrentIdentity>(AUTH_QUERY_KEY, {
-        user: result.user,
-        permissions: result.permissions,
-        projectScope: result.projectScope
-      });
+      queryClient.setQueryData<CurrentIdentity>(AUTH_QUERY_KEY, identityFromSession(result));
     }
   });
 
@@ -63,7 +103,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     }
   });
 
-  /** Sign in and let the mutation save the returned server credentials. */
+  /** Sign in and save the returned short-lived access credential. */
   async function handleSignIn(input: SignInInput): Promise<void> {
     await signInMutation.mutateAsync(input);
   }
@@ -118,10 +158,10 @@ export function canUseProjectScopedWorkspace(identity: CurrentIdentity | null, r
   return hasAnyIdentityPermission(identity, requiredPermissions) || hasRestrictedProjectMembership(identity);
 }
 
-/** Show Document Management when company access or a restricted Project scope can lead to server-authorized rows. */
+/** Show Document Management only when the authenticated identity has explicit Document or Audit permission. */
 export function useDocumentWorkspaceVisibility(): boolean {
   const { identity } = useAuth();
-  return hasAnyIdentityPermission(identity, ['documents.read', 'audit.read']) || hasRestrictedProjectMembership(identity);
+  return hasAnyIdentityPermission(identity, ['documents.read', 'audit.read']);
 }
 
 /** Show the Project workspace when company permission or a restricted Project membership can lead to server-authorized reads. */

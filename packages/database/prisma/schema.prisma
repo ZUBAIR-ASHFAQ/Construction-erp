@@ -709,6 +709,7 @@ model Project {
   goodsReceipts               GoodsReceipt[]
   stockLedger                 StockLedger[]
   materialIssues              MaterialIssue[]
+  materials                   Material[]
   equipmentAssignments        EquipmentAssignment[]
   attendanceEntries           AttendanceEntry[]
   projectBillingSettings      ProjectBillingSetting[]
@@ -723,6 +724,7 @@ model Project {
   dashboardDefaultPreferences DashboardPreference[]   @relation("DashboardPreferenceDefaultProject")
   subcontractContracts        SubcontractContract[]
   employeeAdvances            EmployeeAdvance[]
+  cashBankAccounts             CashBankAccount[]
 
   @@unique([companyId, projectCode], map: "projects_company_project_code_uq")
   @@unique([id, companyId], map: "projects_id_company_uq")
@@ -1005,12 +1007,14 @@ model CashBankAccount {
   name             String  @db.VarChar(300)
   accountType      String  @map("account_type") @db.VarChar(32)
   glAccountId      String  @map("gl_account_id") @db.Uuid
+  projectId        String? @map("project_id") @db.Uuid
   bankName         String? @map("bank_name") @db.VarChar(200)
   accountReference String? @map("account_reference") @db.VarChar(200)
   status           String  @db.VarChar(32)
 
   company             Company              @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
   glAccount           GlAccount            @relation(fields: [glAccountId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
+  project             Project?             @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   reconciliations     BankReconciliation[]
   siteExpenses        SiteExpense[]
   supplierPayments    SupplierPayment[]
@@ -1023,6 +1027,7 @@ model CashBankAccount {
   @@unique([companyId, glAccountId], map: "cash_bank_accounts_company_gl_account_uq")
   @@unique([id, companyId], map: "cash_bank_accounts_id_company_uq")
   @@index([companyId, status, accountType], map: "cash_bank_accounts_company_status_type_idx")
+  @@index([companyId, projectId, status, accountType], map: "cash_bank_accounts_company_project_status_type_idx")
   @@map("cash_bank_accounts")
 }
 
@@ -1333,10 +1338,11 @@ model PurchaseOrderItem {
   @@map("purchase_order_items")
 }
 
-/// Final Module 11 Company-owned material master.
+/// Final Module 11 Project-owned material master; legacy unassigned rows remain administrator-visible for historical compatibility.
 model Material {
   id        String  @id @default(uuid()) @db.Uuid
   companyId String  @map("company_id") @db.Uuid
+  projectId String? @map("project_id") @db.Uuid
   code      String  @db.VarChar(100)
   name      String  @db.VarChar(300)
   unit      String  @db.VarChar(64)
@@ -1344,15 +1350,16 @@ model Material {
   status    String  @db.VarChar(32)
 
   company                  Company                   @relation(fields: [companyId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  project                  Project?                  @relation(fields: [projectId, companyId], references: [id, companyId], onDelete: Restrict, onUpdate: Restrict)
   goodsReceiptItems        GoodsReceiptItem[]
   purchaseRequisitionItems PurchaseRequisitionItem[]
   purchaseOrderItems       PurchaseOrderItem[]
   stockLedger              StockLedger[]
   materialIssueItems       MaterialIssueItem[]
 
-  @@unique([companyId, code], map: "materials_company_code_uq")
+  @@unique([companyId, projectId, code], map: "materials_company_project_code_uq")
   @@unique([id, companyId], map: "materials_id_company_uq")
-  @@index([companyId, status, category], map: "materials_company_status_category_idx")
+  @@index([companyId, projectId, status, category], map: "materials_company_project_status_category_idx")
   @@map("materials")
 }
 

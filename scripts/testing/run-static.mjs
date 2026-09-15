@@ -14,6 +14,7 @@ const foundationStaticTests = [
   'outbox.test.mjs',
   'queue.test.mjs',
   'recovery.test.mjs',
+  'request-context.test.mjs',
   'storage.test.mjs',
   'testing-infrastructure.test.mjs',
   'workspace.test.mjs'

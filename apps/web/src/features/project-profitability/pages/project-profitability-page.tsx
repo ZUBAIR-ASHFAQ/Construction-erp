@@ -1,14 +1,11 @@
-import { useAuth, usePermission } from '../../administration/hooks/auth.js';
+import { usePermission } from '../../administration/hooks/auth.js';
 import { ProjectProfitabilityWorkspace } from '../components/project-profitability-workspace.js';
 
 /** Render the Final-21 Module 19 analytical workspace with permission-aware read visibility. */
 export function ProjectProfitabilityPage() {
-  const auth = useAuth();
-  const hasRestrictedProjects = auth.identity?.projectScope.kind === 'restricted'
-    && auth.identity.projectScope.projectIds.length > 0;
-  const canRead = usePermission('project_profitability.read') || Boolean(hasRestrictedProjects);
-  const canReadFinance = usePermission('project_profitability.finance.read') || Boolean(hasRestrictedProjects);
-  const canReadPortfolio = usePermission('project_profitability.portfolio.read') || Boolean(hasRestrictedProjects);
+  const canRead = usePermission('project_profitability.read');
+  const canReadFinance = usePermission('project_profitability.finance.read');
+  const canReadPortfolio = usePermission('project_profitability.portfolio.read');
 
   return (
     <section className="admin-stack" aria-labelledby="project-profitability-title">

@@ -100,7 +100,7 @@ function mutationMessage(error: unknown): string {
 export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const requisitions = useRequisitions(props.projectId);
   const purchaseOrders = useProcurementPurchaseOrders(props.projectId);
-  const vendors = useProcurementVendors();
+  const vendors = useProcurementVendors(props.projectId || null, Boolean(props.projectId));
   const vendorNames = useMemo(() => new Map((vendors.data?.items ?? []).map((vendor) => [vendor.id, vendor.displayName])), [vendors.data?.items]);
   const createRequisition = useCreateRequisition();
   const approveRequisition = useApproveRequisition();
@@ -108,7 +108,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const issuePurchaseOrder = useIssueProcurementPurchaseOrder();
   const cancelPurchaseOrder = useCancelProcurementPurchaseOrder();
   const createGoodsReceipt = useCreateGoodsReceipt();
-  const materials = useMaterials(props.canCreateRequisition);
+  const materials = useMaterials(props.projectId || undefined, props.canCreateRequisition && Boolean(props.projectId));
   const stock = useInventoryStock(undefined, props.canReadInventory && props.canCreateGoodsReceipt);
   const stages = useProjectStages(props.projectId, props.canReadStages && props.canCreateRequisition);
 

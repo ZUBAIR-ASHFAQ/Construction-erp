@@ -218,6 +218,17 @@ function allocationResponse(value: unknown): PayrollAllocation[] {
   });
 }
 
+/** Return the unique Projects represented by one server-owned Payroll allocation. */
+function payrollAllocationProjectIds(value: unknown): string[] {
+  return [...new Set(allocationResponse(value).map((allocation) => allocation.projectId))];
+}
+
+/** Return whether one Payroll line is safely owned by exactly one visible Project. */
+function payrollLineVisibleForSettlement(value: unknown, allowedProjectIds: readonly string[]): boolean {
+  const projectIds = payrollAllocationProjectIds(value);
+  return projectIds.length === 1 && allowedProjectIds.includes(projectIds[0] as string);
+}
+
 /** Serialize one Payroll Run with optional calculated lines. */
 function payrollRunResponse(run: Readonly<{
   id: string;
@@ -242,7 +253,7 @@ function payrollRunResponse(run: Readonly<{
     payslip?: Readonly<{ id: string; documentId: string | null; generatedAt: Date | null }> | null;
     payments?: readonly Readonly<{ amount: DecimalLike }>[];
   }>[];
-}>) {
+}>, allowedProjectIds: readonly string[] | null = null) {
   return {
     id: run.id,
     periodStart: dateOnly(run.periodStart),
@@ -252,7 +263,9 @@ function payrollRunResponse(run: Readonly<{
     createdByName: run.creator?.name ?? 'System user',
     finalizedAt: run.finalizedAt?.toISOString() ?? null,
     overtimeMultiplier: run.overtimeMultiplier?.toString() ?? null,
-    lines: (run.lines ?? []).map((line) => {
+    lines: (run.lines ?? [])
+      .filter((line) => allowedProjectIds === null || payrollLineVisibleForSettlement(line.projectAllocationJson, allowedProjectIds))
+      .map((line) => {
       const net = moneyCents(line.netAmount);
       const paid = (line.payments ?? []).reduce((sum, payment) => sum + moneyCents(payment.amount), 0n);
       return {
@@ -396,6 +409,19 @@ export class LabourPayrollService {
     const security = requireRequestSecurityContext();
     if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
     if (!(await this.hasCompanyPermission(repository, permission, asOf))) throw new AuthorizationError();
+  }
+
+  /** Resolve Payroll settlement visibility without granting Company-wide Payroll read access. */
+  private async payrollSettlementVisibility(repository: AdministrationRepository, asOf: Date): Promise<readonly string[] | null> {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    if (await this.hasCompanyPermission(repository, 'payroll.read', asOf)) {
+      return security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null;
+    }
+    if (security.projectScope.kind === 'restricted' && await this.hasCompanyPermission(repository, 'payroll.payments.create', asOf)) {
+      return security.projectScope.projectIds;
+    }
+    throw new AuthorizationError();
   }
 
   /** Require one attendance permission for one Project in trusted scope. */
@@ -570,18 +596,35 @@ export class LabourPayrollService {
     return result.response.body;
   }
 
-  /** List Company Payroll Run history for authorized Payroll users. */
+  /** List Payroll Runs under Company read or restricted Project settlement visibility. */
   async listPayrollRuns(query: ListPayrollRunsQuery) {
-    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'payroll.read', new Date());
+    const visibility = await this.payrollSettlementVisibility(new AdministrationRepository(this.db), new Date());
     const window = pageWindow(query);
-    const result = await new LabourPayrollRepository(this.db).listPayrollRuns({ skip: window.skip, take: window.take });
+    const repository = new LabourPayrollRepository(this.db);
+    if (visibility === null) {
+      const result = await repository.listPayrollRuns({ skip: window.skip, take: window.take });
+      return {
+        items: result.items.map((item) => {
+          const response = payrollRunResponse(item);
+          const { lines: _lines, ...summary } = response;
+          return summary;
+        }),
+        total: result.total,
+        page: window.page,
+        pageSize: window.pageSize
+      };
+    }
+
+    const visible = (await repository.listFinalizedPayrollRunsForSettlement())
+      .filter((run) => run.lines.some((line) => payrollLineVisibleForSettlement(line.projectAllocationJson, visibility)));
     return {
-      items: result.items.map((item) => {
-        const response = payrollRunResponse(item);
-        const { lines: _lines, ...summary } = response;
+      items: visible.slice(window.skip, window.skip + window.take).map((run) => {
+        const { lines: _lines, ...withoutLines } = run;
+        const response = payrollRunResponse(withoutLines);
+        const { lines: _responseLines, ...summary } = response;
         return summary;
       }),
-      total: result.total,
+      total: visible.length,
       page: window.page,
       pageSize: window.pageSize
     };
@@ -878,12 +921,14 @@ export class LabourPayrollService {
     return result.response.body;
   }
 
-  /** Get one calculated/finalized Payroll Run detail. */
+  /** Get one Payroll Run detail without widening restricted Project settlement scope. */
   async getPayrollRun(payrollRunId: string) {
-    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'payroll.read', new Date());
+    const visibility = await this.payrollSettlementVisibility(new AdministrationRepository(this.db), new Date());
     const run = await new LabourPayrollRepository(this.db).findPayrollRunById(payrollRunId);
-    if (!run) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
-    return payrollRunResponse(run);
+    if (!run || (visibility !== null && run.status !== PAYROLL_FINALIZED)) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
+    const response = payrollRunResponse(run, visibility);
+    if (visibility !== null && response.lines.length === 0) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
+    return response;
   }
 
   /** List active Cash/Bank accounts for an authorized Employee salary-payment selector. */
@@ -898,6 +943,8 @@ export class LabourPayrollService {
       skip: 0,
       take: 100,
       status: ACTIVE,
+      allowedProjectIds: security.projectScope.kind === 'restricted' ? security.projectScope.projectIds : null,
+      includeCompanyAccounts: security.projectScope.kind === 'all',
       journalStatuses: ['POSTED', 'REVERSED']
     });
     return result.items
@@ -908,6 +955,9 @@ export class LabourPayrollService {
         name: account.name,
         accountType: account.accountType as 'CASH' | 'BANK',
         accountNumber: account.accountReference,
+        projectId: account.projectId,
+        projectCode: account.project?.projectCode ?? null,
+        projectName: account.project?.name ?? null,
         balance: account.balance
       }));
   }
@@ -956,7 +1006,10 @@ export class LabourPayrollService {
         throw createLabourPayrollError('EMPLOYEE_ADVANCE_INVALID');
       }
       const cashBank = await repository.findPayrollCashBankAccount(input.cashBankAccountId);
-      if (!cashBank || cashBank.status !== ACTIVE || !['CASH', 'BANK'].includes(cashBank.accountType)
+      const security = requireRequestSecurityContext();
+      const accountMatchesProject = cashBank?.projectId === input.projectId
+        || (security.projectScope.kind === 'all' && cashBank?.projectId === null);
+      if (!cashBank || !accountMatchesProject || cashBank.status !== ACTIVE || !['CASH', 'BANK'].includes(cashBank.accountType)
         || cashBank.glAccount.status !== ACTIVE || cashBank.glAccount.accountType !== cashBank.accountType) {
         throw createLabourPayrollError('PAYROLL_CASH_BANK_INVALID');
       }
@@ -1040,6 +1093,13 @@ export class LabourPayrollService {
       const repository = new LabourPayrollRepository(tx);
       const line = await repository.lockFinalizedPayrollLine(input.payrollLineId);
       if (!line) throw createLabourPayrollError('PAYROLL_PAYMENT_INVALID');
+      const security = requireRequestSecurityContext();
+      const lineProjectIds = payrollAllocationProjectIds(line.projectAllocationJson);
+      if (lineProjectIds.length === 0) throw createLabourPayrollError('PAYROLL_PAYMENT_INVALID');
+      const postingProjectId = lineProjectIds.length === 1 ? lineProjectIds[0] as string : null;
+      if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+      if (security.projectScope.kind === 'restricted'
+        && (postingProjectId === null || !security.projectScope.projectIds.includes(postingProjectId))) throw new AuthorizationError();
       const paymentDate = inputDate(input.paymentDate);
       if (paymentDate < line.periodEnd) {
         throw new ValidationError({ fieldErrors: [{ field: 'paymentDate', message: 'Payment date cannot precede the finalized Payroll period end.' }] });
@@ -1051,7 +1111,11 @@ export class LabourPayrollService {
       if (amount <= 0n || paid + amount > net) throw createLabourPayrollError('PAYROLL_PAYMENT_EXCEEDS_OUTSTANDING');
 
       const cashBank = await repository.findPayrollCashBankAccount(input.cashBankAccountId);
+      const accountMatchesPayroll = postingProjectId === null
+        ? cashBank?.projectId === null
+        : cashBank?.projectId === postingProjectId || (security.projectScope.kind === 'all' && cashBank?.projectId === null);
       if (!cashBank
+        || !accountMatchesPayroll
         || cashBank.status !== ACTIVE
         || !['CASH', 'BANK'].includes(cashBank.accountType)
         || cashBank.glAccount.status !== ACTIVE
@@ -1080,8 +1144,8 @@ export class LabourPayrollService {
         postingDate: paymentDate,
         description: `Employee salary payment ${paymentNo}`,
         lines: [
-          { accountId: accounts.payable.id, projectId: null, stageId: null, debit: input.amount, credit: ZERO_MONEY, description: `Payroll payable settlement ${paymentNo}` },
-          { accountId: cashBank.glAccount.id, projectId: null, stageId: null, debit: ZERO_MONEY, credit: input.amount, description: `Cash/Bank salary payment ${paymentNo}` }
+          { accountId: accounts.payable.id, projectId: postingProjectId, stageId: null, debit: input.amount, credit: ZERO_MONEY, description: `Payroll payable settlement ${paymentNo}` },
+          { accountId: cashBank.glAccount.id, projectId: postingProjectId, stageId: null, debit: ZERO_MONEY, credit: input.amount, description: `Cash/Bank salary payment ${paymentNo}` }
         ]
       });
       const response = payrollPaymentResponse(created);

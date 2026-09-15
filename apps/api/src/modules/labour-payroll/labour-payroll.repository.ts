@@ -203,6 +203,19 @@ export class LabourPayrollRepository {
     return { items, total };
   }
 
+  /** List finalized Payroll Runs with only allocation metadata needed for Project settlement visibility. */
+  async listFinalizedPayrollRunsForSettlement() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.payrollRun.findMany({
+      where: scope.where({ status: 'FINALIZED' }),
+      include: {
+        creator: { select: { name: true } },
+        lines: { select: { projectAllocationJson: true } }
+      },
+      orderBy: [{ periodStart: 'desc' }, { id: 'asc' }]
+    });
+  }
+
   /** Find one Payroll Run and its calculated lines/payslips inside the Company. */
   async findPayrollRunById(payrollRunId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -439,6 +452,7 @@ export class LabourPayrollRepository {
       employeeId: string;
       payrollRunId: string;
       netAmount: { toString(): string };
+      projectAllocationJson: unknown;
       periodStart: Date;
       periodEnd: Date;
     }>>`
@@ -446,6 +460,7 @@ export class LabourPayrollRepository {
              line.employee_id AS "employeeId",
              line.payroll_run_id AS "payrollRunId",
              line.net_amount AS "netAmount",
+             line.project_allocation_json AS "projectAllocationJson",
              run.period_start AS "periodStart",
              run.period_end AS "periodEnd"
       FROM payroll_lines line

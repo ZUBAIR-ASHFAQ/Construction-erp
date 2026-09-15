@@ -91,7 +91,6 @@ const PROJECT_STAGES_PERMISSIONS = [
 const PROJECT_TEAM_PERMISSIONS = ['project_team.read', 'project_team.manage'] as const;
 const FINANCE_PERMISSIONS = [
   'finance.read',
-  'finance.accounts.manage',
   'finance.journals.create',
   'finance.journals.post',
   'finance.journals.reverse',
@@ -297,7 +296,7 @@ export function AdminShell() {
   const hasClientBillingCompanyPermission = hasAnyIdentityPermission(auth.identity, CLIENT_BILLING_PERMISSIONS);
   const canUseClientBilling = hasClientBillingCompanyPermission || hasRestrictedProjectMembership(auth.identity);
   const canUseClientReceipts = canUseProjectScopedWorkspace(auth.identity, CLIENT_RECEIPTS_PERMISSIONS);
-  const canUseProjectProfitability = canUseProjectScopedWorkspace(auth.identity, PROJECT_PROFITABILITY_PERMISSIONS);
+  const canUseProjectProfitability = hasAnyIdentityPermission(auth.identity, PROJECT_PROFITABILITY_PERMISSIONS);
   const canReadReports = usePermission('reports.read');
   const canReadDashboard = usePermission('dashboard.read');
   const canReadUsers = usePermission('admin.users.read');

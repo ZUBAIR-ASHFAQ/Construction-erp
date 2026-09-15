@@ -8,7 +8,7 @@ export function SubcontractPaymentsPage({ view }: Readonly<{ view: 'payment' | '
       view={view}
       canReadSubcontractors={usePermission('subcontractors.read')}
       canManageSubcontractors={usePermission('subcontractors.manage')}
-      canReadFinance={usePermission('finance.read')}
+      canReadFinance={usePermission('finance.read') || usePermission('finance.accounts.manage')}
     />
   );
 }

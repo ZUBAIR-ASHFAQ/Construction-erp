@@ -18,8 +18,12 @@ import {
 const PROCUREMENT_QUERY_KEY = ['final-21', 'procurement'] as const;
 
 /** Load final Module 5 Vendor choices used by Procurement. */
-export function useProcurementVendors(enabled = true) {
-  return useQuery({ queryKey: [...PROCUREMENT_QUERY_KEY, 'vendors'], queryFn: listVendors, enabled });
+export function useProcurementVendors(projectId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...PROCUREMENT_QUERY_KEY, 'vendors', projectId],
+    queryFn: () => listVendors(projectId as string),
+    enabled: enabled && projectId !== null
+  });
 }
 
 /** Load material requirements for one Project. */

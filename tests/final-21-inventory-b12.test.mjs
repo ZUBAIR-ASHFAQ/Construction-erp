@@ -54,7 +54,9 @@ test('B12 replaces legacy Inventory helper tables with final material and append
   const issueItem = prismaModel('MaterialIssueItem');
 
   assert.match(material, /@@map\("materials"\)/);
-  assert.match(material, /@@unique\(\[companyId, code\]/);
+  assert.match(material, /projectId\s+String\?/);
+  assert.match(material, /project\s+Project\?/);
+  assert.match(material, /@@unique\(\[companyId, projectId, code\]/);
   assert.match(warehouse, /@@map\("warehouses"\)/);
   assert.match(ledger, /@@map\("stock_ledger"\)/);
   assert.match(ledger, /stageId\s+String\?/);
@@ -183,7 +185,7 @@ test('B12 aligns Inventory permissions and React workspace with Final-21', () =>
   for (const permission of ['inventory.read', 'materials.manage', 'inventory.issue', 'inventory.transfer', 'inventory.adjust']) {
     assert.ok(schema.includes(`'${permission}'`), `missing ${permission}`);
   }
-  assert.match(service, /requireCompanyPermission\(users, 'materials\.manage'/);
+  assert.match(service, /requireProjectPermission\(users, projectId, 'materials\.manage'/);
   assert.doesNotMatch(page, /usePermission\('materials\.manage'\)/);
   assert.match(materialsPage, /usePermission\('materials\.manage'\)/);
   assert.match(adminShell, /'materials\.manage'/);
@@ -198,6 +200,7 @@ test('B12 aligns Inventory permissions and React workspace with Final-21', () =>
   assert.doesNotMatch(workspace, /Create material|Add material/);
   assert.match(materialsWorkspace, /Add material/);
   assert.match(materialsWorkspace, /Material master/);
+  assert.match(materialsWorkspace, /Project material scope/);
   assert.match(adminShell, />Materials<\/button>/);
   assert.match(adminShell, />Inventory<\/button>/);
   assert.match(adminShell, /activeView === 'materials'/);

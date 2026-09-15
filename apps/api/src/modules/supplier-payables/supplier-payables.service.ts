@@ -721,8 +721,7 @@ export class SupplierPayablesService {
     const users = new AdministrationRepository(tx);
     const visibility = await this.resolveVisibility(users, 'supplier_payments.create', now);
     const repository = new SupplierPayablesRepository(tx);
-    const vendor = await repository.findVendorById(input.vendorId, input.projectId ?? undefined);
-    if (!vendor) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
+    const security = requireRequestSecurityContext();
     let paymentProjectId = input.projectId ?? null;
     let linkedInvoice: Awaited<ReturnType<SupplierPayablesRepository['lockSupplierInvoiceForWrite']>> = null;
     if (input.supplierInvoiceId) {
@@ -738,6 +737,12 @@ export class SupplierPayablesService {
         throw createSupplierPayablesError('PAYMENT_ALLOCATION_INVALID');
       }
     }
+
+    if (security.projectScope.kind === 'restricted' && !paymentProjectId) {
+      throw new ValidationError({ message: 'Select the Project for this Supplier Payment.' });
+    }
+    const vendor = await repository.findVendorById(input.vendorId, paymentProjectId ?? undefined);
+    if (!vendor) throw createSupplierPayablesError('SUPPLIER_SCOPE_MISMATCH');
 
     if (input.projectId) {
       await this.requireProjectPermission(users, input.projectId, 'supplier_payments.create', now);
@@ -756,9 +761,11 @@ export class SupplierPayablesService {
       || !hasStatus(cashBank.status, ACTIVE)
       || !['CASH', 'BANK'].includes(cashBank.accountType.trim().toUpperCase())
       || cashBank.glAccount.accountType.trim().toUpperCase() !== cashBank.accountType.trim().toUpperCase()
-      || !hasStatus(cashBank.glAccount.status, ACTIVE)) {
-      throw new ValidationError({ message: 'Supplier Payment requires an active same-Company Cash/Bank account.' });
+      || !hasStatus(cashBank.glAccount.status, ACTIVE)
+      || (security.projectScope.kind === 'restricted' && cashBank.projectId !== paymentProjectId)) {
+      throw new ValidationError({ message: 'Supplier Payment requires an active Cash/Bank account owned by the selected Project.' });
     }
+    await repository.ensureSupplierInvoiceAccounts();
     const payable = await repository.findGlAccountByCode(SUPPLIER_PAYABLE_ACCOUNT_CODE);
     if (!payable || !hasStatus(payable.status, ACTIVE) || payable.accountType.toUpperCase() !== 'LIABILITY') {
       throw new ValidationError({ message: `Configure active liability account ${SUPPLIER_PAYABLE_ACCOUNT_CODE} before posting Supplier Payments.` });

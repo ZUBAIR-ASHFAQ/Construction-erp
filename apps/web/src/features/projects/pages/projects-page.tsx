@@ -20,7 +20,6 @@ const createProjectSchema = z.object({
   currency: z.string().trim().length(3, 'Currency must use three letters.').regex(/^[A-Za-z]{3}$/, 'Currency must use letters only.'),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date is required.'),
   plannedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Planned end date is required.'),
-  projectManagerUserId: z.string().trim(),
   location: z.string().trim().max(1000, 'Location is too long.')
 }).superRefine((value, context) => {
   if (value.plannedEndDate < value.startDate) {
@@ -28,14 +27,6 @@ const createProjectSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['plannedEndDate'],
       message: 'Planned end date cannot be before the start date.'
-    });
-  }
-
-  if (value.projectManagerUserId && !z.string().uuid().safeParse(value.projectManagerUserId).success) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['projectManagerUserId'],
-      message: 'Project Manager must be a valid User ID when provided.'
     });
   }
 
@@ -113,7 +104,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
       currency: 'PKR',
       startDate: '',
       plannedEndDate: '',
-      projectManagerUserId: '',
       location: ''
     }
   });
@@ -154,7 +144,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
       currency: values.currency.toUpperCase(),
       startDate: values.startDate,
       plannedEndDate: values.plannedEndDate,
-      projectManagerUserId: values.projectManagerUserId || null,
       location: values.location || null
     });
 
@@ -168,7 +157,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
       currency: project.currency,
       startDate: '',
       plannedEndDate: '',
-      projectManagerUserId: '',
       location: ''
     });
     setDialog({ kind: 'open', projectId: project.id });
@@ -312,17 +300,10 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
               <label>Currency<input maxLength={3} {...createForm.register('currency')} /></label>
               <label>Start date<input type="date" {...createForm.register('startDate')} /></label>
               <label>Planned end date<input type="date" {...createForm.register('plannedEndDate')} /></label>
-              <label>
-                Project Manager
-                <select {...createForm.register('projectManagerUserId')} disabled={!canReadUsers}>
-                  <option value="">{canReadUsers ? 'Unassigned' : 'Unassigned · User read permission required'}</option>
-                  {activeManagers.map((user) => (
-                    <option key={user.id} value={user.id}>{user.name} · {user.email}</option>
-                  ))}
-                </select>
-              </label>
               <label className="project-form-wide">Location (optional)<input {...createForm.register('location')} /></label>
             </div>
+
+            <p className="muted project-edit-note">Create the Project first. Assign its Site Manager afterward from Administration → Users.</p>
 
             {Object.values(createForm.formState.errors).map((error, index) => (
               <span className="field-error" key={index}>{error?.message}</span>

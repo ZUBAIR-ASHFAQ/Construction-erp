@@ -439,8 +439,9 @@ export class VendorsSubcontractorsService {
       || cashBank.status !== ACTIVE
       || !['CASH', 'BANK'].includes(cashBank.accountType.trim().toUpperCase())
       || cashBank.glAccount.status !== ACTIVE
-      || cashBank.glAccount.accountType.trim().toUpperCase() !== cashBank.accountType.trim().toUpperCase()) {
-      throw new ValidationError({ message: 'Subcontractor Payment requires an active same-Company Cash/Bank account.' });
+      || cashBank.glAccount.accountType.trim().toUpperCase() !== cashBank.accountType.trim().toUpperCase()
+      || (requireRequestSecurityContext().projectScope.kind === 'restricted' && cashBank.projectId !== contract.projectId)) {
+      throw new ValidationError({ message: 'Subcontractor Payment requires an active Cash/Bank account owned by the Contract Project.' });
     }
 
     const expenseAccount = await repository.ensureSubcontractPaymentSetup();

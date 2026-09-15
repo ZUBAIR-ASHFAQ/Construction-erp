@@ -81,7 +81,12 @@ export function UsersPage() {
     mutationFn: createUser,
     onSuccess: async () => {
       createForm.reset();
-      await queryClient.invalidateQueries({ queryKey: ['administration', 'users'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['administration', 'users'] }),
+        queryClient.invalidateQueries({ queryKey: ['administration', 'projects', 'site-manager-create-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['module-6', 'projects'] }),
+        queryClient.invalidateQueries({ queryKey: ['module-24a', 'users'] })
+      ]);
     }
   });
 
@@ -96,6 +101,7 @@ export function UsersPage() {
   const users = usersQuery.data?.items ?? [];
   const selectedUser = users.find((user) => user.id === selectedUserId) ?? null;
   const roles = rolesQuery.data?.items ?? [];
+  const unassignedSiteManagerProjects = (projectOptionsQuery.data?.items ?? []).filter((project) => project.projectManagerUserId === null);
   const pageCount = usersQuery.data ? Math.max(1, Math.ceil(usersQuery.data.total / usersQuery.data.pageSize)) : 1;
 
   /** Apply the typed search text and restart pagination from page one. */
@@ -218,8 +224,8 @@ export function UsersPage() {
 
       {canManageUsers && canManageProjectScopes && (
         <section className="admin-card">
-          <h2>Create Site Manager login</h2>
-          <p className="muted">Set the login credentials and assigned Projects. The account becomes active immediately; no invitation is required.</p>
+          <h2>Step 2 · Create Site Manager login</h2>
+          <p className="muted">Create the Project first in Project Management, then create the Site Manager login here and assign its Project(s). The Site Manager role is assigned automatically and the account becomes active immediately; no invitation is required.</p>
           <form className="admin-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <label>Name<input {...createForm.register('name')} /></label>
             {createForm.formState.errors.name && <span className="field-error">{createForm.formState.errors.name.message}</span>}
@@ -234,13 +240,13 @@ export function UsersPage() {
             <fieldset className="admin-form">
               <legend>Assigned Projects</legend>
               {projectOptionsQuery.isPending && <p>Loading Projects...</p>}
-              {(projectOptionsQuery.data?.items ?? []).map((project) => (
+              {unassignedSiteManagerProjects.map((project) => (
                 <label className="checkbox-row" key={project.id}>
                   <input type="checkbox" value={project.id} {...createForm.register('siteManagerProjectIds')} />
                   <span>{project.projectCode} · {project.name}</span>
                 </label>
               ))}
-              {projectOptionsQuery.data?.items.length === 0 && <p className="muted">Create a Project before creating its Site Manager login.</p>}
+              {projectOptionsQuery.data && unassignedSiteManagerProjects.length === 0 && <p className="muted">Create an unassigned Project first in Project Management before creating its Site Manager login.</p>}
               {createForm.formState.errors.siteManagerProjectIds && <span className="field-error">{createForm.formState.errors.siteManagerProjectIds.message}</span>}
               {projectOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{projectOptionsQuery.error.message}</div>}
             </fieldset>
@@ -332,6 +338,8 @@ type UserAccessFormProps = Readonly<{
 function UserAccessForm(props: UserAccessFormProps) {
   const [roleIds, setRoleIds] = useState<string[]>(props.user.roleIds);
   const [projectScopes, setProjectScopes] = useState(props.user.projectScopes.map((scope) => ({ projectId: scope.projectId, roleCode: scope.roleCode })));
+  const siteManagerRole = props.roles.find((role) => role.code === 'site-manager');
+  const isSiteManager = siteManagerRole ? roleIds.includes(siteManagerRole.id) : false;
   const projectsQuery = useQuery({
     queryKey: ['administration', 'projects', 'scope-options'],
     queryFn: () => listProjects({ page: 1, pageSize: 100 }),
@@ -356,8 +364,6 @@ function UserAccessForm(props: UserAccessFormProps) {
 
   /** Toggle one Project ID in the complete explicit Project-scope replacement set. */
   function toggleProject(projectId: string): void {
-    const siteManagerRole = props.roles.find((role) => role.code === 'site-manager');
-    const isSiteManager = siteManagerRole ? roleIds.includes(siteManagerRole.id) : false;
     setProjectScopes((current) => current.some((scope) => scope.projectId === projectId)
       ? current.filter((scope) => scope.projectId !== projectId)
       : [...current, { projectId, roleCode: isSiteManager ? 'site-manager' : null }].sort((left, right) => left.projectId.localeCompare(right.projectId)));
@@ -390,12 +396,22 @@ function UserAccessForm(props: UserAccessFormProps) {
         <fieldset className="admin-form">
           <legend>Project access</legend>
           {projectsQuery.isPending && <p>Loading Projects…</p>}
-          {(projectsQuery.data?.items ?? []).map((project) => (
-            <label className="checkbox-row" key={project.id}>
-              <input type="checkbox" checked={projectScopes.some((scope) => scope.projectId === project.id)} onChange={() => toggleProject(project.id)} />
-              <span>{project.projectCode} · {project.name}</span>
-            </label>
-          ))}
+          {(projectsQuery.data?.items ?? []).map((project) => {
+            const assignedToAnotherSiteManager = isSiteManager
+              && project.projectManagerUserId !== null
+              && project.projectManagerUserId !== props.user.id;
+            return (
+              <label className="checkbox-row" key={project.id}>
+                <input
+                  type="checkbox"
+                  checked={projectScopes.some((scope) => scope.projectId === project.id)}
+                  disabled={assignedToAnotherSiteManager}
+                  onChange={() => toggleProject(project.id)}
+                />
+                <span>{project.projectCode} · {project.name}{assignedToAnotherSiteManager ? ' · Assigned to another Site Manager' : ''}</span>
+              </label>
+            );
+          })}
           {projectsQuery.error instanceof Error && <div className="form-error" role="alert">{projectsQuery.error.message}</div>}
           {scopesMutation.error instanceof Error && <div className="form-error" role="alert">{scopesMutation.error.message}</div>}
           <button type="button" onClick={() => scopesMutation.mutate()} disabled={scopesMutation.isPending || projectsQuery.isPending}>

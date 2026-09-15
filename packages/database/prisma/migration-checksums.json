@@ -112,6 +112,12 @@
     "20260910000100_employee_salary_advances": "8d9c7e964795e4b1d0c8ccf3c4f549b7fa411d3616e1981ca1d5be8a709b46f5",
     "20260910000200_site_manager_project_access": "486367c00ae8a7fe99b25364f583ed81b2d5c87355def556495372a2e849c83f",
     "20260910000300_site_manager_least_privilege": "32023687ea230ea4e13cc0bfc47512dae27deae366f93ac09b26705ee54ed3b6",
-    "20260910000400_project_operations_permission_catalog": "5801268092c39eb4fe88d0e535c3dce4447bdeb10a49a9ef293b5a8f40b8d26f"
+    "20260910000400_project_operations_permission_catalog": "5801268092c39eb4fe88d0e535c3dce4447bdeb10a49a9ef293b5a8f40b8d26f",
+    "20260912000100_site_manager_project_resource_scope": "05d277d1806e5bfaeb44ecf3f53295c615838a5ecbae7e746ea5acd5644b92ca",
+    "20260912000200_project_manager_scope_sync": "8ac3748b9f26dee4cb4e931557f44d86981a3dab88a818bc58c9f64b9d53d0b9",
+    "20260912000300_admin_login_credential_repair": "97b601690d22aa6f50e7b9a177988d7d346d40ff59a51556b9fe875d1717d6d2",
+    "20260912000400_project_cash_bank_account_scope": "5a1cd2842076c35480fbff07ccbc0c1a9e28dfa6a2b51c20929afec275c4a877",
+    "20260912000500_site_manager_material_vendor_scope_fix": "80f7aeeac10cc92c51d5c5acf399e119cb26e6cc99fce28b8ab3b1fddfc1c9ad",
+    "20260912000600_project_operational_resource_scope": "09e3f7dcaacdeef5a7645de2d650c68059b509db0ec2fb9f7d432ad85306996d"
   }
 }

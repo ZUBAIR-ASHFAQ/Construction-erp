@@ -16,8 +16,8 @@ import {
 const KEY = ['inventory'] as const;
 
 /** Load Material master data. */
-export function useMaterials(enabled = true) {
-  return useQuery({ queryKey: [...KEY, 'materials'], queryFn: () => listMaterials({ page: 1, pageSize: 100 }), enabled });
+export function useMaterials(projectId?: string, enabled = true) {
+  return useQuery({ queryKey: [...KEY, 'materials', projectId ?? 'all'], queryFn: () => listMaterials({ page: 1, pageSize: 100, ...(projectId ? { projectId } : {}) }), enabled });
 }
 
 /** Load current derived stock and Warehouse options. */

@@ -9,6 +9,11 @@ export type InventoryVisibility = Readonly<{
   allowedProjectIds: readonly string[] | null;
   includeCompanyWideWarehouses: boolean;
 }>;
+export type MaterialVisibility = Readonly<{
+  allowedProjectIds: readonly string[] | null;
+  projectId?: string;
+  includeUnassigned: boolean;
+}>;
 
 /** Reject invalid bounded pagination before it reaches persistence. */
 function assertPageWindow(input: PageWindow): void {
@@ -31,16 +36,24 @@ function warehouseVisibilityWhere(visibility: InventoryVisibility): WarehouseVis
   return { OR: [{ projectId: null }, { projectId: { in: projectIds } }] };
 }
 
+
+/** Build a Project-safe Material predicate from trusted request scope. */
+function materialVisibilityWhere(visibility: MaterialVisibility): Record<string, unknown> {
+  if (visibility.projectId) return { projectId: visibility.projectId };
+  if (visibility.allowedProjectIds === null) return visibility.includeUnassigned ? {} : { projectId: { not: null } };
+  return { projectId: { in: [...new Set(visibility.allowedProjectIds)] } };
+}
+
 /** Persistence for Final Module 11 Inventory / Material Management. */
 export class InventoryRepository {
   /** Bind Inventory persistence to Prisma or one active service transaction. */
   constructor(private readonly db: RepositoryClient) {}
 
-  /** List Company-owned Materials with deterministic pagination. */
-  async listMaterials(input: PageWindow) {
+  /** List Materials inside trusted Project visibility with deterministic pagination. */
+  async listMaterials(input: PageWindow & MaterialVisibility) {
     assertPageWindow(input);
     const scope = requireCompanyRepositoryScope();
-    const where = scope.where({});
+    const where = scope.where(materialVisibilityWhere(input));
     const [items, total] = await Promise.all([
       this.db.material.findMany({ where, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.material.count({ where })
@@ -48,20 +61,20 @@ export class InventoryRepository {
     return { items, total };
   }
 
-  /** Find one Company-owned Material by identifier. */
+  /** Find one Company Material by identifier; callers enforce the business Project rule. */
   async findMaterialById(materialId: string) {
     const scope = requireCompanyRepositoryScope();
     return this.db.material.findFirst({ where: scope.where({ id: materialId }) });
   }
 
-  /** Find one Company-owned Material by normalized code. */
-  async findMaterialByCode(code: string) {
+  /** Find one normalized Material code inside one Project. */
+  async findMaterialByCode(code: string, projectId: string) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.material.findFirst({ where: scope.where({ code }) });
+    return this.db.material.findFirst({ where: scope.where({ code, projectId }) });
   }
 
-  /** Create one Company-owned Material master. */
-  async createMaterial(input: Readonly<{ code: string; name: string; unit: string; category?: string | null; status: string }>) {
+  /** Create one Project-owned Material master. */
+  async createMaterial(input: Readonly<{ projectId: string; code: string; name: string; unit: string; category?: string | null; status: string }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.material.create({ data: scope.createData({ ...input, category: input.category ?? null }) });
   }

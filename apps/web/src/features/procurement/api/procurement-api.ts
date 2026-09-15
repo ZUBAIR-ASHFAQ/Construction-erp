@@ -135,8 +135,9 @@ function pageQuery(projectId?: string): string {
 }
 
 /** Load active Supplier choices from final Module 5 Vendor master. */
-export function listVendors(): Promise<Page<Vendor>> {
-  return authenticatedRequest<Page<Vendor>>('vendors?page=1&pageSize=100');
+export function listVendors(projectId: string): Promise<Page<Vendor>> {
+  const query = new URLSearchParams({ projectId, page: '1', pageSize: '100' });
+  return authenticatedRequest<Page<Vendor>>(`vendors?${query.toString()}`);
 }
 
 /** Load material requirements for one Project. */

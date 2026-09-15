@@ -280,15 +280,15 @@ export class ProcurementService {
     this.requireWritableProject(project);
 
     const materialIds = [...new Set(input.items.map((item) => item.materialId))];
-    const activeMaterials = await repository.findActiveMaterials(materialIds);
+    const activeMaterials = await repository.findActiveMaterials(materialIds, input.projectId);
     const materialById = new Map(activeMaterials.map((material) => [material.id, material] as const));
     if (materialIds.some((materialId) => !materialById.has(materialId))) {
-      throw new ValidationError({ message: 'Every material requirement line must reference an active Company material.' });
+      throw new ValidationError({ message: 'Every material requirement line must reference an active Material owned by the selected Project.' });
     }
 
     const effectiveItems = input.items.map((item) => {
       const material = materialById.get(item.materialId);
-      if (!material) throw new ValidationError({ message: 'Every material requirement line must reference an active Company material.' });
+      if (!material) throw new ValidationError({ message: 'Every material requirement line must reference an active Material owned by the selected Project.' });
       if (item.unit.trim().toUpperCase() !== material.unit.trim().toUpperCase()) {
         throw new ValidationError({ message: `Material requirement unit must match the selected Material base unit (${material.unit}).` });
       }

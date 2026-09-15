@@ -53,10 +53,11 @@ const signedDecimal = z.string().trim().regex(/^-?(?:[1-9]\d{0,13}(?:\.\d{1,4})?
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /** Validate bounded Material list filters. */
-export const listMaterialsQuerySchema = z.object({ ...pageShape }).strict();
+export const listMaterialsQuerySchema = z.object({ ...pageShape, projectId: uuid.optional() }).strict();
 
 /** Validate creation of one Company-owned Material master. */
 export const createMaterialBodySchema = z.object({
+  projectId: uuid.optional(),
   code: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(300),
   unit: z.string().trim().min(1).max(64),
@@ -151,6 +152,7 @@ export const receiveInventoryBodySchema = z.object({
 /** Safe Material response. */
 export const materialResponseSchema = z.object({
   id: uuid,
+  projectId: uuid.nullable(),
   code: z.string(),
   name: z.string(),
   unit: z.string(),

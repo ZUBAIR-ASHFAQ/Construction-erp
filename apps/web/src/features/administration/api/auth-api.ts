@@ -34,7 +34,6 @@ export type AuthSessionResult = CurrentIdentity & Readonly<{
     expiresAt: string;
   }>;
   accessToken: string;
-  refreshToken: string;
 }>;
 
 type ApiEnvelope<T> = Readonly<{ data: T }>;
@@ -42,29 +41,41 @@ type ErrorEnvelope = Readonly<{ error?: Readonly<{ code?: string; message?: stri
 type RequestError = Error & Readonly<{ status?: number }>;
 
 const ACCESS_TOKEN_KEY = 'construction-erp-access-token';
-const REFRESH_TOKEN_KEY = 'construction-erp-refresh-token';
+const ACCESS_EXPIRES_AT_KEY = 'construction-erp-access-expires-at';
+const LEGACY_REFRESH_TOKEN_KEY = 'construction-erp-refresh-token';
 let refreshPromise: Promise<AuthSessionResult> | null = null;
 
-/** Save the separate access and refresh credentials for this browser tab only. */
-export function saveSessionTokens(accessToken: string, refreshToken: string): void {
+/** Save only the short-lived access credential and its server expiry in this browser tab. */
+export function saveAccessToken(accessToken: string, accessExpiresAt?: string): void {
+  sessionStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
   sessionStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  sessionStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
+  if (accessExpiresAt) {
+    sessionStorage.setItem(ACCESS_EXPIRES_AT_KEY, accessExpiresAt);
+  } else {
+    sessionStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
+  }
 }
 
 /** Read the short-lived Bearer access token for protected API calls. */
 export function readAccessToken(): string | null {
+  sessionStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
   return sessionStorage.getItem(ACCESS_TOKEN_KEY);
 }
 
-/** Read the refresh token used only by the public refresh command. */
-export function readRefreshToken(): string | null {
-  return sessionStorage.getItem(REFRESH_TOKEN_KEY);
+/** Read the stored server expiry for proactive access-token rotation. */
+export function readAccessTokenExpiresAt(): number | null {
+  const value = sessionStorage.getItem(ACCESS_EXPIRES_AT_KEY);
+  if (!value) return null;
+
+  const expiresAt = Date.parse(value);
+  return Number.isFinite(expiresAt) ? expiresAt : null;
 }
 
-/** Remove both local credentials after sign-out or failed refresh. */
+/** Remove the browser-managed access credential after sign-out or an invalid refresh session. */
 export function clearSessionTokens(): void {
   sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-  sessionStorage.removeItem(REFRESH_TOKEN_KEY);
+  sessionStorage.removeItem(ACCESS_EXPIRES_AT_KEY);
+  sessionStorage.removeItem(LEGACY_REFRESH_TOKEN_KEY);
 }
 
 /** Build one API URL from the configured `/api/v1` base URL. */
@@ -79,7 +90,7 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
   if (init.body !== undefined) headers.set('Content-Type', 'application/json');
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
 
-  const response = await fetch(apiUrl(path), { ...init, headers });
+  const response = await fetch(apiUrl(path), { ...init, headers, credentials: 'include' });
   const payload = await response.json() as ApiEnvelope<T> | ErrorEnvelope;
 
   if (!response.ok) {
@@ -92,17 +103,19 @@ async function request<T>(path: string, init: RequestInit = {}, accessToken?: st
   return (payload as ApiEnvelope<T>).data;
 }
 
-/** Rotate the stored refresh token once and save the replacement credentials. */
-async function refreshStoredSession(): Promise<AuthSessionResult> {
-  const refreshToken = readRefreshToken();
-  if (!refreshToken) throw new Error('Your session has expired. Please sign in again.');
+/** Return whether one API failure means the server no longer accepts the authentication session. */
+function isAuthenticationFailure(error: unknown): boolean {
+  return (error as RequestError).status === 401;
+}
 
+/** Rotate the HttpOnly refresh cookie once and save the replacement access credential. */
+export async function refreshStoredSession(): Promise<AuthSessionResult> {
   if (!refreshPromise) {
     refreshPromise = request<AuthSessionResult>('auth/refresh', {
       method: 'POST',
-      body: JSON.stringify({ refreshToken })
+      body: JSON.stringify({})
     }).then((result) => {
-      saveSessionTokens(result.accessToken, result.refreshToken);
+      saveAccessToken(result.accessToken, result.session.accessExpiresAt);
       return result;
     }).finally(() => {
       refreshPromise = null;
@@ -112,27 +125,35 @@ async function refreshStoredSession(): Promise<AuthSessionResult> {
   return refreshPromise;
 }
 
-/** Call a protected route and retry once with a freshly rotated access token on 401. */
+/** Call a protected route, restoring or rotating the access token through the HttpOnly refresh cookie as needed. */
 export async function authenticatedRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const accessToken = readAccessToken();
-  if (!accessToken) throw new Error('Your session has expired. Please sign in again.');
+  let accessToken = readAccessToken();
+
+  if (!accessToken) {
+    try {
+      accessToken = (await refreshStoredSession()).accessToken;
+    } catch (error) {
+      if (isAuthenticationFailure(error)) clearSessionTokens();
+      throw error;
+    }
+  }
 
   try {
     return await request<T>(path, init, accessToken);
   } catch (error) {
-    if ((error as RequestError).status !== 401) throw error;
+    if (!isAuthenticationFailure(error)) throw error;
 
     try {
       const refreshed = await refreshStoredSession();
       return await request<T>(path, init, refreshed.accessToken);
     } catch (refreshError) {
-      clearSessionTokens();
+      if (isAuthenticationFailure(refreshError)) clearSessionTokens();
       throw refreshError;
     }
   }
 }
 
-/** Sign in with email/password and return separate access and refresh credentials. */
+/** Sign in with email/password; the API stores the refresh credential in an HttpOnly cookie. */
 export function signIn(input: SignInInput): Promise<AuthSessionResult> {
   return request<AuthSessionResult>('auth/login', {
     method: 'POST',

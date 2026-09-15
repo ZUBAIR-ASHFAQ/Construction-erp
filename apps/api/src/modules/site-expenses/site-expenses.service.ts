@@ -209,7 +209,10 @@ export class SiteExpensesService {
     if (input.paymentMode === 'CASH' || input.paymentMode === 'BANK') {
       if (!input.cashBankAccountId) throw createSiteExpenseError('INVALID_EXPENSE_ACCOUNT');
       const account = await repository.findCashBankAccountById(input.cashBankAccountId);
-      if (!account || account.status !== ACTIVE || account.accountType !== input.paymentMode || account.glAccount.status !== ACTIVE) {
+      const security = requireRequestSecurityContext();
+      const accountMatchesProject = account?.projectId === input.projectId
+        || (security.projectScope.kind === 'all' && account?.projectId === null);
+      if (!account || !accountMatchesProject || account.status !== ACTIVE || account.accountType !== input.paymentMode || account.glAccount.status !== ACTIVE) {
         throw createSiteExpenseError('INVALID_EXPENSE_ACCOUNT');
       }
       if (requirePostingAccounts && (!category.defaultGlAccount || category.defaultGlAccount.status !== ACTIVE)) {
@@ -330,7 +333,7 @@ export class SiteExpensesService {
     await recordAudit(tx, { action: 'site_expense.created', entityType: 'site_expense', entityId: created.id, projectId: created.projectId, stageId: created.stageId, after: response });
     await recordOutboxEvent(tx, { eventType: 'site_expense.created', resourceType: 'site_expense', resourceId: created.id, payload: { expenseId: created.id, projectId: created.projectId, stageId: created.stageId, expenseNo: created.expenseNo } });
 
-    const posted = await this.postSiteExpenseOnce(tx, created.id);
+    const posted = await this.postSiteExpenseOnce(tx, created.id, 'site_expenses.create');
     return { statusCode: 201, body: posted.body };
   }
 
@@ -397,8 +400,12 @@ export class SiteExpensesService {
   }
 
   /** Create one Finance effect and one `site_expense` actual-cost source before marking the expense POSTED. */
-  private async postSiteExpenseOnce(tx: TransactionClient, expenseId: string) {
-    const visibility = await this.resolveVisibility(new AdministrationRepository(tx), 'site_expenses.post', new Date());
+  private async postSiteExpenseOnce(
+    tx: TransactionClient,
+    expenseId: string,
+    permission: SiteExpensePermissionCode = 'site_expenses.post'
+  ) {
+    const visibility = await this.resolveVisibility(new AdministrationRepository(tx), permission, new Date());
     const repository = new SiteExpensesRepository(tx);
     const locked = await repository.lockSiteExpenseForWrite(expenseId, visibility);
     if (!locked) throw createSiteExpenseError('EXPENSE_NOT_FOUND');
@@ -409,7 +416,7 @@ export class SiteExpensesService {
     }
     if (locked.status !== DRAFT) throw createSiteExpenseError('EXPENSE_LOCKED');
 
-    await this.requireProjectPermission(new AdministrationRepository(tx), locked.projectId, 'site_expenses.post', new Date());
+    await this.requireProjectPermission(new AdministrationRepository(tx), locked.projectId, permission, new Date());
     const directVisibility: SiteExpenseRepositoryVisibility = { allowedProjectIds: [locked.projectId] };
     const mode = paymentMode(locked.paymentMode);
     const dependencies = await this.validateDependencies(repository, directVisibility, {

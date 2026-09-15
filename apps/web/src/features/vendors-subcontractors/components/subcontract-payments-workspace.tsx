@@ -77,6 +77,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
     row.subcontractor.id === selectedSubcontractorId && Number(row.balanceAmount) > 0
   )), [ledger.data?.items, selectedSubcontractorId]);
   const selectedContract = availableContracts.find((row) => row.subcontractContractId === selectedContractId);
+  const paymentAccounts = (cashBankAccounts.data?.items ?? []).filter((account) => !selectedContract || account.projectId === selectedContract.project.id || account.projectId === null);
 
   /** Clear the contract when the user switches to another subcontractor. */
   function handleSubcontractorChange(): void {
@@ -156,7 +157,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                   Cash / Bank account
                   <select {...form.register('cashBankAccountId')}>
                     <option value="">Select Cash / Bank account</option>
-                    {(cashBankAccounts.data?.items ?? []).map((account) => (
+                    {paymentAccounts.map((account) => (
                       <option key={account.id} value={account.id}>{account.name} ({account.accountType})</option>
                     ))}
                   </select>

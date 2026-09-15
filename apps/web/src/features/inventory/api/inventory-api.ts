@@ -1,6 +1,6 @@
 import { authenticatedRequest } from '../../administration/api/auth-api.js';
 
-export type Material = Readonly<{ id: string; code: string; name: string; unit: string; category: string | null; status: string }>;
+export type Material = Readonly<{ id: string; projectId: string | null; code: string; name: string; unit: string; category: string | null; status: string }>;
 export type MaterialPage = Readonly<{ items: Material[]; total: number; page: number; pageSize: number }>;
 export type WarehouseOption = Readonly<{ id: string; projectId: string | null; code: string; name: string; status: string }>;
 export type StockRow = Readonly<{
@@ -17,7 +17,7 @@ export type MaterialIssue = Readonly<{
   id: string; projectId: string; stageId: string | null; warehouseId: string; issueNo: string; issueDate: string; status: string;
   items: ReadonlyArray<Readonly<{ id: string; materialId: string; quantity: string; unitCost: string; lineCost: string }>>;
 }>;
-export type CreateMaterialInput = Readonly<{ code: string; name: string; unit: string; category?: string | null }>;
+export type CreateMaterialInput = Readonly<{ projectId?: string; code: string; name: string; unit: string; category?: string | null }>;
 export type CreateMaterialIssueInput = Readonly<{
   projectId: string; stageId?: string | null; warehouseId: string; issueDate: string; description?: string | null;
   items: ReadonlyArray<Readonly<{ materialId: string; quantity: string }>>;
@@ -44,11 +44,11 @@ function commandHeaders(): HeadersInit {
 }
 
 /** Load a bounded Material master page. */
-export function listMaterials(input: Readonly<{ page?: number; pageSize?: number }> = {}): Promise<MaterialPage> {
+export function listMaterials(input: Readonly<{ page?: number; pageSize?: number; projectId?: string }> = {}): Promise<MaterialPage> {
   return authenticatedRequest<MaterialPage>(`inventory/materials${queryString(input)}`);
 }
 
-/** Create one Company Material. */
+/** Create one Project-owned Material. */
 export function createMaterial(input: CreateMaterialInput): Promise<Material> {
   return authenticatedRequest<Material>('inventory/materials', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }

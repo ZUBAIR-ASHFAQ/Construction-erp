@@ -83,7 +83,7 @@ function pageWindow(input: Readonly<{ page?: number | undefined; pageSize?: numb
 
 /** Map a Material row to the public response. */
 function materialResponse(row: MaterialRecord) {
-  return { id: row.id, code: row.code, name: row.name, unit: row.unit, category: row.category ?? null, status: row.status };
+  return { id: row.id, projectId: row.projectId ?? null, code: row.code, name: row.name, unit: row.unit, category: row.category ?? null, status: row.status };
 }
 
 /** Map one stock-ledger row to precision-safe public values. */
@@ -191,33 +191,69 @@ export class InventoryService {
     await this.requireCompanyPermission(repository, permission, asOf);
   }
 
-  /** List Material master rows for Inventory readers or Material managers. */
+  /** Resolve one requested Material Project without trusting a client-supplied Project outside request scope. */
+  private resolveMaterialProjectId(inputProjectId?: string): string {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
+    if (security.projectScope.kind === 'restricted') {
+      if (inputProjectId) {
+        if (!security.projectScope.projectIds.includes(inputProjectId)) throw new AuthorizationError();
+        return inputProjectId;
+      }
+      if (security.projectScope.projectIds.length === 1) return security.projectScope.projectIds[0] as string;
+      throw new ValidationError({ message: 'Select the Project that owns this Material.' });
+    }
+    if (!inputProjectId) throw new ValidationError({ message: 'Select the Project that owns this Material.' });
+    return inputProjectId;
+  }
+
+  /** Prevent a Project actor from using another Project's Material; only administrators may use legacy unassigned rows. */
+  private requireMaterialProject(material: MaterialRecord, projectId: string | null): void {
+    const security = requireRequestSecurityContext();
+    if (material.projectId === projectId && projectId !== null) return;
+    if (material.projectId === null && security.projectScope.kind === 'all') return;
+    throw createModule11Error('MATERIAL_NOT_FOUND');
+  }
+
+  /** List only Materials owned by Projects visible to the authenticated actor. */
   async listMaterials(query: ListMaterialsQuery) {
     const users = new AdministrationRepository(this.db);
     const now = new Date();
     const security = requireRequestSecurityContext();
     if (security.projectScope.kind === 'not-resolved') throw new AuthorizationError();
-    if (!(await this.hasCompanyPermission(users, 'materials.manage', now))) {
-      await this.resolveVisibility(users, 'inventory.read', now);
+    const canManage = await this.hasCompanyPermission(users, 'materials.manage', now);
+    const materialVisibility = canManage
+      ? { allowedProjectIds: security.projectScope.kind === 'restricted' ? [...security.projectScope.projectIds] : null }
+      : await this.resolveVisibility(users, 'inventory.read', now);
+    if (query.projectId && materialVisibility.allowedProjectIds !== null && !materialVisibility.allowedProjectIds.includes(query.projectId)) {
+      throw new AuthorizationError();
     }
     const page = pageWindow(query);
-    const result = await new InventoryRepository(this.db).listMaterials(page);
+    const result = await new InventoryRepository(this.db).listMaterials({
+      ...page,
+      allowedProjectIds: materialVisibility.allowedProjectIds,
+      ...(query.projectId ? { projectId: query.projectId } : {}),
+      includeUnassigned: security.projectScope.kind === 'all'
+    });
     return { items: result.items.map(materialResponse), total: result.total, page: page.page, pageSize: page.pageSize };
   }
 
-  /** Create one Company Material exactly once. */
+  /** Create one Project-owned Material exactly once. */
   async createMaterial(input: CreateMaterialBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'inventory.material.create', idempotencyKey, fingerprintInput: input
     }, async (tx) => {
       const users = new AdministrationRepository(tx);
-      await this.requireCompanyPermission(users, 'materials.manage', new Date());
+      const projectId = this.resolveMaterialProjectId(input.projectId);
+      await this.requireProjectPermission(users, projectId, 'materials.manage', new Date());
       const repository = new InventoryRepository(tx);
+      const project = await repository.findProjectById(projectId);
+      if (!project) throw new NotFoundError({ message: 'Project was not found.' });
       const code = token(input.code);
-      if (await repository.findMaterialByCode(code)) throw new ConflictError({ message: 'Material code already exists in this company.' });
-      const material = await repository.createMaterial({ code, name: input.name, unit: token(input.unit), category: input.category ?? null, status: ACTIVE });
+      if (await repository.findMaterialByCode(code, projectId)) throw new ConflictError({ message: 'Material code already exists in this Project.' });
+      const material = await repository.createMaterial({ projectId, code, name: input.name, unit: token(input.unit), category: input.category ?? null, status: ACTIVE });
       const response = materialResponse(material);
-      await recordAudit(tx, { action: 'material.created', entityType: 'material', entityId: material.id, after: response });
+      await recordAudit(tx, { action: 'material.created', entityType: 'material', entityId: material.id, projectId, after: response });
       await recordOutboxEvent(tx, { eventType: 'inventory.material_created', resourceType: 'material', resourceId: material.id, payload: response });
       return { statusCode: 201, body: response };
     });
@@ -290,6 +326,7 @@ export class InventoryService {
     for (const line of input.items) {
       const material = await repository.findMaterialById(line.materialId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
+      this.requireMaterialProject(material, input.projectId);
       const position = await repository.getStockPosition(warehouse.id, material.id, input.projectId);
       const quantity = decimalToScale4(line.quantity);
       const available = decimalToScale4(position?.quantityOnHand ?? '0');
@@ -368,6 +405,10 @@ export class InventoryService {
       ]);
       if (!source || !destination) throw createModule11Error('WAREHOUSE_NOT_FOUND');
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
+      const effectiveSourceProjectId = sourceProjectId ?? source.projectId ?? null;
+      const effectiveDestinationProjectId = destinationProjectId ?? destination.projectId ?? null;
+      this.requireMaterialProject(material, effectiveSourceProjectId);
+      this.requireMaterialProject(material, effectiveDestinationProjectId);
       await this.requireWarehousePermission(users, source, 'inventory.transfer', now);
       await this.requireWarehousePermission(users, destination, 'inventory.transfer', now);
       if (sourceProjectId && destinationProjectId) {
@@ -442,6 +483,7 @@ export class InventoryService {
       await this.requireWarehousePermission(users, warehouse, 'inventory.adjust', now);
       await repository.lockStockKey(warehouse.id, material.id);
       const stockProjectId = input.projectId ?? warehouse.projectId;
+      this.requireMaterialProject(material, stockProjectId ?? null);
       const position = await repository.getStockPosition(warehouse.id, material.id, stockProjectId);
       const delta = decimalToScale4(input.quantityDelta);
       const available = decimalToScale4(position?.quantityOnHand ?? '0');
@@ -496,6 +538,7 @@ export class InventoryService {
       if (!line || line.itemId !== requested.itemId) throw new ValidationError({ message: 'Goods Receipt line does not match the Purchase Order material.' });
       const material = await repository.findMaterialById(requested.itemId);
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
+      this.requireMaterialProject(material, purchaseOrder.projectId);
       const quantity = decimalToScale4(requested.quantity);
       const accepted = decimalToScale4(requested.acceptedQty);
       const rejected = decimalToScale4(requested.rejectedQty);

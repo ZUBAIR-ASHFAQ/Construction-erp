@@ -26,7 +26,6 @@ const editProjectSchema = z.object({
   currency: z.string().trim().length(3, 'Currency must use three letters.').regex(/^[A-Za-z]{3}$/, 'Currency must use letters only.'),
   startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Start date is required.'),
   plannedEndDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Planned end date is required.'),
-  projectManagerUserId: z.string().trim(),
   location: z.string().trim().max(1000, 'Location is too long.'),
   status: z.enum(['DRAFT', 'ACTIVE', 'SUSPENDED', 'COMPLETED', 'CLOSED'])
 }).superRefine((value, context) => {
@@ -35,14 +34,6 @@ const editProjectSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ['plannedEndDate'],
       message: 'Planned end date cannot be before the start date.'
-    });
-  }
-
-  if (value.projectManagerUserId && !z.string().uuid().safeParse(value.projectManagerUserId).success) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['projectManagerUserId'],
-      message: 'Project Manager must be a valid User ID when provided.'
     });
   }
 
@@ -128,7 +119,6 @@ function ProjectEditContent(props: Readonly<{
   const canUpdate = usePermission('projects.update');
   const canActivate = usePermission('projects.activate');
   const canReadClients = usePermission('clients.read');
-  const canReadUsers = usePermission('admin.users.read');
   const updateMutation = useUpdateProject(project.id);
   const activateMutation = useActivateProject(project.id);
   const clientQuery = useQuery({
@@ -137,11 +127,6 @@ function ProjectEditContent(props: Readonly<{
     enabled: canReadClients
   });
   const clientOptionsQuery = useClients({ status: 'ACTIVE', page: 1, pageSize: 100 }, canReadClients && canUpdate);
-  const managerOptionsQuery = useQuery({
-    queryKey: ['module-24a', 'users', 'project-edit-manager-options'],
-    queryFn: () => listUsers({ page: 1, pageSize: 100 }),
-    enabled: canReadUsers && canUpdate
-  });
   const editForm = useForm<EditProjectValues>({
     resolver: zodResolver(editProjectSchema),
     defaultValues: {
@@ -153,13 +138,11 @@ function ProjectEditContent(props: Readonly<{
       currency: project.currency,
       startDate: project.startDate,
       plannedEndDate: project.plannedEndDate,
-      projectManagerUserId: project.projectManagerUserId ?? '',
       location: project.location ?? '',
       status: project.status
     }
   });
   const selectedProjectModel = editForm.watch('projectModel');
-  const activeManagers = (managerOptionsQuery.data?.items ?? []).filter((user) => user.status === 'ACTIVE');
   const canActivateFromEdit = project.status === 'DRAFT' && canActivate;
   const canEditProject = canUpdate && project.status !== 'CLOSED';
 
@@ -192,7 +175,6 @@ function ProjectEditContent(props: Readonly<{
       currency: values.currency.toUpperCase(),
       startDate: values.startDate,
       plannedEndDate: values.plannedEndDate,
-      projectManagerUserId: values.projectManagerUserId || null,
       location: values.location || null
     });
 
@@ -256,30 +238,15 @@ function ProjectEditContent(props: Readonly<{
           <label>Currency<input maxLength={3} {...editForm.register('currency')} /></label>
           <label>Start date<input type="date" {...editForm.register('startDate')} /></label>
           <label>Planned end date<input type="date" {...editForm.register('plannedEndDate')} /></label>
-          <label>
-            Project Manager (optional)
-            {canReadUsers ? (
-              <select {...editForm.register('projectManagerUserId')}>
-                <option value="">Unassigned</option>
-                {project.projectManagerUserId && !activeManagers.some((user) => user.id === project.projectManagerUserId) && (
-                  <option value={project.projectManagerUserId}>Current assigned manager</option>
-                )}
-                {activeManagers.map((user) => <option key={user.id} value={user.id}>{user.name} · {user.email}</option>)}
-              </select>
-            ) : (
-              <><input type="hidden" {...editForm.register('projectManagerUserId')} /><span className="muted">Current manager assignment preserved · User read permission required to change it.</span></>
-            )}
-          </label>
           <label className="project-form-wide">Location (optional)<input {...editForm.register('location')} /></label>
         </div>
 
-        <p className="muted project-edit-note">Project code remains immutable. Draft → Active uses the existing audited Project activation command; other lifecycle transitions remain available from Open Project.</p>
+        <p className="muted project-edit-note">Project code remains immutable. Site Manager assignment is managed from Administration → Users after the Project exists. Draft → Active uses the existing audited Project activation command; other lifecycle transitions remain available from Open Project.</p>
         {Object.values(editForm.formState.errors).map((error, index) => (
           <span className="field-error" key={index}>{error?.message}</span>
         ))}
         {clientQuery.error instanceof Error && <div className="form-error" role="alert">{clientQuery.error.message}</div>}
         {clientOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{clientOptionsQuery.error.message}</div>}
-        {managerOptionsQuery.error instanceof Error && <div className="form-error" role="alert">{managerOptionsQuery.error.message}</div>}
         {updateMutation.error instanceof Error && <div className="form-error" role="alert">{updateMutation.error.message}</div>}
         {activateMutation.error instanceof Error && <div className="form-error" role="alert">{activateMutation.error.message}</div>}
         <div className="project-modal-actions">

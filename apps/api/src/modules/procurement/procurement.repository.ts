@@ -50,11 +50,11 @@ export class ProcurementRepository {
   }
 
   /** Return active Company materials and their authoritative base units for one requirement. */
-  async findActiveMaterials(materialIds: readonly string[]): Promise<Array<{ id: string; unit: string }>> {
+  async findActiveMaterials(materialIds: readonly string[], projectId: string): Promise<Array<{ id: string; unit: string }>> {
     if (materialIds.length === 0) return [];
     const scope = requireCompanyRepositoryScope();
     return this.db.material.findMany({
-      where: scope.where({ id: { in: [...materialIds] }, status: 'ACTIVE' }),
+      where: scope.where({ id: { in: [...materialIds] }, projectId, status: 'ACTIVE' }),
       select: { id: true, unit: true }
     });
   }

@@ -30,12 +30,13 @@ const POSITIVE_DECIMAL_JSON_SCHEMA = { type: 'string', pattern: '^(?:[1-9]\\d{0,
 const SIGNED_DECIMAL_JSON_SCHEMA = { type: 'string', pattern: '^-?(?:[1-9]\\d{0,13}(?:\\.\\d{1,4})?|0\\.(?:\\d{0,3}[1-9]))$' } as const;
 const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
 const PAGE_PROPERTIES = { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } as const;
-const MATERIALS_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: PAGE_PROPERTIES } as const;
+const MATERIALS_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, projectId: UUID_JSON_SCHEMA } } as const;
 const STOCK_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, projectId: UUID_JSON_SCHEMA, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA } } as const;
 const LEDGER_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, stageId: UUID_JSON_SCHEMA } } as const;
 const CREATE_MATERIAL_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['code', 'name', 'unit'],
   properties: {
+    projectId: UUID_JSON_SCHEMA,
     code: { type: 'string', minLength: 1, maxLength: 100 },
     name: { type: 'string', minLength: 1, maxLength: 300 },
     unit: { type: 'string', minLength: 1, maxLength: 64 },
@@ -74,6 +75,7 @@ const SUCCESS_JSON_SCHEMA = { type: 'object', additionalProperties: false, requi
 const ERROR_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['error'],
   properties: { error: { type: 'object', additionalProperties: false, required: ['code', 'message', 'requestId'], properties: {
+    projectId: UUID_JSON_SCHEMA,
     code: { type: 'string' }, message: { type: 'string' }, requestId: { type: 'string' },
     fieldErrors: { type: 'array', items: { type: 'object', additionalProperties: false, required: ['field', 'message'], properties: { field: { type: 'string' }, message: { type: 'string' }, code: { type: 'string' } } } }
   } } }

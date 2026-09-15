@@ -27,9 +27,9 @@ export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = '
         canReadVendors={usePermission('vendors.read')}
         canReadProcurement={usePermission('procurement.read') || Boolean(hasRestrictedProjects)}
         canReadFinance={usePermission('finance.read') || Boolean(hasRestrictedProjects)}
-        canUploadDocuments={usePermission('documents.upload') || Boolean(hasRestrictedProjects)}
-        canLinkDocuments={usePermission('documents.link') || Boolean(hasRestrictedProjects)}
-        canReadDocuments={canRead || hasDocumentReadPermission || Boolean(hasRestrictedProjects)}
+        canUploadDocuments={usePermission('documents.upload')}
+        canLinkDocuments={usePermission('documents.link')}
+        canReadDocuments={hasDocumentReadPermission}
       />
     </section>
   );

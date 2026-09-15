@@ -252,8 +252,9 @@ export class ClientReceiptsService {
       || cashBankAccount.accountType !== input.paymentMethod
       || cashBankAccount.glAccount.status !== ACCOUNT_ACTIVE
       || (cashBankGlType !== LEGACY_CASH_ACCOUNT_TYPE && cashBankGlType !== input.paymentMethod)
+      || (requireRequestSecurityContext().projectScope.kind === 'restricted' && cashBankAccount.projectId !== input.projectId)
     ) {
-      throw new ValidationError({ message: 'Client Receipt requires an active matching Cash/Bank account with a compatible active GL account.' });
+      throw new ValidationError({ message: 'Client Receipt requires an active matching Cash/Bank account owned by the selected Project.' });
     }
 
     const clientAdvanceAccount = await repository.findGlAccountByCode(CLIENT_ADVANCE_ACCOUNT_CODE)

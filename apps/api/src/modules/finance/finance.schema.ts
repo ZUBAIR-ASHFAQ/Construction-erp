@@ -101,6 +101,7 @@ export const createFinanceAccountBodySchema = z.object({
   name: accountNameSchema,
   accountType: z.enum(['CASH', 'BANK']),
   openingBalance: nonNegativeMoneySchema,
+  projectId: uuidSchema.optional(),
   bankName: z.string().trim().min(1).max(200).optional(),
   accountReference: z.string().trim().min(1).max(200).optional()
 }).strict().superRefine((value, context) => {
@@ -169,7 +170,8 @@ export const trialBalanceQuerySchema = z.object({ periodId: uuidSchema }).strict
 /** Cash/Bank list is bounded and optionally filtered by lifecycle status. */
 export const listCashBankAccountsQuerySchema = z.object({
   ...paginationQueryShape,
-  status: tokenSchema.optional()
+  status: tokenSchema.optional(),
+  projectId: uuidSchema.optional()
 }).strict();
 
 /** Edit Cash/Bank display and lifecycle fields without accepting balances. */
@@ -305,6 +307,9 @@ export const cashBankAccountResponseSchema = z.object({
   name: accountNameSchema,
   accountType: tokenSchema,
   glAccountId: uuidSchema,
+  projectId: uuidSchema.nullable(),
+  projectCode: tokenSchema.nullable(),
+  projectName: accountNameSchema.nullable(),
   bankName: z.string().trim().min(1).max(200).nullable(),
   accountReference: z.string().trim().min(1).max(200).nullable(),
   status: tokenSchema,

@@ -40,6 +40,8 @@ const PROJECT_MODEL_FIXED_PRICE = 'FIXED_PRICE';
 const PROJECT_MODEL_COST_PLUS_PERCENTAGE = 'COST_PLUS_PERCENTAGE';
 const ASSIGNMENT_ACTIVE = 'ACTIVE';
 const ROLE_ACTIVE = 'ACTIVE';
+const SITE_MANAGER_ROLE_CODE = 'site-manager';
+const SYSTEM_ADMIN_ROLE_CODE = 'system-admin';
 
 type ProjectCloseReadinessCheck = (
   tx: TransactionClient,
@@ -237,6 +239,57 @@ export class ProjectsService {
         roleStatuses: [ROLE_ACTIVE]
       }
     );
+  }
+
+  /** Keep the Project Manager field and trusted Site Manager login scope synchronized atomically. */
+  private async syncProjectManagerAccess(
+    repository: AdministrationRepository,
+    projectId: string,
+    previousManagerUserId: string | null,
+    nextManagerUserId: string | null
+  ): Promise<void> {
+    if (previousManagerUserId && previousManagerUserId !== nextManagerUserId) {
+      await repository.deleteUserProjectScope(previousManagerUserId, projectId, SITE_MANAGER_ROLE_CODE);
+    }
+    if (!nextManagerUserId) return;
+
+    const assignedRoles = await repository.listUserRoles(nextManagerUserId);
+    const isSystemAdministrator = assignedRoles.some((assignment) =>
+      assignment.status === ASSIGNMENT_ACTIVE
+      && assignment.role.code === SYSTEM_ADMIN_ROLE_CODE
+      && assignment.role.isSystem
+      && assignment.role.status === ROLE_ACTIVE
+    );
+    if (isSystemAdministrator) return;
+
+    const siteManagerRole = await repository.findRoleByCode(SITE_MANAGER_ROLE_CODE);
+    if (!siteManagerRole || !siteManagerRole.isSystem || siteManagerRole.status !== ROLE_ACTIVE) {
+      throw new ValidationError({
+        fieldErrors: [{
+          field: 'projectManagerUserId',
+          message: 'The Site Manager role must be active before assigning a Project Manager.'
+        }]
+      });
+    }
+
+    const roleAssignment = await repository.upsertUserRole({
+      userId: nextManagerUserId,
+      roleId: siteManagerRole.id,
+      status: ASSIGNMENT_ACTIVE
+    });
+    const projectScope = await repository.upsertUserProjectScope(
+      nextManagerUserId,
+      { projectId, roleCode: SITE_MANAGER_ROLE_CODE },
+      ASSIGNMENT_ACTIVE
+    );
+    if (!roleAssignment || !projectScope) {
+      throw new ValidationError({
+        fieldErrors: [{
+          field: 'projectManagerUserId',
+          message: 'Project Manager access could not be assigned inside this company.'
+        }]
+      });
+    }
   }
 
   /** Validate the Project records that must remain active before creation or activation. */
@@ -463,6 +516,12 @@ export class ProjectsService {
           projectManagerUserId: input.projectManagerUserId ?? null,
           location: input.location ?? null
         });
+        await this.syncProjectManagerAccess(
+          new AdministrationRepository(tx),
+          project.id,
+          null,
+          project.projectManagerUserId
+        );
 
         await repository.createProjectStatusHistory({
           projectId: project.id,
@@ -598,6 +657,14 @@ export class ProjectsService {
         ...(input.location === undefined ? {} : { location: input.location })
       });
       if (!updated) throw createProjectError('PROJECT_NOT_FOUND');
+      if (input.projectManagerUserId !== undefined) {
+        await this.syncProjectManagerAccess(
+          new AdministrationRepository(tx),
+          projectId,
+          before.projectManagerUserId,
+          updated.projectManagerUserId
+        );
+      }
 
       await recordAudit(tx, {
         action: 'project.updated',

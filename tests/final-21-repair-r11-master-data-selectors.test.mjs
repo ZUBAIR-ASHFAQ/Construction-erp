@@ -7,20 +7,23 @@ function read(path) {
   return readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 }
 
-/** Verify Project create/filter/edit reuses Client and User reads instead of raw identifier inputs. */
-test('R11 replaces Project Client and manager raw IDs with existing selectors', () => {
+/** Verify Project creation keeps Client selection while Site Manager assignment uses Administration Project selectors. */
+test('R11 keeps Project references selector-backed with Site Manager assignment in Administration', () => {
   const page = read('apps/web/src/features/projects/pages/projects-page.tsx');
   const detail = read('apps/web/src/features/projects/components/project-details-panel.tsx');
+  const users = read('apps/web/src/features/administration/pages/users-page.tsx');
   assert.match(page, /useClients/);
-  assert.match(page, /listUsers/);
   assert.match(page, /Select active Client/);
-  assert.match(page, /Project Manager/);
+  assert.doesNotMatch(page, /createForm\.register\('projectManagerUserId'\)/);
   assert.doesNotMatch(page, /placeholder="Client UUID"|placeholder="Optional User UUID"|placeholder="Optional UUID"/);
   assert.match(detail, /useClients/);
   assert.match(detail, /listUsers/);
   assert.match(detail, /Current Client preserved/);
-  assert.match(detail, /Current manager assignment preserved/);
+  assert.doesNotMatch(detail, /editForm\.register\('projectManagerUserId'\)/);
   assert.doesNotMatch(detail, /<label>Client ID|Project Manager ID \(optional\)<input/);
+  assert.match(users, /listProjects/);
+  assert.match(users, /Assigned Projects/);
+  assert.match(users, /project\.projectManagerUserId === null/);
 });
 
 /** Verify Project Team reads Projects Employees and Stages for selection and editing. */

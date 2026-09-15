@@ -55,6 +55,7 @@ const CREATE_ACCOUNT_BODY_JSON_SCHEMA = {
     name: { type: 'string', minLength: 1, maxLength: 300 },
     accountType: { type: 'string', enum: ['CASH', 'BANK'] },
     openingBalance: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' },
+    projectId: UUID_JSON_SCHEMA,
     bankName: { type: 'string', minLength: 1, maxLength: 200 },
     accountReference: { type: 'string', minLength: 1, maxLength: 200 }
   }
@@ -98,7 +99,7 @@ const LEDGER_QUERY_JSON_SCHEMA = {
 const TRIAL_BALANCE_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['periodId'], properties: { periodId: UUID_JSON_SCHEMA } } as const;
 const CASH_BANK_QUERY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false,
-  properties: { ...PAGINATION_PROPERTIES, status: { type: 'string', minLength: 1, maxLength: 100 } }
+  properties: { ...PAGINATION_PROPERTIES, status: { type: 'string', minLength: 1, maxLength: 100 }, projectId: UUID_JSON_SCHEMA }
 } as const;
 const UPDATE_CASH_BANK_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, minProperties: 1,
@@ -169,6 +170,9 @@ function serializeCashBankAccount(account: Awaited<ReturnType<FinanceService['li
     name: account.name,
     accountType: account.accountType,
     glAccountId: account.glAccountId,
+    projectId: account.projectId,
+    projectCode: account.project?.projectCode ?? null,
+    projectName: account.project?.name ?? null,
     bankName: account.bankName,
     accountReference: account.accountReference,
     status: account.status,
@@ -313,7 +317,7 @@ export async function registerFinanceRoutes(app: FastifyInstance, options: Finan
     schema: { tags: tag, operationId: 'financeCashBank', summary: 'List Cash and Bank balances', security: BEARER_SECURITY, querystring: CASH_BANK_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
-    requireRouteAccess('finance.read');
+    if (!hasPermission('finance.read') && !hasPermission('finance.accounts.manage')) requireRouteAccess('finance.read');
     const query = parseRequest(listCashBankAccountsQuerySchema, request.query, 'query');
     const result = await service.listCashBankAccounts(query);
     return reply.send({ data: listCashBankAccountsResponseSchema.parse({ ...result, items: result.items.map((item) => serializeCashBankAccount(item)) }) });

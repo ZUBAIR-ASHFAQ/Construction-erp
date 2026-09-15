@@ -144,8 +144,8 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   const detailInvoicesQuery = useClientInvoices({ ...(detailProjectId ? { projectId: detailProjectId } : {}), status: 'ISSUED', page: 1, pageSize: 100 }, props.canReadInvoices && detailProjectId !== '');
   const cashBankQuery = useCashBankAccounts({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadFinance);
   const matchingCashBankAccounts = useMemo(
-    () => (cashBankQuery.data?.items ?? []).filter((account) => account.accountType.toUpperCase() === receiptPaymentMethod),
-    [cashBankQuery.data?.items, receiptPaymentMethod]
+    () => (cashBankQuery.data?.items ?? []).filter((account) => account.accountType.toUpperCase() === receiptPaymentMethod && (!receiptProjectId || account.projectId === receiptProjectId || account.projectId === null)),
+    [cashBankQuery.data?.items, receiptPaymentMethod, receiptProjectId]
   );
   const cashBankNames = useMemo(() => new Map((cashBankQuery.data?.items ?? []).map((account) => [account.id, account.name])), [cashBankQuery.data?.items]);
   const createReceipt = useCreateClientReceipt();
@@ -173,8 +173,8 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
     [editClientId, editInvoicesQuery.data?.items]
   );
   const editAccounts = useMemo(
-    () => (cashBankQuery.data?.items ?? []).filter((account) => account.accountType.toUpperCase() === editPaymentMethod),
-    [cashBankQuery.data?.items, editPaymentMethod]
+    () => (cashBankQuery.data?.items ?? []).filter((account) => account.accountType.toUpperCase() === editPaymentMethod && (!editProjectId || account.projectId === editProjectId || account.projectId === null)),
+    [cashBankQuery.data?.items, editPaymentMethod, editProjectId]
   );
   const correctReceipt = useCorrectClientReceipt(editingReceipt?.id ?? null);
 

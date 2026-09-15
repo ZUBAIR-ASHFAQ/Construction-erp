@@ -16,6 +16,7 @@ export function ClientBillingPage() {
       </div>
       <ClientBillingWorkspace
         canRead={canRead}
+        canReadClients={usePermission('clients.read')}
         canCreateInvoices={usePermission('client_invoices.create')}
         canReadInvoices={usePermission('client_invoices.read') || canRead}
         canReadStages={usePermission('stages.read') || Boolean(hasRestrictedProjects)}

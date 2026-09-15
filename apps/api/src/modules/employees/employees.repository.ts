@@ -73,7 +73,7 @@ export class EmployeesRepository {
         ? {}
         : {
             projectTeamAssignments: {
-              some: { projectId: { in: [...new Set(input.allowedProjectIds)] } }
+              some: { projectId: { in: [...new Set(input.allowedProjectIds)] }, status: 'ACTIVE' }
             }
           }),
       ...(search ? {
@@ -109,7 +109,7 @@ export class EmployeesRepository {
           ? {}
           : {
               projectTeamAssignments: {
-                some: { projectId: { in: [...new Set(allowedProjectIds)] } }
+                some: { projectId: { in: [...new Set(allowedProjectIds)] }, status: 'ACTIVE' }
               }
             })
       })

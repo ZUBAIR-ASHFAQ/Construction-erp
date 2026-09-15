@@ -44,6 +44,7 @@ const JOURNAL_REVERSED = 'REVERSED';
 const PERIOD_OPEN = 'OPEN';
 const PERIOD_CLOSED = 'CLOSED';
 const ACCOUNT_ACTIVE = 'ACTIVE';
+const PROJECT_ACCOUNT_SETUP_STATUSES = new Set(['DRAFT', 'ACTIVE']);
 const RECONCILIATION_COMPLETED = 'COMPLETED';
 const ROLE_ASSIGNMENT_ACTIVE = 'ACTIVE';
 const ROLE_ACTIVE = 'ACTIVE';
@@ -206,6 +207,39 @@ export class FinanceService {
     if (!hasPermission(permission)) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
   }
 
+  /** Resolve Cash/Bank visibility from the trusted Project scope without granting Finance-core access. */
+  private cashBankVisibility(projectId?: string): Readonly<{ allowedProjectIds: readonly string[] | null; includeCompanyAccounts: boolean }> {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    if (security.projectScope.kind === 'restricted') {
+      if (projectId && !security.projectScope.projectIds.includes(projectId)) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+      return { allowedProjectIds: security.projectScope.projectIds, includeCompanyAccounts: false };
+    }
+    return { allowedProjectIds: null, includeCompanyAccounts: true };
+  }
+
+  /** Require one account Project to stay inside the caller's trusted Project scope. */
+  private requireCashBankProject(projectId: string | null | undefined): void {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    if (security.projectScope.kind === 'restricted' && (!projectId || !security.projectScope.projectIds.includes(projectId))) {
+      throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    }
+  }
+
+  /** Resolve omitted Project ownership for restricted single-Project account managers. */
+  private resolveCashBankProjectId(projectId: string | undefined): string | undefined {
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved') throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    if (security.projectScope.kind === 'all') return projectId;
+    if (projectId) {
+      if (!security.projectScope.projectIds.includes(projectId)) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+      return projectId;
+    }
+    if (security.projectScope.projectIds.length === 1) return security.projectScope.projectIds[0];
+    throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+  }
+
   /** Revalidate one Project Finance permission through Administration Project-scope policy. */
   private async requireProjectPermission(
     repository: AdministrationRepository,
@@ -329,11 +363,13 @@ export class FinanceService {
 
   /** Create one active Cash/Bank GL account exactly once with a server-owned code. */
   async createAccount(input: CreateFinanceAccountBody, idempotencyKey: string) {
+    const projectId = this.resolveCashBankProjectId(input.projectId);
+    const scopedInput: CreateFinanceAccountBody = projectId === undefined ? input : { ...input, projectId };
     try {
       const result = await executeIdempotentCommand(
         this.db,
-        { operation: 'finance.accounts.create', idempotencyKey, fingerprintInput: input },
-        async (tx) => this.createAccountOnce(tx, input)
+        { operation: 'finance.accounts.create', idempotencyKey, fingerprintInput: scopedInput },
+        async (tx) => this.createAccountOnce(tx, scopedInput)
       );
       return result.response.body;
     } catch (error) {
@@ -345,9 +381,14 @@ export class FinanceService {
   /** Persist one Cash/Bank account and post its opening balance atomically. */
   private async createAccountOnce(tx: TransactionClient, input: CreateFinanceAccountBody) {
     this.requirePermission('finance.accounts.manage');
+    this.requireCashBankProject(input.projectId);
     const repository = new FinanceRepository(tx);
     const accountType = input.accountType;
     if (!(accountType === 'CASH' || accountType === 'BANK')) throw createFinanceError('GL_ACCOUNT_INVALID');
+    if (input.projectId) {
+      const projects = await repository.findProjectsByIds([input.projectId]);
+      if (projects.length !== 1 || !PROJECT_ACCOUNT_SETUP_STATUSES.has(projects[0]?.status ?? '')) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    }
     const accountCode = await this.allocateAccountCode(tx, repository);
     const account = await repository.createAccount({ accountCode, name: input.name, accountType, parentId: null, status: ACCOUNT_ACTIVE });
     await repository.createCashBankAccountForGl({
@@ -355,6 +396,7 @@ export class FinanceService {
       name: account.name,
       accountType,
       glAccountId: account.id,
+      projectId: input.projectId ?? null,
       ...(input.bankName === undefined ? {} : { bankName: input.bankName }),
       ...(input.accountReference === undefined ? {} : { accountReference: input.accountReference }),
       status: account.status
@@ -374,13 +416,13 @@ export class FinanceService {
         postingDate: period.startDate,
         description: `Opening balance - ${account.name}`,
         lines: [
-          { accountId: account.id, projectId: null, stageId: null, debit: input.openingBalance, credit: '0.00', description: `Opening balance - ${account.name}` },
-          { accountId: openingEquity.id, projectId: null, stageId: null, debit: '0.00', credit: input.openingBalance, description: OPENING_BALANCE_EQUITY_CODE }
+          { accountId: account.id, projectId: input.projectId ?? null, stageId: null, debit: input.openingBalance, credit: '0.00', description: `Opening balance - ${account.name}` },
+          { accountId: openingEquity.id, projectId: input.projectId ?? null, stageId: null, debit: '0.00', credit: input.openingBalance, description: OPENING_BALANCE_EQUITY_CODE }
         ]
       });
     }
 
-    await recordAudit(tx, { action: 'finance.account.created', entityType: 'gl_account', entityId: account.id, after: { accountCode: account.accountCode, name: account.name, accountType: account.accountType, openingBalance: input.openingBalance, parentId: account.parentId, status: account.status } });
+    await recordAudit(tx, { action: 'finance.account.created', entityType: 'gl_account', entityId: account.id, after: { accountCode: account.accountCode, name: account.name, accountType: account.accountType, openingBalance: input.openingBalance, projectId: input.projectId ?? null, parentId: account.parentId, status: account.status } });
     return { statusCode: 201, body: financeAccountResponseBody(account) };
   }
 
@@ -719,13 +761,16 @@ export class FinanceService {
 
   /** List Cash/Bank accounts with balances derived from posted GL lines. */
   async listCashBankAccounts(input: ListCashBankAccountsQuery) {
-    this.requirePermission('finance.read');
+    if (!hasPermission('finance.read') && !hasPermission('finance.accounts.manage')) throw createFinanceError('FINANCE_SCOPE_FORBIDDEN');
+    const visibility = this.cashBankVisibility(input.projectId);
     const page = input.page ?? 1;
     const pageSize = input.pageSize ?? 25;
     const result = await new FinanceRepository(this.db).listCashBankAccounts({
       skip: (page - 1) * pageSize,
       take: pageSize,
       status: input.status,
+      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...visibility,
       journalStatuses: [JOURNAL_POSTED, JOURNAL_REVERSED]
     });
     return { ...result, page, pageSize };
@@ -736,6 +781,9 @@ export class FinanceService {
     this.requirePermission('finance.accounts.manage');
     return this.db.$transaction(async (tx) => {
       const repository = new FinanceRepository(tx);
+      const existing = await repository.findCashBankAccountById(accountId);
+      if (!existing) throw createFinanceError('GL_ACCOUNT_INVALID');
+      this.requireCashBankProject(existing.projectId);
       const update = {
         ...(input.name === undefined ? {} : { name: input.name }),
         ...(input.bankName === undefined ? {} : { bankName: input.bankName }),

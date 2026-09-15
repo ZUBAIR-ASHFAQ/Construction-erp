@@ -759,6 +759,38 @@ export class AdministrationRepository {
     });
   }
 
+  /** Assign unassigned same-company Projects to one Site Manager without stealing another manager's Project. */
+  async assignProjectManagerToProjects(userId: string, projectIds: readonly string[]) {
+    if (projectIds.length === 0) return 0;
+    const scope = requireCompanyRepositoryScope();
+    const user = await this.db.user.findFirst({ where: scope.where({ id: userId }), select: { id: true } });
+    if (!user) return 0;
+
+    const uniqueProjectIds = [...new Set(projectIds)];
+    const result = await this.db.project.updateMany({
+      where: scope.where({
+        id: { in: uniqueProjectIds },
+        OR: [{ projectManagerUserId: null }, { projectManagerUserId: userId }]
+      }),
+      data: { projectManagerUserId: userId }
+    });
+    return result.count;
+  }
+
+  /** Clear Project Manager ownership only where the selected Site Manager currently owns that Project. */
+  async clearProjectManagerFromProjects(userId: string, projectIds: readonly string[]) {
+    if (projectIds.length === 0) return 0;
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.project.updateMany({
+      where: scope.where({
+        id: { in: [...new Set(projectIds)] },
+        projectManagerUserId: userId
+      }),
+      data: { projectManagerUserId: null }
+    });
+    return result.count;
+  }
+
   /** List explicit final Administration Project scopes for one same-company user. */
   async listUserProjectScopes(userId: string) {
     const scope = requireCompanyRepositoryScope();
@@ -777,6 +809,68 @@ export class AdministrationRepository {
     const scope = requireCompanyRepositoryScope();
     const result = await this.db.userProjectScope.deleteMany({
       where: scope.where({ userId })
+    });
+    return result.count;
+  }
+
+  /** Upsert one same-company role assignment for Project Manager access synchronization. */
+  async upsertUserRole(input: CreateUserRoleRepositoryInput) {
+    const scope = requireCompanyRepositoryScope();
+    const [user, role] = await Promise.all([
+      this.db.user.findFirst({ where: scope.where({ id: input.userId }), select: { id: true } }),
+      this.db.role.findFirst({ where: visibleRoleWhere(scope.companyId, { id: input.roleId }), select: { id: true } })
+    ]);
+    if (!user || !role) return null;
+
+    return this.db.userRole.upsert({
+      where: {
+        companyId_userId_roleId: {
+          companyId: scope.companyId,
+          userId: input.userId,
+          roleId: input.roleId
+        }
+      },
+      create: scope.createData({ userId: input.userId, roleId: input.roleId, status: input.status }),
+      update: { status: input.status }
+    });
+  }
+
+  /** Upsert one explicit Project scope without replacing the user's other Project assignments. */
+  async upsertUserProjectScope(
+    userId: string,
+    projectScope: CreateUserProjectScopeRepositoryInput,
+    status: string
+  ) {
+    const scope = requireCompanyRepositoryScope();
+    const [user, project] = await Promise.all([
+      this.db.user.findFirst({ where: scope.where({ id: userId }), select: { id: true } }),
+      this.db.project.findFirst({ where: scope.where({ id: projectScope.projectId }), select: { id: true } })
+    ]);
+    if (!user || !project) return null;
+
+    return this.db.userProjectScope.upsert({
+      where: {
+        companyId_userId_projectId: {
+          companyId: scope.companyId,
+          userId,
+          projectId: projectScope.projectId
+        }
+      },
+      create: scope.createData({
+        userId,
+        projectId: projectScope.projectId,
+        roleCode: projectScope.roleCode ?? null,
+        status
+      }),
+      update: { roleCode: projectScope.roleCode ?? null, status }
+    });
+  }
+
+  /** Remove only the Project scope created for one Site Manager Project Manager assignment. */
+  async deleteUserProjectScope(userId: string, projectId: string, roleCode: string) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.userProjectScope.deleteMany({
+      where: scope.where({ userId, projectId, roleCode })
     });
     return result.count;
   }

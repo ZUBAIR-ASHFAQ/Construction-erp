@@ -320,6 +320,9 @@ export const payrollCashBankAccountResponseSchema = z.object({
   name: z.string().min(1),
   accountType: z.enum(['CASH', 'BANK']),
   accountNumber: z.string().nullable(),
+  projectId: uuidSchema.nullable(),
+  projectCode: z.string().nullable(),
+  projectName: z.string().nullable(),
   balance: z.string()
 }).strict();
 

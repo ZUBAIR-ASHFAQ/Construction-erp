@@ -9,11 +9,15 @@ const schemaSource = await readFile('apps/api/src/modules/administration/adminis
 const prismaSource = await readFile('packages/database/prisma/schema.prisma', 'utf8');
 const migrationSource = await readFile('packages/database/prisma/migrations/20260829000600_final21_administration_alignment/migration.sql', 'utf8');
 const adminApiSource = await readFile('apps/web/src/features/administration/api/admin-api.ts', 'utf8');
+const authApiSource = await readFile('apps/web/src/features/administration/api/auth-api.ts', 'utf8');
+const authHookSource = await readFile('apps/web/src/features/administration/hooks/auth.tsx', 'utf8');
 const usersPageSource = await readFile('apps/web/src/features/administration/pages/users-page.tsx', 'utf8');
 const rolesPageSource = await readFile('apps/web/src/features/administration/pages/roles-page.tsx', 'utf8');
 const departmentsPageSource = await readFile('apps/web/src/features/administration/pages/departments-page.tsx', 'utf8');
 const adminShellSource = await readFile('apps/web/src/features/administration/components/admin-shell.tsx', 'utf8');
 const appSource = await readFile('apps/api/src/app.ts', 'utf8');
+const authRateLimitSource = await readFile('apps/api/src/plugins/auth-rate-limit.ts', 'utf8');
+const authRefreshCookieSource = await readFile('apps/api/src/plugins/auth-refresh-cookie.ts', 'utf8');
 
 const REQUIRED_ADMINISTRATION_ROUTES = [
   "app.post('/api/v1/auth/login'",
@@ -52,6 +56,14 @@ const FINAL_ADMINISTRATION_PERMISSIONS = [
   'admin.departments.manage'
 ];
 
+/** Extract one route block from its declaration through the next route declaration. */
+function routeBlock(source, routeOpening) {
+  const start = source.indexOf(routeOpening);
+  assert.notEqual(start, -1, `Missing route ${routeOpening}.`);
+  const next = source.indexOf('\n  app.', start + routeOpening.length);
+  return source.slice(start, next === -1 ? source.length : next);
+}
+
 /** Extract one method block from source by its opening marker and the next method comment. */
 function methodBlock(source, methodName) {
   const start = source.indexOf(`async ${methodName}(`);
@@ -76,6 +88,101 @@ test('final Administration removes superseded legacy route aliases', () => {
   for (const alias of REMOVED_LEGACY_ALIASES) {
     assert.equal(routesSource.includes(alias), false, `Superseded legacy route alias is still active: ${alias}`);
   }
+});
+
+test('public authentication commands are rate-limited without changing protected session routes', () => {
+  const limitedRoutes = [
+    ["app.post('/api/v1/auth/login'", "authRateLimit.hook('login', AUTH_RATE_LIMITS.login)"],
+    ["app.post('/api/v1/auth/refresh'", "authRateLimit.hook('refresh', AUTH_RATE_LIMITS.refresh)"],
+    ["app.post('/api/v1/auth/invitations/accept'", "authRateLimit.hook('invitation-accept', AUTH_RATE_LIMITS.invitationAccept)"],
+    ["app.post('/api/v1/auth/password-reset/request'", "authRateLimit.hook('password-reset-request', AUTH_RATE_LIMITS.passwordResetRequest)"],
+    ["app.post('/api/v1/auth/password-reset/complete'", "authRateLimit.hook('password-reset-complete', AUTH_RATE_LIMITS.passwordResetComplete)"]
+  ];
+
+  for (const [opening, hook] of limitedRoutes) {
+    const block = routeBlock(routesSource, opening);
+    assert.equal(block.includes(hook), true, `Missing auth rate limit hook on ${opening}.`);
+    assert.equal(block.includes('429: AUTH_RATE_LIMIT_RESPONSE'), true, `Missing 429 OpenAPI response on ${opening}.`);
+  }
+
+  assert.equal(routeBlock(routesSource, "app.post('/api/v1/auth/logout'").includes('authRateLimit.hook('), false);
+  assert.equal(routeBlock(routesSource, "app.get('/api/v1/auth/me'").includes('authRateLimit.hook('), false);
+  assert.match(authRateLimitSource, /request\.ip/);
+  assert.match(authRateLimitSource, /RATE_LIMIT_EXCEEDED/);
+  assert.match(authRateLimitSource, /Retry-After/);
+  assert.match(authRateLimitSource, /MAX_TRACKED_AUTH_CLIENTS = 10_000/);
+});
+
+test('refresh credentials stay in a rotated HttpOnly cookie instead of browser-readable storage or JSON', () => {
+  const loginBlock = routeBlock(routesSource, "app.post('/api/v1/auth/login'");
+  const refreshBlock = routeBlock(routesSource, "app.post('/api/v1/auth/refresh'");
+  const logoutBlock = routeBlock(routesSource, "app.post('/api/v1/auth/logout'");
+  const authResultStart = schemaSource.indexOf('export const AUTH_RESULT_SCHEMA');
+  const currentIdentityStart = schemaSource.indexOf('export const CURRENT_IDENTITY_SCHEMA', authResultStart);
+  const authResultBlock = schemaSource.slice(authResultStart, currentIdentityStart);
+
+  assert.match(loginBlock, /createRefreshTokenCookie\(refreshToken, result\.session\.expiresAt, secureRefreshCookie\)/);
+  assert.match(refreshBlock, /readRefreshTokenCookie\(request\.headers\.cookie\)/);
+  assert.match(refreshBlock, /createRefreshTokenCookie\(nextRefreshToken, result\.session\.expiresAt, secureRefreshCookie\)/);
+  assert.doesNotMatch(refreshBlock, /clearRefreshTokenCookie\(secureRefreshCookie\)/);
+  assert.match(logoutBlock, /clearRefreshTokenCookie\(secureRefreshCookie\)/);
+  assert.match(schemaSource, /refreshSessionBodySchema = z\.object\(\{\}\)\.strict\(\)/);
+  assert.doesNotMatch(authResultBlock, /refreshToken/);
+
+  assert.match(authRefreshCookieSource, /construction-erp-refresh-token/);
+  assert.match(authRefreshCookieSource, /Path=\$\{REFRESH_COOKIE_PATH\}/);
+  assert.match(authRefreshCookieSource, /'HttpOnly'/);
+  assert.match(authRefreshCookieSource, /'SameSite=Strict'/);
+  assert.match(authRefreshCookieSource, /attributes\.push\('Secure'\)/);
+  assert.match(authRefreshCookieSource, /'Max-Age=0'/);
+
+  assert.match(appSource, /credentials: true/);
+  assert.match(appSource, /secureRefreshCookie: nodeEnv === 'production'/);
+  assert.match(authApiSource, /credentials: 'include'/);
+  assert.match(authApiSource, /saveAccessToken\(result\.accessToken, result\.session\.accessExpiresAt\)/);
+  assert.doesNotMatch(authApiSource, /readRefreshToken|sessionStorage\.getItem\(LEGACY_REFRESH_TOKEN_KEY\)|sessionStorage\.setItem\(LEGACY_REFRESH_TOKEN_KEY/);
+  assert.match(authApiSource, /sessionStorage\.removeItem\(LEGACY_REFRESH_TOKEN_KEY\)/);
+  assert.doesNotMatch(authApiSource, /refreshToken:\s*string/);
+  assert.doesNotMatch(authApiSource, /JSON\.stringify\(\{\s*refreshToken/);
+  assert.match(authHookSource, /saveAccessToken\(result\.accessToken, result\.session\.accessExpiresAt\)/);
+});
+
+test('browser authentication restores and proactively rotates active sessions without exposing the refresh token', () => {
+  const refreshBlock = routeBlock(routesSource, "app.post('/api/v1/auth/refresh'");
+
+  assert.match(authApiSource, /const ACCESS_EXPIRES_AT_KEY = 'construction-erp-access-expires-at'/);
+  assert.match(authApiSource, /export function readAccessTokenExpiresAt\(\): number \| null/);
+  assert.match(authApiSource, /export async function refreshStoredSession\(\): Promise<AuthSessionResult>/);
+  assert.match(authApiSource, /if \(!accessToken\) \{[\s\S]*refreshStoredSession\(\)/);
+  assert.match(authApiSource, /if \(!isAuthenticationFailure\(error\)\) throw error/);
+  assert.match(authApiSource, /saveAccessToken\(result\.accessToken, result\.session\.accessExpiresAt\)/);
+  assert.match(authApiSource, /sessionStorage\.removeItem\(ACCESS_EXPIRES_AT_KEY\)/);
+
+  assert.match(authHookSource, /const \[hasSession, setHasSession\] = useState\(true\)/);
+  assert.match(authHookSource, /const ACCESS_REFRESH_LEAD_MS = 60 \* 1000/);
+  assert.match(authHookSource, /readAccessTokenExpiresAt\(\)/);
+  assert.match(authHookSource, /window\.setTimeout/);
+  assert.match(authHookSource, /refreshStoredSession\(\)/);
+  assert.match(authHookSource, /identityFromSession\(result\)/);
+  assert.match(authHookSource, /if \(identityQuery\.isError && readAccessToken\(\) === null\)/);
+
+  // A failed/replayed refresh must not clear a newer cookie that another tab may
+  // already have rotated successfully. Explicit logout remains the cookie clear.
+  assert.doesNotMatch(refreshBlock, /clearRefreshTokenCookie/);
+  assert.match(routeBlock(routesSource, "app.post('/api/v1/auth/logout'"), /clearRefreshTokenCookie/);
+});
+
+test('production app construction fails closed without a valid auth action token secret', () => {
+  assert.match(appSource, /const nodeEnv = options\.nodeEnv \?\? 'development'/);
+  assert.match(
+    appSource,
+    /options\.authActionTokenSecret\s*\?\? \(nodeEnv === 'production' \? '' : 'development-only-auth-action-secret-change-me'\)/
+  );
+  assert.match(appSource, /nodeEnv === 'production' && authActionTokenSecret\.length < 32/);
+  assert.match(appSource, /authActionTokenSecret must contain at least 32 characters in production/);
+  assert.match(appSource, /environment: nodeEnv/);
+  assert.match(appSource, /secureRefreshCookie: nodeEnv === 'production'/);
+  assert.match(appSource, /exposeDiagnostics: nodeEnv !== 'production'/);
 });
 
 test('Administration service authorizes final user, role, Department, and Project-scope commands', () => {

@@ -20,6 +20,7 @@ export function SiteExpensesPage() {
         canReadProjects={usePermission('projects.read')}
         canReadStages={usePermission('stages.read')}
         canReadFinance={usePermission('finance.read')}
+        canManageAccounts={usePermission('finance.accounts.manage')}
         canReadDocuments={usePermission('documents.read')}
       />
     </section>

@@ -11,7 +11,7 @@ export function MaterialsPage() {
       <div className="section-heading">
         <p className="eyebrow">Module 11</p>
         <h1 id="materials-title">Materials</h1>
-        <p className="muted">Create the shared Company material master used by Procurement, Goods Receipts and Inventory transactions. Material creation does not change stock quantity.</p>
+        <p className="muted">Create Project-owned materials used only by that Project's Procurement, Goods Receipts and Inventory transactions. Material creation does not change stock quantity.</p>
       </div>
       <MaterialsWorkspace canRead={canRead} canManage={canManage} />
     </section>

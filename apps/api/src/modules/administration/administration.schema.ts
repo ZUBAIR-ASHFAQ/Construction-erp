@@ -112,10 +112,8 @@ export const signInBodySchema = z.object({
   password: passwordInputSchema
 }).strict();
 
-/** Require the refresh secret only on the public refresh command. */
-export const refreshSessionBodySchema = z.object({
-  refreshToken: secretTokenSchema
-}).strict();
+/** Refresh uses only the HttpOnly cookie; reject any client-supplied body fields. */
+export const refreshSessionBodySchema = z.object({}).strict();
 
 export const signOutBodySchema = z.object({}).strict();
 
@@ -511,7 +509,7 @@ export const EMPTY_BODY_OPENAPI_SCHEMA = {
 export const AUTH_RESULT_SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['user', 'session', 'accessToken', 'refreshToken', 'permissions', 'projectScope'],
+  required: ['user', 'session', 'accessToken', 'permissions', 'projectScope'],
   properties: {
     user: USER_SCHEMA,
     session: {
@@ -525,7 +523,6 @@ export const AUTH_RESULT_SCHEMA = {
       }
     },
     accessToken: { type: 'string' },
-    refreshToken: { type: 'string' },
     permissions: { type: 'array', items: { type: 'string' } },
     projectScope: RESOLVED_PROJECT_SCOPE_SCHEMA
   }

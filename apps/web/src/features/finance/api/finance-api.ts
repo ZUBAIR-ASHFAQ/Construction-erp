@@ -11,7 +11,7 @@ export type FinanceAccount = Readonly<{
 
 export type FinanceAccountPage = Readonly<{ items: FinanceAccount[]; total: number; page: number; pageSize: number }>;
 export type ListFinanceAccountsInput = Readonly<{ page?: number; pageSize?: number }>;
-export type CreateFinanceAccountInput = Readonly<{ name: string; accountType: 'CASH' | 'BANK'; openingBalance: string; bankName?: string; accountReference?: string }>;
+export type CreateFinanceAccountInput = Readonly<{ name: string; accountType: 'CASH' | 'BANK'; openingBalance: string; projectId?: string; bankName?: string; accountReference?: string }>;
 
 export type ManualJournalLineInput = Readonly<{
   accountId: string;
@@ -106,6 +106,9 @@ export type CashBankAccount = Readonly<{
   name: string;
   accountType: string;
   glAccountId: string;
+  projectId: string | null;
+  projectCode: string | null;
+  projectName: string | null;
   bankName: string | null;
   accountReference: string | null;
   status: string;
@@ -115,7 +118,7 @@ export type CashBankAccount = Readonly<{
 export type UpdateCashBankAccountInput = Readonly<{ name?: string; bankName?: string | null; accountReference?: string | null; status?: 'ACTIVE' | 'ARCHIVED' }>;
 
 export type CashBankAccountPage = Readonly<{ items: CashBankAccount[]; total: number; page: number; pageSize: number }>;
-export type ListCashBankAccountsInput = Readonly<{ page?: number; pageSize?: number; status?: string }>;
+export type ListCashBankAccountsInput = Readonly<{ page?: number; pageSize?: number; status?: string; projectId?: string }>;
 export type CreateBankReconciliationInput = Readonly<{ cashBankAccountId: string; statementDate: string }>;
 export type BankReconciliation = Readonly<{
   id: string;
@@ -209,6 +212,7 @@ export function listCashBankAccounts(input: ListCashBankAccountsInput = {}): Pro
   if (input.page !== undefined) query.set('page', String(input.page));
   if (input.pageSize !== undefined) query.set('pageSize', String(input.pageSize));
   if (input.status) query.set('status', input.status);
+  if (input.projectId) query.set('projectId', input.projectId);
   return authenticatedRequest<CashBankAccountPage>(`finance/cash-bank${query.size ? `?${query}` : ''}`);
 }
 

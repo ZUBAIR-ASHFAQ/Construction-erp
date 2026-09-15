@@ -102,7 +102,7 @@ export type UpdateAttendanceInput = Readonly<{
 }>;
 export type CreatePayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
 export type CalculatePayrollRunInput = Readonly<{ overtimeMultiplier?: string }>;
-export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; balance: string }>;
+export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; projectId: string | null; projectCode: string | null; projectName: string | null; balance: string }>;
 export type PayrollPaymentStatus = 'POSTED' | 'REVERSED';
 export type PayrollPayment = Readonly<{
   id: string; payrollLineId: string; payrollRunId: string; employeeId: string; employeeNo: string; employeeName: string;

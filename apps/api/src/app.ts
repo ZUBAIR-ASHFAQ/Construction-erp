@@ -53,6 +53,7 @@ export type BuildAppOptions = Readonly<{
  */
 export function buildApp(options: BuildAppOptions = {}) {
   const service = options.appName ?? APP_NAME;
+  const nodeEnv = options.nodeEnv ?? 'development';
   const documentsUploadPolicy = options.documentsUploadPolicy ?? Object.freeze({
     maxSizeBytes: 50 * 1024 * 1024,
     allowedMimeTypes: [
@@ -65,20 +66,25 @@ export function buildApp(options: BuildAppOptions = {}) {
     ],
     signedUrlTtlSeconds: 300
   });
-  const authActionTokenSecret = options.authActionTokenSecret ?? 'development-only-auth-action-secret-change-me';
+  const authActionTokenSecret = options.authActionTokenSecret
+    ?? (nodeEnv === 'production' ? '' : 'development-only-auth-action-secret-change-me');
+  if (nodeEnv === 'production' && authActionTokenSecret.length < 32) {
+    throw new Error('authActionTokenSecret must contain at least 32 characters in production.');
+  }
   const app = Fastify({
     genReqId: createRequestId,
     disableRequestLogging: true,
     logger: createStructuredLoggerOptions({
       level: options.logLevel ?? 'info',
       service,
-      environment: options.nodeEnv ?? 'development'
+      environment: nodeEnv
     })
   });
 
   // Allow browser requests only from the configured web application origins.
   app.register(cors, {
-    origin: [...(options.webOrigins ?? ['http://localhost:5173'])]
+    origin: [...(options.webOrigins ?? ['http://localhost:5173'])],
+    credentials: true
   });
 
   // Register Swagger before routes so every later route can be included.
@@ -112,7 +118,8 @@ export function buildApp(options: BuildAppOptions = {}) {
     app.register(registerDatabase, { client: options.database });
     app.register(registerAdministrationRoutes, {
       database: options.database,
-      authActionTokenSecret
+      authActionTokenSecret,
+      secureRefreshCookie: nodeEnv === 'production'
     });
     app.register(registerClientsRoutes, { database: options.database });
     app.register(registerVendorsSubcontractorsRoutes, { database: options.database });
@@ -154,7 +161,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   registerOperations(app, {
     service,
     config: options.operations ?? Object.freeze({
-      exposeDiagnostics: (options.nodeEnv ?? 'development') !== 'production',
+      exposeDiagnostics: nodeEnv !== 'production',
       readinessTimeoutMs: 2000,
       staleLeaseSeconds: 300
     }),

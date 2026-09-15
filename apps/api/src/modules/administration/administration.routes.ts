@@ -3,6 +3,12 @@ import type { DatabaseClient } from '@construction-erp/database';
 import { ValidationError } from '@construction-erp/errors';
 import { z } from 'zod';
 import { authenticateRequest, readBearerToken } from '../../plugins/authentication.js';
+import { createAuthRateLimiter } from '../../plugins/auth-rate-limit.js';
+import {
+  clearRefreshTokenCookie,
+  createRefreshTokenCookie,
+  readRefreshTokenCookie
+} from '../../plugins/auth-refresh-cookie.js';
 import {
   AUTH_RESULT_SCHEMA,
   BEARER_SECURITY,
@@ -45,6 +51,7 @@ import { AdministrationService } from './administration.service.js';
 export type AdministrationRoutesOptions = Readonly<{
   database: DatabaseClient;
   authActionTokenSecret: string;
+  secureRefreshCookie?: boolean;
 }>;
 
 /** Build one Administration error envelope with the exact stable codes a route can emit. */
@@ -86,6 +93,15 @@ const ROLE_ASSIGNMENT_AUTHENTICATION_RESPONSE = errorResponseSchema(['AUTHENTICA
 const ROLE_ASSIGNMENT_AUTHORIZATION_RESPONSE = errorResponseSchema(['FORBIDDEN']);
 const ROLE_ASSIGNMENT_INTERNAL_ERROR_RESPONSE = errorResponseSchema(['INTERNAL_SERVER_ERROR']);
 const PROJECT_SCOPE_CONFLICT_RESPONSE = errorResponseSchema(['PROJECT_SCOPE_INVALID']);
+const AUTH_RATE_LIMIT_RESPONSE = errorResponseSchema(['RATE_LIMIT_EXCEEDED']);
+
+const AUTH_RATE_LIMITS = Object.freeze({
+  login: Object.freeze({ max: 10, windowMs: 5 * 60 * 1000 }),
+  refresh: Object.freeze({ max: 30, windowMs: 60 * 1000 }),
+  invitationAccept: Object.freeze({ max: 10, windowMs: 15 * 60 * 1000 }),
+  passwordResetRequest: Object.freeze({ max: 5, windowMs: 15 * 60 * 1000 }),
+  passwordResetComplete: Object.freeze({ max: 10, windowMs: 15 * 60 * 1000 })
+});
 
 /**
  * Parse a request segment with the existing Zod boundary and return readable
@@ -136,14 +152,17 @@ export async function registerAdministrationRoutes(
 ): Promise<void> {
   const database = options.database;
   const service = new AdministrationService(database, options.authActionTokenSecret);
+  const authRateLimit = createAuthRateLimiter();
+  const secureRefreshCookie = options.secureRefreshCookie ?? false;
 
   // Authenticate one active user through the final Module 2 login route.
   app.post('/api/v1/auth/login', {
+    onRequest: authRateLimit.hook('login', AUTH_RATE_LIMITS.login),
     schema: {
       tags: ['Module 2 - Administration'],
       operationId: 'administrationLogin',
       summary: 'Login',
-      description: 'Authenticate an active user and create separate opaque access and refresh credentials.',
+      description: 'Authenticate an active user, return an opaque access token, and set the rotated refresh credential in an HttpOnly cookie.',
       security: [],
       body: {
         type: 'object',
@@ -156,45 +175,47 @@ export async function registerAdministrationRoutes(
       },
       response: {
         200: dataEnvelopeSchema(AUTH_RESULT_SCHEMA),
-        ...COMMON_ERROR_RESPONSES
+        ...COMMON_ERROR_RESPONSES,
+        429: AUTH_RATE_LIMIT_RESPONSE
       }
     }
   }, async (request, reply) => {
     const body = parseRequest(signInBodySchema, request.body, 'body');
     const result = await service.signIn(body, clientInfo(request));
-    return reply.send({ data: result });
+    const { refreshToken, ...data } = result;
+    reply.header('Set-Cookie', createRefreshTokenCookie(refreshToken, result.session.expiresAt, secureRefreshCookie));
+    return reply.send({ data });
   });
 
 
   // Rotate an existing refresh session. This route is intentionally public.
   app.post('/api/v1/auth/refresh', {
+    onRequest: authRateLimit.hook('refresh', AUTH_RATE_LIMITS.refresh),
     schema: {
       tags: ['Authentication Support'],
       operationId: 'administrationRefreshSession',
       summary: 'Refresh session',
-      description: 'Authentication-support command used by the browser session lifecycle to rotate a valid refresh token; it is not an Administration CRUD endpoint.',
+      description: 'Authentication-support command used by the browser session lifecycle to rotate the HttpOnly refresh cookie; it is not an Administration CRUD endpoint.',
       security: [],
-      body: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['refreshToken'],
-        properties: {
-          refreshToken: { type: 'string', minLength: 1, maxLength: 4096 }
-        }
-      },
+      body: EMPTY_BODY_OPENAPI_SCHEMA,
       response: {
         200: dataEnvelopeSchema(AUTH_RESULT_SCHEMA),
-        ...COMMON_ERROR_RESPONSES
+        ...COMMON_ERROR_RESPONSES,
+        429: AUTH_RATE_LIMIT_RESPONSE
       }
     }
   }, async (request, reply) => {
-    const body = parseRequest(refreshSessionBodySchema, request.body ?? {}, 'body');
-    const result = await service.refreshSession(body.refreshToken);
-    return reply.send({ data: result });
+    parseRequest(refreshSessionBodySchema, request.body ?? {}, 'body');
+    const refreshToken = readRefreshTokenCookie(request.headers.cookie);
+    const result = await service.refreshSession(refreshToken);
+    const { refreshToken: nextRefreshToken, ...data } = result;
+    reply.header('Set-Cookie', createRefreshTokenCookie(nextRefreshToken, result.session.expiresAt, secureRefreshCookie));
+    return reply.send({ data });
   });
 
   // Accept a signed invitation and set the user's first password.
   app.post('/api/v1/auth/invitations/accept', {
+    onRequest: authRateLimit.hook('invitation-accept', AUTH_RATE_LIMITS.invitationAccept),
     schema: {
       tags: ['Authentication Support'],
       operationId: 'administrationAcceptInvitation',
@@ -217,7 +238,8 @@ export async function registerAdministrationRoutes(
           required: ['completed'],
           properties: { completed: { type: 'boolean' } }
         }),
-        ...COMMON_ERROR_RESPONSES
+        ...COMMON_ERROR_RESPONSES,
+        429: AUTH_RATE_LIMIT_RESPONSE
       }
     }
   }, async (request, reply) => {
@@ -228,6 +250,7 @@ export async function registerAdministrationRoutes(
 
   // Start password recovery without revealing whether the submitted email exists.
   app.post('/api/v1/auth/password-reset/request', {
+    onRequest: authRateLimit.hook('password-reset-request', AUTH_RATE_LIMITS.passwordResetRequest),
     schema: {
       tags: ['Authentication Support'],
       operationId: 'administrationRequestPasswordReset',
@@ -247,7 +270,8 @@ export async function registerAdministrationRoutes(
           required: ['accepted'],
           properties: { accepted: { type: 'boolean' } }
         }),
-        ...COMMON_ERROR_RESPONSES
+        ...COMMON_ERROR_RESPONSES,
+        429: AUTH_RATE_LIMIT_RESPONSE
       }
     }
   }, async (request, reply) => {
@@ -258,6 +282,7 @@ export async function registerAdministrationRoutes(
 
   // Complete a signed password reset and revoke all older sessions.
   app.post('/api/v1/auth/password-reset/complete', {
+    onRequest: authRateLimit.hook('password-reset-complete', AUTH_RATE_LIMITS.passwordResetComplete),
     schema: {
       tags: ['Authentication Support'],
       operationId: 'administrationCompletePasswordReset',
@@ -280,7 +305,8 @@ export async function registerAdministrationRoutes(
           required: ['completed'],
           properties: { completed: { type: 'boolean' } }
         }),
-        ...COMMON_ERROR_RESPONSES
+        ...COMMON_ERROR_RESPONSES,
+        429: AUTH_RATE_LIMIT_RESPONSE
       }
     }
   }, async (request, reply) => {
@@ -311,6 +337,7 @@ export async function registerAdministrationRoutes(
     await authenticateRequest(request, database);
     parseRequest(signOutBodySchema, request.body ?? {}, 'body');
     const result = await service.signOut(readBearerToken(request));
+    reply.header('Set-Cookie', clearRefreshTokenCookie(secureRefreshCookie));
     return reply.send({ data: result });
   });
 

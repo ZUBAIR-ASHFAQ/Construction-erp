@@ -55,6 +55,17 @@ test('B16.6 validates Supplier Payment scope and Finance Cash Bank dependencies'
 });
 
 /** Confirm payment accounting reduces Supplier Payable and Cash Bank through one source-keyed balanced Finance journal. */
+test('B16.6 prepares required Supplier Payable accounting before direct payment posting', () => {
+  const service = read(SERVICE);
+  const start = service.indexOf('private async createSupplierPaymentOnce');
+  const end = service.indexOf('/** Reverse one POSTED Supplier Payment', start);
+  const paymentBlock = start >= 0 && end > start ? service.slice(start, end) : '';
+  const ensureIndex = paymentBlock.indexOf('await repository.ensureSupplierInvoiceAccounts()');
+  const payableIndex = paymentBlock.indexOf('findGlAccountByCode(SUPPLIER_PAYABLE_ACCOUNT_CODE)');
+  assert.ok(ensureIndex >= 0, 'direct Supplier Payment should prepare required accounting accounts');
+  assert.ok(payableIndex > ensureIndex, 'Supplier Payable lookup must happen after account preparation');
+});
+
 test('B16.6 posts Supplier Payment to Finance exactly once with AP debit and Cash Bank credit', () => {
   const service = read(SERVICE);
   assert.match(service, /function supplierPaymentFinanceSourceKey/);

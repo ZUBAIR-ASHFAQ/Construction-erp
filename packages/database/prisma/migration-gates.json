@@ -889,6 +889,54 @@
       "migrations": [
         "20260910000400_project_operations_permission_catalog"
       ]
+    },
+    {
+      "stage": 77,
+      "gate": "site-manager-project-resource-scope",
+      "description": "Deploys Project-scoped supplier/subcontractor membership and least-privilege Site Manager operational grants.",
+      "migrations": [
+        "20260912000100_site_manager_project_resource_scope"
+      ]
+    },
+    {
+      "stage": 78,
+      "gate": "project-manager-scope-sync",
+      "description": "Reconciles current Project Manager assignments with Site Manager role and explicit login Project scope.",
+      "migrations": [
+        "20260912000200_project_manager_scope_sync"
+      ]
+    },
+    {
+      "stage": 79,
+      "gate": "admin-login-credential-repair",
+      "description": "Repairs the authoritative initial System Administrator login credential and revokes previous administrator sessions without changing authentication behavior.",
+      "migrations": [
+        "20260912000300_admin_login_credential_repair"
+      ]
+    },
+    {
+      "stage": 80,
+      "gate": "project-cash-bank-account-scope",
+      "description": "Scopes operational Cash/Bank accounts to Projects and grants Site Managers only the account, salary-payment, and salary-advance permissions required inside their assigned Project scope.",
+      "migrations": [
+        "20260912000400_project_cash_bank_account_scope"
+      ]
+    },
+    {
+      "stage": 81,
+      "gate": "site-manager-material-vendor-scope-fix",
+      "description": "Allows Site Managers to maintain the shared Material master, fixes Project-scoped supplier/subcontractor request boundaries, and keeps Documents and Project Profitability outside Site Manager access.",
+      "migrations": [
+        "20260912000500_site_manager_material_vendor_scope_fix"
+      ]
+    },
+    {
+      "stage": 82,
+      "gate": "project-operational-resource-scope",
+      "description": "Makes Materials Project-owned and grants Site Managers only the Project-scoped procurement, supplier payment, client billing/receipt, and employee compensation permissions required for assigned Projects.",
+      "migrations": [
+        "20260912000600_project_operational_resource_scope"
+      ]
     }
   ]
 }

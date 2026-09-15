@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { usePermission } from '../../administration/hooks/auth.js';
+import { useAuth, usePermission } from '../../administration/hooks/auth.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
 import {
@@ -23,9 +23,11 @@ const accountSchema = z.object({
   name: z.string().trim().min(1, 'Account name is required.').max(300),
   accountType: z.enum(['CASH', 'BANK']),
   openingBalance: z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'Enter a valid opening balance.'),
+  projectId: z.string().trim().optional(),
   bankName: z.string().trim().max(200),
   accountReference: z.string().trim().max(200)
 }).superRefine((value, context) => {
+  if (value.projectId && !z.string().uuid().safeParse(value.projectId).success) context.addIssue({ code: z.ZodIssueCode.custom, path: ['projectId'], message: 'Select a valid Project.' });
   if (value.accountType === 'BANK' && !value.bankName) context.addIssue({ code: z.ZodIssueCode.custom, path: ['bankName'], message: 'Bank name is required.' });
   if (value.accountType === 'BANK' && !value.accountReference) context.addIssue({ code: z.ZodIssueCode.custom, path: ['accountReference'], message: 'Bank account number is required.' });
 });
@@ -79,6 +81,7 @@ type FinancePageProps = Readonly<{ view?: 'core' | 'ledger'; initialAccountId?: 
 
 /** Render the Final Module 18 Finance Core or its separate Account Ledger view against approved Finance APIs. */
 export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedger }: FinancePageProps) {
+  const auth = useAuth();
   const canReadFinance = usePermission('finance.read');
   const canReadScopedFinance = canReadFinance;
   const canManageAccounts = usePermission('finance.accounts.manage');
@@ -90,11 +93,16 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
   const [ledgerInput, setLedgerInput] = useState<GetFinanceLedgerInput | null>(null);
   const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<CashBankAccount | null>(null);
+  const restrictedProjectIds = auth.identity?.projectScope.kind === 'restricted' ? auth.identity.projectScope.projectIds : null;
+  const soleRestrictedProjectId = restrictedProjectIds?.length === 1 ? (restrictedProjectIds[0] ?? '') : '';
 
   const selectorAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, view === 'ledger' && canReadFinance);
   const cashBankQuery = useCashBankAccounts({ page: 1, pageSize: 100 }, view === 'core' && canReadFinance);
   const periodsQuery = useFinancePeriods({ page: 1, pageSize: 100 }, canReadFinance || canClosePeriods);
-  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, view === 'ledger' && canReadScopedFinance && canReadProjects);
+  const projectsQuery = useProjects(
+    { page: 1, pageSize: 100 },
+    canReadProjects && ((view === 'ledger' && canReadScopedFinance) || (view === 'core' && canManageAccounts))
+  );
   const trialBalanceQuery = useFinanceTrialBalance(trialPeriodId);
   const ledgerQuery = useFinanceLedger(ledgerInput);
   const selectedJournalQuery = useFinanceJournal(selectedJournalId);
@@ -102,7 +110,7 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
   const reconciliationMutation = useCreateBankReconciliation();
   const closePeriodMutation = useCloseFinancePeriod();
 
-  const accountForm = useForm<AccountValues>({ resolver: zodResolver(accountSchema), defaultValues: { name: '', accountType: 'CASH', openingBalance: '0.00', bankName: '', accountReference: '' } });
+  const accountForm = useForm<AccountValues>({ resolver: zodResolver(accountSchema), defaultValues: { name: '', accountType: 'CASH', openingBalance: '0.00', projectId: soleRestrictedProjectId, bankName: '', accountReference: '' } });
   const selectedAccountType = accountForm.watch('accountType');
   const trialForm = useForm<PeriodValues>({ resolver: zodResolver(periodIdSchema), defaultValues: { periodId: '' } });
   const closePeriodForm = useForm<PeriodValues>({ resolver: zodResolver(periodIdSchema), defaultValues: { periodId: '' } });
@@ -110,6 +118,11 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
   const reconciliationForm = useForm<ReconciliationValues>({ resolver: zodResolver(reconciliationSchema), defaultValues: { cashBankAccountId: '', statementDate: new Date().toISOString().slice(0, 10) } });
   const ledgerProjectId = ledgerForm.watch('projectId');
   const ledgerStagesQuery = useProjectStages(ledgerProjectId || null, view === 'ledger' && canReadScopedFinance && canReadStages && ledgerProjectId !== '');
+
+  useEffect(() => {
+    if (!soleRestrictedProjectId) return;
+    accountForm.setValue('projectId', soleRestrictedProjectId);
+  }, [soleRestrictedProjectId, accountForm]);
 
   useEffect(() => {
     if (!initialAccountId || periods.length === 0) return;
@@ -122,8 +135,8 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
 
   /** Create one server-numbered Cash/Bank account and clear the setup form. */
   async function handleCreateAccount(values: AccountValues): Promise<void> {
-    await createAccountMutation.mutateAsync({ name: values.name, accountType: values.accountType, openingBalance: values.openingBalance, ...(values.accountType === 'BANK' ? { bankName: values.bankName, accountReference: values.accountReference } : {}) });
-    accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00', bankName: '', accountReference: '' });
+    await createAccountMutation.mutateAsync({ name: values.name, accountType: values.accountType, openingBalance: values.openingBalance, ...(values.projectId ? { projectId: values.projectId } : {}), ...(values.accountType === 'BANK' ? { bankName: values.bankName, accountReference: values.accountReference } : {}) });
+    accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00', projectId: soleRestrictedProjectId, bankName: '', accountReference: '' });
   }
 
   /** Run a trial-balance read for one explicit period. */
@@ -183,7 +196,8 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
 
       {canManageAccounts && <section className="admin-card">
         <h2>Create Account</h2>
-        <form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account name<input {...accountForm.register('name')} /></label><label>Account type<select {...accountForm.register('accountType')}><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>{selectedAccountType === 'BANK' && <><label>Bank name<input {...accountForm.register('bankName')} placeholder="Enter bank name" /></label><label>Bank account number<input {...accountForm.register('accountReference')} placeholder="Enter bank account number" autoComplete="off" /></label></>}<label>Opening balance<input type="number" min="0" step="0.01" inputMode="decimal" {...accountForm.register('openingBalance')} /></label><div className="muted">Account code is generated automatically by the server. A non-zero opening balance posts an opening Journal automatically.</div><button type="submit" disabled={createAccountMutation.isPending}>Create account</button></form>
+        <form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account name<input {...accountForm.register('name')} /></label><label>Account type<select {...accountForm.register('accountType')}><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>{selectedAccountType === 'BANK' && <><label>Bank name<input {...accountForm.register('bankName')} placeholder="Enter bank name" /></label><label>Bank account number<input {...accountForm.register('accountReference')} placeholder="Enter bank account number" autoComplete="off" /></label></>}<label>Project<select {...accountForm.register('projectId')} disabled={!canReadProjects}><option value="">{restrictedProjectIds ? 'Select assigned Project' : 'Company account'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select>{restrictedProjectIds && <small className="muted">Site Manager accounts must belong to an assigned Project.</small>}</label><label>Opening balance<input type="number" min="0" step="0.01" inputMode="decimal" {...accountForm.register('openingBalance')} /></label><div className="muted">Account code is generated automatically by the server. A non-zero opening balance posts an opening Journal automatically.</div><button type="submit" disabled={createAccountMutation.isPending}>Create account</button></form>
+        {projectsQuery.error instanceof Error && <p className="form-error" role="alert">{projectsQuery.error.message}</p>}
         {createAccountMutation.error instanceof Error && <p className="form-error" role="alert">{createAccountMutation.error.message}</p>}
       </section>}
 
@@ -197,7 +211,7 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
 
       <section className="admin-card">
         <h2>Cash / Bank Accounts</h2>
-        {cashBankQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Account</th><th>Type</th><th>Bank</th><th>Account number</th><th>Opening balance</th><th>Current balance</th><th>Status</th><th>Actions</th></tr></thead><tbody>{cashBankQuery.data.items.map((account) => <tr key={account.id}><td><strong>{account.name}</strong><br /><small>{account.code}</small></td><td>{account.accountType}</td><td>{account.accountType === 'BANK' ? account.bankName ?? '—' : '—'}</td><td>{account.accountType === 'BANK' ? account.accountReference ?? '—' : '—'}</td><td>{account.openingBalance}</td><td><strong>{account.balance}</strong></td><td>{account.status}</td><td className="action-row"><button type="button" className="link-button" onClick={() => onOpenLedger?.(account.glAccountId)}>Ledger</button>{canManageAccounts && <button type="button" className="secondary-button" onClick={() => setEditingAccount(account)}>Edit</button>}</td></tr>)}</tbody></table></div>}
+        {cashBankQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Account</th><th>Project</th><th>Type</th><th>Bank</th><th>Account number</th><th>Opening balance</th><th>Current balance</th><th>Status</th><th>Actions</th></tr></thead><tbody>{cashBankQuery.data.items.map((account) => <tr key={account.id}><td><strong>{account.name}</strong><br /><small>{account.code}</small></td><td>{account.projectId ? `${account.projectCode ?? ""}${account.projectCode ? " · " : ""}${account.projectName ?? "Project"}` : "Company account"}</td><td>{account.accountType}</td><td>{account.accountType === 'BANK' ? account.bankName ?? '—' : '—'}</td><td>{account.accountType === 'BANK' ? account.accountReference ?? '—' : '—'}</td><td>{account.openingBalance}</td><td><strong>{account.balance}</strong></td><td>{account.status}</td><td className="action-row"><button type="button" className="link-button" onClick={() => onOpenLedger?.(account.glAccountId)}>Ledger</button>{canManageAccounts && <button type="button" className="secondary-button" onClick={() => setEditingAccount(account)}>Edit</button>}</td></tr>)}</tbody></table></div>}
         {editingAccount && <CashBankAccountEditor account={editingAccount} onClose={() => setEditingAccount(null)} />}
         {canReconcile && <form className="finance-period-form" onSubmit={reconciliationForm.handleSubmit(handleReconciliation)}><label>Cash/Bank account<select {...reconciliationForm.register('cashBankAccountId')} disabled={!cashBankQuery.data}><option value="">{cashBankQuery.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>{(cashBankQuery.data?.items ?? []).map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}</option>)}</select></label><label>Statement date<input type="date" {...reconciliationForm.register('statementDate')} /></label><button type="submit" disabled={reconciliationMutation.isPending || !cashBankQuery.data}>Reconcile</button></form>}
         {reconciliationMutation.data && <p className="muted">Reconciliation {reconciliationMutation.data.id} · Account {reconciliationMutation.data.cashBankAccountId} · Statement {reconciliationMutation.data.statementDate} · {reconciliationMutation.data.status} · Reconciled balance <strong>{reconciliationMutation.data.reconciledBalance}</strong> · Created by {reconciliationMutation.data.createdBy} at {new Date(reconciliationMutation.data.createdAt).toLocaleString()}</p>}

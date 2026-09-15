@@ -31,7 +31,7 @@ const ID_PARAMS_SCHEMA = { type: 'object', additionalProperties: false, required
 const PAGE_PROPERTIES = { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } as const;
 const VENDOR_LIST_QUERY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false,
-  properties: { search: { type: 'string', minLength: 1, maxLength: 200 }, status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }, qualificationStatus: { type: 'string', enum: ['QUALIFIED', 'PENDING'] }, ...PAGE_PROPERTIES }
+  properties: { projectId: UUID_JSON_SCHEMA, search: { type: 'string', minLength: 1, maxLength: 200 }, status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }, qualificationStatus: { type: 'string', enum: ['QUALIFIED', 'PENDING'] }, ...PAGE_PROPERTIES }
 } as const;
 const VENDOR_BODY_PROPERTIES = {
   code: { type: 'string', minLength: 1, maxLength: 100 },
@@ -43,13 +43,13 @@ const VENDOR_BODY_PROPERTIES = {
   qualificationStatus: { anyOf: [{ type: 'string', enum: ['QUALIFIED', 'PENDING'] }, { type: 'null' }] },
   status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }
 } as const;
-const CREATE_VENDOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['code', 'legalName', 'displayName'], properties: VENDOR_BODY_PROPERTIES } as const;
+const CREATE_VENDOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['code', 'legalName', 'displayName'], properties: { projectId: UUID_JSON_SCHEMA, ...VENDOR_BODY_PROPERTIES } } as const;
 const UPDATE_VENDOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: VENDOR_BODY_PROPERTIES } as const;
 const CONTACT_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['name'],
   properties: { name: { type: 'string', minLength: 1, maxLength: 200 }, email: { anyOf: [{ type: 'string', format: 'email', maxLength: 320 }, { type: 'null' }] }, phone: { anyOf: [{ type: 'string', minLength: 7, maxLength: 50 }, { type: 'null' }] }, role: { anyOf: [{ type: 'string', minLength: 1, maxLength: 120 }, { type: 'null' }] } }
 } as const;
-const SUBCONTRACTOR_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { search: { type: 'string', minLength: 1, maxLength: 200 }, status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }, ...PAGE_PROPERTIES } } as const;
+const SUBCONTRACTOR_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { projectId: UUID_JSON_SCHEMA, search: { type: 'string', minLength: 1, maxLength: 200 }, status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }, ...PAGE_PROPERTIES } } as const;
 const SUBCONTRACTOR_BODY_PROPERTIES = {
   name: { type: 'string', minLength: 1, maxLength: 300 },
   phone: { type: 'string', minLength: 7, maxLength: 50 },
@@ -57,7 +57,7 @@ const SUBCONTRACTOR_BODY_PROPERTIES = {
   address: { type: 'string', minLength: 1, maxLength: 1000 },
   status: { type: 'string', enum: ['ACTIVE', 'ARCHIVED'] }
 } as const;
-const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['name', 'phone', 'specialty', 'address'], properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
+const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['name', 'phone', 'specialty', 'address'], properties: { projectId: UUID_JSON_SCHEMA, ...SUBCONTRACTOR_BODY_PROPERTIES } } as const;
 const UPDATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
 const SUBCONTRACT_CONTRACT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
 const CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractorId', 'projectId', 'contractAmount', 'contractDate'], properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, contractAmount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, contractDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } } } as const;

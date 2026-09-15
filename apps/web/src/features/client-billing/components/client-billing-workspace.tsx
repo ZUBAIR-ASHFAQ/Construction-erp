@@ -31,6 +31,7 @@ type DirectInvoiceForm = z.infer<typeof directInvoiceFormSchema>;
 
 type ClientBillingWorkspaceProps = Readonly<{
   canRead: boolean;
+  canReadClients: boolean;
   canCreateInvoices: boolean;
   canReadInvoices: boolean;
   canReadStages: boolean;
@@ -67,12 +68,12 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
   const [projectId, setProjectId] = useState('');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
 
-  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canRead);
-  const projectsQuery = useProjects({ ...(clientId ? { clientId } : {}), page: 1, pageSize: 100 }, props.canRead);
+  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canReadClients);
+  const projectsQuery = useProjects({ ...(props.canReadClients && clientId ? { clientId } : {}), page: 1, pageSize: 100 }, props.canRead);
   const clients = clientsQuery.data?.items ?? [];
   const projects = projectsQuery.data?.items ?? [];
   const clientNames = useMemo(() => new Map(clients.map((client) => [client.id, client.displayName])), [clients]);
-  const clientProjects = useMemo(() => projects.filter((project) => project.clientId === clientId), [clientId, projects]);
+  const clientProjects = useMemo(() => props.canReadClients ? projects.filter((project) => project.clientId === clientId) : projects, [clientId, projects, props.canReadClients]);
   const selectedProject = useMemo(() => projects.find((project) => project.id === projectId) ?? null, [projectId, projects]);
 
   const stagesQuery = useProjectStages(projectId || null, props.canReadStages && projectId !== '');
@@ -127,13 +128,19 @@ export function ClientBillingWorkspace(props: ClientBillingWorkspaceProps) {
         <h2>Client and project</h2>
         <div className="two-column-form">
           <label>Client
-            <select value={clientId} onChange={(event) => { setClientId(event.target.value); setProjectId(''); }}>
-              <option value="">Select client</option>
-              {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
-            </select>
+            {props.canReadClients ? (
+              <select value={clientId} onChange={(event) => { setClientId(event.target.value); setProjectId(''); }}>
+                <option value="">Select client</option>
+                {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
+              </select>
+            ) : <span className="muted">Derived from selected Project</span>}
           </label>
           <label>Project
-            <select value={projectId} disabled={!clientId} onChange={(event) => setProjectId(event.target.value)}>
+            <select value={projectId} disabled={props.canReadClients && !clientId} onChange={(event) => {
+              const nextProjectId = event.target.value;
+              setProjectId(nextProjectId);
+              if (!props.canReadClients) setClientId(projects.find((project) => project.id === nextProjectId)?.clientId ?? '');
+            }}>
               <option value="">Select project</option>
               {clientProjects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
             </select>

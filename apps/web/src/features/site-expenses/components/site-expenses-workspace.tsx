@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useDocuments } from '../../documents-audit/hooks/documents.js';
+import { ProjectAccountCreateModal } from '../../finance/components/project-account-create-modal.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
@@ -49,6 +50,7 @@ type SiteExpensesWorkspaceProps = Readonly<{
   canReadProjects: boolean;
   canReadStages: boolean;
   canReadFinance: boolean;
+  canManageAccounts: boolean;
   canReadDocuments: boolean;
 }>;
 
@@ -63,6 +65,14 @@ const EMPTY_FORM: SiteExpenseFormValues = {
   cashBankAccountId: '',
   documentId: ''
 };
+/** Build form defaults that preserve Finance least privilege for Project-only operators. */
+function siteExpenseDefaultForm(canUseAccounts: boolean): SiteExpenseFormValues {
+  return {
+    ...EMPTY_FORM,
+    expenseDate: new Date().toISOString().slice(0, 10),
+    paymentMode: canUseAccounts ? 'CASH' : 'PAYABLE'
+  };
+}
 
 /** Return one readable request error without exposing backend internals. */
 function errorMessage(error: unknown): string | null {
@@ -128,20 +138,25 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
   const createCategory = useCreateExpenseCategory();
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const form = useForm<SiteExpenseFormValues>({ resolver: zodResolver(siteExpenseFormSchema), defaultValues: EMPTY_FORM });
+  const [accountModalOpen, setAccountModalOpen] = useState(false);
+  const canUseAccounts = props.canReadFinance || props.canManageAccounts;
+  const form = useForm<SiteExpenseFormValues>({ resolver: zodResolver(siteExpenseFormSchema), defaultValues: siteExpenseDefaultForm(canUseAccounts) });
   const projectId = form.watch('projectId');
   const paymentMode = form.watch('paymentMode');
   const projects = useProjects({ status: 'ACTIVE', pageSize: 100 }, props.canReadProjects);
   const stages = useProjectStages(projectId || null, props.canReadStages && projectId !== '');
-  const cashBankAccounts = useCashBankAccounts({ status: 'ACTIVE', pageSize: 100 }, props.canReadFinance && paymentMode !== 'PAYABLE');
+  const cashBankAccounts = useCashBankAccounts({ status: 'ACTIVE', pageSize: 100, ...(projectId ? { projectId } : {}) }, canUseAccounts && projectId !== '' && paymentMode !== 'PAYABLE');
+  const availableAccounts = (cashBankAccounts.data?.items ?? []).filter((account) => account.accountType === paymentMode);
+  const selectedProject = projects.data?.items.find((project) => project.id === projectId);
   const documents = useDocuments({ ...(projectId ? { projectId } : {}), status: 'active', pageSize: 100 }, props.canReadDocuments && projectId !== '');
-  const canSubmit = props.canCreate && props.canPost;
+  const canSubmit = props.canCreate;
 
   /** Change Project and clear dependent Stage/evidence selections that may belong elsewhere. */
   function changeProject(nextProjectId: string): void {
     form.setValue('projectId', nextProjectId, { shouldValidate: true });
     form.setValue('stageId', '', { shouldValidate: true });
     form.setValue('documentId', '', { shouldValidate: true });
+    form.setValue('cashBankAccountId', '', { shouldValidate: false });
   }
 
   /** Change payment treatment and clear a direct-settlement account for PAYABLE expenses. */
@@ -164,7 +179,7 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
   async function handleSubmit(values: SiteExpenseFormValues): Promise<void> {
     if (!canSubmit) return;
     await createMutation.mutateAsync(expenseWriteInput(values));
-    form.reset({ ...EMPTY_FORM, expenseDate: new Date().toISOString().slice(0, 10) });
+    form.reset(siteExpenseDefaultForm(canUseAccounts));
   }
 
   return (
@@ -172,7 +187,7 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
       <div className="section-heading-row"><h2>New Site Expense</h2><button type="button" className="secondary-button" onClick={() => setCategoryModalOpen(true)}>Categories</button></div>
       <p className="muted">Saving posts the expense to Project Cost and Finance immediately. Cash/Bank payments reduce the selected account balance.</p>
 
-      {!canSubmit && <p className="muted"><code>site_expenses.create</code> and <code>site_expenses.post</code> permissions are required to add an expense.</p>}
+      {!canSubmit && <p className="muted"><code>site_expenses.create</code> permission is required to add an expense.</p>}
 
       <form className="admin-stack" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
         <label>Project
@@ -188,8 +203,8 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
         <label>Payment treatment
           <Controller control={form.control} name="paymentMode" render={({ field }) => (
             <select value={field.value} onChange={(event) => { field.onChange(event.target.value); changePaymentMode(event.target.value as SiteExpensePaymentMode); }}>
-              <option value="CASH">Cash</option>
-              <option value="BANK">Bank</option>
+              {canUseAccounts && <option value="CASH">Cash</option>}
+              {canUseAccounts && <option value="BANK">Bank</option>}
               <option value="PAYABLE">Payable</option>
             </select>
           )} />
@@ -198,13 +213,14 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
         {paymentMode !== 'PAYABLE' && (
           <label>Cash / Bank account
             <Controller control={form.control} name="cashBankAccountId" render={({ field }) => (
-              <select value={field.value} onChange={field.onChange} disabled={!props.canReadFinance || !cashBankAccounts.data}>
-                <option value="">{!props.canReadFinance ? 'Finance read permission required' : cashBankAccounts.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>
-                {(cashBankAccounts.data?.items ?? []).filter((account) => account.accountType === paymentMode).map((account) => <option key={account.id} value={account.id}>{account.name}{account.bankName ? ` · ${account.bankName}` : ''} · Balance {account.balance}</option>)}
+              <select value={field.value} onChange={field.onChange} disabled={!canUseAccounts || projectId === '' || !cashBankAccounts.data}>
+                <option value="">{!canUseAccounts ? 'Account permission required' : projectId === '' ? 'Select a Project first' : cashBankAccounts.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>
+                {availableAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}{account.bankName ? ` · ${account.bankName}` : ''} · Balance {account.balance}</option>)}
               </select>
             )} />
           </label>
         )}
+        {paymentMode !== 'PAYABLE' && projectId !== '' && props.canManageAccounts && cashBankAccounts.data && availableAccounts.length === 0 && <button type="button" className="secondary-button" onClick={() => setAccountModalOpen(true)}>Add {paymentMode === 'BANK' ? 'Bank' : 'Cash'} account for this Project</button>}
 
         <label>Evidence document (optional)
           <Controller control={form.control} name="documentId" render={({ field }) => (
@@ -225,6 +241,7 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
         <button type="submit" disabled={!canSubmit || createMutation.isPending}>{createMutation.isPending ? 'Posting…' : 'Add Site Expense'}</button>
       </form>
 
+      {accountModalOpen && projectId && <ProjectAccountCreateModal projectId={projectId} projectLabel={selectedProject ? `${selectedProject.projectCode} · ${selectedProject.name}` : 'Selected Project'} onClose={() => setAccountModalOpen(false)} />}
       {categoryModalOpen && <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="expense-category-title"><header className="finance-modal-header"><div><p className="eyebrow">Site expense setup</p><h2 id="expense-category-title">Expense Categories</h2></div><button type="button" className="finance-modal-close" aria-label="Close categories" onClick={() => setCategoryModalOpen(false)}>×</button></header><div className="finance-modal-body"><div className="expense-category-list">{(categories.data ?? []).map((category) => <button key={category.id} type="button" className="expense-category-row" onClick={() => { form.setValue('categoryId', category.id, { shouldValidate: true }); setCategoryModalOpen(false); }}><span><strong>{category.name}</strong><small>{category.code}</small></span><span>Select</span></button>)}{categories.data?.length === 0 && <p className="muted">No categories have been added yet.</p>}</div><div className="expense-category-add"><label>New category name<input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="e.g. Site utilities" /></label><button type="button" onClick={() => void addCategory()} disabled={!newCategoryName.trim() || createCategory.isPending}>{createCategory.isPending ? 'Adding…' : 'Add Category'}</button>{errorMessage(createCategory.error) && <div className="form-error" role="alert">{errorMessage(createCategory.error)}</div>}</div></div></section></div>}
     </section>
   );

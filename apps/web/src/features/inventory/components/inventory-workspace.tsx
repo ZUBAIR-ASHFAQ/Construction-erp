@@ -12,11 +12,11 @@ type InventoryWorkspaceProps = Readonly<{
 
 /** Render project-owned stock and stage issue controls. */
 export function InventoryWorkspace(props: InventoryWorkspaceProps) {
-  const materials = useMaterials(props.canRead);
   // Inventory history remains relevant after a Project leaves ACTIVE status, so
   // the selector must not hide Draft, Suspended, Completed, or Closed Projects.
   const projects = useProjects({ page: 1, pageSize: 100 }, props.canRead || props.canIssue || props.canAdjust);
   const [projectId, setProjectId] = useState('');
+  const materials = useMaterials(projectId || undefined, props.canRead && Boolean(projectId));
   const stock = useInventoryStock(projectId || undefined, props.canRead && Boolean(projectId));
   const ledger = useInventoryLedger(projectId || undefined, props.canRead && Boolean(projectId));
   const createIssue = useCreateMaterialIssue();

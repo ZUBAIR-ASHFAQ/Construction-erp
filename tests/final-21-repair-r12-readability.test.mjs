@@ -44,7 +44,7 @@ test('R12 centralizes workspace visibility rules in the existing auth hook file'
     assert.match(auth, new RegExp(`export function ${helper}`));
     assert.match(shell, new RegExp(helper));
   }
-  assert.match(auth, /useDocumentWorkspaceVisibility[\s\S]*hasAnyIdentityPermission[\s\S]*hasRestrictedProjectMembership/);
+  assert.match(auth, /export function useDocumentWorkspaceVisibility\(\): boolean \{[\s\S]*return hasAnyIdentityPermission\(identity, \['documents\.read', 'audit\.read'\]\);[\s\S]*\}/);
   assert.match(auth, /useProjectWorkspaceVisibility[\s\S]*hasAnyIdentityPermission[\s\S]*hasRestrictedProjectMembership/);
 });
 

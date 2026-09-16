@@ -1,7 +1,8 @@
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { usePermission, useProjectWorkspaceVisibility } from '../../administration/hooks/auth.js';
+import { usePermission } from '../../administration/hooks/auth.js';
 import type { ClientContact, ClientDetails } from '../api/clients-api.js';
 import {
   useClient,
@@ -11,7 +12,6 @@ import {
 } from '../hooks/clients.js';
 
 const clientEditSchema = z.object({
-  code: z.string().trim().min(1, 'Client code is required.').max(100),
   legalName: z.string().trim().min(1, 'Legal name is required.').max(240),
   displayName: z.string().trim().min(1, 'Display name is required.').max(240),
   taxNo: z.string().trim().max(100),
@@ -40,15 +40,13 @@ type ClientDetailsPanelProps = Readonly<{
   clientId: string | null;
   mode?: 'details' | 'edit';
   onSaved?: () => void;
-  onOpenProjectsForClient?: (clientId: string) => void;
 }>;
 
 /** Load one Client and render either its complete details or its master-data editor. */
 export function ClientDetailsPanel({
   clientId,
   mode = 'details',
-  onSaved,
-  onOpenProjectsForClient
+  onSaved
 }: ClientDetailsPanelProps) {
   const canUpdate = usePermission('clients.update');
   const clientQuery = useClient(clientId);
@@ -83,7 +81,6 @@ export function ClientDetailsPanel({
       key={`${clientQuery.data.client.id}-${clientQuery.data.client.updatedAt}`}
       details={clientQuery.data}
       canUpdate={canUpdate}
-      {...(onOpenProjectsForClient ? { onOpenProjectsForClient } : {})}
     />
   );
 }
@@ -99,7 +96,6 @@ function ClientEditContent(props: Readonly<{
   const editForm = useForm<ClientEditValues>({
     resolver: zodResolver(clientEditSchema),
     defaultValues: {
-      code: client.code,
       legalName: client.legalName,
       displayName: client.displayName,
       taxNo: client.taxNo ?? '',
@@ -112,7 +108,6 @@ function ClientEditContent(props: Readonly<{
   /** Save every editable Client master field through the existing PATCH contract. */
   async function handleUpdate(values: ClientEditValues): Promise<void> {
     await updateMutation.mutateAsync({
-      code: values.code,
       legalName: values.legalName,
       displayName: values.displayName,
       taxNo: values.taxNo ? values.taxNo : null,
@@ -130,8 +125,7 @@ function ClientEditContent(props: Readonly<{
   return (
     <form className="admin-form client-modal-form" onSubmit={editForm.handleSubmit(handleUpdate)} noValidate>
       <div className="client-form-grid">
-        <label>Code<input autoFocus {...editForm.register('code')} /></label>
-        <label>Display name<input {...editForm.register('displayName')} /></label>
+        <label>Display name<input autoFocus {...editForm.register('displayName')} /></label>
         <label>Legal name<input {...editForm.register('legalName')} /></label>
         <label>Tax number<input {...editForm.register('taxNo')} /></label>
         <label>
@@ -158,18 +152,15 @@ function ClientEditContent(props: Readonly<{
   );
 }
 
-/** Render loaded Client details, summaries, Contacts and existing lifecycle/contact actions. */
+/** Render loaded Client master details, Contacts and existing lifecycle/contact actions. */
 function ClientDetailsContent(props: Readonly<{
   details: ClientDetails;
   canUpdate: boolean;
-  onOpenProjectsForClient?: (clientId: string) => void;
 }>) {
   const client = props.details.client;
-  const billingSummary = props.details.billingSummary;
-  const receiptSummary = props.details.receiptSummary;
-  const canReadProjects = useProjectWorkspaceVisibility();
   const updateMutation = useUpdateClient(client.id);
   const contactMutation = useCreateClientContact(client.id);
+  const [showContactForm, setShowContactForm] = useState(false);
   const contactForm = useForm<ContactValues>({
     resolver: zodResolver(contactSchema),
     defaultValues: {
@@ -192,6 +183,7 @@ function ClientDetailsContent(props: Readonly<{
       isPrimary: values.isPrimary
     });
     contactForm.reset();
+    setShowContactForm(false);
   }
 
   /** Archive this Client through the documented Client PATCH route. */
@@ -234,31 +226,17 @@ function ClientDetailsContent(props: Readonly<{
       <div className="document-section client-detail-section">
         <div className="client-section-heading">
           <div>
-            <p className="eyebrow">Account activity</p>
-            <h3>Project and financial summary</h3>
-          </div>
-          {props.onOpenProjectsForClient && canReadProjects && (
-            <button type="button" className="link-button" onClick={() => props.onOpenProjectsForClient?.(client.id)}>Open Client Projects</button>
-          )}
-        </div>
-        <div className="client-detail-grid">
-          <div><strong>Projects</strong><span>{props.details.projectSummary.totalProjects} total · {props.details.projectSummary.activeProjects} active</span></div>
-          <div><strong>Issued invoices</strong><span>{billingSummary ? billingSummary.invoiceCount : 'Restricted'}</span></div>
-          <div><strong>Billed amount</strong><span>{billingSummary ? billingSummary.billedAmount : 'Restricted'}</span></div>
-          <div><strong>Received</strong><span>{receiptSummary ? receiptSummary.receivedAmount : 'Restricted'}</span></div>
-          <div><strong>Allocated</strong><span>{receiptSummary ? receiptSummary.allocatedAmount : 'Restricted'}</span></div>
-          <div><strong>Advance / unallocated</strong><span>{receiptSummary ? receiptSummary.advanceAmount : 'Restricted'}</span></div>
-          <div><strong>Outstanding</strong><span>{receiptSummary ? (receiptSummary.outstandingAmount ?? 'Restricted - billing access required') : 'Restricted'}</span></div>
-        </div>
-      </div>
-
-      <div className="document-section client-detail-section">
-        <div className="client-section-heading">
-          <div>
             <p className="eyebrow">People</p>
             <h3>Contacts</h3>
           </div>
-          <span className="client-record-count">{props.details.contacts.length} contact{props.details.contacts.length === 1 ? '' : 's'}</span>
+          <div className="client-row-actions">
+            <span className="client-record-count">{props.details.contacts.length} contact{props.details.contacts.length === 1 ? '' : 's'}</span>
+            {props.canUpdate && !isArchived && (
+              <button type="button" className="secondary-button" onClick={() => setShowContactForm((value) => !value)}>
+                {showContactForm ? 'Cancel' : '+ Add contact'}
+              </button>
+            )}
+          </div>
         </div>
         {props.details.contacts.length === 0 ? (
           <p className="muted">No Contacts have been added yet.</p>
@@ -288,17 +266,11 @@ function ClientDetailsContent(props: Readonly<{
         )}
       </div>
 
-      {props.canUpdate && !isArchived && (
-        <div className="document-section client-detail-section">
-          <div className="client-section-heading">
-            <div>
-              <p className="eyebrow">Contact management</p>
-              <h3>Add contact</h3>
-            </div>
-          </div>
+      {props.canUpdate && !isArchived && showContactForm && (
+        <div className="document-section client-detail-section client-add-contact-panel">
           <form className="admin-form client-inline-form" onSubmit={contactForm.handleSubmit(handleContact)} noValidate>
             <div className="client-form-grid">
-              <label>Name<input {...contactForm.register('name')} /></label>
+              <label>Name<input autoFocus {...contactForm.register('name')} /></label>
               <label>Title<input {...contactForm.register('title')} /></label>
               <label>Email<input type="email" {...contactForm.register('email')} /></label>
               <label>Phone<input {...contactForm.register('phone')} /></label>
@@ -309,6 +281,7 @@ function ClientDetailsContent(props: Readonly<{
             ))}
             {contactMutation.error instanceof Error && <div className="form-error" role="alert">{contactMutation.error.message}</div>}
             <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => { contactForm.reset(); setShowContactForm(false); }}>Cancel</button>
               <button type="submit" disabled={contactMutation.isPending}>{contactMutation.isPending ? 'Adding…' : 'Add contact'}</button>
             </div>
           </form>

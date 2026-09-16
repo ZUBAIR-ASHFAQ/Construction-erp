@@ -264,6 +264,34 @@ export class InventoryService {
     return result.response.body;
   }
 
+  /** Delete one unused Material master exactly once. */
+  async deleteMaterial(materialId: string, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'inventory.material.delete', idempotencyKey, fingerprintInput: { materialId }
+    }, async (tx) => {
+      const users = new AdministrationRepository(tx);
+      const repository = new InventoryRepository(tx);
+      const material = await repository.lockMaterialById(materialId);
+      if (!material) throw createModule11Error('MATERIAL_NOT_FOUND');
+
+      const security = requireRequestSecurityContext();
+      if (material.projectId) {
+        await this.requireProjectPermission(users, material.projectId, 'materials.manage', new Date());
+      } else {
+        if (security.projectScope.kind !== 'all') throw createModule11Error('MATERIAL_NOT_FOUND');
+        await this.requireCompanyPermission(users, 'materials.manage', new Date());
+      }
+
+      if (await repository.materialHasUsage(material.id)) throw createModule11Error('MATERIAL_IN_USE');
+      const before = materialResponse(material);
+      if (!(await repository.deleteMaterial(material.id))) throw createModule11Error('MATERIAL_NOT_FOUND');
+      await recordAudit(tx, { action: 'material.deleted', entityType: 'material', entityId: material.id, projectId: material.projectId, before, after: { deleted: true } });
+      await recordOutboxEvent(tx, { eventType: 'inventory.material_deleted', resourceType: 'material', resourceId: material.id, payload: before });
+      return { statusCode: 200, body: { deleted: true as const } };
+    });
+    return result.response.body;
+  }
+
   /** Read derived stock balances and Warehouse options without storing editable totals. */
   async listStock(query: ListStockQuery) {
     const now = new Date();

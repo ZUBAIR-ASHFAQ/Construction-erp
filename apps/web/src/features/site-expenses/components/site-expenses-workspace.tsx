@@ -131,11 +131,12 @@ function StageField(props: Readonly<{
   );
 }
 
-/** Render the single direct-entry Site Expense form; the server creates and posts it atomically. */
+/** Render the direct-entry Site Expense action and keep the posting form inside a focused modal. */
 function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
   const createMutation = useCreateSiteExpense();
   const categories = useExpenseCategories(true);
   const createCategory = useCreateExpenseCategory();
+  const [expenseDialogOpen, setExpenseDialogOpen] = useState(false);
   const [categoryModalOpen, setCategoryModalOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [accountModalOpen, setAccountModalOpen] = useState(false);
@@ -165,6 +166,14 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
     form.setValue('cashBankAccountId', '', { shouldValidate: nextMode === 'PAYABLE' });
   }
 
+  /** Close the entry dialog and discard any unposted values. */
+  function closeExpenseDialog(): void {
+    if (createMutation.isPending) return;
+    form.reset(siteExpenseDefaultForm(canUseAccounts));
+    createMutation.reset();
+    setExpenseDialogOpen(false);
+  }
+
   /** Add and select a category, then close the centered catalog popup. */
   async function addCategory(): Promise<void> {
     const name = newCategoryName.trim();
@@ -180,66 +189,96 @@ function SiteExpenseForm(props: SiteExpensesWorkspaceProps) {
     if (!canSubmit) return;
     await createMutation.mutateAsync(expenseWriteInput(values));
     form.reset(siteExpenseDefaultForm(canUseAccounts));
+    setExpenseDialogOpen(false);
   }
 
   return (
     <section className="admin-card">
-      <div className="section-heading-row"><h2>New Site Expense</h2><button type="button" className="secondary-button" onClick={() => setCategoryModalOpen(true)}>Categories</button></div>
-      <p className="muted">Saving posts the expense to Project Cost and Finance immediately. Cash/Bank payments reduce the selected account balance.</p>
+      <div className="section-heading-row">
+        <div>
+          <h2>Site Expenses</h2>
+          <p className="muted">Saving posts the expense to Project Cost and Finance immediately. Cash/Bank payments reduce the selected account balance.</p>
+        </div>
+        <div className="client-row-actions">
+          <button type="button" className="secondary-button" onClick={() => setCategoryModalOpen(true)}>Categories</button>
+          {canSubmit && <button type="button" onClick={() => { createMutation.reset(); setExpenseDialogOpen(true); }}>+ Add expense</button>}
+        </div>
+      </div>
 
       {!canSubmit && <p className="muted"><code>site_expenses.create</code> permission is required to add an expense.</p>}
+      {createMutation.data && !expenseDialogOpen && <p className="success-note" role="status">{createMutation.data.expenseNo} posted successfully.</p>}
 
-      <form className="admin-stack" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
-        <label>Project
-          <Controller control={form.control} name="projectId" render={({ field }) => <ProjectField value={field.value} onChange={(value) => { field.onChange(value); changeProject(value); }} projects={projects.data} canReadProjects={props.canReadProjects} />} />
-        </label>
-        <label>Stage (optional)
-          <Controller control={form.control} name="stageId" render={({ field }) => <StageField value={field.value} onChange={field.onChange} stages={stages.data} canReadStages={props.canReadStages} projectId={projectId} />} />
-        </label>
-        <label>Expense date<input type="date" {...form.register('expenseDate')} /></label>
-        <label>Expense category<select {...form.register('categoryId')} disabled={!categories.data}><option value="">{categories.data ? 'Select category' : 'Loading categories…'}</option>{(categories.data ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
-        <label>Description<textarea rows={3} {...form.register('description')} /></label>
-        <label>Amount<input inputMode="decimal" placeholder="0.00" {...form.register('amount')} /></label>
-        <label>Payment treatment
-          <Controller control={form.control} name="paymentMode" render={({ field }) => (
-            <select value={field.value} onChange={(event) => { field.onChange(event.target.value); changePaymentMode(event.target.value as SiteExpensePaymentMode); }}>
-              {canUseAccounts && <option value="CASH">Cash</option>}
-              {canUseAccounts && <option value="BANK">Bank</option>}
-              <option value="PAYABLE">Payable</option>
-            </select>
-          )} />
-        </label>
+      {expenseDialogOpen && canSubmit && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeExpenseDialog(); }}>
+          <section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="site-expense-create-title">
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Site expense</p>
+                <h2 id="site-expense-create-title">New Site Expense</h2>
+                <p>Enter the Project cost once; posting updates Project Cost and Finance atomically.</p>
+              </div>
+              <button type="button" className="finance-modal-close" aria-label="Close Site Expense form" onClick={closeExpenseDialog}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={form.handleSubmit((values) => void handleSubmit(values))}>
+                <div className="client-form-grid">
+                  <label>Project
+                    <Controller control={form.control} name="projectId" render={({ field }) => <ProjectField value={field.value} onChange={(value) => { field.onChange(value); changeProject(value); }} projects={projects.data} canReadProjects={props.canReadProjects} />} />
+                  </label>
+                  <label>Stage (optional)
+                    <Controller control={form.control} name="stageId" render={({ field }) => <StageField value={field.value} onChange={field.onChange} stages={stages.data} canReadStages={props.canReadStages} projectId={projectId} />} />
+                  </label>
+                  <label>Expense date<input type="date" {...form.register('expenseDate')} /></label>
+                  <label>Expense category<select {...form.register('categoryId')} disabled={!categories.data}><option value="">{categories.data ? 'Select category' : 'Loading categories…'}</option>{(categories.data ?? []).map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label>
+                  <label className="client-form-wide">Description<textarea rows={3} {...form.register('description')} /></label>
+                  <label>Amount<input inputMode="decimal" placeholder="0.00" {...form.register('amount')} /></label>
+                  <label>Payment treatment
+                    <Controller control={form.control} name="paymentMode" render={({ field }) => (
+                      <select value={field.value} onChange={(event) => { field.onChange(event.target.value); changePaymentMode(event.target.value as SiteExpensePaymentMode); }}>
+                        {canUseAccounts && <option value="CASH">Cash</option>}
+                        {canUseAccounts && <option value="BANK">Bank</option>}
+                        <option value="PAYABLE">Payable</option>
+                      </select>
+                    )} />
+                  </label>
 
-        {paymentMode !== 'PAYABLE' && (
-          <label>Cash / Bank account
-            <Controller control={form.control} name="cashBankAccountId" render={({ field }) => (
-              <select value={field.value} onChange={field.onChange} disabled={!canUseAccounts || projectId === '' || !cashBankAccounts.data}>
-                <option value="">{!canUseAccounts ? 'Account permission required' : projectId === '' ? 'Select a Project first' : cashBankAccounts.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>
-                {availableAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}{account.bankName ? ` · ${account.bankName}` : ''} · Balance {account.balance}</option>)}
-              </select>
-            )} />
-          </label>
-        )}
-        {paymentMode !== 'PAYABLE' && projectId !== '' && props.canManageAccounts && cashBankAccounts.data && availableAccounts.length === 0 && <button type="button" className="secondary-button" onClick={() => setAccountModalOpen(true)}>Add {paymentMode === 'BANK' ? 'Bank' : 'Cash'} account for this Project</button>}
+                  {paymentMode !== 'PAYABLE' && (
+                    <label>Cash / Bank account
+                      <Controller control={form.control} name="cashBankAccountId" render={({ field }) => (
+                        <select value={field.value} onChange={field.onChange} disabled={!canUseAccounts || projectId === '' || !cashBankAccounts.data}>
+                          <option value="">{!canUseAccounts ? 'Account permission required' : projectId === '' ? 'Select a Project first' : cashBankAccounts.data ? 'Select account' : 'Loading Cash/Bank accounts…'}</option>
+                          {availableAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}{account.bankName ? ` · ${account.bankName}` : ''} · Balance {account.balance}</option>)}
+                        </select>
+                      )} />
+                    </label>
+                  )}
 
-        <label>Evidence document (optional)
-          <Controller control={form.control} name="documentId" render={({ field }) => (
-            <select value={field.value} onChange={field.onChange} disabled={projectId === '' || !props.canReadDocuments || !documents.data}>
-              <option value="">{!props.canReadDocuments ? 'Document read permission required' : documents.data ? 'No primary evidence document' : 'Loading Documents…'}</option>
-              {(documents.data?.items ?? []).map((document) => <option key={document.id} value={document.id}>{document.title}{document.documentNo ? ` · ${document.documentNo}` : ''}</option>)}
-            </select>
-          )} />
-        </label>
+                  <label>Evidence document (optional)
+                    <Controller control={form.control} name="documentId" render={({ field }) => (
+                      <select value={field.value} onChange={field.onChange} disabled={projectId === '' || !props.canReadDocuments || !documents.data}>
+                        <option value="">{!props.canReadDocuments ? 'Document read permission required' : documents.data ? 'No primary evidence document' : 'Loading Documents…'}</option>
+                        {(documents.data?.items ?? []).map((document) => <option key={document.id} value={document.id}>{document.title}{document.documentNo ? ` · ${document.documentNo}` : ''}</option>)}
+                      </select>
+                    )} />
+                  </label>
+                </div>
 
-        {errorMessage(projects.error) && <div className="form-error">{errorMessage(projects.error)}</div>}
-        {errorMessage(stages.error) && <div className="form-error">{errorMessage(stages.error)}</div>}
-        {errorMessage(cashBankAccounts.error) && <div className="form-error">{errorMessage(cashBankAccounts.error)}</div>}
-        {errorMessage(documents.error) && <div className="form-error">{errorMessage(documents.error)}</div>}
-        {Object.values(form.formState.errors).map((error, index) => error?.message && <div key={index} className="form-error">{String(error.message)}</div>)}
-        {errorMessage(createMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error)}</div>}
-        {createMutation.data && <p className="muted" role="status">{createMutation.data.expenseNo} posted successfully.</p>}
-        <button type="submit" disabled={!canSubmit || createMutation.isPending}>{createMutation.isPending ? 'Posting…' : 'Add Site Expense'}</button>
-      </form>
+                {paymentMode !== 'PAYABLE' && projectId !== '' && props.canManageAccounts && cashBankAccounts.data && availableAccounts.length === 0 && <button type="button" className="secondary-button" onClick={() => setAccountModalOpen(true)}>Add {paymentMode === 'BANK' ? 'Bank' : 'Cash'} account for this Project</button>}
+                {errorMessage(projects.error) && <div className="form-error">{errorMessage(projects.error)}</div>}
+                {errorMessage(stages.error) && <div className="form-error">{errorMessage(stages.error)}</div>}
+                {errorMessage(cashBankAccounts.error) && <div className="form-error">{errorMessage(cashBankAccounts.error)}</div>}
+                {errorMessage(documents.error) && <div className="form-error">{errorMessage(documents.error)}</div>}
+                {Object.values(form.formState.errors).map((error, index) => error?.message && <div key={index} className="form-error">{String(error.message)}</div>)}
+                {errorMessage(createMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={closeExpenseDialog} disabled={createMutation.isPending}>Cancel</button>
+                  <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Posting…' : 'Add Site Expense'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
 
       {accountModalOpen && projectId && <ProjectAccountCreateModal projectId={projectId} projectLabel={selectedProject ? `${selectedProject.projectCode} · ${selectedProject.name}` : 'Selected Project'} onClose={() => setAccountModalOpen(false)} />}
       {categoryModalOpen && <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="expense-category-title"><header className="finance-modal-header"><div><p className="eyebrow">Site expense setup</p><h2 id="expense-category-title">Expense Categories</h2></div><button type="button" className="finance-modal-close" aria-label="Close categories" onClick={() => setCategoryModalOpen(false)}>×</button></header><div className="finance-modal-body"><div className="expense-category-list">{(categories.data ?? []).map((category) => <button key={category.id} type="button" className="expense-category-row" onClick={() => { form.setValue('categoryId', category.id, { shouldValidate: true }); setCategoryModalOpen(false); }}><span><strong>{category.name}</strong><small>{category.code}</small></span><span>Select</span></button>)}{categories.data?.length === 0 && <p className="muted">No categories have been added yet.</p>}</div><div className="expense-category-add"><label>New category name<input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="e.g. Site utilities" /></label><button type="button" onClick={() => void addCategory()} disabled={!newCategoryName.trim() || createCategory.isPending}>{createCategory.isPending ? 'Adding…' : 'Add Category'}</button>{errorMessage(createCategory.error) && <div className="form-error" role="alert">{errorMessage(createCategory.error)}</div>}</div></div></section></div>}

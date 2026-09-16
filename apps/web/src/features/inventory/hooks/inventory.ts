@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   adjustStock,
   createMaterial,
+  deleteMaterial,
   createMaterialIssue,
   listLedger,
   listMaterials,
@@ -34,6 +35,12 @@ export function useInventoryLedger(projectId?: string, enabled = true) {
 export function useCreateMaterial() {
   const client = useQueryClient();
   return useMutation({ mutationFn: (input: CreateMaterialInput) => createMaterial(input), onSuccess: async () => client.invalidateQueries({ queryKey: KEY }) });
+}
+
+/** Delete one unused Material then refresh every Inventory consumer. */
+export function useDeleteMaterial() {
+  const client = useQueryClient();
+  return useMutation({ mutationFn: (materialId: string) => deleteMaterial(materialId), onSuccess: async () => client.invalidateQueries({ queryKey: KEY }) });
 }
 
 /** Issue Material then refresh stock and ledger reads. */

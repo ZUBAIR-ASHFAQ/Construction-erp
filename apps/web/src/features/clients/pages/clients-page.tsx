@@ -8,12 +8,22 @@ import { useClients, useCreateClient } from '../hooks/clients.js';
 import type { ClientStatus } from '../api/clients-api.js';
 
 const createClientSchema = z.object({
-  code: z.string().trim().min(1, 'Client code is required.').max(100),
   legalName: z.string().trim().min(1, 'Legal name is required.').max(240),
   displayName: z.string().trim().min(1, 'Display name is required.').max(240),
   taxNo: z.string().trim().max(100),
   billingAddress: z.string().trim().min(1, 'Billing address is required.').max(1000),
-  creditTermsDays: z.number().int().min(0, 'Credit terms cannot be negative.').nullable()
+  creditTermsDays: z.number().int().min(0, 'Credit terms cannot be negative.').nullable(),
+  contactName: z.string().trim().max(200),
+  contactTitle: z.string().trim().max(160),
+  contactEmail: z.union([z.literal(''), z.string().trim().email('Enter a valid contact email address.')]),
+  contactPhone: z.union([z.literal(''), z.string().trim().min(7, 'Contact phone must contain at least 7 characters.').max(50)]),
+  contactIsPrimary: z.boolean()
+}).refine((value) => {
+  const hasContactDetails = Boolean(value.contactTitle || value.contactEmail || value.contactPhone || value.contactIsPrimary);
+  return !hasContactDetails || Boolean(value.contactName);
+}, {
+  path: ['contactName'],
+  message: 'Contact name is required when contact details are provided.'
 });
 
 type CreateClientValues = z.infer<typeof createClientSchema>;
@@ -29,7 +39,7 @@ type ClientsPageProps = Readonly<{
 }>;
 
 /** Render the permission-aware final Client Management workspace. */
-export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: ClientsPageProps = {}) {
+export function ClientsPage({ initialCreate = false }: ClientsPageProps = {}) {
   const canReadClients = usePermission('clients.read');
   const canCreate = usePermission('clients.create');
   const canUpdate = usePermission('clients.update');
@@ -49,12 +59,16 @@ export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: 
   const createForm = useForm<CreateClientValues>({
     resolver: zodResolver(createClientSchema),
     defaultValues: {
-      code: '',
       legalName: '',
       displayName: '',
       taxNo: '',
       billingAddress: '',
-      creditTermsDays: null
+      creditTermsDays: null,
+      contactName: '',
+      contactTitle: '',
+      contactEmail: '',
+      contactPhone: '',
+      contactIsPrimary: false
     }
   });
 
@@ -80,12 +94,20 @@ export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: 
   /** Create one active Client and open the newly created record. */
   async function handleCreate(values: CreateClientValues): Promise<void> {
     const client = await createMutation.mutateAsync({
-      code: values.code,
       legalName: values.legalName,
       displayName: values.displayName,
       taxNo: values.taxNo ? values.taxNo : null,
       billingAddress: values.billingAddress,
-      creditTermsDays: values.creditTermsDays
+      creditTermsDays: values.creditTermsDays,
+      ...(values.contactName ? {
+        contact: {
+          name: values.contactName,
+          title: values.contactTitle ? values.contactTitle : null,
+          email: values.contactEmail ? values.contactEmail : null,
+          phone: values.contactPhone ? values.contactPhone : null,
+          isPrimary: values.contactIsPrimary
+        }
+      } : {})
     });
 
     createForm.reset();
@@ -171,8 +193,7 @@ export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: 
         <ClientModal title="Create client" eyebrow="New client account" onClose={closeDialog}>
           <form className="admin-form client-modal-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="client-form-grid">
-              <label>Code<input autoFocus {...createForm.register('code')} /></label>
-              <label>Display name<input {...createForm.register('displayName')} /></label>
+              <label>Display name<input autoFocus {...createForm.register('displayName')} /></label>
               <label>Legal name<input {...createForm.register('legalName')} /></label>
               <label>Tax number<input {...createForm.register('taxNo')} /></label>
               <label>
@@ -186,6 +207,15 @@ export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: 
                 />
               </label>
               <label className="client-form-wide">Billing address<textarea rows={3} {...createForm.register('billingAddress')} /></label>
+              <div className="client-form-wide client-create-contact-heading">
+                <strong>Primary contact (optional)</strong>
+                <span className="muted">The client code is generated automatically by the server.</span>
+              </div>
+              <label>Contact name<input {...createForm.register('contactName')} /></label>
+              <label>Contact title<input {...createForm.register('contactTitle')} /></label>
+              <label>Contact email<input type="email" {...createForm.register('contactEmail')} /></label>
+              <label>Contact phone<input {...createForm.register('contactPhone')} /></label>
+              <label className="checkbox-row client-form-wide"><input type="checkbox" {...createForm.register('contactIsPrimary')} /><span>Primary contact</span></label>
             </div>
             {Object.values(createForm.formState.errors).map((error, index) => (
               <span className="field-error" key={index}>{error?.message}</span>
@@ -201,11 +231,7 @@ export function ClientsPage({ onOpenProjectsForClient, initialCreate = false }: 
 
       {dialog?.kind === 'open' && (
         <ClientModal title="Client details" eyebrow="Client account" onClose={closeDialog} wide>
-          <ClientDetailsPanel
-            clientId={dialog.clientId}
-            mode="details"
-            {...(onOpenProjectsForClient ? { onOpenProjectsForClient } : {})}
-          />
+          <ClientDetailsPanel clientId={dialog.clientId} mode="details" />
         </ClientModal>
       )}
 

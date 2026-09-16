@@ -13,6 +13,7 @@ import {
   createLabourPayrollError,
   type CreateAttendanceBody,
   type CreatePayrollRunBody,
+  type UpdateDailyPayrollRunBody,
   type CreatePayrollPaymentBody,
   type CreateEmployeeAdvanceBody,
   type CalculatePayrollRunBody,
@@ -659,6 +660,49 @@ export class LabourPayrollService {
       await recordAudit(tx, { action: 'payroll.created', entityType: 'payroll_run', entityId: created.id, after: response });
       await recordOutboxEvent(tx, { eventType: 'payroll.created', resourceType: 'payroll_run', resourceId: created.id, payload: response });
       return { statusCode: 201, body: response };
+    });
+    return result.response.body;
+  }
+
+  /** Edit the work date of one DRAFT Daily Settlement before any calculation exists. */
+  async updateDailyPayrollRun(payrollRunId: string, input: UpdateDailyPayrollRunBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'payroll.daily.update', idempotencyKey, fingerprintInput: { payrollRunId, input }
+    }, async (tx) => {
+      await this.requireCompanyPermission(new AdministrationRepository(tx), 'payroll.create', new Date());
+      const repository = new LabourPayrollRepository(tx);
+      const locked = await repository.lockPayrollRunForWrite(payrollRunId);
+      if (!locked) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
+      if (locked.status !== PAYROLL_DRAFT || locked.payCycle !== 'DAILY') throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
+      const periodStart = inputDate(input.periodStart);
+      const periodEnd = inputDate(input.periodEnd);
+      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, 'DAILY', payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      const before = { periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd), status: locked.status, payCycle: locked.payCycle };
+      const updated = await repository.updateDraftDailyPayrollRun(payrollRunId, periodStart, periodEnd);
+      if (!updated) throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
+      const response = payrollRunResponse(updated);
+      await recordAudit(tx, { action: 'payroll.updated', entityType: 'payroll_run', entityId: payrollRunId, before, after: response });
+      await recordOutboxEvent(tx, { eventType: 'payroll.updated', resourceType: 'payroll_run', resourceId: payrollRunId, payload: response });
+      return { statusCode: 200, body: response };
+    });
+    return result.response.body;
+  }
+
+  /** Delete one DRAFT Daily Settlement before it has been calculated. */
+  async deleteDailyPayrollRun(payrollRunId: string, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(this.db, {
+      operation: 'payroll.daily.delete', idempotencyKey, fingerprintInput: { payrollRunId }
+    }, async (tx) => {
+      await this.requireCompanyPermission(new AdministrationRepository(tx), 'payroll.create', new Date());
+      const repository = new LabourPayrollRepository(tx);
+      const locked = await repository.lockPayrollRunForWrite(payrollRunId);
+      if (!locked) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
+      if (locked.status !== PAYROLL_DRAFT || locked.payCycle !== 'DAILY') throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
+      const before = { id: locked.id, periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd), status: locked.status, payCycle: locked.payCycle };
+      if (!(await repository.deleteDraftDailyPayrollRun(payrollRunId))) throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
+      await recordAudit(tx, { action: 'payroll.deleted', entityType: 'payroll_run', entityId: payrollRunId, before, after: { deleted: true } });
+      await recordOutboxEvent(tx, { eventType: 'payroll.deleted', resourceType: 'payroll_run', resourceId: payrollRunId, payload: before });
+      return { statusCode: 200, body: { deleted: true as const } };
     });
     return result.response.body;
   }

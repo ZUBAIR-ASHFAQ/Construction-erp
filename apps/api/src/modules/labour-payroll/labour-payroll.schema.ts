@@ -26,6 +26,7 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
   'EMPLOYEE_NOT_ASSIGNED',
   'PAYROLL_NOT_FOUND',
   'PAYROLL_LOCKED',
+  'PAYROLL_DRAFT_DAILY_ONLY',
   'OVERTIME_MULTIPLIER_REQUIRED',
   'OVERTIME_REQUIRES_HOURLY_COMPENSATION',
   'PAYROLL_PAYMENT_INVALID',
@@ -46,6 +47,8 @@ export const LABOUR_PAYROLL_ERROR_CODES = Object.freeze([
 export const LABOUR_PAYROLL_EVENT_TYPES = Object.freeze([
   'attendance.recorded',
   'payroll.created',
+  'payroll.updated',
+  'payroll.deleted',
   'payroll.calculated',
   'payroll.finalized',
   'payroll.posted',
@@ -62,6 +65,8 @@ export const LABOUR_PAYROLL_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/attendance/:id' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/runs' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/runs' }),
+  Object.freeze({ method: 'PATCH', route: '/api/v1/payroll/runs/:id' }),
+  Object.freeze({ method: 'DELETE', route: '/api/v1/payroll/runs/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/runs/:id/calculate' }),
   Object.freeze({ method: 'POST', route: '/api/v1/payroll/runs/:id/finalize' }),
   Object.freeze({ method: 'GET', route: '/api/v1/payroll/runs/:id' }),
@@ -248,6 +253,16 @@ export const createPayrollRunBodySchema = z.object({
     if (start.getUTCDate() !== 1 || end.getTime() !== expectedEnd.getTime()) {
       context.addIssue({ code: 'custom', message: 'Monthly payroll must cover one complete calendar month.', path: ['periodEnd'] });
     }
+  }
+});
+
+/** Validate the only editable fields on one DRAFT Daily Settlement. */
+export const updateDailyPayrollRunBodySchema = z.object({
+  periodStart: dateSchema,
+  periodEnd: dateSchema
+}).strict().superRefine((value, context) => {
+  if (value.periodStart !== value.periodEnd) {
+    context.addIssue({ code: 'custom', message: 'Daily settlement must use one work date.', path: ['periodEnd'] });
   }
 });
 
@@ -491,6 +506,7 @@ export type EmployeeSalaryLedgerQuery = z.infer<typeof employeeSalaryLedgerQuery
 export type CreatePayrollPaymentBody = z.infer<typeof createPayrollPaymentBodySchema>;
 export type ReversePayrollPaymentBody = z.infer<typeof reversePayrollPaymentBodySchema>;
 export type CreatePayrollRunBody = z.infer<typeof createPayrollRunBodySchema>;
+export type UpdateDailyPayrollRunBody = z.infer<typeof updateDailyPayrollRunBodySchema>;
 export type CalculatePayrollRunBody = z.infer<typeof calculatePayrollRunBodySchema>;
 export type PayrollEligibleEmployeesQuery = z.infer<typeof payrollEligibleEmployeesQuerySchema>;
 export type FinalizePayrollRunBody = z.infer<typeof finalizePayrollRunBodySchema>;
@@ -504,6 +520,7 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   EMPLOYEE_NOT_ASSIGNED: 'The Employee has no valid Project/Stage assignment for this work date.',
   PAYROLL_NOT_FOUND: 'Payroll Run was not found.',
   PAYROLL_LOCKED: 'Finalized Payroll is immutable and cannot be changed directly.',
+  PAYROLL_DRAFT_DAILY_ONLY: 'Only DRAFT Daily Settlements can be edited or deleted.',
   OVERTIME_MULTIPLIER_REQUIRED: 'Hourly overtime exists in this Payroll Run. Enter an overtime multiplier before calculation.',
   OVERTIME_REQUIRES_HOURLY_COMPENSATION: 'Overtime hours can only be recorded when the Employee has effective HOURLY compensation for the work date.',
   PAYROLL_PAYMENT_INVALID: 'The selected Employee salary payment or finalized Payroll line is invalid.',

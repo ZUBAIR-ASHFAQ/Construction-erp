@@ -34,7 +34,8 @@ import {
   payrollRunResponseSchema,
   reversePayrollPaymentBodySchema,
   reverseEmployeeAdvanceBodySchema,
-  updateAttendanceBodySchema
+  updateAttendanceBodySchema,
+  updateDailyPayrollRunBodySchema
 } from './labour-payroll.schema.js';
 import { LabourPayrollService } from './labour-payroll.service.js';
 
@@ -70,6 +71,10 @@ const UPDATE_ATTENDANCE_BODY_JSON_SCHEMA = { type: 'object', additionalPropertie
 const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
   properties: { payCycle: { type: 'string', enum: ['DAILY', 'MONTHLY'] }, periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
+} as const;
+const UPDATE_DAILY_PAYROLL_RUN_BODY_JSON_SCHEMA = {
+  type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
+  properties: { periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
 } as const;
 const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { projectId: UUID_JSON_SCHEMA, employeeId: UUID_JSON_SCHEMA, overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
 const PAYROLL_ELIGIBLE_EMPLOYEES_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['projectId'], properties: { projectId: UUID_JSON_SCHEMA } } as const;
@@ -172,6 +177,25 @@ export async function registerLabourPayrollRoutes(app: FastifyInstance, options:
     const body = parseRequest(createPayrollRunBodySchema, request.body, 'body');
     const data = payrollRunResponseSchema.parse(await service.createPayrollRun(body, readIdempotencyKey(request)));
     return reply.code(201).send({ data });
+  });
+
+  app.patch('/api/v1/payroll/runs/:id', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'updateDraftDailyPayrollRun', summary: 'Edit a DRAFT Daily Settlement work date', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: UPDATE_DAILY_PAYROLL_RUN_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
+    const body = parseRequest(updateDailyPayrollRunBodySchema, request.body, 'body');
+    const data = payrollRunResponseSchema.parse(await service.updateDailyPayrollRun(params.id, body, readIdempotencyKey(request)));
+    return reply.send({ data });
+  });
+
+  app.delete('/api/v1/payroll/runs/:id', {
+    schema: { tags: ['Labour & Payroll'], operationId: 'deleteDraftDailyPayrollRun', summary: 'Delete a DRAFT Daily Settlement', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');
+    const data = await service.deleteDailyPayrollRun(params.id, readIdempotencyKey(request));
+    return reply.send({ data });
   });
 
   app.post('/api/v1/payroll/runs/:id/calculate', {

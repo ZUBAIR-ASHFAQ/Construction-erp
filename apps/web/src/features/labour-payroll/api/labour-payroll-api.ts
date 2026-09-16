@@ -103,6 +103,7 @@ export type UpdateAttendanceInput = Readonly<{
   overtimeHours?: string | null;
 }>;
 export type CreatePayrollRunInput = Readonly<{ payCycle: Exclude<PayrollPayCycle, 'LEGACY'>; periodStart: string; periodEnd: string }>;
+export type UpdateDailyPayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
 export type CalculatePayrollRunInput = Readonly<{ projectId?: string; employeeId?: string; overtimeMultiplier?: string }>;
 export type PayrollEligibleEmployee = Readonly<{ id: string; employeeNo: string; name: string; payType: 'SALARY' | 'DAILY' | 'HOURLY'; baseSalary: string | null; hourlyRate: string | null }>;
 export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; projectId: string | null; projectCode: string | null; projectName: string | null; balance: string }>;
@@ -182,6 +183,16 @@ export function listPayrollRuns(page = 1, pageSize = 50): Promise<PayrollRunPage
 /** Create one DRAFT Payroll Run. */
 export function createPayrollRun(input: CreatePayrollRunInput): Promise<PayrollRun> {
   return authenticatedRequest<PayrollRun>('payroll/runs', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
+/** Edit the work date of one DRAFT Daily Settlement. */
+export function updateDailyPayrollRun(payrollRunId: string, input: UpdateDailyPayrollRunInput): Promise<PayrollRun> {
+  return authenticatedRequest<PayrollRun>(`payroll/runs/${payrollRunId}`, { method: 'PATCH', headers: commandHeaders(), body: JSON.stringify(input) });
+}
+
+/** Delete one DRAFT Daily Settlement before calculation. */
+export function deleteDailyPayrollRun(payrollRunId: string): Promise<Readonly<{ deleted: true }>> {
+  return authenticatedRequest<Readonly<{ deleted: true }>>(`payroll/runs/${payrollRunId}`, { method: 'DELETE', headers: commandHeaders() });
 }
 
 /** Recalculate one DRAFT/CALCULATED Payroll Run from attendance and compensation. */

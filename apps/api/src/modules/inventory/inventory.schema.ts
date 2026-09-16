@@ -16,6 +16,7 @@ export const MODULE_11_PERMISSION_CODES = Object.freeze([
 /** Final Module 11 stable business errors. */
 export const MODULE_11_ERROR_CODES = Object.freeze([
   'MATERIAL_NOT_FOUND',
+  'MATERIAL_IN_USE',
   'INSUFFICIENT_STOCK',
   'WAREHOUSE_NOT_FOUND',
   'INVALID_STAGE_ISSUE',
@@ -27,6 +28,7 @@ export const MODULE_11_ERROR_CODES = Object.freeze([
 export const MODULE_11_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'GET', route: '/api/v1/inventory/materials' }),
   Object.freeze({ method: 'POST', route: '/api/v1/inventory/materials' }),
+  Object.freeze({ method: 'DELETE', route: '/api/v1/inventory/materials/:materialId' }),
   Object.freeze({ method: 'GET', route: '/api/v1/inventory/stock' }),
   Object.freeze({ method: 'GET', route: '/api/v1/inventory/ledger' }),
   Object.freeze({ method: 'POST', route: '/api/v1/inventory/issues' }),
@@ -54,6 +56,9 @@ const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 /** Validate bounded Material list filters. */
 export const listMaterialsQuerySchema = z.object({ ...pageShape, projectId: uuid.optional() }).strict();
+
+/** Validate one Material route identifier. */
+export const materialIdParamsSchema = z.object({ materialId: uuid }).strict();
 
 /** Validate creation of one Company-owned Material master. */
 export const createMaterialBodySchema = z.object({
@@ -246,6 +251,7 @@ export const adjustStockResponseSchema = stockLedgerResponseSchema.extend({ reas
 /** Stable Final Module 11 error messages. */
 const ERROR_MESSAGES: Readonly<Record<Module11ErrorCode, string>> = Object.freeze({
   MATERIAL_NOT_FOUND: 'The requested material was not found.',
+  MATERIAL_IN_USE: 'This material cannot be deleted because it is already used by Procurement or Inventory transactions.',
   INSUFFICIENT_STOCK: 'There is not enough available stock for this command.',
   WAREHOUSE_NOT_FOUND: 'The requested warehouse was not found.',
   INVALID_STAGE_ISSUE: 'The selected stage does not belong to the selected project.',
@@ -261,6 +267,7 @@ export function createModule11Error(code: Module11ErrorCode): AppError {
 }
 
 export type ListMaterialsQuery = z.infer<typeof listMaterialsQuerySchema>;
+export type MaterialIdParams = z.infer<typeof materialIdParamsSchema>;
 export type CreateMaterialBody = z.infer<typeof createMaterialBodySchema>;
 export type ListStockQuery = z.infer<typeof listStockQuerySchema>;
 export type ListLedgerQuery = z.infer<typeof listLedgerQuerySchema>;

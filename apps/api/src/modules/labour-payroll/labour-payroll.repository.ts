@@ -270,6 +270,30 @@ export class LabourPayrollRepository {
     return this.db.payrollRun.create({ data: scope.createData({ ...input, finalizedAt: null }), include: { creator: { select: { name: true } } } });
   }
 
+  /** Update only the work date of one Company-owned DRAFT Daily Settlement. */
+  async updateDraftDailyPayrollRun(payrollRunId: string, periodStart: Date, periodEnd: Date) {
+    const scope = requireCompanyRepositoryScope();
+    const updated = await this.db.payrollRun.updateMany({
+      where: scope.where({ id: payrollRunId, payCycle: 'DAILY', status: 'DRAFT' }),
+      data: { periodStart, periodEnd }
+    });
+    if (updated.count !== 1) return null;
+    return this.findPayrollRunById(payrollRunId);
+  }
+
+  /** Delete one empty Company-owned DRAFT Daily Settlement. */
+  async deleteDraftDailyPayrollRun(payrollRunId: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    const lineCount = await this.db.payrollLine.count({
+      where: { payrollRunId, payrollRun: { companyId: scope.companyId } }
+    });
+    if (lineCount !== 0) return false;
+    const deleted = await this.db.payrollRun.deleteMany({
+      where: scope.where({ id: payrollRunId, payCycle: 'DAILY', status: 'DRAFT' })
+    });
+    return deleted.count === 1;
+  }
+
   /** Find any other finalized Payroll Run that overlaps the candidate period. */
   async findOverlappingFinalizedPayrollRun(periodStart: Date, periodEnd: Date, payCycle: string, excludeId?: string) {
     const scope = requireCompanyRepositoryScope();

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useProjects } from '../../projects/hooks/projects.js';
-import { useCreateMaterial, useMaterials } from '../hooks/inventory.js';
+import type { Material } from '../api/inventory-api.js';
+import { useCreateMaterial, useDeleteMaterial, useMaterials } from '../hooks/inventory.js';
 
 type MaterialsWorkspaceProps = Readonly<{
   canRead: boolean;
@@ -13,8 +14,10 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
   const projectItems = projects.data?.items ?? [];
   const [projectId, setProjectId] = useState('');
   const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
+  const [materialPendingDeletion, setMaterialPendingDeletion] = useState<Material | null>(null);
   const materials = useMaterials(projectId || undefined, props.canRead);
   const createMaterial = useCreateMaterial();
+  const deleteMaterialMutation = useDeleteMaterial();
   const projectNames = useMemo(() => new Map(projectItems.map((project) => [project.id, `${project.projectCode} · ${project.name}`])), [projectItems]);
 
   useEffect(() => {
@@ -41,6 +44,17 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
       setMaterialDialogOpen(false);
     } catch {
       // The mutation exposes the API error inside the modal.
+    }
+  }
+
+  /** Permanently delete one unused Material after explicit confirmation. */
+  async function confirmDeleteMaterial(): Promise<void> {
+    if (!materialPendingDeletion) return;
+    try {
+      await deleteMaterialMutation.mutateAsync(materialPendingDeletion.id);
+      setMaterialPendingDeletion(null);
+    } catch {
+      // The mutation exposes the backend conflict/not-found message in the dialog.
     }
   }
 
@@ -79,7 +93,7 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
           <h2>Material master <small className="muted">({materials.data?.total ?? 0} material(s))</small></h2>
           <div className="table-scroll">
             <table>
-              <thead><tr><th>Project</th><th>Code</th><th>Name</th><th>Unit</th><th>Category</th><th>Status</th></tr></thead>
+              <thead><tr><th>Project</th><th>Code</th><th>Name</th><th>Unit</th><th>Category</th><th>Status</th>{props.canManage && <th>Action</th>}</tr></thead>
               <tbody>
                 {(materials.data?.items ?? []).map((material) => (
                   <tr key={material.id}>
@@ -89,6 +103,7 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
                     <td>{material.unit}</td>
                     <td>{material.category ?? '—'}</td>
                     <td>{material.status}</td>
+                    {props.canManage && <td><div className="client-row-actions"><button type="button" className="danger-button" onClick={() => { deleteMaterialMutation.reset(); setMaterialPendingDeletion(material); }}>Delete</button></div></td>}
                   </tr>
                 ))}
               </tbody>
@@ -120,6 +135,19 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
           </form>
         </MaterialModal>
       )}
+
+
+      {materialPendingDeletion && props.canManage && (
+        <MaterialDeleteModal onClose={() => { deleteMaterialMutation.reset(); setMaterialPendingDeletion(null); }}>
+          <p>Delete <strong>{materialPendingDeletion.code} · {materialPendingDeletion.name}</strong>?</p>
+          <p className="muted">Only an unused material master can be deleted. Materials already referenced by Procurement, Goods Receipts, stock movements, or Material Issues are protected and will not be removed.</p>
+          {deleteMaterialMutation.error instanceof Error && <div className="form-error" role="alert">{deleteMaterialMutation.error.message}</div>}
+          <div className="client-modal-actions">
+            <button type="button" className="secondary-button" disabled={deleteMaterialMutation.isPending} onClick={() => { deleteMaterialMutation.reset(); setMaterialPendingDeletion(null); }}>Cancel</button>
+            <button type="button" className="danger-button" disabled={deleteMaterialMutation.isPending} onClick={() => void confirmDeleteMaterial()}>{deleteMaterialMutation.isPending ? 'Deleting…' : 'Delete material'}</button>
+          </div>
+        </MaterialDeleteModal>
+      )}
     </div>
   );
 }
@@ -140,6 +168,30 @@ function MaterialModal(props: Readonly<{ onClose: () => void; children: ReactNod
         <header className="client-modal-header">
           <div><p className="eyebrow">Inventory material</p><h2 id="material-create-modal-title">Add material</h2></div>
           <button type="button" className="client-modal-close" onClick={props.onClose} aria-label="Close Add material"><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
+    </div>
+  );
+}
+
+
+/** Render one focused confirmation dialog for permanent Material deletion. */
+function MaterialDeleteModal(props: Readonly<{ onClose: () => void; children: ReactNode }>) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="material-delete-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="client-modal-header">
+          <div><p className="eyebrow">Inventory material</p><h2 id="material-delete-modal-title">Delete material</h2></div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label="Close Delete material"><span aria-hidden="true">×</span></button>
         </header>
         <div className="client-modal-body">{props.children}</div>
       </section>

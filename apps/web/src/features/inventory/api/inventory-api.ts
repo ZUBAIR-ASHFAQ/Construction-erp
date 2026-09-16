@@ -53,6 +53,11 @@ export function createMaterial(input: CreateMaterialInput): Promise<Material> {
   return authenticatedRequest<Material>('inventory/materials', { method: 'POST', headers: commandHeaders(), body: JSON.stringify(input) });
 }
 
+/** Delete one unused Project-owned Material. */
+export function deleteMaterial(materialId: string): Promise<Readonly<{ deleted: true }>> {
+  return authenticatedRequest<Readonly<{ deleted: true }>>(`inventory/materials/${materialId}`, { method: 'DELETE', headers: commandHeaders() });
+}
+
 /** Load derived stock plus visible Warehouse options. */
 export function listStock(input: Readonly<{ page?: number; pageSize?: number; projectId?: string; warehouseId?: string; materialId?: string }> = {}): Promise<StockPage> {
   return authenticatedRequest<StockPage>(`inventory/stock${queryString(input)}`);

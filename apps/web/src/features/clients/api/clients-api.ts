@@ -65,16 +65,15 @@ export type ListClientsInput = Readonly<{
 }>;
 
 export type CreateClientInput = Readonly<{
-  code: string;
   legalName: string;
   displayName: string;
   taxNo?: string | null;
   billingAddress: string;
   creditTermsDays?: number | null;
+  contact?: CreateClientContactInput;
 }>;
 
 export type UpdateClientInput = Readonly<{
-  code?: string;
   legalName?: string;
   displayName?: string;
   taxNo?: string | null;
@@ -118,7 +117,7 @@ export function getClient(clientId: string): Promise<ClientDetails> {
   return authenticatedRequest<ClientDetails>(`clients/${clientId}`);
 }
 
-/** Create one Client without sending Company, status or authority fields from the browser. */
+/** Create one Client without sending server-owned Company, code, status or authority fields from the browser. */
 export function createClient(input: CreateClientInput): Promise<Client> {
   return authenticatedRequest<Client>('clients', {
     method: 'POST',

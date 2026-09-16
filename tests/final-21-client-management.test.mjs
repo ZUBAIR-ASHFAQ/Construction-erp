@@ -81,14 +81,14 @@ test('Client Management Prisma relations enforce same-company Contact ownership'
   assert.match(prisma, /client\s+Client\s+@relation\(fields: \[clientId, companyId\], references: \[id, companyId\]/);
 });
 
-test('Client Management web supports Client lifecycle, Contact updates and source-derived summaries', () => {
+test('Client Management web keeps lifecycle/contact maintenance while omitting the financial summary from Client Info', () => {
   assert.match(webApi, /updateClientContact/);
   assert.match(webHooks, /useUpdateClientContact/);
-  assert.match(webDetails, /Project and financial summary/);
+  assert.doesNotMatch(webDetails, /Project and financial summary|Open Client Projects/);
   assert.match(webDetails, /Archive client/);
   assert.match(webDetails, /Reactivate client/);
+  assert.match(webDetails, /\+ Add contact/);
   assert.match(webDetails, /Save contact/);
-  for (const value of ['Received', 'Allocated', 'Advance \/ unallocated', 'Outstanding', 'Restricted']) assert.match(webDetails, new RegExp(value));
   for (const source of [webApi, webHooks, webPage, webDetails]) assert.doesNotMatch(source, /Opportunity|opportunit/i);
 });
 

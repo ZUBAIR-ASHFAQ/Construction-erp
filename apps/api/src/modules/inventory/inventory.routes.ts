@@ -14,6 +14,7 @@ import {
   listMaterialsResponseSchema,
   listStockQuerySchema,
   listStockResponseSchema,
+  materialIdParamsSchema,
   materialIssueResponseSchema,
   materialResponseSchema,
   transferMaterialBodySchema,
@@ -30,6 +31,7 @@ const POSITIVE_DECIMAL_JSON_SCHEMA = { type: 'string', pattern: '^(?:[1-9]\\d{0,
 const SIGNED_DECIMAL_JSON_SCHEMA = { type: 'string', pattern: '^-?(?:[1-9]\\d{0,13}(?:\\.\\d{1,4})?|0\\.(?:\\d{0,3}[1-9]))$' } as const;
 const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
 const PAGE_PROPERTIES = { page: { type: 'integer', minimum: 1 }, pageSize: { type: 'integer', minimum: 1, maximum: 100 } } as const;
+const MATERIAL_ID_PARAMS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['materialId'], properties: { materialId: UUID_JSON_SCHEMA } } as const;
 const MATERIALS_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, projectId: UUID_JSON_SCHEMA } } as const;
 const STOCK_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, projectId: UUID_JSON_SCHEMA, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA } } as const;
 const LEDGER_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, stageId: UUID_JSON_SCHEMA } } as const;
@@ -86,7 +88,7 @@ const IDEMPOTENCY_HEADERS_JSON_SCHEMA = {
 } as const;
 
 /** Parse one Inventory request segment through its Zod boundary. */
-function parseRequest<T extends z.ZodTypeAny>(schema: T, value: unknown, source: 'body' | 'query'): z.infer<T> {
+function parseRequest<T extends z.ZodTypeAny>(schema: T, value: unknown, source: 'body' | 'query' | 'params'): z.infer<T> {
   const result = schema.safeParse(value);
   if (result.success) return result.data;
   throw new ValidationError({
@@ -120,6 +122,13 @@ export async function registerInventoryRoutes(app: FastifyInstance, options: Inv
     await authenticateRequest(request, options.database);
     const data = materialResponseSchema.parse(await service.createMaterial(parseRequest(createMaterialBodySchema, request.body, 'body'), readIdempotencyKey(request)));
     return reply.code(201).send({ data });
+  });
+
+  app.delete('/api/v1/inventory/materials/:materialId', { schema: { tags: ['Inventory'], operationId: 'deleteInventoryMaterial', summary: 'Delete one unused material', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: MATERIAL_ID_PARAMS_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } } }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const params = parseRequest(materialIdParamsSchema, request.params, 'params');
+    const data = await service.deleteMaterial(params.materialId, readIdempotencyKey(request));
+    return reply.send({ data });
   });
 
   app.get('/api/v1/inventory/stock', { schema: { tags: ['Inventory'], operationId: 'listInventoryStock', summary: 'Read warehouse stock', security: BEARER_SECURITY, querystring: STOCK_QUERY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } } }, async (request, reply) => {

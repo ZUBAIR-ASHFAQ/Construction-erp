@@ -5,6 +5,7 @@ import {
   createEmployeeAdvance,
   createPayrollPayment,
   createPayrollRun,
+  deleteDailyPayrollRun,
   finalizePayrollRun,
   getPayrollRun,
   getEmployeeSalaryLedger,
@@ -18,11 +19,13 @@ import {
   reverseEmployeeAdvance,
   reversePayrollPayment,
   updateAttendance,
+  updateDailyPayrollRun,
   type CalculatePayrollRunInput,
   type CreateAttendanceInput,
   type CreateEmployeeAdvanceInput,
   type CreatePayrollPaymentInput,
   type CreatePayrollRunInput,
+  type UpdateDailyPayrollRunInput,
   type ListAttendanceInput,
   type UpdateAttendanceInput
 } from '../api/labour-payroll-api.js';
@@ -82,6 +85,24 @@ export function useCreatePayrollRun() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: (input: CreatePayrollRunInput) => createPayrollRun(input),
+    onSuccess: async () => client.invalidateQueries({ queryKey: LABOUR_PAYROLL_QUERY_KEY })
+  });
+}
+
+/** Edit one DRAFT Daily Settlement and refresh run history/detail. */
+export function useUpdateDailyPayrollRun() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Readonly<{ payrollRunId: string; values: UpdateDailyPayrollRunInput }>) => updateDailyPayrollRun(input.payrollRunId, input.values),
+    onSuccess: async () => client.invalidateQueries({ queryKey: LABOUR_PAYROLL_QUERY_KEY })
+  });
+}
+
+/** Delete one DRAFT Daily Settlement and refresh run history/detail. */
+export function useDeleteDailyPayrollRun() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (payrollRunId: string) => deleteDailyPayrollRun(payrollRunId),
     onSuccess: async () => client.invalidateQueries({ queryKey: LABOUR_PAYROLL_QUERY_KEY })
   });
 }

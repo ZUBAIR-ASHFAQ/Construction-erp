@@ -14,6 +14,7 @@ import {
   useCreateAttendance,
   useCreateEmployeeAdvance,
   useCreatePayrollRun,
+  useDeleteDailyPayrollRun,
   useCreatePayrollPayment,
   useEmployeeSalaryLedger,
   useEmployeeAdvances,
@@ -25,7 +26,8 @@ import {
   usePayrollPayments,
   useReversePayrollPayment,
   useReverseEmployeeAdvance,
-  useUpdateAttendance
+  useUpdateAttendance,
+  useUpdateDailyPayrollRun
 } from '../hooks/labour-payroll.js';
 
 const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD.');
@@ -53,9 +55,30 @@ const correctionFormSchema = z.object({
   if (total > 24) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['hours'], message: 'Daily hours cannot exceed 24.' });
   if (value.status === 'ABSENT' && total > 0) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['status'], message: 'Absent attendance cannot contain worked hours.' });
 });
+/** Convert one YYYY-MM month into the exact calendar dates accepted by monthly Payroll. */
+function calendarMonthPeriod(monthValue: string): Readonly<{ payCycle: 'MONTHLY'; periodStart: string; periodEnd: string }> | null {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthValue);
+  if (!match) return null;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  if (month < 1 || month > 12) return null;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  return {
+    payCycle: 'MONTHLY',
+    periodStart: `${monthValue}-01`,
+    periodEnd: `${monthValue}-${String(lastDay).padStart(2, '0')}`
+  };
+}
+
 const payrollFormSchema = z.object({ payCycle: z.enum(['DAILY', 'MONTHLY']), periodStart: dateSchema, periodEnd: dateSchema }).superRefine((value, context) => {
   if (value.periodEnd < value.periodStart) context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'Period end must be on or after period start.' });
   if (value.payCycle === 'DAILY' && value.periodStart !== value.periodEnd) context.addIssue({ code: 'custom', path: ['periodEnd'], message: 'Daily settlement uses one work date.' });
+  if (value.payCycle === 'MONTHLY') {
+    const expected = calendarMonthPeriod(value.periodStart.slice(0, 7));
+    if (!expected || expected.periodStart !== value.periodStart || expected.periodEnd !== value.periodEnd) {
+      context.addIssue({ code: 'custom', path: ['periodStart'], message: 'Select one complete payroll month.' });
+    }
+  }
 });
 const paymentFormSchema = z.object({
   paymentDate: dateSchema,
@@ -120,10 +143,8 @@ function sumMoney(values: readonly string[]): string {
 /** Return the current calendar month used as the safe default Payroll period. */
 function currentPayrollPeriod(): Readonly<{ payCycle: 'MONTHLY'; periodStart: string; periodEnd: string }> {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
-  const date = (day: number) => `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-  return { payCycle: 'MONTHLY', periodStart: date(1), periodEnd: date(new Date(year, month + 1, 0).getDate()) };
+  const monthValue = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+  return calendarMonthPeriod(monthValue) ?? { payCycle: 'MONTHLY', periodStart: `${monthValue}-01`, periodEnd: `${monthValue}-01` };
 }
 
 /** Return a readable settlement-cycle label, including immutable historical runs. */
@@ -257,6 +278,8 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const advances = useEmployeeAdvances({}, showAdvances && props.canReadPayroll);
   const createAttendanceMutation = useCreateAttendance();
   const createRunMutation = useCreatePayrollRun();
+  const updateDailyRunMutation = useUpdateDailyPayrollRun();
+  const deleteDailyRunMutation = useDeleteDailyPayrollRun();
   const createAdvanceMutation = useCreateEmployeeAdvance();
   const [selectedAttendance, setSelectedAttendance] = useState<AttendanceEntry | null>(null);
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
@@ -269,6 +292,9 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
   const [reversalPayment, setReversalPayment] = useState<PayrollPayment | null>(null);
   const [reversalAdvance, setReversalAdvance] = useState<EmployeeAdvance | null>(null);
   const [advanceDialogOpen, setAdvanceDialogOpen] = useState(false);
+  const [payrollDialogOpen, setPayrollDialogOpen] = useState(false);
+  const [editingDailyRun, setEditingDailyRun] = useState<Omit<PayrollRun, 'lines'> | null>(null);
+  const [deletingDailyRun, setDeletingDailyRun] = useState<Omit<PayrollRun, 'lines'> | null>(null);
   const [accountProjectId, setAccountProjectId] = useState<string | null>(null);
   const selectedRun = usePayrollRun(selectedRunId, canAccessPayrollRuns);
   const eligiblePayrollEmployees = usePayrollEligibleEmployees(
@@ -426,8 +452,53 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
 
   /** Create one DRAFT Payroll period for later calculation. */
   async function submitPayrollRun(values: PayrollFormValues): Promise<void> {
+    if (editingDailyRun) {
+      const updated = await updateDailyRunMutation.mutateAsync({ payrollRunId: editingDailyRun.id, values: { periodStart: values.periodStart, periodEnd: values.periodEnd } });
+      if (selectedRunId === updated.id) setSelectedRunId(updated.id);
+      setEditingDailyRun(null);
+      setPayrollDialogOpen(false);
+      return;
+    }
     const created = await createRunMutation.mutateAsync(values);
     setSelectedRunId(created.id);
+    setPayrollDialogOpen(false);
+  }
+
+  /** Open the daily/monthly Payroll creation dialog with safe defaults for this page. */
+  function openPayrollDialog(): void {
+    createRunMutation.reset();
+    updateDailyRunMutation.reset();
+    setEditingDailyRun(null);
+    payrollForm.reset(props.view === 'daily-payroll'
+      ? { payCycle: 'DAILY', periodStart: new Date().toISOString().slice(0, 10), periodEnd: new Date().toISOString().slice(0, 10) }
+      : currentPayrollPeriod());
+    setPayrollDialogOpen(true);
+  }
+
+  /** Open one DRAFT Daily Settlement in the same form used for creation. */
+  function openDailyRunEdit(run: Omit<PayrollRun, 'lines'>): void {
+    if (props.view !== 'daily-payroll' || run.payCycle !== 'DAILY' || run.status !== 'DRAFT') return;
+    createRunMutation.reset();
+    updateDailyRunMutation.reset();
+    setEditingDailyRun(run);
+    payrollForm.reset({ payCycle: 'DAILY', periodStart: run.periodStart, periodEnd: run.periodEnd });
+    setPayrollDialogOpen(true);
+  }
+
+  /** Close Payroll creation/editing without changing any existing run. */
+  function closePayrollDialog(): void {
+    createRunMutation.reset();
+    updateDailyRunMutation.reset();
+    setEditingDailyRun(null);
+    setPayrollDialogOpen(false);
+  }
+
+  /** Permanently remove one DRAFT Daily Settlement after explicit confirmation. */
+  async function confirmDeleteDailyRun(): Promise<void> {
+    if (!deletingDailyRun) return;
+    await deleteDailyRunMutation.mutateAsync(deletingDailyRun.id);
+    if (selectedRunId === deletingDailyRun.id) setSelectedRunId(null);
+    setDeletingDailyRun(null);
   }
 
   /** Set safe dates whenever the operator changes between daily and monthly settlement. */
@@ -438,6 +509,14 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
       return;
     }
     payrollForm.reset(currentPayrollPeriod());
+  }
+
+  /** Convert the selected calendar month into the exact first/last dates required by Payroll. */
+  function changePayrollMonth(monthValue: string): void {
+    const period = calendarMonthPeriod(monthValue);
+    if (!period) return;
+    payrollForm.setValue('periodStart', period.periodStart, { shouldDirty: true, shouldValidate: true });
+    payrollForm.setValue('periodEnd', period.periodEnd, { shouldDirty: true, shouldValidate: true });
   }
 
   /** Pay an immediate Employee salary advance against one assigned Project. */
@@ -524,6 +603,19 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
             </button>
           )}
         </div>
+      ) : showPayrollCreation ? (
+        <div className="section-heading client-page-heading">
+          <div>
+            <p className="eyebrow">{activePageCopy.eyebrow}</p>
+            <h1>{activePageCopy.title}</h1>
+            <p className="muted">{activePageCopy.description}</p>
+          </div>
+          {props.canCreatePayroll && (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={openPayrollDialog}>
+              <span aria-hidden="true">+</span> {props.view === 'daily-payroll' ? 'Add settlement' : 'Add payroll'}
+            </button>
+          )}
+        </div>
       ) : (
         <div className="section-heading">
           <p className="eyebrow">{activePageCopy.eyebrow}</p>
@@ -587,30 +679,15 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
-      {showPayrollCreation && props.canCreatePayroll && (
-        <section className="admin-card">
-          <h2>Create {props.view === 'daily-payroll' ? 'daily settlement' : 'monthly payroll'}</h2>
-          <p className="muted">The server includes only active Employees whose effective compensation belongs to this payment schedule.</p>
-          <form className="form-grid" onSubmit={payrollForm.handleSubmit(submitPayrollRun)}>
-            <label>Payment schedule<select value={payrollPayCycle} onChange={(event) => changePayCycle(event.target.value as PayrollFormValues['payCycle'])} disabled><option value="DAILY">Daily-paid workers</option><option value="MONTHLY">Monthly employees</option></select></label>
-            <input type="hidden" {...payrollForm.register('payCycle')} />
-            <label>{payrollPayCycle === 'DAILY' ? 'Work / settlement date' : 'Month start'}<input type="date" {...payrollForm.register('periodStart', { onChange: (event) => { if (payrollPayCycle === 'DAILY') payrollForm.setValue('periodEnd', event.target.value); } })} /><span className="field-error">{payrollForm.formState.errors.periodStart?.message}</span></label>
-            <label className={payrollPayCycle === 'DAILY' ? 'payroll-hidden-period-end' : undefined}>Month end<input type="date" readOnly={payrollPayCycle === 'DAILY'} {...payrollForm.register('periodEnd')} /><span className="field-error">{payrollForm.formState.errors.periodEnd?.message}</span></label>
-            <div className="payroll-cycle-guidance"><strong>{payrollPayCycle === 'DAILY' ? 'Daily close' : 'Month-end payroll'}</strong><span>{payrollPayCycle === 'DAILY' ? 'Pays one daily wage for each present worker after attendance is approved.' : 'Calculates monthly salary, joining-date proration, absence deduction and advance recovery.'}</span></div>
-            <div className="form-actions"><button type="submit" disabled={createRunMutation.isPending}>{createRunMutation.isPending ? 'Creating…' : `Create ${payrollPayCycle === 'DAILY' ? 'daily settlement' : 'monthly payroll'}`}</button></div>
-          </form>
-          {errorMessage(createRunMutation.error) && <p className="field-error">{errorMessage(createRunMutation.error)}</p>}
-        </section>
-      )}
-
       {showPayrollRuns && canAccessPayrollRuns && (
         <section className="admin-card">
           <h2>{showPayments ? 'Finalized payroll available for payment' : `${props.view === 'daily-payroll' ? 'Daily settlement' : 'Monthly payroll'} runs`} <small className="muted">({visibleRuns.length} shown)</small></h2>
           {errorMessage(runs.error) && <p className="field-error">{errorMessage(runs.error)}</p>}
-          <div className="table-scroll"><table><thead><tr><th>Schedule</th><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Detail</th></tr></thead><tbody>
-            {visibleRuns.map((run) => <tr key={run.id}><td><span className={`payroll-cycle-badge payroll-cycle-badge-${run.payCycle.toLowerCase()}`}>{payCycleLabel(run.payCycle)}</span></td><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdByName}</td><td>{run.finalizedAt ?? '—'}</td><td><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button></td></tr>)}
+          <div className="table-scroll"><table><thead><tr><th>Schedule</th><th>Period</th><th>Status</th><th>Created by</th><th>Finalized</th><th>Action</th></tr></thead><tbody>
+            {visibleRuns.map((run) => <tr key={run.id}><td><span className={`payroll-cycle-badge payroll-cycle-badge-${run.payCycle.toLowerCase()}`}>{payCycleLabel(run.payCycle)}</span></td><td>{run.periodStart} → {run.periodEnd}</td><td>{run.status}</td><td>{run.createdByName}</td><td>{run.finalizedAt ?? '—'}</td><td><div className="button-row"><button type="button" className="secondary-button" onClick={() => chooseRun(run.id)}>Open</button>{props.view === 'daily-payroll' && run.payCycle === 'DAILY' && run.status === 'DRAFT' && props.canCreatePayroll && <><button type="button" className="secondary-button" onClick={() => openDailyRunEdit(run)}>Edit</button><button type="button" className="danger-button" onClick={() => { deleteDailyRunMutation.reset(); setDeletingDailyRun(run); }}>Delete</button></>}</div></td></tr>)}
             {visibleRuns.length === 0 && <tr><td colSpan={6} className="muted">{showPayments ? 'No finalized Payroll is available for payment.' : 'No Payroll Runs for this schedule.'}</td></tr>}
           </tbody></table></div>
+          {errorMessage(deleteDailyRunMutation.error) && !deletingDailyRun && <p className="field-error">{errorMessage(deleteDailyRunMutation.error)}</p>}
         </section>
       )}
 
@@ -714,6 +791,44 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
         </section>
       )}
 
+      {showPayrollCreation && payrollDialogOpen && props.canCreatePayroll && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={closePayrollDialog}>
+          <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="payroll-create-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="client-modal-header">
+              <div>
+                <p className="eyebrow">{props.view === 'daily-payroll' ? 'Daily-paid workers' : 'Monthly employees'}</p>
+                <h2 id="payroll-create-title">{editingDailyRun ? 'Edit daily settlement' : `Create ${props.view === 'daily-payroll' ? 'daily settlement' : 'monthly payroll'}`}</h2>
+                <p className="muted">{editingDailyRun ? 'Only a DRAFT Daily Settlement can be edited. Once calculated, its period is locked.' : 'The server includes only active Employees whose effective compensation belongs to this payment schedule.'}</p>
+              </div>
+              <button type="button" className="client-modal-close" onClick={closePayrollDialog} aria-label="Close payroll creation form"><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="client-modal-form" onSubmit={payrollForm.handleSubmit(submitPayrollRun)}>
+                <div className="client-form-grid">
+                  <label>Payment schedule<select value={payrollPayCycle} onChange={(event) => changePayCycle(event.target.value as PayrollFormValues['payCycle'])} disabled><option value="DAILY">Daily-paid workers</option><option value="MONTHLY">Monthly employees</option></select></label>
+                  <input type="hidden" {...payrollForm.register('payCycle')} />
+                  {payrollPayCycle === 'DAILY' ? (
+                    <label>Work / settlement date<input type="date" {...payrollForm.register('periodStart', { onChange: (event) => payrollForm.setValue('periodEnd', event.target.value, { shouldValidate: true }) })} /><span className="field-error">{payrollForm.formState.errors.periodStart?.message}</span></label>
+                  ) : (
+                    <>
+                      <label>Payroll month<input type="month" value={payrollForm.watch('periodStart').slice(0, 7)} onChange={(event) => changePayrollMonth(event.target.value)} /><span className="field-error">{payrollForm.formState.errors.periodStart?.message}</span></label>
+                      <input type="hidden" {...payrollForm.register('periodStart')} />
+                    </>
+                  )}
+                  <input type="hidden" {...payrollForm.register('periodEnd')} />
+                </div>
+                <div className="payroll-cycle-guidance"><strong>{payrollPayCycle === 'DAILY' ? 'Daily close' : 'Month-end payroll'}</strong><span>{payrollPayCycle === 'DAILY' ? 'Pays one daily wage for each present worker after attendance is approved.' : 'Calculates monthly salary, joining-date proration, absence deduction and advance recovery.'}</span></div>
+                {errorMessage(editingDailyRun ? updateDailyRunMutation.error : createRunMutation.error) && <p className="field-error" role="alert">{errorMessage(editingDailyRun ? updateDailyRunMutation.error : createRunMutation.error)}</p>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={closePayrollDialog}>Cancel</button>
+                  <button type="submit" disabled={editingDailyRun ? updateDailyRunMutation.isPending : createRunMutation.isPending}>{editingDailyRun ? (updateDailyRunMutation.isPending ? 'Saving…' : 'Save changes') : (createRunMutation.isPending ? 'Creating…' : `Create ${payrollPayCycle === 'DAILY' ? 'daily settlement' : 'monthly payroll'}`)}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
       {showAdvances && advanceDialogOpen && props.canCreateEmployeeAdvance && (
         <div className="client-modal-backdrop" role="presentation" onMouseDown={closeAdvanceDialog}>
           <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="salary-advance-create-title" onMouseDown={(event) => event.stopPropagation()}>
@@ -744,6 +859,28 @@ export function LabourPayrollWorkspace(props: LabourPayrollWorkspaceProps) {
                   <button type="submit" disabled={createAdvanceMutation.isPending}>{createAdvanceMutation.isPending ? 'Posting…' : 'Pay advance'}</button>
                 </div>
               </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {deletingDailyRun && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={() => { if (!deleteDailyRunMutation.isPending) setDeletingDailyRun(null); }}>
+          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="daily-settlement-delete-title" onMouseDown={(event) => event.stopPropagation()}>
+            <header className="client-modal-header">
+              <div>
+                <p className="eyebrow">Draft daily settlement</p>
+                <h2 id="daily-settlement-delete-title">Delete daily settlement?</h2>
+                <p className="muted">This permanently deletes the DRAFT settlement for {deletingDailyRun.periodStart}. Calculated or finalized settlements cannot be deleted.</p>
+              </div>
+              <button type="button" className="client-modal-close" disabled={deleteDailyRunMutation.isPending} onClick={() => setDeletingDailyRun(null)} aria-label="Close delete daily settlement dialog"><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              {errorMessage(deleteDailyRunMutation.error) && <p className="field-error" role="alert">{errorMessage(deleteDailyRunMutation.error)}</p>}
+              <div className="client-modal-actions">
+                <button type="button" className="secondary-button" disabled={deleteDailyRunMutation.isPending} onClick={() => setDeletingDailyRun(null)}>Cancel</button>
+                <button type="button" className="danger-button" disabled={deleteDailyRunMutation.isPending} onClick={() => void confirmDeleteDailyRun()}>{deleteDailyRunMutation.isPending ? 'Deleting…' : 'Delete draft'}</button>
+              </div>
             </div>
           </section>
         </div>

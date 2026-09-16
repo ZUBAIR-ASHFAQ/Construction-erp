@@ -116,14 +116,25 @@ export async function registerClientsRoutes(
       body: {
         type: 'object',
         additionalProperties: false,
-        required: ['code', 'legalName', 'displayName', 'billingAddress'],
+        required: ['legalName', 'displayName', 'billingAddress'],
         properties: {
-          code: { type: 'string', minLength: 1, maxLength: 100 },
           legalName: { type: 'string', minLength: 1, maxLength: 240 },
           displayName: { type: 'string', minLength: 1, maxLength: 240 },
           taxNo: { anyOf: [{ type: 'string', minLength: 1, maxLength: 100 }, { type: 'null' }] },
           billingAddress: { type: 'string', minLength: 1, maxLength: 1000 },
-          creditTermsDays: { anyOf: [{ type: 'integer', minimum: 0 }, { type: 'null' }] }
+          creditTermsDays: { anyOf: [{ type: 'integer', minimum: 0 }, { type: 'null' }] },
+          contact: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['name'],
+            properties: {
+              name: { type: 'string', minLength: 1, maxLength: 200 },
+              title: { anyOf: [{ type: 'string', minLength: 1, maxLength: 160 }, { type: 'null' }] },
+              email: { anyOf: [{ type: 'string', format: 'email', maxLength: 320 }, { type: 'null' }] },
+              phone: { anyOf: [{ type: 'string', minLength: 7, maxLength: 50 }, { type: 'null' }] },
+              isPrimary: { type: 'boolean' }
+            }
+          }
         }
       },
       response: { 201: { type: 'object', additionalProperties: true }, ...COMMON_ERROR_RESPONSES }
@@ -163,7 +174,6 @@ export async function registerClientsRoutes(
         additionalProperties: false,
         minProperties: 1,
         properties: {
-          code: { type: 'string', minLength: 1, maxLength: 100 },
           legalName: { type: 'string', minLength: 1, maxLength: 240 },
           displayName: { type: 'string', minLength: 1, maxLength: 240 },
           taxNo: { anyOf: [{ type: 'string', minLength: 1, maxLength: 100 }, { type: 'null' }] },

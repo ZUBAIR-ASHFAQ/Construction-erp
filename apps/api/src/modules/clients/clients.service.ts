@@ -1,5 +1,6 @@
 import { recordAudit } from '@construction-erp/audit';
 import { withTransaction, type DatabaseClient } from '@construction-erp/database';
+import { allocateCompanyNumber } from '@construction-erp/numbering';
 import { AuthorizationError } from '@construction-erp/errors';
 import { recordOutboxEvent } from '@construction-erp/outbox';
 import { hasPermission, requireRequestSecurityContext } from '@construction-erp/request-context';
@@ -18,6 +19,7 @@ import {
 
 const CLIENT_ACTIVE = 'ACTIVE';
 const CONTACT_ACTIVE = 'ACTIVE';
+const CLIENT_SEQUENCE_KEY = 'client';
 
 /** Business rules for final Client Management reads and commands. */
 export class ClientsService {
@@ -108,11 +110,20 @@ export class ClientsService {
     try {
       return await withTransaction(this.db, async (tx) => {
         const repository = new ClientsRepository(tx);
-        const existing = await repository.findClientByCode(input.code);
-        if (existing) throw createClientError('DUPLICATE_CLIENT_CODE');
+        await repository.ensureClientNumberSequence();
+
+        let code: string | null = null;
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const candidate = (await allocateCompanyNumber(tx, { sequenceKey: CLIENT_SEQUENCE_KEY })).formatted;
+          if (!(await repository.findClientByCode(candidate))) {
+            code = candidate;
+            break;
+          }
+        }
+        if (!code) throw createClientError('DUPLICATE_CLIENT_CODE');
 
         const client = await repository.createClient({
-          code: input.code,
+          code,
           legalName: input.legalName,
           displayName: input.displayName,
           ...(input.taxNo === undefined ? {} : { taxNo: input.taxNo }),
@@ -135,6 +146,34 @@ export class ClientsService {
             creditTermsDays: client.creditTermsDays
           }
         });
+
+        if (input.contact) {
+          const contact = await repository.createClientContact({
+            clientId: client.id,
+            name: input.contact.name,
+            ...(input.contact.title === undefined ? {} : { title: input.contact.title }),
+            ...(input.contact.email === undefined ? {} : { email: input.contact.email }),
+            ...(input.contact.phone === undefined ? {} : { phone: input.contact.phone }),
+            isPrimary: input.contact.isPrimary,
+            status: CONTACT_ACTIVE
+          });
+          if (!contact) throw createClientError('CLIENT_NOT_FOUND');
+
+          await recordAudit(tx, {
+            action: 'client.contact_created',
+            entityType: 'client_contact',
+            entityId: contact.id,
+            after: {
+              clientId: contact.clientId,
+              name: contact.name,
+              title: contact.title,
+              email: contact.email,
+              phone: contact.phone,
+              isPrimary: contact.isPrimary,
+              status: contact.status
+            }
+          });
+        }
 
         await recordOutboxEvent(tx, {
           eventType: 'client.created',
@@ -166,15 +205,7 @@ export class ClientsService {
         const before = await repository.findClientById(clientId);
         if (!before) throw createClientError('CLIENT_NOT_FOUND');
 
-        if (input.code) {
-          const sameCode = await repository.findClientByCode(input.code);
-          if (sameCode && sameCode.id !== clientId) {
-            throw createClientError('DUPLICATE_CLIENT_CODE');
-          }
-        }
-
         const updated = await repository.updateClient(clientId, {
-          ...(input.code === undefined ? {} : { code: input.code }),
           ...(input.legalName === undefined ? {} : { legalName: input.legalName }),
           ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
           ...(input.taxNo === undefined ? {} : { taxNo: input.taxNo }),

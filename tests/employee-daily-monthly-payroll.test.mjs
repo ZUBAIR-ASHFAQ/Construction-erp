@@ -47,6 +47,9 @@ test('the web workflow clearly separates daily-paid workers and monthly employee
   assert.match(workspace, /Monthly employees/);
   assert.match(workspace, /'daily settlement'/);
   assert.match(workspace, /'monthly payroll'/);
+  assert.match(workspace, /type=\"month\"/);
+  assert.match(workspace, /changePayrollMonth/);
+  assert.match(workspace, /calendarMonthPeriod/);
   assert.match(employeePage, /Payment basis/);
   assert.match(employeePage, /Employment end date \(optional\)/);
 });

@@ -137,6 +137,74 @@ export class InventoryRepository {
     return this.db.material.create({ data: scope.createData({ ...input, category: input.category ?? null }) });
   }
 
+  /** Lock one Company Material before a destructive master-data command. */
+  async lockMaterialById(materialId: string) {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{
+      id: string; companyId: string; projectId: string | null; code: string; name: string; unit: string; category: string | null; status: string;
+    }>>`
+      SELECT
+        material.id,
+        material.company_id AS "companyId",
+        material.project_id AS "projectId",
+        material.code,
+        material.name,
+        material.unit,
+        material.category,
+        material.status
+      FROM materials material
+      WHERE material.company_id = ${scope.companyId}::uuid
+        AND material.id = ${materialId}::uuid
+      FOR UPDATE
+    `;
+    return rows[0] ?? null;
+  }
+
+  /** Detect any Procurement or Inventory history that requires the Material master to remain immutable. */
+  async materialHasUsage(materialId: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    const rows = await this.db.$queryRaw<Array<{ used: boolean }>>`
+      SELECT (
+        EXISTS (
+          SELECT 1
+          FROM purchase_requisition_items item
+          JOIN purchase_requisitions requisition ON requisition.id = item.requisition_id
+          WHERE requisition.company_id = ${scope.companyId}::uuid AND item.item_id = ${materialId}::uuid
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM purchase_order_items item
+          JOIN purchase_orders purchase_order ON purchase_order.id = item.purchase_order_id
+          WHERE purchase_order.company_id = ${scope.companyId}::uuid AND item.item_id = ${materialId}::uuid
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM goods_receipt_items item
+          JOIN goods_receipts receipt ON receipt.id = item.goods_receipt_id
+          WHERE receipt.company_id = ${scope.companyId}::uuid AND item.item_id = ${materialId}::uuid
+        )
+        OR EXISTS (
+          SELECT 1 FROM stock_ledger ledger
+          WHERE ledger.company_id = ${scope.companyId}::uuid AND ledger.material_id = ${materialId}::uuid
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM material_issue_items item
+          JOIN material_issues issue ON issue.id = item.issue_id
+          WHERE issue.company_id = ${scope.companyId}::uuid AND item.material_id = ${materialId}::uuid
+        )
+      ) AS used
+    `;
+    return rows[0]?.used ?? false;
+  }
+
+  /** Permanently delete one unused Material master inside Company scope. */
+  async deleteMaterial(materialId: string): Promise<boolean> {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.material.deleteMany({ where: scope.where({ id: materialId }) });
+    return result.count === 1;
+  }
+
   /** List Warehouse options visible through trusted Project scope. */
   async listWarehouses(visibility: InventoryVisibility) {
     const scope = requireCompanyRepositoryScope();

@@ -26,13 +26,14 @@ test('B12 keeps Inventory as one simple five-file backend after Procurement', ()
   assert.ok(app.indexOf('registerProcurementRoutes') < app.indexOf('registerInventoryRoutes'));
 });
 
-/** Confirm the public Inventory API is exactly the seven routes in the Final-21 contract. */
-test('B12 exposes exactly the seven Final-21 Inventory routes', () => {
+/** Confirm the public Inventory API includes the safe Material-delete extension. */
+test('B12 exposes the active Final-21 Inventory routes including safe Material deletion', () => {
   const schema = read(`${backend}/inventory.schema.ts`);
   const routes = read(`${backend}/inventory.routes.ts`);
   const expected = [
     "GET', route: '/api/v1/inventory/materials'",
     "POST', route: '/api/v1/inventory/materials'",
+    "DELETE', route: '/api/v1/inventory/materials/:materialId'",
     "GET', route: '/api/v1/inventory/stock'",
     "GET', route: '/api/v1/inventory/ledger'",
     "POST', route: '/api/v1/inventory/issues'",
@@ -40,7 +41,7 @@ test('B12 exposes exactly the seven Final-21 Inventory routes', () => {
     "POST', route: '/api/v1/inventory/adjustments'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/inventory/g) ?? []).length, 7);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/inventory/g) ?? []).length, 8);
   assert.doesNotMatch(routes, /unit-conversion|stock-period|physical-count|min-stock|low-stock|\/returns|\/balances|\/items/i);
 });
 
@@ -222,16 +223,38 @@ test('B12 aligns Inventory permissions and React workspace with Final-21', () =>
   assert.match(adminShell, /activeView === 'materials'/);
 });
 
+/** Confirm Material deletion is manager-only, Project-scoped, and blocked once the Material has business history. */
+test('B12 deletes only unused Materials through the existing materials.manage boundary', () => {
+  const repository = read(`${backend}/inventory.repository.ts`);
+  const service = read(`${backend}/inventory.service.ts`);
+  const routes = read(`${backend}/inventory.routes.ts`);
+  const api = read(`${web}/api/inventory-api.ts`);
+  const hooks = read(`${web}/hooks/inventory.ts`);
+  const workspace = read(`${web}/components/materials-workspace.tsx`);
+
+  assert.match(routes, /app\.delete\('\/api\/v1\/inventory\/materials\/:materialId'/);
+  assert.match(service, /requireProjectPermission\(users, material\.projectId, 'materials\.manage'/);
+  assert.match(service, /materialHasUsage\(material\.id\)/);
+  assert.match(service, /MATERIAL_IN_USE/);
+  for (const table of ['purchase_requisition_items', 'purchase_order_items', 'goods_receipt_items', 'stock_ledger', 'material_issue_items']) {
+    assert.ok(repository.includes(table), `Material delete guard is missing ${table}`);
+  }
+  assert.match(api, /method: 'DELETE'/);
+  assert.match(hooks, /useDeleteMaterial/);
+  assert.match(workspace, /Delete material/);
+  assert.match(workspace, /props\.canManage/);
+});
+
 /** Confirm every public Inventory write is idempotent and produces audit/outbox evidence. */
 test('B12 keeps Inventory write commands idempotent audited and evented', () => {
   const routes = read(`${backend}/inventory.routes.ts`);
   const service = read(`${backend}/inventory.service.ts`);
-  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 4);
-  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 4);
-  for (const operation of ['inventory.material.create', 'inventory.issue', 'inventory.transfer', 'inventory.adjust']) {
+  assert.equal((routes.match(/headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA/g) ?? []).length, 5);
+  assert.equal((routes.match(/readIdempotencyKey\(request\)/g) ?? []).length, 5);
+  for (const operation of ['inventory.material.create', 'inventory.material.delete', 'inventory.issue', 'inventory.transfer', 'inventory.adjust']) {
     assert.ok(service.includes(`operation: '${operation}'`), `missing ${operation}`);
   }
-  for (const event of ['inventory.material_issued', 'inventory.transferred', 'inventory.adjusted', 'inventory.receipt_posted']) {
+  for (const event of ['inventory.material_deleted', 'inventory.material_issued', 'inventory.transferred', 'inventory.adjusted', 'inventory.receipt_posted']) {
     assert.ok(service.includes(event), `missing ${event}`);
   }
   assert.match(service, /recordAudit/);

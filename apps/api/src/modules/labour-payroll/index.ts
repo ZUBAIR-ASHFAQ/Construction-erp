@@ -37,7 +37,8 @@ export {
   payrollRunResponseSchema,
   reversePayrollPaymentBodySchema,
   reverseEmployeeAdvanceBodySchema,
-  updateAttendanceBodySchema
+  updateAttendanceBodySchema,
+  updateDailyPayrollRunBodySchema
 } from './labour-payroll.schema.js';
 export type {
   AttendanceStatus,
@@ -57,7 +58,8 @@ export type {
   EmployeeSalaryLedgerQuery,
   ReverseEmployeeAdvanceBody,
   ReversePayrollPaymentBody,
-  UpdateAttendanceBody
+  UpdateAttendanceBody,
+  UpdateDailyPayrollRunBody
 } from './labour-payroll.schema.js';
 export { LabourPayrollRepository } from './labour-payroll.repository.js';
 export { LabourPayrollService } from './labour-payroll.service.js';

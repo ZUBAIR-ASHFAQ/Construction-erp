@@ -25,7 +25,6 @@ export type CreateClientRepositoryInput = Readonly<{
 }>;
 
 export type UpdateClientRepositoryInput = Readonly<{
-  code?: string;
   legalName?: string;
   displayName?: string;
   taxNo?: string | null;
@@ -116,6 +115,25 @@ export class ClientsRepository {
     });
   }
 
+  /** Ensure the server-owned Client number sequence exists for the authenticated Company. */
+  async ensureClientNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'client' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'client',
+        prefix: 'CLI-',
+        suffix: '',
+        padWidth: 5,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Create one Company-owned Client after service validation. */
   async createClient(input: CreateClientRepositoryInput) {
     const scope = requireCompanyRepositoryScope();
@@ -138,7 +156,6 @@ export class ClientsRepository {
     const updated = await this.db.client.updateMany({
       where: scope.where({ id }),
       data: {
-        ...(input.code === undefined ? {} : { code: input.code }),
         ...(input.legalName === undefined ? {} : { legalName: input.legalName }),
         ...(input.displayName === undefined ? {} : { displayName: input.displayName }),
         ...(input.taxNo === undefined ? {} : { taxNo: input.taxNo }),

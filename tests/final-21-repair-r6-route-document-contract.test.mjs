@@ -67,6 +67,7 @@ const expectedRoutes = Object.freeze({
   inventory: [
     'GET /api/v1/inventory/materials',
     'POST /api/v1/inventory/materials',
+    'DELETE /api/v1/inventory/materials/:materialId',
     'GET /api/v1/inventory/stock',
     'GET /api/v1/inventory/ledger',
     'POST /api/v1/inventory/issues',

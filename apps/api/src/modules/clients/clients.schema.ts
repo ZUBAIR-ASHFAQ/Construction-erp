@@ -44,7 +44,6 @@ export const clientStatusSchema = z.enum(['ACTIVE', 'ARCHIVED']);
 export const clientContactStatusSchema = z.enum(['ACTIVE', 'INACTIVE']);
 
 const uuidSchema = z.string().uuid();
-const clientCodeSchema = z.string().trim().min(1).max(100);
 const clientLegalNameSchema = z.string().trim().min(1).max(240);
 const clientDisplayNameSchema = z.string().trim().min(1).max(240);
 const taxNoSchema = z.string().trim().min(1).max(100);
@@ -81,19 +80,27 @@ export const listClientsQuerySchema = z.object({
   ...paginationQueryShape
 }).strict();
 
-/** Create one company-owned Client; ownership and lifecycle state come from the server. */
+/** Create one Contact with only the name required by the final Client master contract. */
+export const createClientContactBodySchema = z.object({
+  name: contactNameSchema,
+  title: contactTitleSchema.nullable().optional(),
+  email: emailSchema.nullable().optional(),
+  phone: phoneSchema.nullable().optional(),
+  isPrimary: z.boolean().default(false)
+}).strict();
+
+/** Create one company-owned Client; code, ownership and lifecycle state come from the server. */
 export const createClientBodySchema = z.object({
-  code: clientCodeSchema,
   legalName: clientLegalNameSchema,
   displayName: clientDisplayNameSchema,
   taxNo: taxNoSchema.nullable().optional(),
   billingAddress: billingAddressSchema,
-  creditTermsDays: creditTermsDaysSchema.nullable().optional()
+  creditTermsDays: creditTermsDaysSchema.nullable().optional(),
+  contact: createClientContactBodySchema.optional()
 }).strict();
 
-/** Update only final Client master fields, including non-destructive status changes. */
+/** Update only user-maintained Client master fields; the server-owned code is immutable. */
 export const updateClientBodySchema = z.object({
-  code: clientCodeSchema.optional(),
   legalName: clientLegalNameSchema.optional(),
   displayName: clientDisplayNameSchema.optional(),
   taxNo: taxNoSchema.nullable().optional(),
@@ -103,15 +110,6 @@ export const updateClientBodySchema = z.object({
 }).strict().refine((value) => Object.keys(value).length > 0, {
   message: 'At least one editable client field must be provided.'
 });
-
-/** Create one Contact with only the name required by the final Client master contract. */
-export const createClientContactBodySchema = z.object({
-  name: contactNameSchema,
-  title: contactTitleSchema.nullable().optional(),
-  email: emailSchema.nullable().optional(),
-  phone: phoneSchema.nullable().optional(),
-  isPrimary: z.boolean().default(false)
-}).strict();
 
 /** Update editable Contact master fields without changing Client or Company ownership. */
 export const updateClientContactBodySchema = z.object({

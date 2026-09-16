@@ -3,12 +3,14 @@
 -- Preserves:
 --   * companies + company configuration
 --   * initial bootstrap record
---   * permissions, roles and role-permission catalog
+--   * permission catalog and every built-in/system role + its permissions
 --   * the authoritative bootstrap administrator, including its exact password hash
 --   * administrator role assignments and active administrator sessions
 --   * number-sequence configuration (counters are reset to 1)
 --
--- Removes operational/manual data and all non-administrator user accounts.
+-- Removes operational/manual data, all non-administrator user accounts, and
+-- company-created/custom roles. Built-in roles (for example system-admin and
+-- site-manager) are preserved so application authorization functionality remains intact.
 -- Recreates only the minimum operational defaults created by initial bootstrap.
 --
 -- This file is intentionally NOT a Prisma migration. It is an explicit development
@@ -160,21 +162,40 @@ TRUNCATE TABLE
   "projects"
 RESTART IDENTITY;
 
--- Remove login/session state for every manually created account while leaving the
--- bootstrap administrator credentials and current sessions untouched.
+-- Remove login/session state for manually created accounts while leaving the
+-- bootstrap administrator credential and current administrator sessions untouched.
 DELETE FROM "auth_sessions" session
 USING "_manual_data_reset_admin_guard" guard
 WHERE session."user_id" <> guard."administrator_id";
 
+-- Keep exactly the bootstrap administrator's built-in system-admin assignment.
+-- This also removes any manually-added extra role assignment from the administrator.
 DELETE FROM "user_roles" assignment
 USING "_manual_data_reset_admin_guard" guard
 WHERE assignment."company_id" = guard."company_id"
-  AND assignment."user_id" <> guard."administrator_id";
+  AND NOT (
+    assignment."user_id" = guard."administrator_id"
+    AND EXISTS (
+      SELECT 1
+      FROM "roles" role
+      WHERE role."id" = assignment."role_id"
+        AND role."company_id" = guard."company_id"
+        AND role."code" = 'system-admin'
+        AND role."is_system" = TRUE
+    )
+  );
 
 DELETE FROM "users" account
 USING "_manual_data_reset_admin_guard" guard
 WHERE account."company_id" = guard."company_id"
   AND account."id" <> guard."administrator_id";
+
+-- Remove only company-created/custom roles. System roles and their permission
+-- assignments are application infrastructure and must remain available after reset.
+DELETE FROM "roles" role
+USING "_manual_data_reset_admin_guard" guard
+WHERE role."company_id" = guard."company_id"
+  AND role."is_system" = FALSE;
 
 -- Preserve numbering policies/prefixes but make the empty operational database
 -- start numbering from its configured beginning again.
@@ -239,12 +260,14 @@ SELECT
   'OPEN'
 FROM current_period;
 
--- Fail the transaction if anything touched the administrator credential or if a
--- non-admin user survived the cleanup.
+-- Fail the transaction if anything touched the administrator credential, if a
+-- non-admin user/custom role survived, or if operational Project data remains.
 DO $$
 DECLARE
   admin_changed_count INTEGER;
   other_user_count INTEGER;
+  custom_role_count INTEGER;
+  system_admin_assignment_count INTEGER;
   project_count INTEGER;
 BEGIN
   SELECT COUNT(*) INTO admin_changed_count
@@ -268,6 +291,35 @@ BEGIN
 
   IF other_user_count <> 0 THEN
     RAISE EXCEPTION 'Manual-data reset aborted: % non-administrator user(s) remain.', other_user_count;
+  END IF;
+
+  SELECT COUNT(*) INTO custom_role_count
+  FROM "roles" role
+  CROSS JOIN "_manual_data_reset_admin_guard" guard
+  WHERE role."company_id" = guard."company_id"
+    AND role."is_system" = FALSE;
+
+  IF custom_role_count <> 0 THEN
+    RAISE EXCEPTION 'Manual-data reset aborted: % custom role(s) remain.', custom_role_count;
+  END IF;
+
+  SELECT COUNT(*) INTO system_admin_assignment_count
+  FROM "_manual_data_reset_admin_guard" guard
+  JOIN "user_roles" assignment
+    ON assignment."company_id" = guard."company_id"
+   AND assignment."user_id" = guard."administrator_id"
+   AND assignment."status" = 'ACTIVE'
+  JOIN "roles" role
+    ON role."id" = assignment."role_id"
+   AND role."company_id" = guard."company_id"
+   AND role."code" = 'system-admin'
+   AND role."is_system" = TRUE
+   AND role."status" = 'ACTIVE';
+
+  IF system_admin_assignment_count <> 1 THEN
+    RAISE EXCEPTION
+      'Manual-data reset aborted: expected exactly one active system-admin assignment for bootstrap administrator, found %.',
+      system_admin_assignment_count;
   END IF;
 
   SELECT COUNT(*) INTO project_count

@@ -5,6 +5,7 @@ import {
   createSupplierPayment,
   getSupplierAging,
   getSupplierInvoice,
+  getSupplierLedger,
   listSupplierInvoices,
   listSupplierPayments,
   postSupplierInvoice,
@@ -14,7 +15,8 @@ import {
   type CreateSupplierPaymentInput,
   type ListSupplierInvoicesInput,
   type ListSupplierPaymentsInput,
-  type SupplierAgingInput
+  type SupplierAgingInput,
+  type SupplierLedgerInput
 } from '../api/supplier-payables-api.js';
 
 const SUPPLIER_PAYABLES_QUERY_KEY = ['module-17', 'supplier-payables'] as const;
@@ -137,6 +139,17 @@ export function useSupplierAging(input: SupplierAgingInput, enabled = true) {
     queryKey: [...SUPPLIER_PAYABLES_QUERY_KEY, 'aging', input],
     queryFn: () => getSupplierAging(input),
     enabled,
+    retry: false
+  });
+}
+
+
+/** Load one source-derived Supplier account ledger for the selected Supplier. */
+export function useSupplierLedger(input: SupplierLedgerInput | null, enabled = true) {
+  return useQuery({
+    queryKey: [...SUPPLIER_PAYABLES_QUERY_KEY, 'ledger', input],
+    queryFn: () => getSupplierLedger(input as SupplierLedgerInput),
+    enabled: enabled && input !== null,
     retry: false
   });
 }

@@ -22,6 +22,7 @@ export {
   listVendorsQuerySchema,
   masterIdParamsSchema,
   subcontractContractIdParamsSchema,
+  updateSubcontractContractBodySchema,
   updateSubcontractorBodySchema,
   updateVendorBodySchema
 } from './vendors-subcontractors.schema.js';
@@ -38,6 +39,7 @@ export type {
   ListSubcontractorsQuery,
   ListVendorsQuery,
   MasterIdParams,
+  UpdateSubcontractContractBody,
   UpdateSubcontractorBody,
   UpdateVendorBody,
   VendorsSubcontractorsErrorCode,

@@ -101,7 +101,7 @@ function StageRow({ stage, fallbackPercent, canEdit, onEdit }: Readonly<{
       <td>{stage.financials?.outstandingAmount ?? 'Restricted'}</td>
       <td>Planned {stage.plannedStartDate ?? '—'} → {stage.plannedEndDate ?? '—'}<br /><small>Actual {stage.actualStartDate ?? '—'} → {stage.actualEndDate ?? '—'}</small></td>
       <td>{stage.status}</td>
-      <td>{canEdit ? <button type="button" onClick={() => onEdit(stage)}>Edit</button> : '—'}</td>
+      <td>{canEdit ? <button type="button" className="secondary-button client-edit-button" onClick={() => onEdit(stage)}>Edit</button> : '—'}</td>
     </tr>
   );
 }
@@ -112,6 +112,7 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   const canReadDocuments = usePermission('documents.read');
   const documentsQuery = useDocuments({ projectId: props.projectId, status: 'active', page: 1, pageSize: 100 }, canReadDocuments && props.canRecordProgress);
   const createMutation = useCreateProjectStage(props.projectId);
+  const [stageDialogOpen, setStageDialogOpen] = useState(false);
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const updateMutation = useUpdateProjectStage(props.projectId, editingStageId ?? '');
   const freezeMutation = useFreezeProjectStageBaseline(props.projectId);
@@ -168,16 +169,29 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
         });
       }
       setEditingStageId(null);
+      setStageDialogOpen(false);
       stageForm.reset({ code: '', name: '', sequenceNo: created.sequenceNo + 1, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
       return;
     }
 
     setEditingStageId(null);
+    setStageDialogOpen(false);
     stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
+  }
+
+  /** Open the Stage create dialog with a fresh automatically suggested sequence number. */
+  function handleAddStage(): void {
+    setEditingStageId(null);
+    createMutation.reset();
+    updateMutation.reset();
+    stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
+    setStageDialogOpen(true);
   }
 
   /** Load one draft Stage into the shared planning form for a simple edit flow. */
   function handleEditStage(stage: ProjectStage): void {
+    createMutation.reset();
+    updateMutation.reset();
     setEditingStageId(stage.id);
     stageForm.reset({
       code: stage.code,
@@ -188,11 +202,15 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
       plannedStartDate: stage.plannedStartDate ?? '',
       plannedEndDate: stage.plannedEndDate ?? ''
     });
+    setStageDialogOpen(true);
   }
 
   /** Cancel a draft Stage edit without changing persisted Stage data. */
   function handleCancelStageEdit(): void {
     setEditingStageId(null);
+    setStageDialogOpen(false);
+    createMutation.reset();
+    updateMutation.reset();
     stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
@@ -221,9 +239,16 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   return (
     <div className="admin-stack">
       <section className="admin-card">
-        <div className="section-heading">
-          <h2>Stage baseline</h2>
-          <p className="muted">Weight, Profit / Markup %, physical progress, cost, billing and receipts stay separate. Cost + Percentage Stages may override the Project rate; blank uses the Project fallback. Freeze is allowed only when Stage weights total exactly 100.0000%.</p>
+        <div className="client-page-heading">
+          <div>
+            <h2>Stage baseline</h2>
+            <p className="muted">Weight, Profit / Markup %, physical progress, cost, billing and receipts stay separate. Cost + Percentage Stages may override the Project rate; blank uses the Project fallback. Freeze is allowed only when Stage weights total exactly 100.0000%.</p>
+          </div>
+          {props.canManage && !stagesQuery.data?.baseline && (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={handleAddStage}>
+              <span aria-hidden="true">+</span> Add stage
+            </button>
+          )}
         </div>
         {stagesQuery.isPending && <p>Loading Project Stages…</p>}
         {errorMessage(stagesQuery.error) && <div className="form-error" role="alert">{errorMessage(stagesQuery.error)}</div>}
@@ -275,27 +300,39 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
         {errorMessage(freezeMutation.error) && <div className="form-error" role="alert">{errorMessage(freezeMutation.error)}</div>}
       </section>
 
-      {props.canManage && !stagesQuery.data?.baseline && (
-        <section className="admin-card">
-          <h2>{editingStageId ? 'Edit Stage' : 'Add Stage'}</h2>
-          <form onSubmit={stageForm.handleSubmit((values) => void handleSaveStage(values))}>
-            <div className="form-grid">
-              <label>Code<input {...stageForm.register('code')} /></label>
-              <label>Name<input {...stageForm.register('name')} /></label>
-              <label>Sequence<input type="number" min="1" {...stageForm.register('sequenceNo')} /></label>
-              <label>Weight %<input inputMode="decimal" {...stageForm.register('weightPercent')} /></label>
-              {props.projectModel === 'COST_PLUS_PERCENTAGE' ? (
-                <label>Profit / Markup % (optional)<input inputMode="decimal" {...stageForm.register('costPlusPercent')} /><small className="muted">Blank uses Project {props.projectCostPlusPercent ?? 'configured'}%.</small></label>
-              ) : null}
-              <label>Planned start<input type="date" {...stageForm.register('plannedStartDate')} /></label>
-              <label>Planned end<input type="date" {...stageForm.register('plannedEndDate')} /></label>
+      {stageDialogOpen && props.canManage && !stagesQuery.data?.baseline && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) handleCancelStageEdit(); }}>
+          <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="stage-editor-title">
+            <header className="client-modal-header">
+              <div>
+                <p className="eyebrow">Project stage</p>
+                <h2 id="stage-editor-title">{editingStageId ? 'Edit Stage' : 'Add Stage'}</h2>
+              </div>
+              <button type="button" className="client-modal-close" aria-label="Close Stage editor" onClick={handleCancelStageEdit}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form onSubmit={stageForm.handleSubmit((values) => void handleSaveStage(values))}>
+                <div className="client-form-grid">
+                  <label>Code<input {...stageForm.register('code')} /></label>
+                  <label>Name<input {...stageForm.register('name')} /></label>
+                  <label>Sequence<input type="number" min="1" {...stageForm.register('sequenceNo')} /></label>
+                  <label>Weight %<input inputMode="decimal" {...stageForm.register('weightPercent')} /></label>
+                  {props.projectModel === 'COST_PLUS_PERCENTAGE' ? (
+                    <label>Profit / Markup % (optional)<input inputMode="decimal" {...stageForm.register('costPlusPercent')} /><small className="muted">Blank uses Project {props.projectCostPlusPercent ?? 'configured'}%.</small></label>
+                  ) : null}
+                  <label>Planned start<input type="date" {...stageForm.register('plannedStartDate')} /></label>
+                  <label>Planned end<input type="date" {...stageForm.register('plannedEndDate')} /></label>
+                </div>
+                {formErrorMessages(stageForm.formState.errors as Record<string, unknown>).map((message, index) => <div key={index} className="form-error">{message}</div>)}
+                {errorMessage(createMutation.error ?? updateMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error ?? updateMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={handleCancelStageEdit}>Cancel</button>
+                  <button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>{createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingStageId ? 'Update Stage' : 'Add Stage'}</button>
+                </div>
+              </form>
             </div>
-            {formErrorMessages(stageForm.formState.errors as Record<string, unknown>).map((message, index) => <div key={index} className="form-error">{message}</div>)}
-            {errorMessage(createMutation.error ?? updateMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error ?? updateMutation.error)}</div>}
-            <button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>{createMutation.isPending || updateMutation.isPending ? 'Saving…' : editingStageId ? 'Update Stage' : 'Add Stage'}</button>
-            {editingStageId && <button type="button" onClick={handleCancelStageEdit}>Cancel edit</button>}
-          </form>
-        </section>
+          </section>
+        </div>
       )}
 
       {props.canRecordProgress && stagesQuery.data?.baseline && (

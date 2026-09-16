@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from 'react';
 import { useProjects } from '../../projects/hooks/projects.js';
 import { useCreateMaterial, useMaterials } from '../hooks/inventory.js';
 
@@ -7,11 +7,12 @@ type MaterialsWorkspaceProps = Readonly<{
   canManage: boolean;
 }>;
 
-/** Render the Project-owned Material create form and permission-scoped master list. */
+/** Render the Project-owned Material master with server-numbered modal creation. */
 export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
   const projects = useProjects({ page: 1, pageSize: 100 }, props.canRead || props.canManage);
   const projectItems = projects.data?.items ?? [];
   const [projectId, setProjectId] = useState('');
+  const [materialDialogOpen, setMaterialDialogOpen] = useState(false);
   const materials = useMaterials(projectId || undefined, props.canRead);
   const createMaterial = useCreateMaterial();
   const projectNames = useMemo(() => new Map(projectItems.map((project) => [project.id, `${project.projectCode} · ${project.name}`])), [projectItems]);
@@ -21,46 +22,57 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
     setProjectId(projectItems[0]?.id ?? '');
   }, [projectId, projectItems]);
 
-  /** Submit one new Material owned by the selected Project. */
-  function submitMaterial(event: FormEvent<HTMLFormElement>) {
+  /** Create one Material; its code is allocated only by the backend. */
+  async function submitMaterial(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
-    if (!projectId) return;
-    const form = new FormData(event.currentTarget);
-    createMaterial.mutate({
-      projectId,
-      code: String(form.get('code') ?? ''),
-      name: String(form.get('name') ?? ''),
-      unit: String(form.get('unit') ?? ''),
-      category: String(form.get('category') ?? '') || null
-    });
-    event.currentTarget.reset();
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
+    const selectedProjectId = String(form.get('projectId') ?? '');
+    if (!selectedProjectId) return;
+    try {
+      await createMaterial.mutateAsync({
+        projectId: selectedProjectId,
+        name: String(form.get('name') ?? ''),
+        unit: String(form.get('unit') ?? ''),
+        category: String(form.get('category') ?? '') || null
+      });
+      setProjectId(selectedProjectId);
+      formElement.reset();
+      setMaterialDialogOpen(false);
+    } catch {
+      // The mutation exposes the API error inside the modal.
+    }
   }
 
   return (
     <div className="admin-stack">
       <section className="admin-card">
-        <h2>Project material scope</h2>
+        <div className="client-page-heading">
+          <div>
+            <h2>Project material scope</h2>
+            <p className="muted">Filter the material master by Project. New material codes are generated automatically by the server.</p>
+          </div>
+          {props.canManage && (
+            <button
+              type="button"
+              className="client-primary-action"
+              aria-haspopup="dialog"
+              onClick={() => {
+                createMaterial.reset();
+                setMaterialDialogOpen(true);
+              }}
+            >
+              <span aria-hidden="true">+</span> Add material
+            </button>
+          )}
+        </div>
         <label>Project
           <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
             <option value="">{projectItems.length === 1 ? 'Assigned project' : 'All visible projects'}</option>
             {projectItems.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
           </select>
         </label>
-        {!projectId && props.canManage ? <p className="muted">Select a Project before creating a Material.</p> : null}
       </section>
-
-      {props.canManage && (
-        <section className="admin-card">
-          <h2>Add material</h2>
-          <form className="form-grid" onSubmit={submitMaterial}>
-            <label>Code<input name="code" required /></label>
-            <label>Name<input name="name" required /></label>
-            <label>Unit<input name="unit" required placeholder="KG, BAG, PCS" /></label>
-            <label>Category<input name="category" /></label>
-            <button type="submit" disabled={createMaterial.isPending || !projectId}>Create material</button>
-          </form>
-        </section>
-      )}
 
       {props.canRead && (
         <section className="admin-card">
@@ -84,6 +96,53 @@ export function MaterialsWorkspace(props: MaterialsWorkspaceProps) {
           </div>
         </section>
       )}
+
+      {materialDialogOpen && props.canManage && (
+        <MaterialModal onClose={() => { createMaterial.reset(); setMaterialDialogOpen(false); }}>
+          <form className="admin-form client-modal-form" onSubmit={submitMaterial}>
+            <div className="client-form-grid">
+              <label>
+                Project
+                <select name="projectId" defaultValue={projectId} required>
+                  <option value="">Select Project</option>
+                  {projectItems.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+                </select>
+              </label>
+              <label>Name<input name="name" required maxLength={300} /></label>
+              <label>Unit<input name="unit" required maxLength={64} placeholder="KG, BAG, PCS" /></label>
+              <label>Category<input name="category" maxLength={120} /></label>
+            </div>
+            {createMaterial.error instanceof Error && <div className="form-error" role="alert">{createMaterial.error.message}</div>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => { createMaterial.reset(); setMaterialDialogOpen(false); }}>Cancel</button>
+              <button type="submit" disabled={createMaterial.isPending}>{createMaterial.isPending ? 'Creating…' : 'Create material'}</button>
+            </div>
+          </form>
+        </MaterialModal>
+      )}
+    </div>
+  );
+}
+
+/** Render one accessible Material create modal using the established admin modal styling. */
+function MaterialModal(props: Readonly<{ onClose: () => void; children: ReactNode }>) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="material-create-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="client-modal-header">
+          <div><p className="eyebrow">Inventory material</p><h2 id="material-create-modal-title">Add material</h2></div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label="Close Add material"><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
     </div>
   );
 }

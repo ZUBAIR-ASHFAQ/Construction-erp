@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useInventoryStock, useMaterials } from '../../inventory/hooks/inventory.js';
@@ -107,7 +107,9 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const issuePurchaseOrder = useIssueProcurementPurchaseOrder();
   const cancelPurchaseOrder = useCancelProcurementPurchaseOrder();
   const createGoodsReceipt = useCreateGoodsReceipt();
-  const [receiptEntryOpen, setReceiptEntryOpen] = useState(true);
+  const [requisitionDialogOpen, setRequisitionDialogOpen] = useState(false);
+  const [purchaseOrderDialogOpen, setPurchaseOrderDialogOpen] = useState(false);
+  const [receiptDialogOpen, setReceiptDialogOpen] = useState(false);
   const materials = useMaterials(props.projectId || undefined, props.canCreateRequisition && Boolean(props.projectId));
   const stock = useInventoryStock(undefined, props.canReadInventory && props.canCreateGoodsReceipt);
   const stages = useProjectStages(props.projectId, props.canReadStages && props.canCreateRequisition);
@@ -172,6 +174,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
       }]
     });
     requisitionForm.reset({ requiredDate: values.requiredDate, materialId: '', description: '', quantity: '1', stageId: '', notes: '' });
+    setRequisitionDialogOpen(false);
   }
 
   /** Create one PO from all lines of the selected approved material requirement. */
@@ -198,6 +201,7 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
       }))
     });
     purchaseOrderForm.reset({ requisitionId: '', vendorId: values.vendorId, orderDate: values.orderDate, currency: values.currency.toUpperCase(), deliveryAddress: values.deliveryAddress, terms: values.terms, unitPrices: {} });
+    setPurchaseOrderDialogOpen(false);
   }
 
   /** Receive every still-open material line of the selected issued PO into one Warehouse. */
@@ -252,39 +256,24 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
       items: receiptLines
     });
     goodsReceiptForm.reset({ purchaseOrderId: receiptPurchaseOrder.id, warehouseId: values.warehouseId, deliveredQuantities: {}, rejectedQuantities: {}, batchNumbers: {} });
-    setReceiptEntryOpen(false);
+    setReceiptDialogOpen(false);
   }
 
   return (
     <div className="admin-stack">
       <section className="admin-card procurement-stage-card" id="procurement-rfq">
-        <p className="eyebrow">Step 1</p>
-        <h2>RFQ / Material requirement</h2>
-        <p className="muted">Define what the Project needs, then approve it before requesting commercial offers.</p>
-        {props.canCreateRequisition && (
-          <form className="form-grid" onSubmit={requisitionForm.handleSubmit((values) => void handleCreateRequisition(values))}>
-            <label>Required date<input type="date" {...requisitionForm.register('requiredDate')} /></label>
-            <label>Description<input {...requisitionForm.register('description')} /></label>
-            <label>Quantity<input inputMode="decimal" {...requisitionForm.register('quantity')} /></label>
-            <label>Unit<input value={selectedMaterial?.unit ?? ''} placeholder="Select material" readOnly /></label>
-            <label>Material
-              <select {...requisitionForm.register('materialId')}>
-                <option value="">Select material</option>
-                {materialOptions.map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name} · {material.unit}</option>)}
-              </select>
-            </label>
-            <label>Stage (optional)
-              <select {...requisitionForm.register('stageId')} disabled={!props.canReadStages}>
-                <option value="">{props.canReadStages ? 'Project level' : 'Project level · Stage read permission required'}</option>
-                {stageOptions.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
-              </select>
-            </label>
-            <label className="form-grid-wide">Notes<input {...requisitionForm.register('notes')} /></label>
-            <button type="submit" disabled={createRequisition.isPending}>Create requirement</button>
-          </form>
-        )}
-        {Object.values(requisitionForm.formState.errors)[0]?.message && <p className="error-text">{String(Object.values(requisitionForm.formState.errors)[0]?.message)}</p>}
-        {createRequisition.error && <p className="error-text">{mutationMessage(createRequisition.error)}</p>}
+        <div className="client-page-heading">
+          <div>
+            <p className="eyebrow">Step 1</p>
+            <h2>RFQ / Material requirement</h2>
+            <p className="muted">Define what the Project needs, then approve it before requesting commercial offers.</p>
+          </div>
+          {props.canCreateRequisition && (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={() => { createRequisition.reset(); requisitionForm.clearErrors(); setRequisitionDialogOpen(true); }}>
+              <span aria-hidden="true">+</span> Add requirement
+            </button>
+          )}
+        </div>
         <div className="table-wrap">
           <table><thead><tr><th>No.</th><th>Required</th><th>Product name</th><th>Quantity</th>{showRequestedBy && <th>Requested by</th>}<th>Status</th><th>Action</th></tr></thead><tbody>
             {(requisitions.data?.items ?? []).map((item) => (
@@ -303,23 +292,18 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
       </section>
 
       <section className="admin-card procurement-stage-card" id="procurement-po">
-        <p className="eyebrow">Steps 2–8</p>
-        <h2>Vendor sourcing &amp; Purchase Orders</h2>
-        <p className="muted">Use approved requirements to evaluate qualified vendors, record the selected commercial terms, create the PO, and issue it. PO issue posts the budget commitment.</p>
-        {props.canCreatePurchaseOrder && approvedRequisitions.length > 0 && (
-          <form className="form-grid" onSubmit={purchaseOrderForm.handleSubmit((values) => void handleCreatePurchaseOrder(values))}>
-            <label>Approved requirement<select {...purchaseOrderForm.register('requisitionId')}><option value="">Select</option>{approvedRequisitions.map((item) => <option key={item.id} value={item.id}>{item.requestNo}</option>)}</select></label>
-            <label>Vendor<select {...purchaseOrderForm.register('vendorId')}><option value="">Select</option>{(vendors.data?.items ?? []).filter((item) => item.status.toUpperCase() === 'ACTIVE' && item.qualificationStatus !== 'PENDING').map((item) => <option key={item.id} value={item.id}>{item.displayName} · {item.legalName} · {item.code} · {item.qualificationStatus ?? 'Not qualified'}</option>)}</select></label>
-            <label>Order date<input type="date" {...purchaseOrderForm.register('orderDate')} /></label>
-            <label>Currency<input {...purchaseOrderForm.register('currency')} /></label>
-            <label>Delivery address<input {...purchaseOrderForm.register('deliveryAddress')} /></label>
-            <label>Terms<input {...purchaseOrderForm.register('terms')} /></label>
-            {selectedRequisition?.items.map((item) => <label key={item.id}>{item.description} unit price<input inputMode="decimal" {...purchaseOrderForm.register(`unitPrices.${item.id}`)} /></label>)}
-            <button type="submit" disabled={createPurchaseOrder.isPending || !selectedRequisition}>{createPurchaseOrder.isPending ? 'Creating…' : 'Select quotation & create PO'}</button>
-          </form>
-        )}
-        {purchaseOrderForm.formState.errors.root?.message && <p className="error-text">{purchaseOrderForm.formState.errors.root.message}</p>}
-        {createPurchaseOrder.error && <p className="error-text">{mutationMessage(createPurchaseOrder.error)}</p>}
+        <div className="client-page-heading">
+          <div>
+            <p className="eyebrow">Steps 2–8</p>
+            <h2>Vendor sourcing &amp; Purchase Orders</h2>
+            <p className="muted">Use approved requirements to evaluate qualified vendors, record the selected commercial terms, create the PO, and issue it. PO issue posts the budget commitment.</p>
+          </div>
+          {props.canCreatePurchaseOrder && (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" disabled={approvedRequisitions.length === 0} title={approvedRequisitions.length === 0 ? 'Approve a material requirement first.' : undefined} onClick={() => { createPurchaseOrder.reset(); purchaseOrderForm.clearErrors(); setPurchaseOrderDialogOpen(true); }}>
+              <span aria-hidden="true">+</span> Add purchase order
+            </button>
+          )}
+        </div>
         <div className="table-wrap"><table><thead><tr><th>PO</th><th>Product name</th><th>Quantity</th><th>Unit price</th><th>Status</th><th>Total</th><th>Received</th><th>Open</th><th>Actions</th></tr></thead><tbody>
           {(purchaseOrders.data?.items ?? []).map((item) => <PurchaseOrderRow key={item.id} item={item} vendorName={vendorNames.get(item.vendorId) ?? 'Unknown supplier'} canIssue={props.canIssuePurchaseOrder} onIssue={() => issuePurchaseOrder.mutate(item.id)} onCancel={() => cancelPurchaseOrder.mutate({ id: item.id, reason: 'Cancelled by authorized Procurement user.' })} />)}
         </tbody></table></div>
@@ -327,46 +311,18 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
 
       {props.canCreateGoodsReceipt && issuedPurchaseOrders.length > 0 && (
         <section className="admin-card procurement-stage-card" id="procurement-receipt">
-          <p className="eyebrow">Steps 9–11</p>
-          <h2>Supplier delivery &amp; Goods Receipt</h2>
-          <p className="muted">Receive only against an issued PO. Accepted quantities are posted to the selected warehouse and become Inventory stock.</p>
-          <form className="form-grid" hidden={!receiptEntryOpen} onSubmit={goodsReceiptForm.handleSubmit((values) => void handleCreateGoodsReceipt(values))}>
-            <label>Issued PO<select {...goodsReceiptForm.register('purchaseOrderId')}><option value="">Select</option>{issuedPurchaseOrders.map((item) => <option key={item.id} value={item.id}>{item.poNo} · {item.items.map((line) => line.materialName ?? line.description).join(', ')} · {item.currency} {item.totalAmount}</option>)}</select></label>
-            <label>Warehouse
-              <select {...goodsReceiptForm.register('warehouseId')} disabled={!props.canReadInventory}>
-                <option value="">{props.canReadInventory ? 'Select warehouse' : 'Inventory read permission required'}</option>
-                {warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}
-              </select>
-            </label>
-            {receiptPurchaseOrder && (
-              <div className="form-grid-wide table-wrap">
-                <table className="goods-receipt-lines">
-                  <thead><tr><th>Material</th><th>Ordered</th><th>Previously received</th><th>Open</th><th>Delivered now</th><th>Rejected</th><th>Accepted</th><th>Batch</th></tr></thead>
-                  <tbody>{receiptPurchaseOrder.items.map((item) => {
-                    const productName = item.materialName ?? item.description;
-                    const open = openQuantity(item.quantity, item.receivedQuantity);
-                    const delivered = goodsReceiptForm.watch(`deliveredQuantities.${item.id}`) ?? '';
-                    const rejected = goodsReceiptForm.watch(`rejectedQuantities.${item.id}`) ?? '';
-                    return <tr key={item.id}>
-                      <td>{productName}<small>{item.unit}</small></td>
-                      <td>{item.quantity}</td><td>{item.receivedQuantity}</td><td>{open}</td>
-                      <td><input aria-label={`${productName} delivered now`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`deliveredQuantities.${item.id}`)} /></td>
-                      <td><input aria-label={`${productName} rejected quantity`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`rejectedQuantities.${item.id}`)} /></td>
-                      <td>{acceptedQuantityPreview(delivered, rejected)}</td>
-                      <td><input aria-label={`${productName} batch number`} placeholder="Optional" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`batchNumbers.${item.id}`)} /></td>
-                    </tr>;
-                  })}</tbody>
-                </table>
-              </div>
-            )}
-            <button type="submit" disabled={createGoodsReceipt.isPending || !receiptPurchaseOrder || !props.canReadInventory}>{createGoodsReceipt.isPending ? 'Posting receipt…' : 'Post partial / full receipt'}</button>
-          </form>
+          <div className="client-page-heading">
+            <div>
+              <p className="eyebrow">Steps 9–11</p>
+              <h2>Supplier delivery &amp; Goods Receipt</h2>
+              <p className="muted">Receive only against an issued PO. Accepted quantities are posted to the selected warehouse and become Inventory stock.</p>
+            </div>
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={() => { createGoodsReceipt.reset(); goodsReceiptForm.clearErrors(); setReceiptDialogOpen(true); }}>
+              <span aria-hidden="true">+</span> Receive goods
+            </button>
+          </div>
           {!props.canReadInventory && <p className="muted"><code>inventory.read</code> is required for the Warehouse selector; raw Warehouse IDs are not accepted.</p>}
-          {goodsReceiptForm.formState.errors.purchaseOrderId?.message && <p className="error-text">{goodsReceiptForm.formState.errors.purchaseOrderId.message}</p>}
-          {goodsReceiptForm.formState.errors.warehouseId?.message && <p className="error-text">{goodsReceiptForm.formState.errors.warehouseId.message}</p>}
-          {goodsReceiptForm.formState.errors.root?.message && <p className="error-text">{goodsReceiptForm.formState.errors.root.message}</p>}
           {stock.error instanceof Error && <p className="error-text">Warehouses could not be loaded: {stock.error.message}</p>}
-          {createGoodsReceipt.error && <p className="error-text">{mutationMessage(createGoodsReceipt.error)}</p>}
           {latestGoodsReceipt && (
             <div className="goods-receipt-result" aria-live="polite">
               <div className="goods-receipt-result-header">
@@ -399,11 +355,135 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
                   })}</tbody>
                 </table>
               </div>
-              {!receiptEntryOpen && <button type="button" className="secondary-button" onClick={() => { createGoodsReceipt.reset(); setReceiptEntryOpen(true); }}>Receive another delivery</button>}
+              <button type="button" className="secondary-button" onClick={() => { createGoodsReceipt.reset(); goodsReceiptForm.clearErrors(); setReceiptDialogOpen(true); }}>Receive another delivery</button>
             </div>
           )}
         </section>
       )}
+
+      {requisitionDialogOpen && props.canCreateRequisition && (
+        <ProcurementModal titleId="procurement-requisition-dialog-title" eyebrow="Material requirement" title="Add requirement" onClose={() => setRequisitionDialogOpen(false)}>
+          <form className="admin-form client-modal-form" onSubmit={requisitionForm.handleSubmit((values) => void handleCreateRequisition(values))}>
+            <div className="client-form-grid">
+              <label>Required date<input type="date" {...requisitionForm.register('requiredDate')} /></label>
+              <label>Description<input {...requisitionForm.register('description')} /></label>
+              <label>Quantity<input inputMode="decimal" {...requisitionForm.register('quantity')} /></label>
+              <label>Unit<input value={selectedMaterial?.unit ?? ''} placeholder="Select material" readOnly /></label>
+              <label>Material
+                <select {...requisitionForm.register('materialId')}>
+                  <option value="">Select material</option>
+                  {materialOptions.map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name} · {material.unit}</option>)}
+                </select>
+              </label>
+              <label>Stage (optional)
+                <select {...requisitionForm.register('stageId')} disabled={!props.canReadStages}>
+                  <option value="">{props.canReadStages ? 'Project level' : 'Project level · Stage read permission required'}</option>
+                  {stageOptions.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                </select>
+              </label>
+              <label className="form-grid-wide">Notes<input {...requisitionForm.register('notes')} /></label>
+            </div>
+            {Object.values(requisitionForm.formState.errors)[0]?.message && <p className="error-text">{String(Object.values(requisitionForm.formState.errors)[0]?.message)}</p>}
+            {createRequisition.error && <p className="error-text">{mutationMessage(createRequisition.error)}</p>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setRequisitionDialogOpen(false)}>Cancel</button>
+              <button type="submit" disabled={createRequisition.isPending}>{createRequisition.isPending ? 'Creating…' : 'Create requirement'}</button>
+            </div>
+          </form>
+        </ProcurementModal>
+      )}
+
+      {purchaseOrderDialogOpen && props.canCreatePurchaseOrder && approvedRequisitions.length > 0 && (
+        <ProcurementModal titleId="procurement-po-dialog-title" eyebrow="Purchase order" title="Add purchase order" onClose={() => setPurchaseOrderDialogOpen(false)}>
+          <form className="admin-form client-modal-form" onSubmit={purchaseOrderForm.handleSubmit((values) => void handleCreatePurchaseOrder(values))}>
+            <div className="client-form-grid">
+              <label>Approved requirement<select {...purchaseOrderForm.register('requisitionId')}><option value="">Select</option>{approvedRequisitions.map((item) => <option key={item.id} value={item.id}>{item.requestNo}</option>)}</select></label>
+              <label>Vendor<select {...purchaseOrderForm.register('vendorId')}><option value="">Select</option>{(vendors.data?.items ?? []).filter((item) => item.status.toUpperCase() === 'ACTIVE' && item.qualificationStatus !== 'PENDING').map((item) => <option key={item.id} value={item.id}>{item.displayName} · {item.legalName} · {item.code} · {item.qualificationStatus ?? 'Not qualified'}</option>)}</select></label>
+              <label>Order date<input type="date" {...purchaseOrderForm.register('orderDate')} /></label>
+              <label>Currency<input {...purchaseOrderForm.register('currency')} /></label>
+              <label>Delivery address<input {...purchaseOrderForm.register('deliveryAddress')} /></label>
+              <label>Terms<input {...purchaseOrderForm.register('terms')} /></label>
+              {selectedRequisition?.items.map((item) => <label key={item.id}>{item.description} unit price<input inputMode="decimal" {...purchaseOrderForm.register(`unitPrices.${item.id}`)} /></label>)}
+            </div>
+            {purchaseOrderForm.formState.errors.root?.message && <p className="error-text">{purchaseOrderForm.formState.errors.root.message}</p>}
+            {createPurchaseOrder.error && <p className="error-text">{mutationMessage(createPurchaseOrder.error)}</p>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setPurchaseOrderDialogOpen(false)}>Cancel</button>
+              <button type="submit" disabled={createPurchaseOrder.isPending || !selectedRequisition}>{createPurchaseOrder.isPending ? 'Creating…' : 'Select quotation & create PO'}</button>
+            </div>
+          </form>
+        </ProcurementModal>
+      )}
+
+      {receiptDialogOpen && props.canCreateGoodsReceipt && issuedPurchaseOrders.length > 0 && (
+        <ProcurementModal titleId="procurement-receipt-dialog-title" eyebrow="Goods receipt" title="Receive supplier delivery" onClose={() => setReceiptDialogOpen(false)} wide>
+          <form className="admin-form client-modal-form" onSubmit={goodsReceiptForm.handleSubmit((values) => void handleCreateGoodsReceipt(values))}>
+            <div className="client-form-grid">
+              <label>Issued PO<select {...goodsReceiptForm.register('purchaseOrderId')}><option value="">Select</option>{issuedPurchaseOrders.map((item) => <option key={item.id} value={item.id}>{item.poNo} · {item.items.map((line) => line.materialName ?? line.description).join(', ')} · {item.currency} {item.totalAmount}</option>)}</select></label>
+              <label>Warehouse
+                <select {...goodsReceiptForm.register('warehouseId')} disabled={!props.canReadInventory}>
+                  <option value="">{props.canReadInventory ? 'Select warehouse' : 'Inventory read permission required'}</option>
+                  {warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}
+                </select>
+              </label>
+            </div>
+            {receiptPurchaseOrder && (
+              <div className="table-wrap">
+                <table className="goods-receipt-lines">
+                  <thead><tr><th>Material</th><th>Ordered</th><th>Previously received</th><th>Open</th><th>Delivered now</th><th>Rejected</th><th>Accepted</th><th>Batch</th></tr></thead>
+                  <tbody>{receiptPurchaseOrder.items.map((item) => {
+                    const productName = item.materialName ?? item.description;
+                    const open = openQuantity(item.quantity, item.receivedQuantity);
+                    const delivered = goodsReceiptForm.watch(`deliveredQuantities.${item.id}`) ?? '';
+                    const rejected = goodsReceiptForm.watch(`rejectedQuantities.${item.id}`) ?? '';
+                    return <tr key={item.id}>
+                      <td>{productName}<small>{item.unit}</small></td>
+                      <td>{item.quantity}</td><td>{item.receivedQuantity}</td><td>{open}</td>
+                      <td><input aria-label={`${productName} delivered now`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`deliveredQuantities.${item.id}`)} /></td>
+                      <td><input aria-label={`${productName} rejected quantity`} inputMode="decimal" placeholder="0" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`rejectedQuantities.${item.id}`)} /></td>
+                      <td>{acceptedQuantityPreview(delivered, rejected)}</td>
+                      <td><input aria-label={`${productName} batch number`} placeholder="Optional" disabled={decimalToScale4(open) === 0n} {...goodsReceiptForm.register(`batchNumbers.${item.id}`)} /></td>
+                    </tr>;
+                  })}</tbody>
+                </table>
+              </div>
+            )}
+            {goodsReceiptForm.formState.errors.purchaseOrderId?.message && <p className="error-text">{goodsReceiptForm.formState.errors.purchaseOrderId.message}</p>}
+            {goodsReceiptForm.formState.errors.warehouseId?.message && <p className="error-text">{goodsReceiptForm.formState.errors.warehouseId.message}</p>}
+            {goodsReceiptForm.formState.errors.root?.message && <p className="error-text">{goodsReceiptForm.formState.errors.root.message}</p>}
+            {stock.error instanceof Error && <p className="error-text">Warehouses could not be loaded: {stock.error.message}</p>}
+            {createGoodsReceipt.error && <p className="error-text">{mutationMessage(createGoodsReceipt.error)}</p>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setReceiptDialogOpen(false)}>Cancel</button>
+              <button type="submit" disabled={createGoodsReceipt.isPending || !receiptPurchaseOrder || !props.canReadInventory}>{createGoodsReceipt.isPending ? 'Posting receipt…' : 'Post partial / full receipt'}</button>
+            </div>
+          </form>
+        </ProcurementModal>
+      )}
+    </div>
+  );
+}
+
+
+/** Render one accessible Procurement create modal using the shared admin dialog styling. */
+function ProcurementModal(props: Readonly<{ titleId: string; eyebrow: string; title: string; onClose: () => void; children: ReactNode; wide?: boolean }>) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) props.onClose(); }}>
+      <section className={`client-modal${props.wide ? ' client-modal-wide' : ''}`} role="dialog" aria-modal="true" aria-labelledby={props.titleId}>
+        <header className="client-modal-header">
+          <div><p className="eyebrow">{props.eyebrow}</p><h2 id={props.titleId}>{props.title}</h2></div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label={`Close ${props.title}`}><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
     </div>
   );
 }

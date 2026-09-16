@@ -34,10 +34,9 @@ const MATERIALS_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: fals
 const STOCK_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, projectId: UUID_JSON_SCHEMA, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA } } as const;
 const LEDGER_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { ...PAGE_PROPERTIES, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, stageId: UUID_JSON_SCHEMA } } as const;
 const CREATE_MATERIAL_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['code', 'name', 'unit'],
+  type: 'object', additionalProperties: false, required: ['name', 'unit'],
   properties: {
     projectId: UUID_JSON_SCHEMA,
-    code: { type: 'string', minLength: 1, maxLength: 100 },
     name: { type: 'string', minLength: 1, maxLength: 300 },
     unit: { type: 'string', minLength: 1, maxLength: 64 },
     category: { anyOf: [{ type: 'string', minLength: 1, maxLength: 120 }, { type: 'null' }] }

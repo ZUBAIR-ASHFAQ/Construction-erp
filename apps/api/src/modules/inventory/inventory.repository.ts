@@ -152,6 +152,25 @@ export class InventoryRepository {
     return this.db.warehouse.findFirst({ where: scope.where({ id: warehouseId, ...warehouseVisibilityWhere(visibility) }) });
   }
 
+  /** Ensure Material numbering exists before allocating a server-owned material code. */
+  async ensureMaterialNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'material' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'material',
+        prefix: 'MAT-',
+        suffix: '',
+        padWidth: 5,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Ensure legacy companies have the Goods Receipt number sequence without changing an existing definition. */
   async ensureGoodsReceiptNumberSequence(): Promise<void> {
     const scope = requireCompanyRepositoryScope();

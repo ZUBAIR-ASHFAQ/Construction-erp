@@ -93,6 +93,7 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
   const [ledgerInput, setLedgerInput] = useState<GetFinanceLedgerInput | null>(null);
   const [selectedJournalId, setSelectedJournalId] = useState<string | null>(null);
   const [editingAccount, setEditingAccount] = useState<CashBankAccount | null>(null);
+  const [accountDialogOpen, setAccountDialogOpen] = useState(false);
   const restrictedProjectIds = auth.identity?.projectScope.kind === 'restricted' ? auth.identity.projectScope.projectIds : null;
   const soleRestrictedProjectId = restrictedProjectIds?.length === 1 ? (restrictedProjectIds[0] ?? '') : '';
 
@@ -133,10 +134,25 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
     setLedgerInput({ periodId: open.id, accountId: initialAccountId, page: 1, pageSize: 100 });
   }, [initialAccountId, periodsQuery.data, ledgerForm]);
 
-  /** Create one server-numbered Cash/Bank account and clear the setup form. */
+  /** Open a fresh Cash/Bank account form without exposing server-owned account numbering. */
+  function handleOpenAccountDialog(): void {
+    createAccountMutation.reset();
+    accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00', projectId: soleRestrictedProjectId, bankName: '', accountReference: '' });
+    setAccountDialogOpen(true);
+  }
+
+  /** Close the Cash/Bank account form and discard only unsaved client-side values. */
+  function handleCloseAccountDialog(): void {
+    createAccountMutation.reset();
+    accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00', projectId: soleRestrictedProjectId, bankName: '', accountReference: '' });
+    setAccountDialogOpen(false);
+  }
+
+  /** Create one server-numbered Cash/Bank account and close the setup dialog after success. */
   async function handleCreateAccount(values: AccountValues): Promise<void> {
     await createAccountMutation.mutateAsync({ name: values.name, accountType: values.accountType, openingBalance: values.openingBalance, ...(values.projectId ? { projectId: values.projectId } : {}), ...(values.accountType === 'BANK' ? { bankName: values.bankName, accountReference: values.accountReference } : {}) });
     accountForm.reset({ name: '', accountType: 'CASH', openingBalance: '0.00', projectId: soleRestrictedProjectId, bankName: '', accountReference: '' });
+    setAccountDialogOpen(false);
   }
 
   /** Run a trial-balance read for one explicit period. */
@@ -190,16 +206,12 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
 
   return (
     <section className="page-stack">
-      <header className="page-heading">
+      <header className="page-heading client-page-heading">
         <div><p className="eyebrow">Module 18</p><h1>Finance & Accounting</h1><p>Cash and bank accounts, trial balance, reconciliation and fiscal-period control.</p></div>
+        {canManageAccounts && <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={handleOpenAccountDialog}><span aria-hidden="true">+</span> Add account</button>}
       </header>
 
-      {canManageAccounts && <section className="admin-card">
-        <h2>Create Account</h2>
-        <form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account name<input {...accountForm.register('name')} /></label><label>Account type<select {...accountForm.register('accountType')}><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>{selectedAccountType === 'BANK' && <><label>Bank name<input {...accountForm.register('bankName')} placeholder="Enter bank name" /></label><label>Bank account number<input {...accountForm.register('accountReference')} placeholder="Enter bank account number" autoComplete="off" /></label></>}<label>Project<select {...accountForm.register('projectId')} disabled={!canReadProjects}><option value="">{restrictedProjectIds ? 'Select assigned Project' : 'Company account'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select>{restrictedProjectIds && <small className="muted">Site Manager accounts must belong to an assigned Project.</small>}</label><label>Opening balance<input type="number" min="0" step="0.01" inputMode="decimal" {...accountForm.register('openingBalance')} /></label><div className="muted">Account code is generated automatically by the server. A non-zero opening balance posts an opening Journal automatically.</div><button type="submit" disabled={createAccountMutation.isPending}>Create account</button></form>
-        {projectsQuery.error instanceof Error && <p className="form-error" role="alert">{projectsQuery.error.message}</p>}
-        {createAccountMutation.error instanceof Error && <p className="form-error" role="alert">{createAccountMutation.error.message}</p>}
-      </section>}
+      {accountDialogOpen && canManageAccounts && <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) handleCloseAccountDialog(); }}><section className="finance-modal" role="dialog" aria-modal="true" aria-label="Create Account"><header className="finance-modal-header"><div><p className="eyebrow">Finance account</p><h2>Create Account</h2><p>Account code is generated automatically by the server.</p></div><button type="button" className="finance-modal-close" aria-label="Close account form" onClick={handleCloseAccountDialog}>×</button></header><div className="finance-modal-body"><form className="admin-grid two-columns" onSubmit={accountForm.handleSubmit(handleCreateAccount)}><label>Account name<input {...accountForm.register('name')} /><span className="field-error">{accountForm.formState.errors.name?.message}</span></label><label>Account type<select {...accountForm.register('accountType')}><option value="CASH">Cash</option><option value="BANK">Bank</option></select></label>{selectedAccountType === 'BANK' && <><label>Bank name<input {...accountForm.register('bankName')} placeholder="Enter bank name" /><span className="field-error">{accountForm.formState.errors.bankName?.message}</span></label><label>Bank account number<input {...accountForm.register('accountReference')} placeholder="Enter bank account number" autoComplete="off" /><span className="field-error">{accountForm.formState.errors.accountReference?.message}</span></label></>}<label>Project<select {...accountForm.register('projectId')} disabled={!canReadProjects}><option value="">{restrictedProjectIds ? 'Select assigned Project' : 'Company account'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select>{restrictedProjectIds && <small className="muted">Site Manager accounts must belong to an assigned Project.</small>}<span className="field-error">{accountForm.formState.errors.projectId?.message}</span></label><label>Opening balance<input type="number" min="0" step="0.01" inputMode="decimal" {...accountForm.register('openingBalance')} /><span className="field-error">{accountForm.formState.errors.openingBalance?.message}</span></label><div className="muted">A non-zero opening balance posts an opening Journal automatically.</div><div className="client-modal-actions"><button type="button" className="secondary-button" onClick={handleCloseAccountDialog}>Cancel</button><button type="submit" disabled={createAccountMutation.isPending} aria-busy={createAccountMutation.isPending}>Create account</button></div></form>{projectsQuery.error instanceof Error && <p className="form-error" role="alert">{projectsQuery.error.message}</p>}{createAccountMutation.error instanceof Error && <p className="form-error" role="alert">{createAccountMutation.error.message}</p>}</div></section></div>}
 
       {periodsQuery.error instanceof Error && <p className="form-error" role="alert">{periodsQuery.error.message}</p>}
       {selectorAccountsQuery.error instanceof Error && <p className="form-error" role="alert">{selectorAccountsQuery.error.message}</p>}

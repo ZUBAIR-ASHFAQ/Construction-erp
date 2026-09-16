@@ -41,17 +41,18 @@ test('B16.7 registers the explicit Supplier Payables routes and no generic CRUD 
     "app.post('/api/v1/supplier-payables/payments'",
     "app.post('/api/v1/supplier-payables/payments/:id/allocations'",
     "app.post('/api/v1/supplier-payables/payments/:id/reverse'",
-    "app.get('/api/v1/supplier-payables/aging'"
+    "app.get('/api/v1/supplier-payables/aging'",
+    "app.get('/api/v1/supplier-payables/ledger'"
   ];
   for (const route of expected) assert.ok(routes.includes(route), `missing ${route}`);
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 10);
   assert.doesNotMatch(routes, /app\.patch\(|app\.put\(|app\.delete\(|\/payments\/:id\/post|\/credit|\/archive/);
 });
 
 /** Confirm every route authenticates and uses the frozen Zod request/response schemas. */
 test('B16.7 authenticates all routes and validates HTTP boundaries through B16.3 schemas', () => {
   const routes = read(ROUTES);
-  assert.equal((routes.match(/await authenticateRequest\(request, options\.database\);/g) ?? []).length, 9);
+  assert.equal((routes.match(/await authenticateRequest\(request, options\.database\);/g) ?? []).length, 10);
   for (const schemaName of [
     'listSupplierInvoicesQuerySchema',
     'listSupplierInvoicesResponseSchema',
@@ -64,6 +65,8 @@ test('B16.7 authenticates all routes and validates HTTP boundaries through B16.3
     'reverseSupplierPaymentBodySchema',
     'supplierAgingQuerySchema',
     'supplierAgingResponseSchema',
+    'supplierLedgerQuerySchema',
+    'supplierLedgerResponseSchema',
     'supplierPayablesIdParamsSchema',
     'supplierInvoiceResponseSchema',
     'supplierPaymentResponseSchema',
@@ -108,11 +111,12 @@ test('B16.7 publishes complete Supplier Payables OpenAPI route metadata', () => 
     'createSupplierPayment',
     'allocateSupplierPayment',
     'reverseSupplierPayment',
-    'getSupplierAging'
+    'getSupplierAging',
+    'getSupplierLedger'
   ]);
-  assert.equal(new Set(operationIds).size, 9);
-  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 9);
-  assert.equal((routes.match(/tags: \['Supplier Payables'\]/g) ?? []).length, 9);
+  assert.equal(new Set(operationIds).size, 10);
+  assert.equal((routes.match(/security: BEARER_SECURITY/g) ?? []).length, 10);
+  assert.equal((routes.match(/tags: \['Supplier Payables'\]/g) ?? []).length, 10);
   assert.match(routes, /querystring: LIST_INVOICES_QUERY_JSON_SCHEMA/);
   assert.match(routes, /body: CREATE_INVOICE_BODY_JSON_SCHEMA/);
   assert.match(routes, /params: SUPPLIER_PAYABLES_ID_PARAMS_JSON_SCHEMA/);
@@ -120,6 +124,7 @@ test('B16.7 publishes complete Supplier Payables OpenAPI route metadata', () => 
   assert.match(routes, /body: ALLOCATE_PAYMENT_BODY_JSON_SCHEMA/);
   assert.match(routes, /operationId: 'reverseSupplierPayment'[\s\S]*?body: EMPTY_BODY_JSON_SCHEMA/);
   assert.match(routes, /querystring: AGING_QUERY_JSON_SCHEMA/);
+  assert.match(routes, /querystring: LEDGER_QUERY_JSON_SCHEMA/);
   assert.match(routes, /response: \{ 201: ALLOCATION_LIST_SUCCESS_JSON_SCHEMA/);
   assert.match(routes, /\.\.\.COMMON_RESPONSES/);
 });

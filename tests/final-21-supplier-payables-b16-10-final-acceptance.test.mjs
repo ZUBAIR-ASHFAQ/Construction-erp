@@ -42,10 +42,11 @@ test('B16.10 freezes the explicit Supplier Payables HTTP operations', () => {
     "POST', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/allocations'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/reverse'",
-    "GET', route: '/api/v1/supplier-payables/aging'"
+    "GET', route: '/api/v1/supplier-payables/aging'",
+    "GET', route: '/api/v1/supplier-payables/ledger'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.equal((schema.match(/method: '(?:GET|POST|PUT|PATCH|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 10);
   assert.doesNotMatch(schema, /\/delete|\/archive|payments\/:id\/post|PATCH'.*supplier-payables|DELETE'.*supplier-payables/);
 });
 
@@ -123,6 +124,7 @@ test('B16.10 freezes the Supplier Payables React workflow', () => {
   }
   assert.match(api, /Idempotency-Key/);
   assert.match(hooks, /useSupplierAging/);
+  assert.match(hooks, /useSupplierLedger/);
   assert.match(hooks, /useAllocateSupplierPayment/);
   assert.match(hooks, /useReverseSupplierPayment/);
   assert.match(api, /reverseSupplierPayment/);

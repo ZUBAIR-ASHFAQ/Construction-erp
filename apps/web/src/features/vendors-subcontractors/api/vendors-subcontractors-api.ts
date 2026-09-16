@@ -156,6 +156,8 @@ export type CreateSubcontractContractInput = Readonly<{
   contractDate: string;
 }>;
 
+export type UpdateSubcontractContractInput = Partial<CreateSubcontractContractInput>;
+
 export type ListSubcontractPaymentsInput = Readonly<{
   subcontractorId?: string;
   projectId?: string;
@@ -251,6 +253,11 @@ export function listSubcontractContracts(input: ListSubcontractContractsInput = 
 /** Create one Project assignment and agreed amount for a subcontractor. */
 export function createSubcontractContract(input: CreateSubcontractContractInput): Promise<SubcontractContract> {
   return authenticatedRequest<SubcontractContract>('subcontract-contracts', { method: 'POST', body: JSON.stringify(input) });
+}
+
+/** Update one active subcontract contract through the dedicated PATCH endpoint. */
+export function updateSubcontractContract(contractId: string, input: UpdateSubcontractContractInput): Promise<SubcontractContract> {
+  return authenticatedRequest<SubcontractContract>(`subcontract-contracts/${contractId}`, { method: 'PATCH', body: JSON.stringify(input) });
 }
 
 /** Finish one active subcontract contract. */

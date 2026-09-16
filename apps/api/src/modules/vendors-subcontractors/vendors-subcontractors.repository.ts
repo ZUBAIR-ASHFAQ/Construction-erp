@@ -342,6 +342,22 @@ export class VendorsSubcontractorsRepository {
     });
   }
 
+  /** Update editable fields on one active subcontract contract. */
+  async updateSubcontractContract(contractId: string, input: Readonly<{
+    subcontractorId?: string;
+    projectId?: string;
+    contractAmount?: string;
+    contractDate?: Date;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.subcontractContract.updateMany({
+      where: scope.where({ id: contractId, status: 'ACTIVE' }),
+      data: input
+    });
+    if (result.count === 0) return null;
+    return this.findSubcontractContractById(contractId);
+  }
+
   /** Ensure server-owned numbering and the direct subcontract expense account exist. */
   async ensureSubcontractPaymentSetup() {
     const scope = requireCompanyRepositoryScope();

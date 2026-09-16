@@ -31,7 +31,8 @@ export const SUPPLIER_PAYABLES_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments/:id/allocations' }),
   Object.freeze({ method: 'POST', route: '/api/v1/supplier-payables/payments/:id/reverse' }),
-  Object.freeze({ method: 'GET', route: '/api/v1/supplier-payables/aging' })
+  Object.freeze({ method: 'GET', route: '/api/v1/supplier-payables/aging' }),
+  Object.freeze({ method: 'GET', route: '/api/v1/supplier-payables/ledger' })
 ] as const);
 
 /** Request fields that must always be derived by trusted server-side logic. */
@@ -195,6 +196,13 @@ export const supplierAgingQuerySchema = z.object({
   ...paginationShape
 }).strict();
 
+
+/** Validate one supplier-ledger request; a supplier is required while Project remains an optional drill-down. */
+export const supplierLedgerQuerySchema = z.object({
+  vendorId: uuidSchema,
+  projectId: uuidSchema.optional()
+}).strict();
+
 /** Validate one serialized Supplier Invoice line. */
 export const supplierInvoiceLineResponseSchema = z.object({
   id: uuidSchema,
@@ -287,6 +295,41 @@ export const supplierAgingResponseSchema = z.object({
   asOfDate: dateSchema
 }).strict();
 
+
+/** Validate one source-derived Supplier ledger entry. Debit reduces the payable; credit increases it. */
+export const supplierLedgerEntryResponseSchema = z.object({
+  id: z.string().min(1),
+  entryDate: dateSchema,
+  entryType: z.enum(['INVOICE', 'PAYMENT', 'PAYMENT_REVERSAL', 'ALLOCATION']),
+  reference: z.string().min(1),
+  projectId: uuidSchema.nullable(),
+  projectName: z.string().nullable(),
+  debit: z.string(),
+  credit: z.string(),
+  allocationAmount: z.string(),
+  balance: z.string(),
+  note: z.string().nullable(),
+  sourceId: uuidSchema
+}).strict();
+
+/** Validate the complete posted Supplier account ledger and its source-derived totals. */
+export const supplierLedgerResponseSchema = z.object({
+  supplier: z.object({
+    id: uuidSchema,
+    code: z.string().min(1),
+    displayName: z.string().min(1),
+    currency: z.string().nullable()
+  }).strict(),
+  summary: z.object({
+    totalInvoiced: z.string(),
+    totalPaid: z.string(),
+    totalReversed: z.string(),
+    netPaid: z.string(),
+    balance: z.string()
+  }).strict(),
+  entries: z.array(supplierLedgerEntryResponseSchema)
+}).strict();
+
 export type ListSupplierInvoicesQuery = z.infer<typeof listSupplierInvoicesQuerySchema>;
 export type SupplierInvoiceLineInput = z.infer<typeof supplierInvoiceLineInputSchema>;
 export type CreateSupplierInvoiceBody = z.infer<typeof createSupplierInvoiceBodySchema>;
@@ -296,6 +339,7 @@ export type CreateSupplierPaymentBody = z.infer<typeof createSupplierPaymentBody
 export type SupplierPaymentAllocationInput = z.infer<typeof supplierPaymentAllocationInputSchema>;
 export type AllocateSupplierPaymentBody = z.infer<typeof allocateSupplierPaymentBodySchema>;
 export type SupplierAgingQuery = z.infer<typeof supplierAgingQuerySchema>;
+export type SupplierLedgerQuery = z.infer<typeof supplierLedgerQuerySchema>;
 
 const ERROR_MESSAGES: Readonly<Record<SupplierPayablesErrorCode, string>> = Object.freeze({
   SUPPLIER_INVOICE_NOT_FOUND: 'The requested Supplier Invoice was not found.',

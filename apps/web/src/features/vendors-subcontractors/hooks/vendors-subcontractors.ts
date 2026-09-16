@@ -12,6 +12,7 @@ import {
   listSubcontractPayments,
   listSubcontractors,
   listVendors,
+  updateSubcontractContract,
   updateSubcontractor,
   updateVendor,
   type CreateSubcontractContractInput,
@@ -24,6 +25,7 @@ import {
   type ListSubcontractPaymentsInput,
   type ListSubcontractorsInput,
   type ListVendorsInput,
+  type UpdateSubcontractContractInput,
   type UpdateSubcontractorInput,
   type UpdateVendorInput
 } from '../api/vendors-subcontractors-api.js';
@@ -88,6 +90,12 @@ export function useSubcontractContracts(input: ListSubcontractContractsInput, en
 export function useCreateSubcontractContract() {
   const queryClient = useQueryClient();
   return useMutation({ mutationFn: (input: CreateSubcontractContractInput) => createSubcontractContract(input), async onSuccess() { await queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }); } });
+}
+
+/** Update one active subcontract contract and refresh subcontract data. */
+export function useUpdateSubcontractContract(contractId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({ mutationFn: (input: UpdateSubcontractContractInput) => updateSubcontractContract(contractId, input), async onSuccess() { await queryClient.invalidateQueries({ queryKey: MASTER_QUERY_KEY }); } });
 }
 
 /** Finish one active subcontract contract and refresh subcontract data. */

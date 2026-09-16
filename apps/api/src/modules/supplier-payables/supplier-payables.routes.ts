@@ -15,6 +15,8 @@ import {
   reverseSupplierPaymentBodySchema,
   supplierAgingQuerySchema,
   supplierAgingResponseSchema,
+  supplierLedgerQuerySchema,
+  supplierLedgerResponseSchema,
   supplierInvoiceResponseSchema,
   supplierPayablesIdParamsSchema,
   supplierPaymentAllocationResponseSchema,
@@ -147,6 +149,16 @@ const AGING_QUERY_JSON_SCHEMA = {
     ...PAGINATION_PROPERTIES
   }
 } as const;
+
+const LEDGER_QUERY_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['vendorId'],
+  properties: {
+    vendorId: UUID_JSON_SCHEMA,
+    projectId: UUID_JSON_SCHEMA
+  }
+} as const;
 const INVOICE_LINE_RESPONSE_JSON_SCHEMA = {
   type: 'object',
   additionalProperties: false,
@@ -235,6 +247,26 @@ const AGING_ROW_RESPONSE_JSON_SCHEMA = {
     ageDays: { type: 'integer', minimum: 0 }
   }
 } as const;
+
+const LEDGER_ENTRY_RESPONSE_JSON_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['id', 'entryDate', 'entryType', 'reference', 'projectId', 'projectName', 'debit', 'credit', 'allocationAmount', 'balance', 'note', 'sourceId'],
+  properties: {
+    id: { type: 'string', minLength: 1 },
+    entryDate: DATE_JSON_SCHEMA,
+    entryType: { type: 'string', enum: ['INVOICE', 'PAYMENT', 'PAYMENT_REVERSAL', 'ALLOCATION'] },
+    reference: { type: 'string', minLength: 1 },
+    projectId: NULLABLE_UUID_JSON_SCHEMA,
+    projectName: NULLABLE_TEXT_JSON_SCHEMA,
+    debit: { type: 'string' },
+    credit: { type: 'string' },
+    allocationAmount: { type: 'string' },
+    balance: { type: 'string' },
+    note: NULLABLE_TEXT_JSON_SCHEMA,
+    sourceId: UUID_JSON_SCHEMA
+  }
+} as const;
 /** Wrap one response JSON schema in the standard API data envelope. */
 function dataEnvelope(data: object) {
   return {
@@ -279,6 +311,38 @@ const AGING_SUCCESS_JSON_SCHEMA = dataEnvelope({
     page: { type: 'integer', minimum: 1 },
     pageSize: { type: 'integer', minimum: 1, maximum: 100 },
     asOfDate: DATE_JSON_SCHEMA
+  }
+});
+
+const LEDGER_SUCCESS_JSON_SCHEMA = dataEnvelope({
+  type: 'object',
+  additionalProperties: false,
+  required: ['supplier', 'summary', 'entries'],
+  properties: {
+    supplier: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'code', 'displayName', 'currency'],
+      properties: {
+        id: UUID_JSON_SCHEMA,
+        code: { type: 'string', minLength: 1 },
+        displayName: { type: 'string', minLength: 1 },
+        currency: NULLABLE_TEXT_JSON_SCHEMA
+      }
+    },
+    summary: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['totalInvoiced', 'totalPaid', 'totalReversed', 'netPaid', 'balance'],
+      properties: {
+        totalInvoiced: { type: 'string' },
+        totalPaid: { type: 'string' },
+        totalReversed: { type: 'string' },
+        netPaid: { type: 'string' },
+        balance: { type: 'string' }
+      }
+    },
+    entries: { type: 'array', items: LEDGER_ENTRY_RESPONSE_JSON_SCHEMA }
   }
 });
 const ERROR_JSON_SCHEMA = {
@@ -329,7 +393,7 @@ function readIdempotencyKey(request: FastifyRequest): string {
   return value.trim();
 }
 
-/** Register exactly the eight Final-21 Supplier Payables routes. */
+/** Register the explicit Supplier Payables HTTP surface. */
 export async function registerSupplierPayablesRoutes(app: FastifyInstance, options: SupplierPayablesRoutesOptions): Promise<void> {
   const service = new SupplierPayablesService(options.database);
 
@@ -486,6 +550,23 @@ export async function registerSupplierPayablesRoutes(app: FastifyInstance, optio
     await authenticateRequest(request, options.database);
     const query = parseRequest(supplierAgingQuerySchema, request.query, 'query');
     const data = supplierAgingResponseSchema.parse(await service.getSupplierAging(query));
+    return reply.send({ data });
+  });
+
+
+  app.get('/api/v1/supplier-payables/ledger', {
+    schema: {
+      tags: ['Supplier Payables'],
+      operationId: 'getSupplierLedger',
+      summary: 'Read one Supplier account ledger',
+      security: BEARER_SECURITY,
+      querystring: LEDGER_QUERY_JSON_SCHEMA,
+      response: { 200: LEDGER_SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES }
+    }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const query = parseRequest(supplierLedgerQuerySchema, request.query, 'query');
+    const data = supplierLedgerResponseSchema.parse(await service.getSupplierLedger(query));
     return reply.send({ data });
   });
 }

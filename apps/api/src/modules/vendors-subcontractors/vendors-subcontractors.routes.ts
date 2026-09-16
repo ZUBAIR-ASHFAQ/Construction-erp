@@ -17,6 +17,7 @@ import {
   listVendorsQuerySchema,
   masterIdParamsSchema,
   subcontractContractIdParamsSchema,
+  updateSubcontractContractBodySchema,
   updateSubcontractorBodySchema,
   updateVendorBodySchema,
   type VendorsSubcontractorsPermissionCode
@@ -60,7 +61,9 @@ const SUBCONTRACTOR_BODY_PROPERTIES = {
 const CREATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['name', 'phone', 'specialty', 'address'], properties: { projectId: UUID_JSON_SCHEMA, ...SUBCONTRACTOR_BODY_PROPERTIES } } as const;
 const UPDATE_SUBCONTRACTOR_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: SUBCONTRACTOR_BODY_PROPERTIES } as const;
 const SUBCONTRACT_CONTRACT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
-const CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractorId', 'projectId', 'contractAmount', 'contractDate'], properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, contractAmount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, contractDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } } } as const;
+const SUBCONTRACT_CONTRACT_BODY_PROPERTIES = { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, contractAmount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, contractDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } } as const;
+const CREATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractorId', 'projectId', 'contractAmount', 'contractDate'], properties: SUBCONTRACT_CONTRACT_BODY_PROPERTIES } as const;
+const UPDATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: SUBCONTRACT_CONTRACT_BODY_PROPERTIES } as const;
 const SUBCONTRACT_PAYMENT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, subcontractContractId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['DRAFT', 'POSTED'] }, ...PAGE_PROPERTIES } } as const;
 const CREATE_SUBCONTRACT_PAYMENT_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['subcontractContractId', 'paymentDate', 'amount', 'cashBankAccountId'], properties: { subcontractContractId: UUID_JSON_SCHEMA, paymentDate: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' }, amount: { type: 'string', pattern: '^(?:0|[1-9]\\d{0,15})(?:\\.\\d{1,2})?$' }, cashBankAccountId: UUID_JSON_SCHEMA, reference: { anyOf: [{ type: 'string', minLength: 1, maxLength: 200 }, { type: 'null' }] } } } as const;
 const SUBCONTRACT_LEDGER_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { subcontractorId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['ACTIVE', 'FINISHED'] }, ...PAGE_PROPERTIES } } as const;
@@ -184,6 +187,15 @@ export async function registerVendorsSubcontractorsRoutes(app: FastifyInstance, 
     await authenticateRequest(request, options.database);
     requireRoutePermission('subcontractors.manage');
     return reply.status(201).send({ data: await service.createSubcontractContract(parseRequest(createSubcontractContractBodySchema, request.body, 'body')) });
+  });
+
+  app.patch('/api/v1/subcontract-contracts/:id', {
+    schema: { tags: ['Supplier & Subcontractor Management'], operationId: 'updateSubcontractContract', summary: 'Update one active subcontract contract', security: BEARER_SECURITY, params: ID_PARAMS_SCHEMA, body: UPDATE_SUBCONTRACT_CONTRACT_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_ERROR_RESPONSES } }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    requireRoutePermission('subcontractors.manage');
+    const { id } = parseRequest(subcontractContractIdParamsSchema, request.params, 'params');
+    return reply.send({ data: await service.updateSubcontractContract(id, parseRequest(updateSubcontractContractBodySchema, request.body, 'body')) });
   });
 
   app.post('/api/v1/subcontract-contracts/:id/finish', {

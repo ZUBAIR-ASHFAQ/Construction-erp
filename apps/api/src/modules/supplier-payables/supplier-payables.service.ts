@@ -20,6 +20,7 @@ import {
   type ListSupplierInvoicesQuery,
   type ListSupplierPaymentsQuery,
   type SupplierAgingQuery,
+  type SupplierLedgerQuery,
   type SupplierInvoiceLineInput,
   type SupplierPayablesPermissionCode
 } from './supplier-payables.schema.js';
@@ -1017,6 +1018,140 @@ export class SupplierPayablesService {
       }
     });
     return { statusCode: 201, body: response };
+  }
+
+  /** Build one Supplier ledger from posted invoices, payment history, reversals and allocation audit events. */
+  async getSupplierLedger(query: SupplierLedgerQuery) {
+    const now = new Date();
+    const users = new AdministrationRepository(this.db);
+    const visibility = await this.resolveVisibility(users, 'supplier_payables.read', now);
+    if (query.projectId) await this.requireProjectPermission(users, query.projectId, 'supplier_payables.read', now);
+    const sources = await new SupplierPayablesRepository(this.db).getSupplierLedgerSources({
+      vendorId: query.vendorId,
+      projectId: query.projectId,
+      allowedProjectIds: visibility.allowedProjectIds
+    });
+    if (!sources) throw new NotFoundError({ message: 'The requested Supplier was not found.' });
+
+    const reversalDates = new Map<string, Date>();
+    for (const journal of sources.reversalJournals) {
+      if (journal.sourceId && !reversalDates.has(journal.sourceId)) reversalDates.set(journal.sourceId, journal.postingDate);
+    }
+
+    const entries: Array<{
+      id: string;
+      entryDate: string;
+      entryType: 'INVOICE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ALLOCATION';
+      reference: string;
+      projectId: string | null;
+      projectName: string | null;
+      debit: string;
+      credit: string;
+      allocationAmount: string;
+      balance: string;
+      note: string | null;
+      sourceId: string;
+      sortOrder: number;
+    }> = [];
+    let totalInvoiced = 0n;
+    let totalPaid = 0n;
+    let totalReversed = 0n;
+
+    for (const invoice of sources.invoices) {
+      const amount = moneyToMinorUnits(invoice.totalAmount);
+      totalInvoiced += amount;
+      entries.push({
+        id: `invoice:${invoice.id}`,
+        entryDate: dateOnly(invoice.invoiceDate),
+        entryType: 'INVOICE',
+        reference: invoice.invoiceNo,
+        projectId: invoice.projectId,
+        projectName: invoice.project.name,
+        debit: ZERO_MONEY,
+        credit: minorUnitsToMoney(amount),
+        allocationAmount: ZERO_MONEY,
+        balance: ZERO_MONEY,
+        note: 'Posted Supplier Invoice',
+        sourceId: invoice.id,
+        sortOrder: 0
+      });
+    }
+
+    for (const payment of sources.payments) {
+      const amount = moneyToMinorUnits(payment.amount);
+      totalPaid += amount;
+      entries.push({
+        id: `payment:${payment.id}`,
+        entryDate: dateOnly(payment.paymentDate),
+        entryType: 'PAYMENT',
+        reference: payment.paymentNo,
+        projectId: payment.projectId,
+        projectName: payment.project?.name ?? null,
+        debit: minorUnitsToMoney(amount),
+        credit: ZERO_MONEY,
+        allocationAmount: ZERO_MONEY,
+        balance: ZERO_MONEY,
+        note: payment.reference,
+        sourceId: payment.id,
+        sortOrder: 1
+      });
+      if (hasStatus(payment.status, REVERSED)) {
+        totalReversed += amount;
+        entries.push({
+          id: `payment-reversal:${payment.id}`,
+          entryDate: dateOnly(reversalDates.get(payment.id) ?? payment.paymentDate),
+          entryType: 'PAYMENT_REVERSAL',
+          reference: `${payment.paymentNo} reversed`,
+          projectId: payment.projectId,
+          projectName: payment.project?.name ?? null,
+          debit: ZERO_MONEY,
+          credit: minorUnitsToMoney(amount),
+          allocationAmount: ZERO_MONEY,
+          balance: ZERO_MONEY,
+          note: 'Supplier Payment reversal',
+          sourceId: payment.id,
+          sortOrder: 2
+        });
+      }
+    }
+
+    for (const allocation of sources.allocations) {
+      entries.push({
+        id: `allocation:${allocation.id}`,
+        entryDate: dateOnly(allocation.allocatedAt),
+        entryType: 'ALLOCATION',
+        reference: `${allocation.supplierPayment.paymentNo} → ${allocation.supplierInvoice.invoiceNo}`,
+        projectId: allocation.supplierInvoice.projectId,
+        projectName: allocation.supplierInvoice.project.name,
+        debit: ZERO_MONEY,
+        credit: ZERO_MONEY,
+        allocationAmount: moneyString(allocation.amount),
+        balance: ZERO_MONEY,
+        note: allocation.supplierPayment.status === REVERSED ? 'Historical allocation from a reversed payment' : 'Payment applied to Supplier Invoice',
+        sourceId: allocation.id,
+        sortOrder: 3
+      });
+    }
+
+    entries.sort((left, right) => left.entryDate.localeCompare(right.entryDate) || left.sortOrder - right.sortOrder || left.id.localeCompare(right.id));
+    let balance = 0n;
+    const ledgerEntries = entries.map(({ sortOrder: _sortOrder, ...entry }) => {
+      balance += moneyToMinorUnits(entry.credit) - moneyToMinorUnits(entry.debit);
+      return { ...entry, balance: minorUnitsToMoney(balance) };
+    });
+    const netPaid = totalPaid - totalReversed;
+
+    return {
+      supplier: sources.vendor,
+      summary: {
+        totalInvoiced: minorUnitsToMoney(totalInvoiced),
+        totalPaid: minorUnitsToMoney(totalPaid),
+        totalReversed: minorUnitsToMoney(totalReversed),
+        netPaid: minorUnitsToMoney(netPaid),
+        balance: minorUnitsToMoney(balance)
+      },
+      entries: ledgerEntries
+    };
   }
 
   /** Return bounded Supplier aging derived only from POSTED invoices and immutable allocations as of one business date. */

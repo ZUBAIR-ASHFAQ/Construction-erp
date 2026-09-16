@@ -39,10 +39,11 @@ test('B16.3 freezes the explicit Supplier Payables HTTP operations', () => {
     "POST', route: '/api/v1/supplier-payables/payments'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/allocations'",
     "POST', route: '/api/v1/supplier-payables/payments/:id/reverse'",
-    "GET', route: '/api/v1/supplier-payables/aging'"
+    "GET', route: '/api/v1/supplier-payables/aging'",
+    "GET', route: '/api/v1/supplier-payables/ledger'"
   ];
   for (const route of expected) assert.ok(schema.includes(route), `missing ${route}`);
-  assert.equal((schema.match(/method: '(?:GET|POST|PATCH|PUT|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.equal((schema.match(/method: '(?:GET|POST|PATCH|PUT|DELETE)', route: '\/api\/v1\/supplier-payables/g) ?? []).length, 10);
   assert.doesNotMatch(schema, /PATCH', route: '\/api\/v1\/supplier-payables|DELETE', route: '\/api\/v1\/supplier-payables|\/approve'/i);
 });
 

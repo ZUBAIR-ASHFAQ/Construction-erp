@@ -44,6 +44,7 @@ type SubcontractorValues = z.infer<typeof subcontractorSchema>;
 type SubcontractorEditValues = z.infer<typeof subcontractorEditSchema>;
 
 type VendorDialog = Readonly<{ kind: 'create' }> | Readonly<{ kind: 'edit'; vendor: Vendor }> | null;
+type SubcontractorDialog = Readonly<{ kind: 'create' }> | Readonly<{ kind: 'edit'; subcontractor: Subcontractor }> | null;
 
 type WorkspaceProps = Readonly<{
   entity?: 'supplier' | 'subcontractor' | 'all';
@@ -53,6 +54,8 @@ type WorkspaceProps = Readonly<{
   canUpdateVendors: boolean;
   canReadSubcontractors: boolean;
   canManageSubcontractors: boolean;
+  onOpenSupplierLedger?: (vendorId: string) => void;
+  onOpenSubcontractorLedger?: (subcontractorId: string) => void;
 }>;
 
 /** Render the final company-level Supplier and Subcontractor master workspace. */
@@ -66,6 +69,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
   const [vendorDialog, setVendorDialog] = useState<VendorDialog>(null);
   const [subcontractorSearch, setSubcontractorSearch] = useState('');
   const [selectedSubcontractor, setSelectedSubcontractor] = useState<Subcontractor | null>(null);
+  const [subcontractorDialog, setSubcontractorDialog] = useState<SubcontractorDialog>(null);
   const [projectFilter, setProjectFilter] = useState('');
   const projects = useProjects({ page: 1, pageSize: 100 });
 
@@ -94,11 +98,11 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
   useEffect(() => {
     if (!props.initialCreate) return;
     if (props.entity === 'subcontractor') {
-      requestAnimationFrame(() => document.getElementById('add-subcontractor')?.scrollIntoView({ block: 'start' }));
+      if (props.canManageSubcontractors) setSubcontractorDialog({ kind: 'create' });
       return;
     }
     if (props.canCreateVendors) setVendorDialog({ kind: 'create' });
-  }, [props.canCreateVendors, props.entity, props.initialCreate]);
+  }, [props.canCreateVendors, props.canManageSubcontractors, props.entity, props.initialCreate]);
 
   /** Create one supplier/vendor and open its detail after success. */
   async function handleCreateVendor(values: VendorCreateValues): Promise<void> {
@@ -127,6 +131,7 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
       address: values.address
     });
     subcontractorForm.reset();
+    setSubcontractorDialog(null);
     setSelectedSubcontractor(created);
   }
 
@@ -163,8 +168,8 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
           </div>
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Qualification</th><th>Action</th></tr></thead>
-              <tbody>{(vendors.data?.items ?? []).map((vendor) => <tr key={vendor.id}><td>{vendor.code}</td><td>{vendor.displayName}</td><td>{vendor.status}</td><td>{vendor.qualificationStatus ?? '—'}</td><td><div className="button-row"><button type="button" className="link-button" onClick={() => setSelectedVendorId(vendor.id)}>Open</button>{props.canUpdateVendors && <button type="button" className="link-button" onClick={() => setVendorDialog({ kind: 'edit', vendor })}>Edit</button>}</div></td></tr>)}</tbody>
+              <thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Qualification</th><th>Actions</th></tr></thead>
+              <tbody>{(vendors.data?.items ?? []).map((vendor) => <tr key={vendor.id}><td>{vendor.code}</td><td>{vendor.displayName}</td><td>{vendor.status}</td><td>{vendor.qualificationStatus ?? '—'}</td><td><div className="client-row-actions"><button type="button" className="link-button" onClick={() => setSelectedVendorId(vendor.id)}>Open</button>{props.onOpenSupplierLedger && <button type="button" className="secondary-button client-edit-button" onClick={() => props.onOpenSupplierLedger?.(vendor.id)}>Ledger</button>}{props.canUpdateVendors && <button type="button" className="secondary-button client-edit-button" onClick={() => setVendorDialog({ kind: 'edit', vendor })}>Edit</button>}</div></td></tr>)}</tbody>
             </table>
           </div>
           {vendors.isLoading && <p className="muted">Loading suppliers…</p>}
@@ -208,25 +213,40 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
 
       {showSubcontractors && props.canReadSubcontractors && (
         <section className="admin-card">
-          <h2>Subcontractors</h2>
+          <div className="client-page-heading">
+            <div>
+              <h2>Subcontractors</h2>
+              <p className="muted">Search and maintain subcontractor master records without leaving the register.</p>
+            </div>
+            {props.canManageSubcontractors && (
+              <button
+                type="button"
+                className="client-primary-action"
+                onClick={() => { createSubcontractorMutation.reset(); subcontractorForm.reset(); setSubcontractorDialog({ kind: 'create' }); }}
+              >
+                <span aria-hidden="true">+</span> Add subcontractor
+              </button>
+            )}
+          </div>
           <label>Search<input value={subcontractorSearch} onChange={(event) => setSubcontractorSearch(event.target.value)} /></label>
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Name</th><th>Phone</th><th>Specialty</th><th>Address</th><th>Status</th><th>Action</th></tr></thead>
-              <tbody>{(subcontractors.data?.items ?? []).map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.phone}</td><td>{item.specialty}</td><td>{item.address}</td><td>{item.status}</td><td>{props.canManageSubcontractors ? <button type="button" className="link-button" onClick={() => setSelectedSubcontractor(item)}>Edit</button> : '—'}</td></tr>)}</tbody>
+              <thead><tr><th>Name</th><th>Phone</th><th>Specialty</th><th>Address</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody>{(subcontractors.data?.items ?? []).map((item) => <tr key={item.id}><td>{item.name}</td><td>{item.phone}</td><td>{item.specialty}</td><td>{item.address}</td><td>{item.status}</td><td><div className="client-row-actions"><button type="button" className="link-button" onClick={() => setSelectedSubcontractor(item)}>Open</button>{props.onOpenSubcontractorLedger && <button type="button" className="secondary-button client-edit-button" onClick={() => props.onOpenSubcontractorLedger?.(item.id)}>Ledger</button>}{props.canManageSubcontractors && <button type="button" className="secondary-button client-edit-button" onClick={() => setSubcontractorDialog({ kind: 'edit', subcontractor: item })}>Edit</button>}</div></td></tr>)}</tbody>
             </table>
           </div>
+          {subcontractors.isLoading && <p className="muted">Loading subcontractors…</p>}
+          {subcontractors.error instanceof Error && <div className="form-error">{subcontractors.error.message}</div>}
         </section>
       )}
 
-      {showSubcontractors && props.canManageSubcontractors && selectedSubcontractor && (
-        <SubcontractorEditor subcontractor={selectedSubcontractor} onSaved={setSelectedSubcontractor} />
+      {showSubcontractors && selectedSubcontractor && (
+        <SubcontractorDetail subcontractor={selectedSubcontractor} />
       )}
 
-      {showSubcontractors && props.canManageSubcontractors && (
-        <section className="admin-card" id="add-subcontractor">
-          <h2>Add subcontractor</h2>
-          <form className="admin-form" onSubmit={subcontractorForm.handleSubmit(handleCreateSubcontractor)} noValidate>
+      {showSubcontractors && subcontractorDialog?.kind === 'create' && (
+        <SubcontractorModal title="Add subcontractor" eyebrow="Subcontractor master" onClose={() => { createSubcontractorMutation.reset(); subcontractorForm.reset(); setSubcontractorDialog(null); }}>
+          <form className="admin-form client-modal-form" onSubmit={subcontractorForm.handleSubmit(handleCreateSubcontractor)} noValidate>
             <div className="client-form-grid">
               <label>Project<select {...subcontractorForm.register('projectId')}><option value="">Select Project</option>{(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
               <label>Name<input {...subcontractorForm.register('name')} /></label>
@@ -235,10 +255,21 @@ export function VendorsSubcontractorsWorkspace(props: WorkspaceProps) {
               <label>Address<input {...subcontractorForm.register('address')} /></label>
             </div>
             {Object.values(subcontractorForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
-            {createSubcontractorMutation.error instanceof Error && <div className="form-error">{createSubcontractorMutation.error.message}</div>}
-            <button type="submit" disabled={createSubcontractorMutation.isPending}>{createSubcontractorMutation.isPending ? 'Creating…' : 'Create subcontractor'}</button>
+            {createSubcontractorMutation.error instanceof Error && <div className="form-error" role="alert">{createSubcontractorMutation.error.message}</div>}
+            <div className="client-modal-actions">
+              <button type="button" className="secondary-button" onClick={() => { createSubcontractorMutation.reset(); subcontractorForm.reset(); setSubcontractorDialog(null); }}>Cancel</button>
+              <button type="submit" disabled={createSubcontractorMutation.isPending}>{createSubcontractorMutation.isPending ? 'Creating…' : 'Create subcontractor'}</button>
+            </div>
           </form>
-        </section>
+        </SubcontractorModal>
+      )}
+
+      {showSubcontractors && subcontractorDialog?.kind === 'edit' && (
+        <SubcontractorEditModal
+          subcontractor={subcontractorDialog.subcontractor}
+          onSaved={(updated) => { setSelectedSubcontractor(updated); setSubcontractorDialog(null); }}
+          onClose={() => setSubcontractorDialog(null)}
+        />
       )}
 
       {!props.canReadVendors && !props.canReadSubcontractors && <section className="admin-card"><h1>Suppliers & Subcontractors</h1><p className="muted">Your current role does not include supplier or subcontractor read access.</p></section>}
@@ -359,16 +390,84 @@ function SupplierEditModal(props: Readonly<{ vendor: Vendor; onClose: () => void
   );
 }
 
-/** Edit one selected subcontractor master record. */
-function SubcontractorEditor(props: Readonly<{ subcontractor: Subcontractor; onSaved: (value: Subcontractor) => void }>) {
-  const mutation = useUpdateSubcontractor(props.subcontractor.id);
-  const form = useForm<SubcontractorEditValues>({ resolver: zodResolver(subcontractorEditSchema), defaultValues: { name: props.subcontractor.name, phone: props.subcontractor.phone, specialty: props.subcontractor.specialty, address: props.subcontractor.address, status: props.subcontractor.status } });
+/** Render the selected subcontractor master record without turning Open into an edit action. */
+function SubcontractorDetail(props: Readonly<{ subcontractor: Subcontractor }>) {
+  return (
+    <section className="admin-card">
+      <h2>{props.subcontractor.name}</h2>
+      <p className="muted">{props.subcontractor.specialty} · {props.subcontractor.status}</p>
+      <div className="client-detail-grid">
+        <div><strong>Phone</strong><span>{props.subcontractor.phone}</span></div>
+        <div><strong>Specialty</strong><span>{props.subcontractor.specialty}</span></div>
+        <div><strong>Status</strong><span>{props.subcontractor.status}</span></div>
+        <div><strong>Address</strong><span>{props.subcontractor.address}</span></div>
+      </div>
+    </section>
+  );
+}
 
-  /** Save subcontractor master changes and keep the selected readback current. */
+/** Render one accessible Subcontractor modal using the same professional surface as Supplier master dialogs. */
+function SubcontractorModal(props: Readonly<{ title: string; eyebrow: string; onClose: () => void; children: ReactNode }>) {
+  useEffect(() => {
+    /** Close only the active Subcontractor modal when Escape is pressed. */
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="subcontractor-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="client-modal-header">
+          <div><p className="eyebrow">{props.eyebrow}</p><h2 id="subcontractor-modal-title">{props.title}</h2></div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label={`Close ${props.title}`}><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
+    </div>
+  );
+}
+
+/** Edit one selected subcontractor master record in a dedicated list-level dialog. */
+function SubcontractorEditModal(props: Readonly<{ subcontractor: Subcontractor; onSaved: (value: Subcontractor) => void; onClose: () => void }>) {
+  const mutation = useUpdateSubcontractor(props.subcontractor.id);
+  const form = useForm<SubcontractorEditValues>({
+    resolver: zodResolver(subcontractorEditSchema),
+    defaultValues: {
+      name: props.subcontractor.name,
+      phone: props.subcontractor.phone,
+      specialty: props.subcontractor.specialty,
+      address: props.subcontractor.address,
+      status: props.subcontractor.status
+    }
+  });
+
+  /** Save subcontractor master changes and return to the register. */
   async function handleUpdate(values: SubcontractorEditValues): Promise<void> {
     const updated = await mutation.mutateAsync({ name: values.name, phone: values.phone, specialty: values.specialty, address: values.address, status: values.status });
     props.onSaved(updated);
   }
 
-  return <section className="admin-card"><h2>Edit subcontractor</h2><form className="admin-form" onSubmit={form.handleSubmit(handleUpdate)} noValidate><div className="client-form-grid"><label>Name<input {...form.register('name')} /></label><label>Phone<input type="tel" {...form.register('phone')} /></label><label>Specialty<input {...form.register('specialty')} /></label><label>Address<input {...form.register('address')} /></label><label>Status<select {...form.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label></div>{mutation.error instanceof Error && <div className="form-error">{mutation.error.message}</div>}<button type="submit" disabled={mutation.isPending}>Save subcontractor</button></form></section>;
+  return (
+    <SubcontractorModal title={`Edit ${props.subcontractor.name}`} eyebrow="Subcontractor master" onClose={props.onClose}>
+      <form className="admin-form client-modal-form" onSubmit={form.handleSubmit(handleUpdate)} noValidate>
+        <div className="client-form-grid">
+          <label>Name<input {...form.register('name')} /></label>
+          <label>Phone<input type="tel" {...form.register('phone')} /></label>
+          <label>Specialty<input {...form.register('specialty')} /></label>
+          <label>Address<input {...form.register('address')} /></label>
+          <label>Status<select {...form.register('status')}><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select></label>
+        </div>
+        {Object.values(form.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+        {mutation.error instanceof Error && <div className="form-error" role="alert">{mutation.error.message}</div>}
+        <div className="client-modal-actions">
+          <button type="button" className="secondary-button" onClick={props.onClose}>Cancel</button>
+          <button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Saving…' : 'Save subcontractor'}</button>
+        </div>
+      </form>
+    </SubcontractorModal>
+  );
 }

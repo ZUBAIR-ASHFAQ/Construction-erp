@@ -11,6 +11,9 @@ const routes = await readFile('apps/api/src/modules/vendors-subcontractors/vendo
 const api = await readFile('apps/web/src/features/vendors-subcontractors/api/vendors-subcontractors-api.ts', 'utf8');
 const hooks = await readFile('apps/web/src/features/vendors-subcontractors/hooks/vendors-subcontractors.ts', 'utf8');
 const workspace = await readFile('apps/web/src/features/vendors-subcontractors/components/subcontract-payments-workspace.tsx', 'utf8');
+const masterWorkspace = await readFile('apps/web/src/features/vendors-subcontractors/components/vendors-subcontractors-workspace.tsx', 'utf8');
+const masterPage = await readFile('apps/web/src/features/vendors-subcontractors/pages/vendors-subcontractors-page.tsx', 'utf8');
+const paymentPage = await readFile('apps/web/src/features/vendors-subcontractors/pages/subcontract-payments-page.tsx', 'utf8');
 const shell = await readFile('apps/web/src/features/administration/components/admin-shell.tsx', 'utf8');
 
 /** Extract one Prisma model block for focused assertions. */
@@ -88,11 +91,47 @@ test('subcontract New Payment and Ledger screens show subcontractor data and no 
   assert.doesNotMatch(workspace, /Supplier Payables|Supplier Aging|Supplier Invoice|Vendor|useVendors|vendorId/);
 });
 
+test('subcontract payment creation uses the page action modal while posted payment history remains a register', () => {
+  assert.match(workspace, /className="client-primary-action"[\s\S]*?Add payment/);
+  assert.match(workspace, /aria-haspopup="dialog"/);
+  assert.match(workspace, /setPaymentDialogOpen\(true\)/);
+  assert.match(workspace, /<PaymentModal/);
+  assert.match(workspace, /className="admin-form client-modal-form"/);
+  assert.match(workspace, /className="client-form-grid"/);
+  assert.match(workspace, /Recent subcontractor payments/);
+  assert.doesNotMatch(workspace, /<h2>Payment details<\/h2>/);
+});
+
 test('application shell routes subcontractor payment and ledger to the dedicated workspace while Supplier screens remain unchanged', () => {
   assert.match(shell, /<SubcontractPaymentsPage view="payment" \/>/);
-  assert.match(shell, /<SubcontractPaymentsPage view="ledger" \/>/);
+  assert.match(shell, /<SubcontractPaymentsPage key=\{`subcontractor-ledger-\$\{linkedSubcontractorId \?\? 'all'\}`\} view="ledger" initialSubcontractorId=\{linkedSubcontractorId\} \/>/);
   assert.doesNotMatch(shell, /subcontractor-payment' && <SupplierPayablesPage/);
   assert.doesNotMatch(shell, /subcontractor-ledger' && <SupplierPayablesPage/);
   assert.match(shell, /supplier-payment' && <SupplierPayablesPage initialTab="payments" \/>/);
-  assert.match(shell, /supplier-ledger' && <SupplierPayablesPage initialTab="aging" \/>/);
+  assert.match(shell, /supplier-ledger' && <SupplierPayablesPage key=\{`supplier-ledger-\$\{linkedSupplierVendorId \?\? 'all'\}`\} initialTab="aging" initialVendorId=\{linkedSupplierVendorId\} \/>/);
+});
+
+
+test('subcontractor list uses modal create/edit actions and deep-links Ledger to the selected subcontractor', () => {
+  assert.match(masterWorkspace, /className="client-primary-action"[\s\S]*?Add subcontractor/);
+  assert.match(masterWorkspace, />Open<\/button>/);
+  assert.match(masterWorkspace, />Ledger<\/button>/);
+  assert.match(masterWorkspace, />Edit<\/button>/);
+  assert.match(masterWorkspace, /setSubcontractorDialog\(\{ kind: 'create' \}\)/);
+  assert.match(masterWorkspace, /setSubcontractorDialog\(\{ kind: 'edit', subcontractor: item \}\)/);
+  assert.match(masterWorkspace, /<SubcontractorModal title="Add subcontractor"/);
+  assert.match(masterWorkspace, /<SubcontractorEditModal/);
+  assert.doesNotMatch(masterWorkspace, /id="add-subcontractor"/);
+  assert.doesNotMatch(masterWorkspace, /<SubcontractorEditor/);
+  assert.match(masterPage, /onOpenSubcontractorLedger/);
+  assert.match(shell, /showSubcontractorLedger\(subcontractorId: string \| null\)/);
+  assert.match(shell, /onOpenSubcontractorLedger=\{\(subcontractorId: string\) => showSubcontractorLedger\(subcontractorId\)\}/);
+});
+
+test('subcontractor Ledger accepts the row-selected subcontractor as its initial filter', () => {
+  assert.match(paymentPage, /initialSubcontractorId = null/);
+  assert.match(paymentPage, /initialSubcontractorId=\{initialSubcontractorId\}/);
+  assert.match(workspace, /useState\(props\.initialSubcontractorId \?\? ''\)/);
+  assert.match(workspace, /subcontractorId: ledgerSubcontractorId/);
+  assert.match(shell, /showSubcontractorLedger\(null\)/);
 });

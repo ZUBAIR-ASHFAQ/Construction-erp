@@ -20,6 +20,7 @@ import {
   type ListSubcontractPaymentsQuery,
   type ListSubcontractorsQuery,
   type ListVendorsQuery,
+  type UpdateSubcontractContractBody,
   type UpdateSubcontractorBody,
   type UpdateVendorBody,
   type VendorsSubcontractorsPermissionCode
@@ -378,6 +379,79 @@ export class VendorsSubcontractorsService {
         payload: { subcontractorId: contract.subcontractorId, projectId: contract.projectId, status: contract.status }
       });
       return contract;
+    });
+  }
+
+  /** Update one active subcontract contract while preserving posted-payment accounting integrity. */
+  async updateSubcontractContract(contractId: string, input: UpdateSubcontractContractBody) {
+    this.requirePermission('subcontractors.manage');
+    return withTransaction(this.db, async (tx) => {
+      const repository = new VendorsSubcontractorsRepository(tx);
+      const before = await repository.findSubcontractContractById(contractId, this.allowedProjectIds());
+      if (!before) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
+
+      const locked = await repository.lockSubcontractContractForPayment(contractId);
+      if (!locked) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_NOT_FOUND');
+      if (locked.status === 'FINISHED') throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_ALREADY_FINISHED');
+
+      const nextSubcontractorId = input.subcontractorId ?? before.subcontractorId;
+      const nextProjectId = input.projectId ?? before.projectId;
+      this.requireProjectAccess(nextProjectId);
+
+      if (input.subcontractorId !== undefined && input.subcontractorId !== before.subcontractorId) {
+        const subcontractor = await repository.findSubcontractorById(input.subcontractorId, this.allowedProjectIds());
+        if (!subcontractor) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_FOUND');
+        if (subcontractor.status !== ACTIVE) throw createVendorsSubcontractorsError('SUBCONTRACTOR_NOT_ACTIVE');
+      }
+      if (input.projectId !== undefined && !await repository.findProjectById(input.projectId)) {
+        throw createVendorsSubcontractorsError('PROJECT_NOT_FOUND');
+      }
+
+      const postedPaymentAmount = moneyToMinorUnits(moneyString(await repository.sumPostedSubcontractPayments(contractId)));
+      if (postedPaymentAmount > 0n && (nextSubcontractorId !== before.subcontractorId || nextProjectId !== before.projectId)) {
+        throw new ConflictError({ message: 'A subcontract contract with posted payments cannot change its subcontractor or Project.' });
+      }
+      const nextContractAmount = input.contractAmount ?? moneyString(before.contractAmount);
+      if (moneyToMinorUnits(nextContractAmount) < postedPaymentAmount) {
+        throw new ValidationError({ message: 'Contract amount cannot be lower than the amount already paid.' });
+      }
+
+      const updated = await repository.updateSubcontractContract(contractId, {
+        ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
+        ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
+        ...(input.contractAmount === undefined ? {} : { contractAmount: input.contractAmount }),
+        ...(input.contractDate === undefined ? {} : { contractDate: new Date(`${input.contractDate}T00:00:00.000Z`) })
+      });
+      if (!updated) throw createVendorsSubcontractorsError('SUBCONTRACT_CONTRACT_ALREADY_FINISHED');
+      await repository.assignSubcontractorToProject(nextSubcontractorId, nextProjectId);
+
+      await recordAudit(tx, {
+        action: 'subcontract.updated',
+        entityType: 'subcontract_contract',
+        entityId: updated.id,
+        projectId: updated.projectId,
+        before: {
+          subcontractorId: before.subcontractorId,
+          projectId: before.projectId,
+          contractAmount: moneyString(before.contractAmount),
+          contractDate: dateOnly(before.contractDate),
+          status: before.status
+        },
+        after: {
+          subcontractorId: updated.subcontractorId,
+          projectId: updated.projectId,
+          contractAmount: moneyString(updated.contractAmount),
+          contractDate: dateOnly(updated.contractDate),
+          status: updated.status
+        }
+      });
+      await recordOutboxEvent(tx, {
+        eventType: 'subcontract.updated',
+        resourceType: 'subcontract_contract',
+        resourceId: updated.id,
+        payload: { subcontractorId: updated.subcontractorId, projectId: updated.projectId, status: updated.status }
+      });
+      return updated;
     });
   }
 

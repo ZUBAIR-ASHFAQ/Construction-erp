@@ -134,6 +134,19 @@ test('B16.5 records Supplier Invoice posting audit and Foundation outbox evidenc
   assert.match(service, /projectCostSourceKeys/);
 });
 
+/** Confirm Supplier ledger presentation derives debit/credit history and running balance without persisting a second ledger. */
+test('B16.5 derives the Supplier account ledger from posted source transactions', () => {
+  const service = read(SERVICE);
+  assert.match(service, /async getSupplierLedger\(query: SupplierLedgerQuery\)/);
+  assert.match(service, /getSupplierLedgerSources/);
+  assert.match(service, /entryType: 'INVOICE'/);
+  assert.match(service, /entryType: 'PAYMENT'/);
+  assert.match(service, /entryType: 'PAYMENT_REVERSAL'/);
+  assert.match(service, /entryType: 'ALLOCATION'/);
+  assert.match(service, /balance \+= moneyToMinorUnits\(entry\.credit\) - moneyToMinorUnits\(entry\.debit\)/);
+  assert.match(service, /netPaid = totalPaid - totalReversed/);
+});
+
 /** Confirm B16.5 invoice behavior remains intact while B16.6 adds the approved Payment service slice only. */
 test('B16.5 remains intact while B16.6 adds Payment allocation and aging but HTTP and React stay deferred', () => {
   const service = read(SERVICE);

@@ -35,13 +35,14 @@ test('B16.9 API client matches the Supplier Payables contract', () => {
   const api = read(`${FEATURE}/api/supplier-payables-api.ts`);
   for (const functionName of [
     'listSupplierInvoices', 'createSupplierInvoice', 'getSupplierInvoice', 'postSupplierInvoice',
-    'listSupplierPayments', 'createSupplierPayment', 'allocateSupplierPayment', 'reverseSupplierPayment', 'getSupplierAging'
+    'listSupplierPayments', 'createSupplierPayment', 'allocateSupplierPayment', 'reverseSupplierPayment', 'getSupplierAging', 'getSupplierLedger'
   ]) assert.match(api, new RegExp(`export function ${functionName}\\b`));
   assert.match(api, /supplier-payables\/invoices/);
   assert.match(api, /supplier-payables\/payments/);
   assert.match(api, /\/allocations/);
   assert.match(api, /\/reverse/);
   assert.match(api, /supplier-payables\/aging/);
+  assert.match(api, /supplier-payables\/ledger/);
   assert.doesNotMatch(api, /method:\s*'DELETE'|method:\s*'PATCH'/);
 });
 
@@ -59,7 +60,7 @@ test('B16.9 uses TanStack Query with AP Finance and Job Cost invalidation', () =
   assert.match(hooks, /SUPPLIER_PAYABLES_QUERY_KEY = \['module-17', 'supplier-payables'\]/);
   assert.match(hooks, /FINANCE_QUERY_KEY = \['final21', 'finance'\]/);
   assert.match(hooks, /JOB_COST_QUERY_KEY = \['module-9', 'project-budget-cost'\]/);
-  for (const hook of ['useSupplierInvoices', 'useSupplierInvoice', 'useCreateSupplierInvoice', 'usePostSupplierInvoice', 'useSupplierPayments', 'useCreateSupplierPayment', 'useReverseSupplierPayment', 'useAllocateSupplierPayment', 'useSupplierAging']) {
+  for (const hook of ['useSupplierInvoices', 'useSupplierInvoice', 'useCreateSupplierInvoice', 'usePostSupplierInvoice', 'useSupplierPayments', 'useCreateSupplierPayment', 'useReverseSupplierPayment', 'useAllocateSupplierPayment', 'useSupplierAging', 'useSupplierLedger']) {
     assert.match(hooks, new RegExp(`export function ${hook}\\b`));
   }
 });
@@ -120,6 +121,8 @@ test('B16.9 renders source-derived outstanding aging and stage invoice detail', 
   assert.match(workspace, /row\.outstandingAmount/);
   assert.match(workspace, /row\.ageDays/);
   assert.match(workspace, /line\.stageId/);
+  assert.match(workspace, /Chronological posted account activity/);
+  assert.match(workspace, /ledgerQuery\.data\.entries/);
 });
 
 /** Confirm the page and shell expose Supplier Payables using the frozen permission vocabulary. */
@@ -129,17 +132,24 @@ test('B16.9 binds navigation and actions to Supplier Payables permissions', () =
     assert.match(page, new RegExp(permission.replace('.', '\\.')));
   }
   const shell = read('apps/web/src/features/administration/components/admin-shell.tsx');
+  const vendorWorkspace = read('apps/web/src/features/vendors-subcontractors/components/vendors-subcontractors-workspace.tsx');
   assert.match(shell, /import \{ SupplierPayablesPage \}/);
   assert.match(shell, /canUseSupplierPayables/);
   assert.match(shell, /setView\('supplier-payables'\)/);
   assert.match(shell, />Supplier Payables<\/button>/);
   assert.match(shell, /activeView === 'supplier-payables' && <SupplierPayablesPage \/>/);
+  assert.match(shell, /showSupplierLedger/);
+  assert.match(shell, /initialVendorId=\{linkedSupplierVendorId\}/);
+  assert.match(vendorWorkspace, /className="client-row-actions"/);
+  assert.match(vendorWorkspace, />Ledger<\/button>/);
+  assert.match(vendorWorkspace, /onOpenSupplierLedger/);
+  assert.match(vendorWorkspace, /secondary-button client-edit-button/);
 });
 
 /** Confirm payment reversal adds one explicit command without changing Supplier Payables persistence. */
 test('B16.9 preserves the explicit routes plus two Supplier Payables migrations', () => {
   const routes = read('apps/api/src/modules/supplier-payables/supplier-payables.routes.ts');
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 10);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   assert.deepEqual(migrations.filter((name) => name.includes('final21_supplier_payables')).sort(), [
     '20260829002100_final21_supplier_payables',

@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
@@ -26,6 +26,7 @@ type WorkspaceProps = Readonly<{
   canReadSubcontractors: boolean;
   canManageSubcontractors: boolean;
   canReadFinance: boolean;
+  initialSubcontractorId?: string | null;
 }>;
 
 /** Format one API money string without changing its currency value. */
@@ -44,8 +45,9 @@ function todayDate(): string {
 
 /** Render the direct subcontract payment form and source-derived subcontract ledger. */
 export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
-  const [ledgerSubcontractorId, setLedgerSubcontractorId] = useState('');
+  const [ledgerSubcontractorId, setLedgerSubcontractorId] = useState(props.initialSubcontractorId ?? '');
   const [ledgerStatus, setLedgerStatus] = useState('');
+  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
   const subcontractors = useSubcontractors({ page: 1, pageSize: 100 }, props.canReadSubcontractors);
   const ledger = useSubcontractLedger({
     ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
@@ -98,28 +100,95 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
       reference: values.reference?.trim() || null
     });
     form.reset({
-      subcontractorId: values.subcontractorId,
+      subcontractorId: '',
       subcontractContractId: '',
       paymentDate: todayDate(),
       amount: '',
-      cashBankAccountId: values.cashBankAccountId,
+      cashBankAccountId: '',
       reference: ''
     });
+    setPaymentDialogOpen(false);
   }
 
   if (props.view === 'payment') {
     return (
       <section className="admin-stack" aria-labelledby="subcontract-payment-title">
         <section className="admin-card">
-          <p className="eyebrow">Subcontractor Module</p>
-          <h1 id="subcontract-payment-title">New Subcontractor Payment</h1>
-          <p className="muted">Record a payment against an assigned subcontract contract. The Project and remaining amount come from that subcontractor contract.</p>
+          <div className="client-page-heading">
+            <div>
+              <p className="eyebrow">Subcontractor Module</p>
+              <h1 id="subcontract-payment-title">Subcontractor Payments</h1>
+              <p className="muted">Record payments against assigned subcontract contracts. The Project and remaining amount come from the selected contract.</p>
+            </div>
+            {props.canManageSubcontractors && props.canReadFinance && (
+              <button
+                type="button"
+                className="client-primary-action"
+                aria-haspopup="dialog"
+                onClick={() => {
+                  createPayment.reset();
+                  form.reset({
+                    subcontractorId: '',
+                    subcontractContractId: '',
+                    paymentDate: todayDate(),
+                    amount: '',
+                    cashBankAccountId: '',
+                    reference: ''
+                  });
+                  setPaymentDialogOpen(true);
+                }}
+              >
+                <span aria-hidden="true">+</span> Add payment
+              </button>
+            )}
+          </div>
         </section>
 
-        {props.canManageSubcontractors && props.canReadFinance ? (
-          <section className="admin-card">
-            <h2>Payment details</h2>
-            <form className="admin-form" onSubmit={form.handleSubmit(handleCreatePayment)} noValidate>
+        {(!props.canManageSubcontractors || !props.canReadFinance) && (
+          <section className="admin-card"><p className="muted">Subcontractor management and Finance read access are required to create a payment.</p></section>
+        )}
+
+        <section className="admin-card">
+          <h2>Recent subcontractor payments</h2>
+          {payments.error instanceof Error && <div className="form-error" role="alert">{payments.error.message}</div>}
+          <div className="table-wrap">
+            <table className="admin-table">
+              <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Status</th><th>Reference</th></tr></thead>
+              <tbody>
+                {(payments.data?.items ?? []).map((payment) => (
+                  <tr key={payment.id}>
+                    <td>{payment.paymentNo}</td>
+                    <td>{payment.subcontractor.name} · {payment.subcontractor.specialty}</td>
+                    <td>{payment.project.projectCode} · {payment.project.name}</td>
+                    <td>{payment.paymentDate}</td>
+                    <td>{formatMoney(payment.amount, payment.project.currency)}</td>
+                    <td>{payment.cashBankAccount.name}</td>
+                    <td>{payment.status}</td>
+                    <td>{payment.reference || '—'}</td>
+                  </tr>
+                ))}
+                {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={8}>No subcontractor payments yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        {paymentDialogOpen && props.canManageSubcontractors && props.canReadFinance && (
+          <PaymentModal
+            onClose={() => {
+              createPayment.reset();
+              form.reset({
+                subcontractorId: '',
+                subcontractContractId: '',
+                paymentDate: todayDate(),
+                amount: '',
+                cashBankAccountId: '',
+                reference: ''
+              });
+              setPaymentDialogOpen(false);
+            }}
+          >
+            <form className="admin-form client-modal-form" onSubmit={form.handleSubmit(handleCreatePayment)} noValidate>
               <div className="client-form-grid">
                 <label>
                   Subcontractor
@@ -173,37 +242,25 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                 <p className="muted">Contract {formatMoney(selectedContract.contractAmount, selectedContract.project.currency)} · Paid {formatMoney(selectedContract.paidAmount, selectedContract.project.currency)} · Remaining {formatMoney(selectedContract.balanceAmount, selectedContract.project.currency)}</p>
               )}
               {createPayment.error instanceof Error && <div className="form-error" role="alert">{createPayment.error.message}</div>}
-              <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting…' : 'Create payment'}</button>
+              <div className="client-modal-actions">
+                <button type="button" className="secondary-button" onClick={() => {
+                  createPayment.reset();
+                  form.reset({
+                    subcontractorId: '',
+                    subcontractContractId: '',
+                    paymentDate: todayDate(),
+                    amount: '',
+                    cashBankAccountId: '',
+                    reference: ''
+                  });
+                  setPaymentDialogOpen(false);
+                }}>Cancel</button>
+                <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting…' : 'Create payment'}</button>
+              </div>
             </form>
-          </section>
-        ) : (
-          <section className="admin-card"><p className="muted">Subcontractor management and Finance read access are required to create a payment.</p></section>
+          </PaymentModal>
         )}
 
-        <section className="admin-card">
-          <h2>Recent subcontractor payments</h2>
-          {payments.error instanceof Error && <div className="form-error" role="alert">{payments.error.message}</div>}
-          <div className="table-wrap">
-            <table className="admin-table">
-              <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Status</th><th>Reference</th></tr></thead>
-              <tbody>
-                {(payments.data?.items ?? []).map((payment) => (
-                  <tr key={payment.id}>
-                    <td>{payment.paymentNo}</td>
-                    <td>{payment.subcontractor.name} · {payment.subcontractor.specialty}</td>
-                    <td>{payment.project.projectCode} · {payment.project.name}</td>
-                    <td>{payment.paymentDate}</td>
-                    <td>{formatMoney(payment.amount, payment.project.currency)}</td>
-                    <td>{payment.cashBankAccount.name}</td>
-                    <td>{payment.status}</td>
-                    <td>{payment.reference || '—'}</td>
-                  </tr>
-                ))}
-                {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={8}>No subcontractor payments yet.</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        </section>
       </section>
     );
   }
@@ -285,5 +342,32 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
         </div>
       </section>
     </section>
+  );
+}
+
+
+/** Render the subcontract payment create dialog using the existing module modal surface. */
+function PaymentModal(props: Readonly<{ onClose: () => void; children: ReactNode }>) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === 'Escape') props.onClose();
+    }
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [props.onClose]);
+
+  return (
+    <div className="client-modal-backdrop" role="presentation" onMouseDown={props.onClose}>
+      <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="subcontract-payment-modal-title" onMouseDown={(event) => event.stopPropagation()}>
+        <header className="client-modal-header">
+          <div>
+            <p className="eyebrow">Subcontractor payment</p>
+            <h2 id="subcontract-payment-modal-title">New Subcontractor Payment</h2>
+          </div>
+          <button type="button" className="client-modal-close" onClick={props.onClose} aria-label="Close new subcontractor payment"><span aria-hidden="true">×</span></button>
+        </header>
+        <div className="client-modal-body">{props.children}</div>
+      </section>
+    </div>
   );
 }

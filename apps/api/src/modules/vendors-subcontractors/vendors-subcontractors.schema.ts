@@ -28,6 +28,7 @@ export const VENDORS_SUBCONTRACTORS_EVENT_TYPES = Object.freeze([
   'subcontractor.created',
   'subcontractor.updated',
   'subcontract.created',
+  'subcontract.updated',
   'subcontract.finished',
   'subcontract.payment_posted'
 ] as const);
@@ -43,6 +44,7 @@ export const VENDORS_SUBCONTRACTORS_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/subcontractors/:id' }),
   Object.freeze({ method: 'GET', route: '/api/v1/subcontract-contracts' }),
   Object.freeze({ method: 'POST', route: '/api/v1/subcontract-contracts' }),
+  Object.freeze({ method: 'PATCH', route: '/api/v1/subcontract-contracts/:id' }),
   Object.freeze({ method: 'POST', route: '/api/v1/subcontract-contracts/:id/finish' }),
   Object.freeze({ method: 'GET', route: '/api/v1/subcontract-payments' }),
   Object.freeze({ method: 'POST', route: '/api/v1/subcontract-payments' }),
@@ -174,6 +176,16 @@ export const createSubcontractContractBodySchema = z.object({
   contractDate: contractDateSchema
 }).strict();
 
+/** Update one active subcontract contract without changing its lifecycle status. */
+export const updateSubcontractContractBodySchema = z.object({
+  subcontractorId: uuidSchema.optional(),
+  projectId: uuidSchema.optional(),
+  contractAmount: contractAmountSchema.optional(),
+  contractDate: contractDateSchema.optional()
+}).strict().refine((value) => Object.keys(value).length > 0, {
+  message: 'At least one editable subcontract contract field must be provided.'
+});
+
 
 /** Bounded filters for direct payments posted against subcontract contracts. */
 export const listSubcontractPaymentsQuerySchema = z.object({
@@ -231,6 +243,7 @@ export type CreateSubcontractorBody = z.infer<typeof createSubcontractorBodySche
 export type UpdateSubcontractorBody = z.infer<typeof updateSubcontractorBodySchema>;
 export type ListSubcontractContractsQuery = z.infer<typeof listSubcontractContractsQuerySchema>;
 export type CreateSubcontractContractBody = z.infer<typeof createSubcontractContractBodySchema>;
+export type UpdateSubcontractContractBody = z.infer<typeof updateSubcontractContractBodySchema>;
 export type ListSubcontractPaymentsQuery = z.infer<typeof listSubcontractPaymentsQuerySchema>;
 export type CreateSubcontractPaymentBody = z.infer<typeof createSubcontractPaymentBodySchema>;
 export type ListSubcontractLedgerQuery = z.infer<typeof listSubcontractLedgerQuerySchema>;

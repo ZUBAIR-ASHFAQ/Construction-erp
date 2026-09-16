@@ -336,6 +336,8 @@ export function AdminShell() {
   const [view, setView] = useState<WorkspaceView>('dashboard');
   const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
   const [linkedFinanceAccountId, setLinkedFinanceAccountId] = useState<string | null>(null);
+  const [linkedSupplierVendorId, setLinkedSupplierVendorId] = useState<string | null>(null);
+  const [linkedSubcontractorId, setLinkedSubcontractorId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   if (auth.isCheckingSession) {
@@ -442,6 +444,20 @@ export function AdminShell() {
     setIsSidebarOpen(false);
   }
 
+  /** Open the Supplier Ledger already filtered to one Supplier, or clear the filter for the module-level ledger. */
+  function showSupplierLedger(vendorId: string | null): void {
+    setLinkedSupplierVendorId(vendorId);
+    setView('supplier-ledger');
+    setIsSidebarOpen(false);
+  }
+
+  /** Open the Subcontractor Ledger already filtered to one Subcontractor, or clear the filter for the module-level ledger. */
+  function showSubcontractorLedger(subcontractorId: string | null): void {
+    setLinkedSubcontractorId(subcontractorId);
+    setView('subcontractor-ledger');
+    setIsSidebarOpen(false);
+  }
+
   /** Open one focused Employee workflow from the module landing page. */
   function showEmployeeModuleView(destination: EmployeeModuleDestination): void {
     selectView(destination);
@@ -527,7 +543,7 @@ export function AdminShell() {
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'supplier-add')} onClick={() => selectView('supplier-add')}>Add New</button>}
                 {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-payables')} onClick={() => setView('supplier-payables')}>Supplier Payables</button>}
                 {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-payment')} onClick={() => selectView('supplier-payment')}>New Payment</button>}
-                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-ledger')} onClick={() => selectView('supplier-ledger')}>Ledger</button>}
+                {canUseSupplierPayables && <button type="button" className={navigationButtonClass(activeView, 'supplier-ledger')} onClick={() => showSupplierLedger(null)}>Ledger</button>}
               </div>
             </details>
 
@@ -538,7 +554,7 @@ export function AdminShell() {
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-add')} onClick={() => selectView('subcontractor-add')}>Add New</button>}
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-contracts')} onClick={() => selectView('subcontractor-contracts')}>Contracts</button>}
                 {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-payment')} onClick={() => selectView('subcontractor-payment')}>New Payment</button>}
-                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-ledger')} onClick={() => selectView('subcontractor-ledger')}>Ledger</button>}
+                {canUseVendorsSubcontractors && <button type="button" className={navigationButtonClass(activeView, 'subcontractor-ledger')} onClick={() => showSubcontractorLedger(null)}>Ledger</button>}
               </div>
             </details>
 
@@ -693,16 +709,16 @@ export function AdminShell() {
           {activeView === 'procurement' && <ProcurementPage />}
           {activeView === 'materials' && <MaterialsPage />}
           {activeView === 'inventory' && <InventoryPage />}
-          {activeView === 'vendors-subcontractors' && <VendorsSubcontractorsPage />}
-          {activeView === 'suppliers' && <VendorsSubcontractorsPage entity="supplier" />}
-          {activeView === 'supplier-add' && <VendorsSubcontractorsPage entity="supplier" initialCreate />}
+          {activeView === 'vendors-subcontractors' && <VendorsSubcontractorsPage {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
+          {activeView === 'suppliers' && <VendorsSubcontractorsPage entity="supplier" {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
+          {activeView === 'supplier-add' && <VendorsSubcontractorsPage entity="supplier" initialCreate {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
           {activeView === 'supplier-payment' && <SupplierPayablesPage initialTab="payments" />}
-          {activeView === 'supplier-ledger' && <SupplierPayablesPage initialTab="aging" />}
-          {activeView === 'subcontractors' && <VendorsSubcontractorsPage entity="subcontractor" />}
-          {activeView === 'subcontractor-add' && <VendorsSubcontractorsPage entity="subcontractor" initialCreate />}
+          {activeView === 'supplier-ledger' && <SupplierPayablesPage key={`supplier-ledger-${linkedSupplierVendorId ?? 'all'}`} initialTab="aging" initialVendorId={linkedSupplierVendorId} />}
+          {activeView === 'subcontractors' && <VendorsSubcontractorsPage entity="subcontractor" onOpenSubcontractorLedger={(subcontractorId: string) => showSubcontractorLedger(subcontractorId)} />}
+          {activeView === 'subcontractor-add' && <VendorsSubcontractorsPage entity="subcontractor" initialCreate onOpenSubcontractorLedger={(subcontractorId: string) => showSubcontractorLedger(subcontractorId)} />}
           {activeView === 'subcontractor-contracts' && <SubcontractContractsPage />}
           {activeView === 'subcontractor-payment' && <SubcontractPaymentsPage view="payment" />}
-          {activeView === 'subcontractor-ledger' && <SubcontractPaymentsPage view="ledger" />}
+          {activeView === 'subcontractor-ledger' && <SubcontractPaymentsPage key={`subcontractor-ledger-${linkedSubcontractorId ?? 'all'}`} view="ledger" initialSubcontractorId={linkedSubcontractorId} />}
           {activeView === 'equipment' && <EquipmentPage />}
           {activeView === 'labour-payroll' && (
             <EmployeeModulePage

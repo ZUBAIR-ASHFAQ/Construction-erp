@@ -95,7 +95,7 @@ test('B16.8 keeps Supplier Payable outstanding and aging source-derived', () => 
 /** Confirm the Supplier Payables persistence surface still needs no reversal migration. */
 test('B16.8 keeps the explicit route and two-migration Supplier Payables surface', () => {
   const routes = read(`${SUPPLIER_PAYABLES}/supplier-payables.routes.ts`);
-  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 9);
+  assert.equal((routes.match(/app\.(?:get|post|patch|put|delete)\('\/api\/v1\/supplier-payables/g) ?? []).length, 10);
   assert.equal(exists('apps/web/src/features/supplier-payables'), true);
   const migrations = readdirSync(new URL('../packages/database/prisma/migrations/', import.meta.url));
   const supplierPayablesMigrations = migrations.filter((name) => name.includes('final21_supplier_payables'));

@@ -154,6 +154,21 @@ test('B16.4 reads posted as-of aging sources with allocation timestamps but leav
   assert.doesNotMatch(agingBlock, /ageDays|outstandingAmount|bucket|Date\.now|Math\./);
 });
 
+/** Confirm the Supplier ledger source read stays tenant/project scoped and uses posted accounting history only. */
+test('B16.4 reads Supplier ledger sources from posted invoices payments allocations and reversal journals', () => {
+  const repository = read(REPOSITORY);
+  const ledgerBlock = repository.match(/async getSupplierLedgerSources[\s\S]*?\n  \}/)?.[0] ?? '';
+  assert.match(ledgerBlock, /requireCompanyRepositoryScope/);
+  assert.match(ledgerBlock, /vendorId: input\.vendorId/);
+  assert.match(ledgerBlock, /status: 'POSTED'/);
+  assert.match(ledgerBlock, /status: \{ in: \['POSTED', 'REVERSED'\] \}/);
+  assert.match(ledgerBlock, /supplierPaymentAllocation\.findMany/);
+  assert.match(ledgerBlock, /sourceType: 'supplier_payment_reversal'/);
+  assert.match(ledgerBlock, /projectAssignments/);
+  assert.match(ledgerBlock, /allowedProjectIds === null/);
+  assert.doesNotMatch(ledgerBlock, /const visibleProjectIds = input\.projectId/);
+});
+
 /** Confirm repository work does not absorb service, accounting, audit, outbox, HTTP or UI ownership. */
 test('B16.4 keeps business side effects out of the repository', () => {
   const repository = read(REPOSITORY);

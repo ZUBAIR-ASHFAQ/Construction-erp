@@ -2,7 +2,7 @@ import { usePermission } from '../../administration/hooks/auth.js';
 import { VendorsSubcontractorsWorkspace } from '../components/vendors-subcontractors-workspace.js';
 
 /** Render final Supplier & Subcontractor Management using only final permission codes. */
-export function VendorsSubcontractorsPage({ entity = 'all', initialCreate = false }: Readonly<{ entity?: 'supplier' | 'subcontractor' | 'all'; initialCreate?: boolean }> = {}) {
+export function VendorsSubcontractorsPage({ entity = 'all', initialCreate = false, onOpenSupplierLedger, onOpenSubcontractorLedger }: Readonly<{ entity?: 'supplier' | 'subcontractor' | 'all'; initialCreate?: boolean; onOpenSupplierLedger?: (vendorId: string) => void; onOpenSubcontractorLedger?: (subcontractorId: string) => void }> = {}) {
   return (
     <VendorsSubcontractorsWorkspace
       entity={entity}
@@ -12,6 +12,8 @@ export function VendorsSubcontractorsPage({ entity = 'all', initialCreate = fals
       canUpdateVendors={usePermission('vendors.update')}
       canReadSubcontractors={usePermission('subcontractors.read')}
       canManageSubcontractors={usePermission('subcontractors.manage')}
+      {...(onOpenSupplierLedger ? { onOpenSupplierLedger } : {})}
+      {...(onOpenSubcontractorLedger ? { onOpenSubcontractorLedger } : {})}
     />
   );
 }

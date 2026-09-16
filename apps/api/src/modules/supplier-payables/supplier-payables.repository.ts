@@ -80,6 +80,12 @@ export type ListSupplierAgingSourcesRepositoryInput = SupplierPayablesRepository
     allocatedThrough: Date;
   }>;
 
+
+export type SupplierLedgerRepositoryInput = SupplierPayablesRepositoryVisibility & Readonly<{
+  vendorId: string;
+  projectId?: string | undefined;
+}>;
+
 /** Reject invalid bounded pagination before one Supplier Payables query reaches Prisma. */
 function assertPageWindow(input: SupplierPayablesRepositoryPageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) {
@@ -525,6 +531,104 @@ export class SupplierPayablesRepository {
       _sum: { amount: true }
     });
     return aggregate._sum.amount;
+  }
+
+  /** Read the posted invoice, payment, allocation and reversal sources for one permission-scoped Supplier ledger. */
+  async getSupplierLedgerSources(input: SupplierLedgerRepositoryInput) {
+    const scope = requireCompanyRepositoryScope();
+    const allowedProjectIds = normalizeAllowedProjectIds(input.allowedProjectIds);
+    if (input.projectId && !isProjectAllowed(input.projectId, allowedProjectIds)) return null;
+
+    const vendor = await this.db.vendor.findFirst({
+      where: scope.where({
+        id: input.vendorId,
+        ...(allowedProjectIds === null
+          ? {}
+          : { projectAssignments: { some: { projectId: { in: [...allowedProjectIds] } } } })
+      }),
+      select: { id: true, code: true, displayName: true, currency: true }
+    });
+    if (!vendor) return null;
+
+    const projectFilter = input.projectId
+      ? input.projectId
+      : allowedProjectIds === null
+        ? undefined
+        : { in: [...allowedProjectIds] };
+    const invoiceWhere = scope.where({
+      vendorId: input.vendorId,
+      status: 'POSTED',
+      ...(projectFilter === undefined ? {} : { projectId: projectFilter })
+    });
+    const paymentWhere = scope.where({
+      vendorId: input.vendorId,
+      status: { in: ['POSTED', 'REVERSED'] },
+      ...(projectFilter === undefined ? {} : { projectId: projectFilter })
+    });
+
+    const [invoices, payments] = await Promise.all([
+      this.db.supplierInvoice.findMany({
+        where: invoiceWhere,
+        select: {
+          id: true,
+          projectId: true,
+          invoiceNo: true,
+          invoiceDate: true,
+          totalAmount: true,
+          project: { select: { name: true } }
+        },
+        orderBy: [{ invoiceDate: 'asc' }, { invoiceNo: 'asc' }, { id: 'asc' }]
+      }),
+      this.db.supplierPayment.findMany({
+        where: paymentWhere,
+        select: {
+          id: true,
+          projectId: true,
+          paymentNo: true,
+          paymentDate: true,
+          amount: true,
+          reference: true,
+          status: true,
+          project: { select: { name: true } }
+        },
+        orderBy: [{ paymentDate: 'asc' }, { paymentNo: 'asc' }, { id: 'asc' }]
+      })
+    ]);
+
+    const invoiceIds = invoices.map((invoice) => invoice.id);
+    const paymentIds = payments.map((payment) => payment.id);
+    const reversedPaymentIds = payments.filter((payment) => payment.status === 'REVERSED').map((payment) => payment.id);
+    const [allocations, reversalJournals] = await Promise.all([
+      invoiceIds.length === 0 || paymentIds.length === 0
+        ? Promise.resolve([])
+        : this.db.supplierPaymentAllocation.findMany({
+            where: {
+              supplierInvoiceId: { in: invoiceIds },
+              supplierPaymentId: { in: paymentIds }
+            },
+            select: {
+              id: true,
+              amount: true,
+              allocatedAt: true,
+              supplierPayment: { select: { id: true, paymentNo: true, status: true } },
+              supplierInvoice: { select: { id: true, invoiceNo: true, projectId: true, project: { select: { name: true } } } }
+            },
+            orderBy: [{ allocatedAt: 'asc' }, { id: 'asc' }]
+          }),
+      reversedPaymentIds.length === 0
+        ? Promise.resolve([])
+        : this.db.journal.findMany({
+            where: scope.where({
+              sourceType: 'supplier_payment_reversal',
+              sourceId: { in: reversedPaymentIds },
+              status: 'POSTED'
+            }),
+            select: { sourceId: true, postingDate: true },
+            orderBy: [{ postingDate: 'asc' }, { id: 'asc' }]
+          })
+    ]);
+
+    return { vendor, invoices, payments, allocations, reversalJournals };
   }
 
   /** List Supplier Payments inside Company and trusted Project scope with bounded filters. */

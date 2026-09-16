@@ -22,6 +22,7 @@ import {
 const ACTIVE = 'ACTIVE';
 const ISSUED = 'ISSUED';
 const RECEIVED = 'RECEIVED';
+const MATERIAL_SEQUENCE = 'material';
 const MATERIAL_ISSUE_SEQUENCE = 'material-issue';
 const GOODS_RECEIPT_SEQUENCE = 'goods-receipt';
 const SCALE_4 = 10_000n;
@@ -249,8 +250,11 @@ export class InventoryService {
       const repository = new InventoryRepository(tx);
       const project = await repository.findProjectById(projectId);
       if (!project) throw new NotFoundError({ message: 'Project was not found.' });
-      const code = token(input.code);
-      if (await repository.findMaterialByCode(code, projectId)) throw new ConflictError({ message: 'Material code already exists in this Project.' });
+      await repository.ensureMaterialNumberSequence();
+      let code = (await allocateCompanyNumber(tx, { sequenceKey: MATERIAL_SEQUENCE })).formatted;
+      while (await repository.findMaterialByCode(code, projectId)) {
+        code = (await allocateCompanyNumber(tx, { sequenceKey: MATERIAL_SEQUENCE })).formatted;
+      }
       const material = await repository.createMaterial({ projectId, code, name: input.name, unit: token(input.unit), category: input.category ?? null, status: ACTIVE });
       const response = materialResponse(material);
       await recordAudit(tx, { action: 'material.created', entityType: 'material', entityId: material.id, projectId, after: response });

@@ -192,14 +192,19 @@ test('B11 Goods Receipt result is organized as receipt metadata and line items',
   assert.match(styles, /\.goods-receipt-result-meta\s*\{[\s\S]*grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
 });
 
-/** Confirm a successful receipt closes the entry form while preserving an explicit way to receive another delivery. */
-test('B11 Goods Receipt entry closes after a successful post', () => {
+/** Confirm Procurement creation is modal-driven and a successful receipt closes its dialog. */
+test('B11 Procurement create actions use dialogs and Goods Receipt closes after a successful post', () => {
   const workspace = read(`${web}/components/procurement-workspace.tsx`);
 
-  assert.match(workspace, /const \[receiptEntryOpen, setReceiptEntryOpen\] = useState\(true\)/);
-  assert.match(workspace, /await createGoodsReceipt\.mutateAsync\([\s\S]*setReceiptEntryOpen\(false\)/);
-  assert.match(workspace, /<form className="form-grid" hidden=\{!receiptEntryOpen\}[\s\S]*Post partial \/ full receipt/);
-  assert.match(workspace, /!receiptEntryOpen && <button[^>]*onClick=\{\(\) => \{ createGoodsReceipt\.reset\(\); setReceiptEntryOpen\(true\); \}\}>Receive another delivery<\/button>/);
+  assert.match(workspace, /const \[requisitionDialogOpen, setRequisitionDialogOpen\] = useState\(false\)/);
+  assert.match(workspace, /const \[purchaseOrderDialogOpen, setPurchaseOrderDialogOpen\] = useState\(false\)/);
+  assert.match(workspace, /const \[receiptDialogOpen, setReceiptDialogOpen\] = useState\(false\)/);
+  assert.match(workspace, /Add requirement/);
+  assert.match(workspace, /Add purchase order/);
+  assert.match(workspace, /Receive goods/);
+  assert.match(workspace, /await createGoodsReceipt\.mutateAsync\([\s\S]*setReceiptDialogOpen\(false\)/);
+  assert.match(workspace, /receiptDialogOpen[\s\S]*ProcurementModal[\s\S]*Post partial \/ full receipt/);
+  assert.match(workspace, /Receive another delivery/);
 });
 
 /** Confirm the new migration hardens only active Final-21 Procurement structures. */

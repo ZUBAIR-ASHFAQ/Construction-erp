@@ -36,7 +36,7 @@ export const MODULE_11_HTTP_ROUTES = Object.freeze([
 
 /** Final Module 11 server-owned request fields. */
 export const MODULE_11_SERVER_OWNED_REQUEST_FIELDS = Object.freeze([
-  'companyId', 'actorUserId', 'permissions', 'allowedProjectIds', 'status', 'issueNo',
+  'companyId', 'actorUserId', 'permissions', 'allowedProjectIds', 'status', 'code', 'issueNo',
   'issuedBy', 'unitCost', 'lineCost', 'movementType', 'sourceType', 'sourceId', 'occurredAt'
 ] as const);
 
@@ -58,7 +58,6 @@ export const listMaterialsQuerySchema = z.object({ ...pageShape, projectId: uuid
 /** Validate creation of one Company-owned Material master. */
 export const createMaterialBodySchema = z.object({
   projectId: uuid.optional(),
-  code: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(300),
   unit: z.string().trim().min(1).max(64),
   category: z.string().trim().min(1).max(120).nullable().optional()

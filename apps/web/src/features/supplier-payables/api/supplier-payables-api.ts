@@ -65,6 +65,36 @@ export type SupplierAgingRow = Readonly<{
   ageDays: number;
 }>;
 
+
+export type SupplierLedgerEntryType = 'INVOICE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ALLOCATION';
+
+export type SupplierLedgerEntry = Readonly<{
+  id: string;
+  entryDate: string;
+  entryType: SupplierLedgerEntryType;
+  reference: string;
+  projectId: string | null;
+  projectName: string | null;
+  debit: string;
+  credit: string;
+  allocationAmount: string;
+  balance: string;
+  note: string | null;
+  sourceId: string;
+}>;
+
+export type SupplierLedger = Readonly<{
+  supplier: Readonly<{ id: string; code: string; displayName: string; currency: string | null }>;
+  summary: Readonly<{
+    totalInvoiced: string;
+    totalPaid: string;
+    totalReversed: string;
+    netPaid: string;
+    balance: string;
+  }>;
+  entries: SupplierLedgerEntry[];
+}>;
+
 export type Page<T> = Readonly<{ items: T[]; total: number; page: number; pageSize: number }>;
 export type SupplierAgingPage = Page<SupplierAgingRow> & Readonly<{ asOfDate: string }>;
 
@@ -128,6 +158,12 @@ export type SupplierAgingInput = Readonly<{
   asOfDate?: string;
   page?: number;
   pageSize?: number;
+}>;
+
+
+export type SupplierLedgerInput = Readonly<{
+  vendorId: string;
+  projectId?: string;
 }>;
 
 /** Add documented query values without sending empty browser fields. */
@@ -207,4 +243,10 @@ export function allocateSupplierPayment(paymentId: string, input: AllocateSuppli
 /** Load derived Supplier aging and outstanding values as of one date. */
 export function getSupplierAging(input: SupplierAgingInput = {}): Promise<SupplierAgingPage> {
   return authenticatedRequest<SupplierAgingPage>(`supplier-payables/aging${buildQuery(input)}`);
+}
+
+
+/** Load one complete posted Supplier account ledger, optionally narrowed to one Project. */
+export function getSupplierLedger(input: SupplierLedgerInput): Promise<SupplierLedger> {
+  return authenticatedRequest<SupplierLedger>(`supplier-payables/ledger${buildQuery(input)}`);
 }

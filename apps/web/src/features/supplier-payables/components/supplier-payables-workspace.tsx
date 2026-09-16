@@ -17,6 +17,7 @@ import {
   useReverseSupplierPayment,
   useSupplierAging,
   useSupplierInvoice,
+  useSupplierLedger,
   useSupplierInvoices,
   useSupplierPayments
 } from '../hooks/supplier-payables.js';
@@ -75,6 +76,7 @@ type WorkspaceTab = 'invoices' | 'payments' | 'aging';
 
 type SupplierPayablesWorkspaceProps = Readonly<{
   initialTab?: WorkspaceTab;
+  initialVendorId?: string | null;
   canRead: boolean;
   canCreateInvoice: boolean;
   createInvoiceModalOpen: boolean;
@@ -132,7 +134,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const [tab, setTab] = useState<WorkspaceTab>(props.initialTab ?? 'invoices');
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [selectedPayment, setSelectedPayment] = useState<SupplierPayment | null>(null);
-  const [vendorFilter, setVendorFilter] = useState('');
+  const [vendorFilter, setVendorFilter] = useState(props.initialVendorId ?? '');
   const [projectFilter, setProjectFilter] = useState('');
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<'' | 'DRAFT' | 'POSTED'>('');
   const [paymentStatusFilter, setPaymentStatusFilter] = useState<'' | 'DRAFT' | 'POSTED' | 'REVERSED'>('');
@@ -149,7 +151,7 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
-  const vendorsQuery = useVendors({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadVendors);
+  const vendorsQuery = useVendors({ ...(tab === 'aging' ? {} : { status: 'ACTIVE' as const }), page: 1, pageSize: 100 }, props.canReadVendors);
   const projects = projectsQuery.data?.items ?? [];
   const vendors = vendorsQuery.data?.items ?? [];
   const vendorNames = useMemo(() => new Map(vendors.map((vendor) => [vendor.id, vendor.displayName])), [vendors]);
@@ -215,6 +217,10 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     page: 1,
     pageSize: 100
   }, props.canRead);
+  const ledgerQuery = useSupplierLedger(vendorFilter ? {
+    vendorId: vendorFilter,
+    ...(projectFilter ? { projectId: projectFilter } : {})
+  } : null, props.canRead && tab === 'aging');
   const allocationInvoicesQuery = useSupplierInvoices({
     ...(selectedPayment?.vendorId ? { vendorId: selectedPayment.vendorId } : {}),
     ...(selectedPayment?.projectId ? { projectId: selectedPayment.projectId } : {}),
@@ -562,12 +568,13 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
         <div className="button-row" role="tablist" aria-label="Supplier Payables views">
           <button type="button" className={tab === 'invoices' ? 'nav-button active' : 'nav-button'} onClick={() => setTab('invoices')}>Invoices</button>
           <button type="button" className={tab === 'payments' ? 'nav-button active' : 'nav-button'} onClick={() => setTab('payments')}>Payments</button>
-          <button type="button" className={tab === 'aging' ? 'nav-button active' : 'nav-button'} onClick={() => setTab('aging')}>Outstanding &amp; Aging</button>
+          <button type="button" className={tab === 'aging' ? 'nav-button active' : 'nav-button'} onClick={() => setTab('aging')}>Ledger &amp; Aging</button>
         </div>
         <div className="admin-form two-column-form">
           <label>Vendor filter
             <select value={vendorFilter} onChange={(event) => setVendorFilter(event.target.value)}>
               <option value="">All vendors</option>
+              {vendorFilter && !vendors.some((vendor) => vendor.id === vendorFilter) && <option value={vendorFilter}>{ledgerQuery.data?.supplier.id === vendorFilter ? `${ledgerQuery.data.supplier.code} · ${ledgerQuery.data.supplier.displayName}` : 'Selected supplier'}</option>}
               {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}
             </select>
           </label>
@@ -779,21 +786,56 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
       )}
 
       {tab === 'aging' && (
-        <section className="admin-card">
-          <div className="section-heading compact-heading"><h2>Supplier Ledger — Supplier Outstanding &amp; Aging</h2><label>As of date<input type="date" value={agingAsOfDate} onChange={(event) => setAgingAsOfDate(event.target.value)} /></label></div>
-          <p className="muted">Outstanding is derived from POSTED Supplier Invoices minus immutable POSTED-payment allocations. As of: {agingQuery.data?.asOfDate ?? 'current date'}.</p>
-          <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Invoice date</th><th>Due</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Age days</th><th>Document</th></tr></thead><tbody>
-            {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}<br /><small>Supplier {vendorNames.get(row.vendorId) ?? 'Unknown supplier'} · Project {projectNames.get(row.projectId) ?? 'Unknown project'}</small></td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td><td><button type="button" className="secondary-button" disabled={!props.canReadDocuments || downloadingInvoiceId === row.supplierInvoiceId} onClick={() => void downloadInvoiceAttachment({ id: row.supplierInvoiceId, projectId: row.projectId, invoiceNo: row.invoiceNo })}>Download</button></td></tr>)}
-            {(agingQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No outstanding Supplier Invoices match the current filters.</td></tr>}
-          </tbody></table></div>
-          {downloadError && <div className="form-error" role="alert">{downloadError}</div>}
-          <h3>Supplier Payment History</h3>
-          <p className="muted">Posted and reversed Supplier Payments remain in this ledger. Reversed payments retain history but have no active invoice-allocation or Cash/Bank effect.</p>
-          <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Supplier / Project</th><th>Total paid</th><th>Invoice allocated</th><th>Unallocated</th><th>Reference</th></tr></thead><tbody>
-            {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}</td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{vendorNames.get(payment.vendorId) ?? 'Unknown supplier'}<br /><small>{payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company-level'}</small></td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td></tr>)}
-            {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No Supplier Payments match the current filters.</td></tr>}
-          </tbody></table></div>
-        </section>
+        <>
+          <section className="admin-card">
+            <div className="section-heading compact-heading">
+              <div>
+                <h2>Supplier Ledger</h2>
+                <p className="muted">Chronological posted account activity. Supplier Invoices increase the payable, payments reduce it, and reversals restore the payable.</p>
+              </div>
+            </div>
+            {!vendorFilter && <p className="muted">Select a supplier above to view its complete ledger.</p>}
+            {vendorFilter && ledgerQuery.isPending && <p className="muted">Loading Supplier ledger…</p>}
+            {ledgerQuery.error instanceof Error && <div className="form-error" role="alert">{ledgerQuery.error.message}</div>}
+            {ledgerQuery.data && (
+              <>
+                <div className="section-heading compact-heading">
+                  <div>
+                    <h3>{ledgerQuery.data.supplier.code} · {ledgerQuery.data.supplier.displayName}</h3>
+                    <p className="muted">{projectFilter ? `Project: ${projectNames.get(projectFilter) ?? 'Selected project'} · ` : 'All permitted projects · '}{ledgerQuery.data.supplier.currency ?? 'Currency not set'}</p>
+                  </div>
+                </div>
+                <dl className="summary-grid">
+                  <div><dt>Total invoiced</dt><dd>{displayMoney(ledgerQuery.data.summary.totalInvoiced)}</dd></div>
+                  <div><dt>Total payments</dt><dd>{displayMoney(ledgerQuery.data.summary.totalPaid)}</dd></div>
+                  <div><dt>Reversed payments</dt><dd>{displayMoney(ledgerQuery.data.summary.totalReversed)}</dd></div>
+                  <div><dt>Net paid</dt><dd>{displayMoney(ledgerQuery.data.summary.netPaid)}</dd></div>
+                  <div><dt>Balance payable</dt><dd>{displayMoney(ledgerQuery.data.summary.balance)}</dd></div>
+                </dl>
+                <p className="muted">Debit = Supplier Payment, Credit = Supplier Invoice or payment reversal. Allocation rows show how payments were applied without changing the ledger balance again. A negative balance represents a Supplier advance.</p>
+                <div className="table-wrap">
+                  <table className="admin-table">
+                    <thead><tr><th>Date</th><th>Type</th><th>Project</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Allocated</th><th>Balance</th><th>Note</th></tr></thead>
+                    <tbody>
+                      {ledgerQuery.data.entries.map((entry) => <tr key={entry.id}><td>{entry.entryDate}</td><td>{entry.entryType === 'PAYMENT_REVERSAL' ? 'Payment reversal' : entry.entryType === 'ALLOCATION' ? 'Allocation' : entry.entryType === 'PAYMENT' ? 'Payment' : 'Invoice'}</td><td>{entry.projectName ?? 'Company-level'}</td><td><strong>{entry.reference}</strong></td><td>{displayMoney(entry.debit)}</td><td>{displayMoney(entry.credit)}</td><td>{displayMoney(entry.allocationAmount)}</td><td><strong>{displayMoney(entry.balance)}</strong></td><td>{entry.note ?? '—'}</td></tr>)}
+                      {ledgerQuery.data.entries.length === 0 && <tr><td colSpan={9} className="muted">No posted Supplier Invoice or Payment activity exists for this supplier.</td></tr>}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </section>
+
+          <section className="admin-card">
+            <div className="section-heading compact-heading"><h2>Supplier Outstanding &amp; Aging</h2><label>As of date<input type="date" value={agingAsOfDate} onChange={(event) => setAgingAsOfDate(event.target.value)} /></label></div>
+            <p className="muted">Outstanding is derived from POSTED Supplier Invoices minus immutable POSTED-payment allocations. As of: {agingQuery.data?.asOfDate ?? 'current date'}.</p>
+            <div className="table-wrap"><table><thead><tr><th>Invoice</th><th>Invoice date</th><th>Due</th><th>Total</th><th>Allocated</th><th>Outstanding</th><th>Age days</th><th>Document</th></tr></thead><tbody>
+              {(agingQuery.data?.items ?? []).map((row) => <tr key={row.supplierInvoiceId}><td>{row.invoiceNo}<br /><small>Supplier {vendorNames.get(row.vendorId) ?? 'Unknown supplier'} · Project {projectNames.get(row.projectId) ?? 'Unknown project'}</small></td><td>{row.invoiceDate}</td><td>{row.dueDate ?? '—'}</td><td>{displayMoney(row.totalAmount)}</td><td>{displayMoney(row.allocatedAmount)}</td><td>{displayMoney(row.outstandingAmount)}</td><td>{row.ageDays}</td><td><button type="button" className="secondary-button" disabled={!props.canReadDocuments || downloadingInvoiceId === row.supplierInvoiceId} onClick={() => void downloadInvoiceAttachment({ id: row.supplierInvoiceId, projectId: row.projectId, invoiceNo: row.invoiceNo })}>Download</button></td></tr>)}
+              {(agingQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No outstanding Supplier Invoices match the current filters.</td></tr>}
+            </tbody></table></div>
+            {downloadError && <div className="form-error" role="alert">{downloadError}</div>}
+          </section>
+        </>
       )}
     </div>
   );

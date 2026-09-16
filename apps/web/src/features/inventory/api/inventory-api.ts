@@ -17,7 +17,7 @@ export type MaterialIssue = Readonly<{
   id: string; projectId: string; stageId: string | null; warehouseId: string; issueNo: string; issueDate: string; status: string;
   items: ReadonlyArray<Readonly<{ id: string; materialId: string; quantity: string; unitCost: string; lineCost: string }>>;
 }>;
-export type CreateMaterialInput = Readonly<{ projectId?: string; code: string; name: string; unit: string; category?: string | null }>;
+export type CreateMaterialInput = Readonly<{ projectId?: string; name: string; unit: string; category?: string | null }>;
 export type CreateMaterialIssueInput = Readonly<{
   projectId: string; stageId?: string | null; warehouseId: string; issueDate: string; description?: string | null;
   items: ReadonlyArray<Readonly<{ materialId: string; quantity: string }>>;

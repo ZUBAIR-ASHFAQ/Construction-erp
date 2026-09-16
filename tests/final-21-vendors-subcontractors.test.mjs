@@ -42,7 +42,7 @@ test('B4 exposes the exact final Supplier & Subcontractor permission, error, eve
   for (const code of ['VENDOR_NOT_FOUND', 'DUPLICATE_VENDOR_CODE', 'SUBCONTRACTOR_NOT_FOUND', 'VENDOR_LINK_INVALID']) {
     assert.match(moduleSchema, new RegExp(`'${code}'`));
   }
-  for (const eventType of ['vendor.created', 'vendor.updated', 'subcontractor.created', 'subcontractor.updated']) {
+  for (const eventType of ['vendor.created', 'vendor.updated', 'subcontractor.created', 'subcontractor.updated', 'subcontract.updated']) {
     assert.match(moduleSchema, new RegExp(`'${eventType.replaceAll('.', '\\.')}'`));
   }
 
@@ -53,12 +53,13 @@ test('B4 exposes the exact final Supplier & Subcontractor permission, error, eve
     "'/api/v1/subcontractors'",
     "'/api/v1/subcontractors/:id'",
     "'/api/v1/subcontract-contracts'",
+    "'/api/v1/subcontract-contracts/:id'",
     "'/api/v1/subcontract-contracts/:id/finish'",
     "'/api/v1/subcontract-payments'",
     "'/api/v1/subcontract-ledger'"
   ];
   for (const route of expectedRoutes) assert.match(moduleSchema, new RegExp(route.replaceAll('/', '\\/')));
-  assert.equal((moduleSchema.match(/Object\.freeze\(\{ method:/g) ?? []).length, 14);
+  assert.equal((moduleSchema.match(/Object\.freeze\(\{ method:/g) ?? []).length, 15);
 });
 
 test('B4 Prisma masters include the requested subcontractor contact profile and current contract ownership', () => {
@@ -99,8 +100,12 @@ test('B4 repositories and services enforce company ownership and module-owned li
   assert.match(service, /eventType: 'subcontractor\.created'/);
   assert.match(service, /eventType: 'subcontractor\.updated'/);
   assert.match(service, /eventType: 'subcontract\.created'/);
+  assert.match(service, /eventType: 'subcontract\.updated'/);
+  assert.match(service, /A subcontract contract with posted payments cannot change its subcontractor or Project/);
+  assert.match(service, /Contract amount cannot be lower than the amount already paid/);
   assert.match(service, /eventType: 'subcontract\.finished'/);
   assert.match(repository, /subcontractContract\.findMany/);
+  assert.match(repository, /updateSubcontractContract\(contractId: string/);
   assert.match(repository, /findProjectById\(projectId: string\)/);
   assert.match(repository, /status: 'FINISHED', finishedAt/);
   assert.match(service, /SupplierPayablesService/);
@@ -156,6 +161,7 @@ test('B4 route handlers are permission checked and Zod validated at the boundary
   assert.match(routes, /parseRequest\(updateSubcontractorBodySchema/);
   assert.match(routes, /parseRequest\(listSubcontractContractsQuerySchema/);
   assert.match(routes, /parseRequest\(createSubcontractContractBodySchema/);
+  assert.match(routes, /parseRequest\(updateSubcontractContractBodySchema/);
   assert.match(routes, /parseRequest\(subcontractContractIdParamsSchema/);
   assert.match(routes, /parseRequest\(listSubcontractPaymentsQuerySchema/);
   assert.match(routes, /parseRequest\(createSubcontractPaymentBodySchema/);
@@ -165,18 +171,23 @@ test('B4 route handlers are permission checked and Zod validated at the boundary
   assert.match(routes, /requireRoutePermission\('subcontractors\.manage'\)/);
 });
 
-test('subcontract Project contracts persist amount/date/status and expose create/finish UI without restoring legacy payment-application scope', () => {
+test('subcontract Project contracts persist amount/date/status and expose modal create/edit/finish UI without restoring legacy payment-application scope', () => {
   assert.match(contractMigration, /CREATE TABLE "subcontract_contracts"/);
   assert.match(contractMigration, /"contract_amount" DECIMAL\(18,2\) NOT NULL/);
   assert.match(contractMigration, /"contract_date" DATE NOT NULL/);
   assert.match(contractMigration, /"status" IN \('ACTIVE', 'FINISHED'\)/);
   assert.match(contractMigration, /"project_id", "company_id"/);
   assert.match(contractMigration, /"subcontractor_id", "company_id"/);
-  assert.match(contractWorkspace, /Assign Project to subcontractor/);
+  assert.match(contractWorkspace, /className="client-primary-action"[\s\S]*?Add contract/);
+  assert.match(contractWorkspace, /<ContractModal title="Add contract"/);
+  assert.match(contractWorkspace, /<ContractEditModal/);
+  assert.match(contractWorkspace, />Edit<\/button>/);
   assert.match(contractWorkspace, /Contract amount/);
   assert.match(contractWorkspace, /Subcontract date/);
   assert.match(contractWorkspace, /Finish subcontract/);
   assert.match(contractWorkspace, /contract\.status === 'ACTIVE'/);
+  assert.match(contractApi, /method: 'PATCH'/);
+  assert.match(contractApi, /subcontract-contracts\/\$\{contractId\}/);
   assert.match(contractApi, /subcontract-contracts\/\$\{contractId\}\/finish/);
   assert.doesNotMatch(contractWorkspace, /payment application|retention|revision/i);
 });

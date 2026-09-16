@@ -74,6 +74,7 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
   const createMutation = useCreateProjectTeamAssignment();
   const updateMutation = useUpdateProjectTeamAssignment();
   const endMutation = useEndProjectTeamAssignment();
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [endingAssignmentId, setEndingAssignmentId] = useState<string | null>(null);
   const createForm = useForm<AssignmentFormValues>({
@@ -92,6 +93,7 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
   /** Change the active Project and clear dependent create/edit/end state. */
   function selectProject(nextProjectId: string): void {
     setProjectId(nextProjectId);
+    setCreateDialogOpen(false);
     setEditingAssignmentId(null);
     setEndingAssignmentId(null);
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
@@ -113,11 +115,24 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
       }
     });
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
+    setCreateDialogOpen(false);
+  }
+
+  /** Open a fresh Employee assignment dialog for the selected Project. */
+  function startCreate(): void {
+    if (!canCreateWithSelectors) return;
+    createMutation.reset();
+    setEditingAssignmentId(null);
+    setEndingAssignmentId(null);
+    createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
+    setCreateDialogOpen(true);
   }
 
   /** Open the readable assignment editor without asking the user to type a Stage UUID. */
   function startEdit(assignment: ProjectTeamAssignment): void {
+    setCreateDialogOpen(false);
     setEndingAssignmentId(null);
+    updateMutation.reset();
     setEditingAssignmentId(assignment.id);
     editForm.reset({
       projectRole: assignment.projectRole,
@@ -143,11 +158,14 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
       }
     });
     setEditingAssignmentId(null);
+    updateMutation.reset();
   }
 
   /** Open the explicit assignment-end form with the backend-supported optional note. */
   function startEnd(assignment: ProjectTeamAssignment): void {
+    setCreateDialogOpen(false);
     setEditingAssignmentId(null);
+    endMutation.reset();
     setEndingAssignmentId(assignment.id);
     endForm.reset({ endDate: assignment.toDate ?? '', note: '' });
   }
@@ -163,6 +181,7 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
       ...(note ? { note } : {})
     });
     setEndingAssignmentId(null);
+    endMutation.reset();
     endForm.reset({ endDate: '', note: '' });
   }
 
@@ -193,75 +212,18 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
         <section className="admin-card"><p className="muted"><code>employees.read</code> is required to assign an Employee through the safe selector.</p></section>
       )}
 
-      {canCreateWithSelectors && (
-        <section className="admin-card">
-          <h2>Assign Employee</h2>
-          <form className="admin-form" onSubmit={createForm.handleSubmit((values) => void handleCreate(values))}>
-            <label>Employee
-              <select {...createForm.register('employeeId')}>
-                <option value="">Select active Employee</option>
-                {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
-              </select>
-            </label>
-            <label>Project role<input {...createForm.register('projectRole')} /></label>
-            <label>Allocation %<input {...createForm.register('allocationPercent')} /></label>
-            <label>Stage (optional)
-              <select {...createForm.register('stageId')} disabled={!canReadStages}>
-                <option value="">{canReadStages ? 'Project level' : 'Project level · Stage read permission required'}</option>
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
-              </select>
-            </label>
-            <label>From date<input type="date" {...createForm.register('fromDate')} /></label>
-            <label>To date (optional)<input type="date" {...createForm.register('toDate')} /></label>
-            {Object.values(createForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
-            {errorMessage(createMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error)}</div>}
-            <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Assigning…' : 'Assign Employee'}</button>
-          </form>
-        </section>
-      )}
-
-      {editingAssignmentId && (
-        <section className="admin-card">
-          <h2>Edit Assignment</h2>
-          <form className="admin-form" onSubmit={editForm.handleSubmit((values) => void handleEdit(values))}>
-            <label>Project role<input {...editForm.register('projectRole')} /></label>
-            <label>Allocation %<input {...editForm.register('allocationPercent')} /></label>
-            <label>Stage
-              <select {...editForm.register('stageId')} disabled={!canReadStages}>
-                <option value="">Project level</option>
-                {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
-              </select>
-            </label>
-            <label>From date<input type="date" {...editForm.register('fromDate')} /></label>
-            <label>To date (optional)<input type="date" {...editForm.register('toDate')} /></label>
-            {Object.values(editForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
-            {errorMessage(updateMutation.error) && <div className="form-error" role="alert">{errorMessage(updateMutation.error)}</div>}
-            <div className="button-row">
-              <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save Assignment'}</button>
-              <button type="button" className="secondary-button" onClick={() => setEditingAssignmentId(null)}>Cancel</button>
-            </div>
-          </form>
-        </section>
-      )}
-
-      {endingAssignmentId && (
-        <section className="admin-card">
-          <h2>End Assignment</h2>
-          <form className="admin-form" onSubmit={endForm.handleSubmit((values) => void handleEnd(values))}>
-            <label>End date<input type="date" {...endForm.register('endDate')} /></label>
-            <label>End note (optional)<textarea rows={3} maxLength={2000} {...endForm.register('note')} /></label>
-            {Object.values(endForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
-            {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
-            <div className="button-row">
-              <button type="submit" disabled={endMutation.isPending}>{endMutation.isPending ? 'Ending…' : 'End Assignment'}</button>
-              <button type="button" className="secondary-button" onClick={() => setEndingAssignmentId(null)}>Cancel</button>
-            </div>
-          </form>
-        </section>
-      )}
-
       <section className="admin-card">
-        <h2>Project Team</h2>
+        <div className="client-page-heading">
+          <div>
+            <h2>Project Team</h2>
+            <p className="muted">Assign active Employees to the selected Project and maintain role, allocation, Stage and effective dates.</p>
+          </div>
+          {props.canManage && (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" disabled={!canCreateWithSelectors} onClick={startCreate}>
+              <span aria-hidden="true">+</span> Assign employee
+            </button>
+          )}
+        </div>
         {teamQuery.isPending && projectId && <p>Loading assignments…</p>}
         {!projectId && <p className="muted">Select a Project to load its Team.</p>}
         {errorMessage(teamQuery.error) && <div className="form-error" role="alert">{errorMessage(teamQuery.error)}</div>}
@@ -306,6 +268,103 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
           </>
         )}
       </section>
+
+      {createDialogOpen && canCreateWithSelectors && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setCreateDialogOpen(false); }}>
+          <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="project-team-create-title">
+            <header className="client-modal-header">
+              <div><p className="eyebrow">Project team</p><h2 id="project-team-create-title">Assign Employee</h2></div>
+              <button type="button" className="client-modal-close" aria-label="Close assignment form" onClick={() => setCreateDialogOpen(false)}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={createForm.handleSubmit((values) => void handleCreate(values))}>
+                <div className="client-form-grid">
+                  <label>Employee
+                    <select {...createForm.register('employeeId')}>
+                      <option value="">Select active Employee</option>
+                      {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
+                    </select>
+                  </label>
+                  <label>Project role<input {...createForm.register('projectRole')} /></label>
+                  <label>Allocation %<input {...createForm.register('allocationPercent')} /></label>
+                  <label>Stage (optional)
+                    <select {...createForm.register('stageId')} disabled={!canReadStages}>
+                      <option value="">{canReadStages ? 'Project level' : 'Project level · Stage read permission required'}</option>
+                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                    </select>
+                  </label>
+                  <label>From date<input type="date" {...createForm.register('fromDate')} /></label>
+                  <label>To date (optional)<input type="date" {...createForm.register('toDate')} /></label>
+                </div>
+                {Object.values(createForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
+                {errorMessage(createMutation.error) && <div className="form-error" role="alert">{errorMessage(createMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={() => setCreateDialogOpen(false)}>Cancel</button>
+                  <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Assigning…' : 'Assign Employee'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {editingAssignmentId && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEditingAssignmentId(null); }}>
+          <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="project-team-edit-title">
+            <header className="client-modal-header">
+              <div><p className="eyebrow">Project team</p><h2 id="project-team-edit-title">Edit Assignment</h2></div>
+              <button type="button" className="client-modal-close" aria-label="Close assignment editor" onClick={() => setEditingAssignmentId(null)}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={editForm.handleSubmit((values) => void handleEdit(values))}>
+                <div className="client-form-grid">
+                  <label>Project role<input {...editForm.register('projectRole')} /></label>
+                  <label>Allocation %<input {...editForm.register('allocationPercent')} /></label>
+                  <label>Stage
+                    <select {...editForm.register('stageId')} disabled={!canReadStages}>
+                      <option value="">Project level</option>
+                      {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                    </select>
+                  </label>
+                  <label>From date<input type="date" {...editForm.register('fromDate')} /></label>
+                  <label>To date (optional)<input type="date" {...editForm.register('toDate')} /></label>
+                </div>
+                {Object.values(editForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
+                {errorMessage(updateMutation.error) && <div className="form-error" role="alert">{errorMessage(updateMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={() => setEditingAssignmentId(null)}>Cancel</button>
+                  <button type="submit" disabled={updateMutation.isPending}>{updateMutation.isPending ? 'Saving…' : 'Save Assignment'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {endingAssignmentId && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setEndingAssignmentId(null); }}>
+          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="project-team-end-title">
+            <header className="client-modal-header">
+              <div><p className="eyebrow">Project team</p><h2 id="project-team-end-title">End Assignment</h2></div>
+              <button type="button" className="client-modal-close" aria-label="Close end assignment" onClick={() => setEndingAssignmentId(null)}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={endForm.handleSubmit((values) => void handleEnd(values))}>
+                <div className="client-form-grid">
+                  <label>End date<input type="date" {...endForm.register('endDate')} /></label>
+                  <label>End note (optional)<textarea rows={3} maxLength={2000} {...endForm.register('note')} /></label>
+                </div>
+                {Object.values(endForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
+                {errorMessage(endMutation.error) && <div className="form-error" role="alert">{errorMessage(endMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={() => setEndingAssignmentId(null)}>Cancel</button>
+                  <button type="submit" disabled={endMutation.isPending}>{endMutation.isPending ? 'Ending…' : 'End Assignment'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
     </section>
   );
 }

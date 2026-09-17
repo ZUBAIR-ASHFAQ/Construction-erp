@@ -438,6 +438,13 @@ export class DocumentsService {
         if (!resource.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'supplier_payables.read', new Date());
       }
+      if (resourceType === 'supplier_payment' && resource.projectId) {
+        await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'supplier_payables.read', new Date());
+      }
+      if (resourceType === 'subcontract_payment') {
+        if (!resource.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+        await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'subcontractors.read', new Date());
+      }
       if (resourceType === 'client_receipt') {
         if (!resource.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'client_receipts.read', new Date());
@@ -545,6 +552,13 @@ export class DocumentsService {
         if (!link.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'supplier_payables.read', new Date());
       }
+      if (link.linkedResourceType === 'supplier_payment' && link.projectId) {
+        await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'supplier_payables.read', new Date());
+      }
+      if (link.linkedResourceType === 'subcontract_payment') {
+        if (!link.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+        await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'subcontractors.read', new Date());
+      }
       if (link.linkedResourceType === 'client_receipt') {
         if (!link.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'client_receipts.read', new Date());
@@ -597,12 +611,19 @@ export class DocumentsService {
     const pageSize = input.pageSize ?? 25;
     const asOf = new Date();
     let visibility: Readonly<{ includeCompanyWide: boolean; allowedProjectIds: readonly string[] | null }>;
-    if (input.resourceType === 'supplier_invoice' && input.resourceId) {
-      const resource = await this.repository.findLinkableResource('supplier_invoice', input.resourceId);
-      if (!resource?.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+    if (input.resourceId && ['supplier_invoice', 'supplier_payment', 'subcontract_payment'].includes(input.resourceType ?? '')) {
+      const resourceType = input.resourceType as 'supplier_invoice' | 'supplier_payment' | 'subcontract_payment';
+      const resource = await this.repository.findLinkableResource(resourceType, input.resourceId);
+      if (!resource) throw createModule21Error('DOCUMENT_LINK_INVALID');
       if (input.projectId && input.projectId !== resource.projectId) throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
-      await this.requireLinkedProjectPermission(this.usersRepository, resource.projectId, 'supplier_payables.read', asOf);
-      visibility = { includeCompanyWide: false, allowedProjectIds: [resource.projectId] };
+      const permission = resourceType === 'subcontract_payment' ? 'subcontractors.read' : 'supplier_payables.read';
+      if (resource.projectId) {
+        await this.requireLinkedProjectPermission(this.usersRepository, resource.projectId, permission, asOf);
+        visibility = { includeCompanyWide: false, allowedProjectIds: [resource.projectId] };
+      } else {
+        if (!hasPermission(permission)) throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
+        visibility = { includeCompanyWide: true, allowedProjectIds: [] };
+      }
     } else {
       const availableVisibility = await this.resolveReadVisibility(this.usersRepository, asOf);
       visibility = input.projectId
@@ -780,6 +801,20 @@ export class DocumentsService {
         if (
           link.linkedResourceType === 'client_receipt'
           && await this.canReadLinkedProjectResource(this.usersRepository, link.projectId, 'client_receipts.read', asOf)
+        ) {
+          authorized = true;
+          break;
+        }
+        if (
+          link.linkedResourceType === 'supplier_payment'
+          && await this.canReadLinkedProjectResource(this.usersRepository, link.projectId, 'supplier_payables.read', asOf)
+        ) {
+          authorized = true;
+          break;
+        }
+        if (
+          link.linkedResourceType === 'subcontract_payment'
+          && await this.canReadLinkedProjectResource(this.usersRepository, link.projectId, 'subcontractors.read', asOf)
         ) {
           authorized = true;
           break;

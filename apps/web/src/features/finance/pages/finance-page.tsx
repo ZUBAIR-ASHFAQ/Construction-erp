@@ -17,7 +17,7 @@ import {
   useFinanceTrialBalance,
   useUpdateCashBankAccount
 } from '../hooks/finance.js';
-import type { CashBankAccount, FinancePeriod, GetFinanceLedgerInput } from '../api/finance-api.js';
+import type { CashBankAccount, FinanceJournalLine, FinanceLedgerLine, FinancePeriod, GetFinanceLedgerInput } from '../api/finance-api.js';
 
 const accountSchema = z.object({
   name: z.string().trim().min(1, 'Account name is required.').max(300),
@@ -77,10 +77,28 @@ function formatPeriodLabel(period: FinancePeriod): string {
   return `FY ${period.fiscalYear} · P${period.periodNo} · ${period.startDate} to ${period.endDate} · ${period.status}`;
 }
 
-type FinancePageProps = Readonly<{ view?: 'core' | 'ledger'; initialAccountId?: string | null; onOpenLedger?: (accountId: string) => void }>;
+type FinanceSourceReference = Readonly<{ sourceType: string; sourceId: string | null }>;
+type FinancePageProps = Readonly<{
+  view?: 'core' | 'ledger';
+  initialAccountId?: string | null;
+  onOpenLedger?: (accountId: string) => void;
+  onOpenSource?: (source: FinanceSourceReference) => void;
+}>;
+
+/** Present account movement in business language while retaining debit/credit in the accounting API. */
+function movement(line: Pick<FinanceLedgerLine | FinanceJournalLine, 'debit' | 'credit'>) {
+  const debit = Number(line.debit);
+  if (Number.isFinite(debit) && debit > 0) return { label: 'Money in', amount: line.debit, className: 'finance-money-in' };
+  return { label: 'Money out', amount: line.credit, className: 'finance-money-out' };
+}
+
+/** Only source-owned operational records have a destination workspace. */
+function canOpenFinanceSource(sourceType: string, sourceId: string | null): boolean {
+  return Boolean(sourceId) && ['supplier_payment', 'client_receipt', 'subcontract_payment', 'payroll_payment', 'site_expense'].includes(sourceType);
+}
 
 /** Render the Final Module 18 Finance Core or its separate Account Ledger view against approved Finance APIs. */
-export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedger }: FinancePageProps) {
+export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedger, onOpenSource }: FinancePageProps) {
   const auth = useAuth();
   const canReadFinance = usePermission('finance.read');
   const canReadScopedFinance = canReadFinance;
@@ -196,10 +214,10 @@ export function FinancePage({ view = 'core', initialAccountId = null, onOpenLedg
         <section className="admin-card">
           <h2>General Ledger</h2>
           {canReadScopedFinance && <form className="admin-grid" onSubmit={ledgerForm.handleSubmit(handleLedger)}><label>Fiscal period<select {...ledgerForm.register('periodId')}><option value="">Select period</option>{periods.map((period) => <option key={period.id} value={period.id}>{formatPeriodLabel(period)}</option>)}</select></label><label>Account<select {...ledgerForm.register('accountId')}><option value="">All accounts</option>{selectorAccounts.map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name}</option>)}</select></label><label>Project<select {...ledgerForm.register('projectId')} disabled={!canReadProjects} onChange={(event) => { ledgerForm.setValue('projectId', event.target.value); ledgerForm.setValue('stageId', ''); }}><option value="">{canReadProjects ? 'All allowed Projects' : 'Project read permission required'}</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label><label>Stage<select {...ledgerForm.register('stageId')} disabled={!canReadStages || !ledgerProjectId}><option value="">{ledgerProjectId ? 'All Project Stages' : 'Select a Project first'}</option>{ledgerStages.map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}</select></label><button type="submit">Load ledger</button></form>}
-          {ledgerQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Date</th><th>Journal</th><th>Account</th><th>Project / Stage</th><th>Reason</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{ledgerQuery.data.items.map((line) => <tr key={line.id}><td>{line.postingDate}</td><td><button type="button" className="link-button" onClick={() => setSelectedJournalId(line.journalId)}>{line.journalNo}</button></td><td>{line.accountCode} · {line.accountName}</td><td><span>{line.projectName ? `${line.projectCode ?? ''}${line.projectCode ? ' · ' : ''}${line.projectName}` : 'Company'}</span><span>{line.stageName ? `${line.stageCode ?? ''}${line.stageCode ? ' · ' : ''}${line.stageName}` : '—'}</span></td><td>{line.description}</td><td>{line.debit}</td><td>{line.credit}</td></tr>)}</tbody></table></div>}
+          {ledgerQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Date</th><th>Journal</th><th>Account</th><th>Project / Stage</th><th>Reason</th><th>Movement</th></tr></thead><tbody>{ledgerQuery.data.items.map((line) => { const value = movement(line); const sourceCanOpen = canOpenFinanceSource(line.sourceType, line.sourceId) && Boolean(onOpenSource); return <tr key={line.id}><td>{line.postingDate}</td><td><button type="button" className={`link-button ${value.className}`} onClick={() => setSelectedJournalId(line.journalId)}>{line.journalNo}</button></td><td>{line.accountCode} · {line.accountName}</td><td><span>{line.projectName ? `${line.projectCode ?? ''}${line.projectCode ? ' · ' : ''}${line.projectName}` : 'Company'}</span><span>{line.stageName ? `${line.stageCode ?? ''}${line.stageCode ? ' · ' : ''}${line.stageName}` : '—'}</span></td><td>{sourceCanOpen ? <button type="button" className="link-button" onClick={() => onOpenSource?.({ sourceType: line.sourceType, sourceId: line.sourceId })}>{line.description}</button> : line.description}</td><td><span className={`finance-movement ${value.className}`}><small>{value.label}</small><strong>{value.label === 'Money in' ? '+' : '−'}{value.amount}</strong></span></td></tr>; })}</tbody></table></div>}
           {ledgerQuery.error instanceof Error && <p className="form-error" role="alert">{ledgerQuery.error.message}</p>}
         </section>
-        {selectedJournalId && <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="finance-journal-title"><header className="finance-modal-header"><div><p className="eyebrow">Journal detail</p><h2 id="finance-journal-title">{selectedJournalQuery.data?.journalNo ?? 'Loading journal…'}</h2><p>{selectedJournalQuery.data?.description}</p></div><button type="button" className="finance-modal-close" aria-label="Close journal detail" onClick={() => setSelectedJournalId(null)}>×</button></header><div className="finance-modal-body">{selectedJournalQuery.isPending && <p className="finance-modal-state">Loading journal entries…</p>}{selectedJournalQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Account</th><th>Project / Stage</th><th>Reason</th><th>Debit</th><th>Credit</th></tr></thead><tbody>{selectedJournalQuery.data.lines.map((line) => <tr key={line.id}><td>{line.accountCode} · {line.accountName}</td><td>{line.projectName ?? 'Company'}<br /><small>{line.stageName ?? '—'}</small></td><td>{line.description}</td><td>{line.debit}</td><td>{line.credit}</td></tr>)}</tbody><tfoot><tr><th colSpan={3}>Journal total · {selectedJournalQuery.data.postingDate}</th><th>{selectedJournalQuery.data.totalDebit}</th><th>{selectedJournalQuery.data.totalCredit}</th></tr></tfoot></table></div>}{selectedJournalQuery.error instanceof Error && <p className="form-error" role="alert">{selectedJournalQuery.error.message}</p>}</div></section></div>}
+        {selectedJournalId && <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="finance-journal-title"><header className="finance-modal-header"><div><p className="eyebrow">Journal detail</p><h2 id="finance-journal-title">{selectedJournalQuery.data?.journalNo ?? 'Loading journal…'}</h2><p>{selectedJournalQuery.data && canOpenFinanceSource(selectedJournalQuery.data.sourceType, selectedJournalQuery.data.sourceId) && onOpenSource ? <button type="button" className="link-button" onClick={() => onOpenSource({ sourceType: selectedJournalQuery.data.sourceType, sourceId: selectedJournalQuery.data.sourceId })}>{selectedJournalQuery.data.description}</button> : selectedJournalQuery.data?.description}</p></div><button type="button" className="finance-modal-close" aria-label="Close journal detail" onClick={() => setSelectedJournalId(null)}>×</button></header><div className="finance-modal-body">{selectedJournalQuery.isPending && <p className="finance-modal-state">Loading journal entries…</p>}{selectedJournalQuery.data && <div className="table-wrap"><table className="admin-table"><thead><tr><th>Account</th><th>Project / Stage</th><th>Reason</th><th>Movement</th></tr></thead><tbody>{selectedJournalQuery.data.lines.map((line) => { const value = movement(line); return <tr key={line.id}><td>{line.accountCode} · {line.accountName}</td><td>{line.projectName ?? 'Company'}<br /><small>{line.stageName ?? '—'}</small></td><td>{line.description}</td><td><span className={`finance-movement ${value.className}`}><small>{value.label}</small><strong>{value.label === 'Money in' ? '+' : '−'}{value.amount}</strong></span></td></tr>; })}</tbody><tfoot><tr><th colSpan={3}>Balanced journal · {selectedJournalQuery.data.postingDate}</th><th>{selectedJournalQuery.data.totalDebit}</th></tr></tfoot></table></div>}{selectedJournalQuery.error instanceof Error && <p className="form-error" role="alert">{selectedJournalQuery.error.message}</p>}</div></section></div>}
       </section>
     );
   }

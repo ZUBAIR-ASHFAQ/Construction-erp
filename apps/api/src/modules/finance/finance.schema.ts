@@ -171,7 +171,8 @@ export const trialBalanceQuerySchema = z.object({ periodId: uuidSchema }).strict
 export const listCashBankAccountsQuerySchema = z.object({
   ...paginationQueryShape,
   status: tokenSchema.optional(),
-  projectId: uuidSchema.optional()
+  projectId: uuidSchema.optional(),
+  accountType: z.enum(['CASH', 'BANK']).optional()
 }).strict();
 
 /** Edit Cash/Bank display and lifecycle fields without accepting balances. */
@@ -261,6 +262,9 @@ export const financeLedgerLineResponseSchema = z.object({
   journalId: uuidSchema,
   journalNo: tokenSchema,
   postingDate: dateSchema,
+  sourceType: tokenSchema,
+  sourceId: z.string().trim().min(1).max(200).nullable(),
+  sourceKey: z.string().trim().min(1).max(700).nullable(),
   accountId: uuidSchema,
   accountCode: accountCodeSchema,
   accountName: accountNameSchema,

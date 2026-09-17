@@ -1319,6 +1319,11 @@ export class LabourPayrollService {
       id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
       debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
       payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null; sortOrder: number;
+      salarySlip?: Readonly<{
+        paymentNo: string; paymentDate: string; payrollPeriodStart: string; payrollPeriodEnd: string;
+        salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string;
+        netSalary: string; paymentAmount: string; cashBankAccountName: string; status: 'POSTED' | 'REVERSED'; generatedAt: string | null;
+      }>;
     }> = [];
     let totalSalary = 0n;
     let totalPaid = 0n;
@@ -1332,7 +1337,38 @@ export class LabourPayrollService {
       const primaryProjectId = visibleAllocations[0]?.projectId ?? null;
       entries.push({ id: `salary:${line.id}`, entryDate: dateOnly(line.payrollRun.periodEnd), entryType: 'SALARY_DUE', reference: `Payroll ${dateOnly(line.payrollRun.periodStart)} to ${dateOnly(line.payrollRun.periodEnd)}`, debit: moneyString(salaryCents), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: null, sortOrder: 0 });
       for (const payment of line.payments) {
-        entries.push({ id: `payment:${payment.id}`, entryDate: dateOnly(payment.paymentDate), entryType: 'PAYMENT', reference: payment.paymentNo, debit: ZERO_MONEY, credit: payment.amount.toString(), balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: payment.id, sortOrder: 2 });
+        entries.push({
+          id: `payment:${payment.id}`,
+          entryDate: dateOnly(payment.paymentDate),
+          entryType: 'PAYMENT',
+          reference: payment.paymentNo,
+          debit: ZERO_MONEY,
+          credit: payment.amount.toString(),
+          balance: ZERO_MONEY,
+          projectId: primaryProjectId,
+          projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null,
+          stageName: null,
+          payrollRunId: line.payrollRun.id,
+          payrollLineId: line.id,
+          advanceId: null,
+          paymentId: payment.id,
+          sortOrder: 2,
+          salarySlip: {
+            paymentNo: payment.paymentNo,
+            paymentDate: dateOnly(payment.paymentDate),
+            payrollPeriodStart: dateOnly(line.payrollRun.periodStart),
+            payrollPeriodEnd: dateOnly(line.payrollRun.periodEnd),
+            salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),
+            absenceDeduction: line.absenceDeduction.toString(),
+            earnedSalary: line.grossAmount.toString(),
+            advanceRecovery: line.advanceDeduction.toString(),
+            netSalary: line.netAmount.toString(),
+            paymentAmount: payment.amount.toString(),
+            cashBankAccountName: payment.cashBankAccount.name,
+            status: payment.status as 'POSTED' | 'REVERSED',
+            generatedAt: line.payslip?.generatedAt?.toISOString() ?? null
+          }
+        });
         if (payment.status === 'POSTED') totalPaid += moneyCents(payment.amount);
         if (payment.status === 'REVERSED' && payment.reversalDate) {
           entries.push({ id: `reversal:${payment.id}`, entryDate: dateOnly(payment.reversalDate), entryType: 'PAYMENT_REVERSAL', reference: `${payment.paymentNo} reversed`, debit: payment.amount.toString(), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: payment.id, sortOrder: 3 });

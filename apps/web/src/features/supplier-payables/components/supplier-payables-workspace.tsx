@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { getDocumentDownload, listDocuments } from '../../documents-audit/api/documents-api.js';
+import { PaymentProofActions, savePaymentProof } from '../../documents-audit/components/payment-proof-actions.js';
 import { useCreateDocumentLink, useUploadDocument } from '../../documents-audit/hooks/documents.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProcurementPurchaseOrders } from '../../procurement/hooks/procurement.js';
@@ -77,6 +78,7 @@ type WorkspaceTab = 'invoices' | 'payments' | 'aging';
 type SupplierPayablesWorkspaceProps = Readonly<{
   initialTab?: WorkspaceTab;
   initialVendorId?: string | null;
+  initialPaymentId?: string | null;
   canRead: boolean;
   canCreateInvoice: boolean;
   createInvoiceModalOpen: boolean;
@@ -149,6 +151,9 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const [detailAttachmentError, setDetailAttachmentError] = useState<string | null>(null);
   const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentProofInputKey, setPaymentProofInputKey] = useState(0);
+  const [paymentProofMessage, setPaymentProofMessage] = useState<string | null>(null);
 
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
   const vendorsQuery = useVendors({ ...(tab === 'aging' ? {} : { status: 'ACTIVE' as const }), page: 1, pageSize: 100 }, props.canReadVendors);
@@ -211,6 +216,11 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     page: 1,
     pageSize: 100
   }, props.canRead);
+
+  useEffect(() => {
+    if (!props.initialPaymentId || tab !== 'payments' || !paymentQuery.data) return;
+    window.document.getElementById(`supplier-payment-${props.initialPaymentId}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [paymentQuery.data, props.initialPaymentId, tab]);
   const createPayment = useCreateSupplierPayment();
   const reversePayment = useReverseSupplierPayment();
   const allocatePayment = useAllocateSupplierPayment(selectedPayment?.id ?? null);
@@ -268,6 +278,8 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   /** Close the Supplier New Payment dialog and discard only its browser-side draft state. */
   function closeCreatePaymentModal(): void {
     paymentForm.reset(EMPTY_PAYMENT_FORM);
+    setPaymentProof(null);
+    setPaymentProofInputKey((value) => value + 1);
     createPayment.reset();
     props.onCloseCreatePaymentModal();
   }
@@ -388,6 +400,23 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
       cashBankAccountId: values.cashBankAccountId,
       reference: values.reference.trim() || null
     });
+    if (paymentProof) {
+      try {
+        await savePaymentProof({
+          id: created.id,
+          paymentNo: created.paymentNo,
+          projectId: created.projectId,
+          resourceType: 'supplier_payment',
+          titlePrefix: 'Supplier payment proof',
+          category: 'supplier_payment_proof'
+        }, paymentProof);
+        setPaymentProofMessage(`Payment ${created.paymentNo} and ${paymentProof.name} were saved successfully.`);
+      } catch (error) {
+        setPaymentProofMessage(`Payment ${created.paymentNo} was posted, but its optional proof could not be stored: ${error instanceof Error ? error.message : 'Upload failed.'} Use Attach proof in the payment row to retry.`);
+      }
+    } else {
+      setPaymentProofMessage(`Payment ${created.paymentNo} was posted successfully.`);
+    }
     setSelectedPayment(Number(created.remainingAmount) > 0 ? created : null);
     closeCreatePaymentModal();
   }
@@ -549,15 +578,16 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                   <label>Invoice (optional)
                     <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
                       <option value="">Direct payment (no invoice)</option>
-                      {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
+                      {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>Invoice #{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Paid {displayMoney(invoice.allocatedAmount)} · Remaining {displayMoney(invoice.outstandingAmount)}</option>)}
                     </select>
-                    <small className="muted">Only posted invoices with an outstanding balance for the selected supplier are shown; selecting a project narrows the list.</small>
+                    <small className="muted">Choose an invoice to allocate this payment. Paid is already allocated to that invoice; Remaining is still unpaid. Leave Direct payment selected to post without invoice allocation.</small>
                     <span className="field-error">{paymentForm.formState.errors.supplierInvoiceId?.message}</span>
                   </label>
                   <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /><span className="field-error">{paymentForm.formState.errors.paymentDate?.message}</span></label>
                   <label>Payment amount (partial or full)<input inputMode="decimal" {...paymentForm.register('amount')} /><span className="field-error">{paymentForm.formState.errors.amount?.message}</span></label>
                   <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{paymentCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select><span className="field-error">{paymentForm.formState.errors.cashBankAccountId?.message}</span></label>
                   <label>Reference (optional)<input {...paymentForm.register('reference')} /><span className="field-error">{paymentForm.formState.errors.reference?.message}</span></label>
+                  <label>Payment proof (optional)<input key={paymentProofInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)} /><small className="muted">Attach a bank slip, receipt image, or PDF. You can also attach it later.</small></label>
                 </div>
                 <p className="muted client-payment-create-help">To pay from two accounts, post one partial payment from each account and allocate them independently if required.</p>
                 {mutationMessage(createPayment.error) && <p className="field-error">{mutationMessage(createPayment.error)}</p>}
@@ -742,15 +772,16 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                   <label>Invoice (optional)
                     <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
                       <option value="">Direct payment (no invoice)</option>
-                      {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Outstanding {displayMoney(invoice.outstandingAmount)}</option>)}
+                      {payableInvoiceOptions.map((invoice) => <option key={invoice.id} value={invoice.id}>Invoice #{invoice.invoiceNo} · Total {displayMoney(invoice.totalAmount)} · Paid {displayMoney(invoice.allocatedAmount)} · Remaining {displayMoney(invoice.outstandingAmount)}</option>)}
                     </select>
-                    <small className="muted">Only posted invoices with an outstanding balance for the selected supplier are shown; selecting a project narrows the list.</small>
+                    <small className="muted">Choose an invoice to allocate this payment. Paid is already allocated to that invoice; Remaining is still unpaid. Leave Direct payment selected to post without invoice allocation.</small>
                     <span className="field-error">{paymentForm.formState.errors.supplierInvoiceId?.message}</span>
                   </label>
                   <label>Payment date<input type="date" {...paymentForm.register('paymentDate')} /></label>
                   <label>Payment amount (partial or full)<input inputMode="decimal" {...paymentForm.register('amount')} /></label>
                   <label>Cash / Bank account<select {...paymentForm.register('cashBankAccountId')}><option value="">Select account</option>{paymentCashBankAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name} · Balance {displayMoney(account.balance)}</option>)}</select></label>
                   <label>Reference (optional)<input {...paymentForm.register('reference')} /></label>
+                  <label>Payment proof (optional)<input key={paymentProofInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)} /><small className="muted">Bank slip, receipt image, or PDF. The file is optional.</small></label>
                 </div>
                 <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting payment…' : 'Create & post payment'}</button>
                 {mutationMessage(createPayment.error) && <p className="field-error">{mutationMessage(createPayment.error)}</p>}
@@ -760,8 +791,9 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
 
           <section className="admin-card">
             <div className="section-heading compact-heading"><h2>Supplier Payments</h2><label>Status<select value={paymentStatusFilter} onChange={(event) => setPaymentStatusFilter(event.target.value as '' | 'DRAFT' | 'POSTED' | 'REVERSED')}><option value="">All</option><option value="DRAFT">Draft</option><option value="POSTED">Posted</option><option value="REVERSED">Reversed</option></select></label></div>
+            {paymentProofMessage && <p className="muted" role="status">{paymentProofMessage}</p>}
             <div className="table-wrap"><table><thead><tr><th>Payment</th><th>Date</th><th>Status</th><th>Total</th><th>Allocated</th><th>Remaining</th><th>Reference</th><th>Action</th></tr></thead><tbody>
-              {(paymentQuery.data?.items ?? []).map((payment) => <tr key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td><td><div className="admin-actions">{props.canAllocatePayment && payment.status === 'POSTED' && Number(payment.remainingAmount) > 0 ? <button type="button" className="secondary-button" onClick={() => { setSelectedPayment(payment); allocationForm.reset({ supplierInvoiceId: '', amount: '' }); }}>Allocate</button> : null}{props.canCreatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={reversePayment.isPending} onClick={() => void reverseSelectedPayment(payment)}>{reversePayment.isPending ? 'Reversing…' : 'Reverse'}</button> : null}{!(payment.status === 'POSTED' && ((props.canAllocatePayment && Number(payment.remainingAmount) > 0) || props.canCreatePayment)) ? '—' : null}</div></td></tr>)}
+              {(paymentQuery.data?.items ?? []).map((payment) => <tr id={`supplier-payment-${payment.id}`} className={payment.id === props.initialPaymentId ? 'finance-source-focus' : undefined} key={payment.id}><td>{payment.paymentNo}<br /><small>Supplier {vendorNames.get(payment.vendorId) ?? 'Unknown supplier'} · Project {payment.projectId ? projectNames.get(payment.projectId) ?? 'Unknown project' : 'Company'}</small></td><td>{payment.paymentDate}</td><td>{payment.status}</td><td>{displayMoney(payment.amount)}</td><td>{displayMoney(payment.allocatedAmount)}</td><td>{displayMoney(payment.remainingAmount)}</td><td>{payment.reference ?? '—'}</td><td><div className="admin-actions">{props.canAllocatePayment && payment.status === 'POSTED' && Number(payment.remainingAmount) > 0 ? <button type="button" className="secondary-button" onClick={() => { setSelectedPayment(payment); allocationForm.reset({ supplierInvoiceId: '', amount: '' }); }}>Allocate</button> : null}{props.canCreatePayment && payment.status === 'POSTED' ? <button type="button" className="secondary-button" disabled={reversePayment.isPending} onClick={() => void reverseSelectedPayment(payment)}>{reversePayment.isPending ? 'Reversing…' : 'Reverse'}</button> : null}<PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.projectId} resourceType="supplier_payment" titlePrefix="Supplier payment proof" category="supplier_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /></div></td></tr>)}
               {(paymentQuery.data?.items.length ?? 0) === 0 && <tr><td colSpan={8} className="muted">No Supplier Payments match the current filters.</td></tr>}
             </tbody></table></div>
             {mutationMessage(reversePayment.error) && <p className="field-error">{mutationMessage(reversePayment.error)}</p>}
@@ -822,10 +854,10 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                 <p className="muted">Debit = Supplier Payment, Credit = Supplier Invoice or payment reversal. Allocation rows show how payments were applied without changing the ledger balance again. A negative balance represents a Supplier advance.</p>
                 <div className="table-wrap">
                   <table className="admin-table">
-                    <thead><tr><th>Date</th><th>Type</th><th>Project</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Allocated</th><th>Balance</th><th>Note</th></tr></thead>
+                    <thead><tr><th>Date</th><th>Type</th><th>Project</th><th>Reference</th><th>Debit</th><th>Credit</th><th>Allocated</th><th>Balance</th><th>Note</th><th>Proof</th></tr></thead>
                     <tbody>
-                      {ledgerQuery.data.entries.map((entry) => <tr key={entry.id}><td>{entry.entryDate}</td><td>{entry.entryType === 'PAYMENT_REVERSAL' ? 'Payment reversal' : entry.entryType === 'ALLOCATION' ? 'Allocation' : entry.entryType === 'PAYMENT' ? 'Payment' : 'Invoice'}</td><td>{entry.projectName ?? 'Company-level'}</td><td><strong>{entry.reference}</strong></td><td>{displayMoney(entry.debit)}</td><td>{displayMoney(entry.credit)}</td><td>{displayMoney(entry.allocationAmount)}</td><td><strong>{displayMoney(entry.balance)}</strong></td><td>{entry.note ?? '—'}</td></tr>)}
-                      {ledgerQuery.data.entries.length === 0 && <tr><td colSpan={9} className="muted">No posted Supplier Invoice or Payment activity exists for this supplier.</td></tr>}
+                      {ledgerQuery.data.entries.map((entry) => <tr key={entry.id}><td>{entry.entryDate}</td><td>{entry.entryType === 'PAYMENT_REVERSAL' ? 'Payment reversal' : entry.entryType === 'ALLOCATION' ? 'Allocation' : entry.entryType === 'PAYMENT' ? 'Payment' : 'Invoice'}</td><td>{entry.projectName ?? 'Company-level'}</td><td><strong>{entry.reference}</strong></td><td>{displayMoney(entry.debit)}</td><td>{displayMoney(entry.credit)}</td><td>{displayMoney(entry.allocationAmount)}</td><td><strong>{displayMoney(entry.balance)}</strong></td><td>{entry.note ?? '—'}</td><td>{entry.entryType === 'PAYMENT' || entry.entryType === 'PAYMENT_REVERSAL' ? <PaymentProofActions id={entry.sourceId} paymentNo={entry.reference.replace(/ reversed$/i, '')} projectId={entry.projectId} resourceType="supplier_payment" titlePrefix="Supplier payment proof" category="supplier_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /> : '—'}</td></tr>)}
+                      {ledgerQuery.data.entries.length === 0 && <tr><td colSpan={10} className="muted">No posted Supplier Invoice or Payment activity exists for this supplier.</td></tr>}
                     </tbody>
                   </table>
                 </div>

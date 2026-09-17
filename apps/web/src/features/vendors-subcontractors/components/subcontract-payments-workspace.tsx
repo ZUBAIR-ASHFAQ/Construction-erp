@@ -2,6 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
+import { PaymentProofActions, savePaymentProof } from '../../documents-audit/components/payment-proof-actions.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import {
   useCreateSubcontractPayment,
@@ -26,6 +27,9 @@ type WorkspaceProps = Readonly<{
   canReadSubcontractors: boolean;
   canManageSubcontractors: boolean;
   canReadFinance: boolean;
+  canReadDocuments: boolean;
+  canUploadDocuments: boolean;
+  canLinkDocuments: boolean;
   initialSubcontractorId?: string | null;
 }>;
 
@@ -48,6 +52,9 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
   const [ledgerSubcontractorId, setLedgerSubcontractorId] = useState(props.initialSubcontractorId ?? '');
   const [ledgerStatus, setLedgerStatus] = useState('');
   const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
+  const [paymentProof, setPaymentProof] = useState<File | null>(null);
+  const [paymentProofInputKey, setPaymentProofInputKey] = useState(0);
+  const [paymentProofMessage, setPaymentProofMessage] = useState<string | null>(null);
   const subcontractors = useSubcontractors({ page: 1, pageSize: 100 }, props.canReadSubcontractors);
   const ledger = useSubcontractLedger({
     ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
@@ -92,13 +99,30 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
       form.setError('amount', { message: 'Payment cannot exceed the remaining subcontract balance.' });
       return;
     }
-    await createPayment.mutateAsync({
+    const created = await createPayment.mutateAsync({
       subcontractContractId: values.subcontractContractId,
       paymentDate: values.paymentDate,
       amount: values.amount,
       cashBankAccountId: values.cashBankAccountId,
       reference: values.reference?.trim() || null
     });
+    if (paymentProof) {
+      try {
+        await savePaymentProof({
+          id: created.id,
+          paymentNo: created.paymentNo,
+          projectId: created.project.id,
+          resourceType: 'subcontract_payment',
+          titlePrefix: 'Subcontractor payment proof',
+          category: 'subcontract_payment_proof'
+        }, paymentProof);
+        setPaymentProofMessage(`Payment ${created.paymentNo} and ${paymentProof.name} were saved successfully.`);
+      } catch (error) {
+        setPaymentProofMessage(`Payment ${created.paymentNo} was posted, but its optional proof could not be stored: ${error instanceof Error ? error.message : 'Upload failed.'} Use Attach proof in the payment row to retry.`);
+      }
+    } else {
+      setPaymentProofMessage(`Payment ${created.paymentNo} was posted successfully.`);
+    }
     form.reset({
       subcontractorId: '',
       subcontractContractId: '',
@@ -107,6 +131,8 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
       cashBankAccountId: '',
       reference: ''
     });
+    setPaymentProof(null);
+    setPaymentProofInputKey((value) => value + 1);
     setPaymentDialogOpen(false);
   }
 
@@ -135,6 +161,8 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     cashBankAccountId: '',
                     reference: ''
                   });
+                  setPaymentProof(null);
+                  setPaymentProofInputKey((value) => value + 1);
                   setPaymentDialogOpen(true);
                 }}
               >
@@ -150,10 +178,11 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
 
         <section className="admin-card">
           <h2>Recent subcontractor payments</h2>
+          {paymentProofMessage && <p className="muted" role="status">{paymentProofMessage}</p>}
           {payments.error instanceof Error && <div className="form-error" role="alert">{payments.error.message}</div>}
           <div className="table-wrap">
             <table className="admin-table">
-              <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Status</th><th>Reference</th></tr></thead>
+              <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Status</th><th>Reference</th><th>Proof</th></tr></thead>
               <tbody>
                 {(payments.data?.items ?? []).map((payment) => (
                   <tr key={payment.id}>
@@ -165,9 +194,10 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     <td>{payment.cashBankAccount.name}</td>
                     <td>{payment.status}</td>
                     <td>{payment.reference || '—'}</td>
+                    <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /></td>
                   </tr>
                 ))}
-                {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={8}>No subcontractor payments yet.</td></tr>}
+                {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={9}>No subcontractor payments yet.</td></tr>}
               </tbody>
             </table>
           </div>
@@ -185,6 +215,8 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                 cashBankAccountId: '',
                 reference: ''
               });
+              setPaymentProof(null);
+              setPaymentProofInputKey((value) => value + 1);
               setPaymentDialogOpen(false);
             }}
           >
@@ -237,6 +269,11 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                   <input {...form.register('reference')} />
                   <span className="field-error">{form.formState.errors.reference?.message}</span>
                 </label>
+                <label>
+                  Payment proof (optional)
+                  <input key={paymentProofInputKey} type="file" accept="image/jpeg,image/png,application/pdf" disabled={!props.canUploadDocuments || !props.canLinkDocuments} onChange={(event) => setPaymentProof(event.target.files?.[0] ?? null)} />
+                  <small className="muted">Attach a bank slip, signed receipt, or PDF. You can also attach it later.</small>
+                </label>
               </div>
               {selectedContract && (
                 <p className="muted">Contract {formatMoney(selectedContract.contractAmount, selectedContract.project.currency)} · Paid {formatMoney(selectedContract.paidAmount, selectedContract.project.currency)} · Remaining {formatMoney(selectedContract.balanceAmount, selectedContract.project.currency)}</p>
@@ -253,6 +290,8 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     cashBankAccountId: '',
                     reference: ''
                   });
+                  setPaymentProof(null);
+                  setPaymentProofInputKey((value) => value + 1);
                   setPaymentDialogOpen(false);
                 }}>Cancel</button>
                 <button type="submit" disabled={createPayment.isPending}>{createPayment.isPending ? 'Posting…' : 'Create payment'}</button>
@@ -320,10 +359,11 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
 
       <section className="admin-card">
         <h2>Payment history</h2>
+        {paymentProofMessage && <p className="muted" role="status">{paymentProofMessage}</p>}
         {payments.error instanceof Error && <div className="form-error" role="alert">{payments.error.message}</div>}
         <div className="table-wrap">
           <table className="admin-table">
-            <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Reference</th></tr></thead>
+            <thead><tr><th>Payment</th><th>Subcontractor</th><th>Project</th><th>Date</th><th>Amount</th><th>Cash / Bank</th><th>Reference</th><th>Proof</th></tr></thead>
             <tbody>
               {(payments.data?.items ?? []).map((payment) => (
                 <tr key={payment.id}>
@@ -334,9 +374,10 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                   <td>{formatMoney(payment.amount, payment.project.currency)}</td>
                   <td>{payment.cashBankAccount.name}</td>
                   <td>{payment.reference || '—'}</td>
+                  <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /></td>
                 </tr>
               ))}
-              {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={7}>No subcontractor payments match these filters.</td></tr>}
+              {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={8}>No subcontractor payments match these filters.</td></tr>}
             </tbody>
           </table>
         </div>

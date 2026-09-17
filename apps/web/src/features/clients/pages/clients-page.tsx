@@ -158,13 +158,14 @@ export function ClientsPage({ initialCreate = false }: ClientsPageProps = {}) {
         {clientsQuery.data && (
           <div className="table-wrap client-list-table-wrap">
             <table className="admin-table client-list-table">
-              <thead><tr><th>Client</th><th>Status</th><th>Credit terms</th><th>Actions</th></tr></thead>
+              <thead><tr><th>Client</th><th>Status</th><th>Credit terms</th><th>Client remaining</th><th>Actions</th></tr></thead>
               <tbody>
                 {clients.map((client) => (
                   <tr key={client.id}>
                     <td><strong>{client.displayName}</strong><span>{client.code} · {client.legalName}</span></td>
                     <td><span className={`client-status client-status-${client.status.toLowerCase()}`}>{client.status}</span></td>
                     <td>{client.creditTermsDays === null ? '—' : `${client.creditTermsDays} days`}</td>
+                    <td>{client.remainingByCurrency === null ? 'Restricted' : client.remainingByCurrency.length === 0 ? '—' : client.remainingByCurrency.map((balance) => <span key={balance.currency} className="client-balance-line"><strong>{balance.currency} {Number(balance.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></span>)}</td>
                     <td>
                       <div className="client-row-actions">
                         <button type="button" className="link-button" onClick={() => setDialog({ kind: 'open', clientId: client.id })}>Open</button>

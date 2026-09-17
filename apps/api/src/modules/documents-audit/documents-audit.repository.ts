@@ -390,6 +390,22 @@ export class DocumentsRepository {
       return invoice ? { id: invoice.id, projectId: invoice.projectId, stageId: null } : null;
     }
 
+    if (resourceType === 'supplier_payment') {
+      const payment = await this.db.supplierPayment.findFirst({
+        where: scope.where({ id: resourceId }),
+        select: { id: true, projectId: true }
+      });
+      return payment ? { id: payment.id, projectId: payment.projectId, stageId: null } : null;
+    }
+
+    if (resourceType === 'subcontract_payment') {
+      const payment = await this.db.subcontractPayment.findFirst({
+        where: scope.where({ id: resourceId }),
+        select: { id: true, subcontractContract: { select: { projectId: true } } }
+      });
+      return payment ? { id: payment.id, projectId: payment.subcontractContract.projectId, stageId: null } : null;
+    }
+
     if (resourceType === 'site_expense') {
       const expense = await this.db.siteExpense.findFirst({
         where: scope.where({ id: resourceId }),

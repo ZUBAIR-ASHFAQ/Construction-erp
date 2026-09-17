@@ -2,7 +2,11 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
+import { useClients } from '../../clients/hooks/clients.js';
+import { useFinanceAccounts, useFinancePeriods } from '../../finance/hooks/finance.js';
+import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
+import { useProjects } from '../../projects/hooks/projects.js';
+import { useSubcontractors, useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
 import {
   REPORT_CODES,
   type ReportAnalyticsOverview,
@@ -30,6 +34,12 @@ type ReportsWorkspaceProps = Readonly<{
   canViewOverview: boolean;
   canExport: boolean;
   canSaveFilters: boolean;
+  canReadProjects: boolean;
+  canReadClients: boolean;
+  canReadVendors: boolean;
+  canReadSubcontractors: boolean;
+  canReadFinance: boolean;
+  canReadStages: boolean;
 }>;
 
 const uuidOrEmptySchema = z.union([z.literal(''), z.string().uuid('Use a valid UUID.')]);
@@ -54,10 +64,15 @@ const REPORT_FILTER_FIELDS: Readonly<Record<ReportCode, readonly FilterField[]>>
   'supplier-payables': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status'],
   'supplier-payments': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status'],
   'supplier-aging': ['vendorId', 'projectId', 'asOfDate'],
+  'subcontractor-contracts': ['subcontractorId', 'projectId', 'status'],
+  'subcontractor-payments': ['subcontractorId', 'projectId', 'status'],
+  'subcontractor-ledger': ['subcontractorId', 'projectId', 'status'],
   attendance: ['projectId', 'employeeId', 'fromDate', 'toDate'],
   payroll: [],
   'labour-cost': ['projectId', 'stageId', 'fromDate', 'toDate'],
   'cash-bank': ['status'],
+  'cash-accounts': ['projectId', 'status'],
+  'bank-accounts': ['projectId', 'status'],
   'general-ledger': ['periodId', 'accountId', 'projectId', 'stageId'],
   'profit-loss': ['periodId'],
   'balance-sheet': ['periodId'],
@@ -92,23 +107,29 @@ const PAGINATED_REPORTS = new Set<ReportCode>([
   'supplier-payables',
   'supplier-payments',
   'supplier-aging',
+  'subcontractor-contracts',
+  'subcontractor-payments',
+  'subcontractor-ledger',
   'attendance',
   'payroll',
   'labour-cost',
   'cash-bank',
+  'cash-accounts',
+  'bank-accounts',
   'general-ledger'
 ]);
 
 const FILTER_LABELS: Readonly<Record<FilterField, string>> = {
-  projectId: 'Project ID',
-  stageId: 'Stage ID',
-  clientId: 'Client ID',
+  projectId: 'Project',
+  stageId: 'Project stage',
+  clientId: 'Client',
   vendorId: 'Supplier',
+  subcontractorId: 'Subcontractor',
   employeeId: 'Employee ID',
   warehouseId: 'Warehouse ID',
   materialId: 'Material ID',
-  periodId: 'Fiscal period ID',
-  accountId: 'GL account ID',
+  periodId: 'Fiscal period',
+  accountId: 'General Ledger account',
   fromDate: 'From date',
   toDate: 'To date',
   asOfDate: 'As-of date',
@@ -121,6 +142,7 @@ const reportFilterFormSchema = z.object({
   stageId: uuidOrEmptySchema,
   clientId: uuidOrEmptySchema,
   vendorId: uuidOrEmptySchema,
+  subcontractorId: uuidOrEmptySchema,
   employeeId: uuidOrEmptySchema,
   warehouseId: uuidOrEmptySchema,
   materialId: uuidOrEmptySchema,
@@ -147,6 +169,7 @@ const EMPTY_FORM: FilterFormValues = {
   stageId: '',
   clientId: '',
   vendorId: '',
+  subcontractorId: '',
   employeeId: '',
   warehouseId: '',
   materialId: '',
@@ -157,6 +180,103 @@ const EMPTY_FORM: FilterFormValues = {
   asOfDate: '',
   status: '',
 };
+
+type ReportSection = Readonly<{
+  id: string;
+  title: string;
+  description: string;
+  tone: string;
+  codes: readonly ReportCode[];
+}>;
+
+const REPORT_SECTIONS: readonly ReportSection[] = Object.freeze([
+  {
+    id: 'projects',
+    title: 'Projects & Cost Control',
+    description: 'Project cost, budget, profitability, material and stage performance.',
+    tone: 'blue',
+    codes: ['project-cost', 'budget-vs-actual', 'project-profit-loss', 'project-expenses', 'project-material', 'stage-progress', 'stage-cost', 'stage-billing', 'stage-receipts']
+  },
+  {
+    id: 'suppliers',
+    title: 'Supplier Reports',
+    description: 'Purchases, invoices, payments, outstanding payables and aging.',
+    tone: 'amber',
+    codes: ['supplier-purchases', 'supplier-payables', 'supplier-payments', 'supplier-aging']
+  },
+  {
+    id: 'subcontractors',
+    title: 'Subcontractor Reports',
+    description: 'Project contracts, posted payments and remaining contract balances.',
+    tone: 'violet',
+    codes: ['subcontractor-contracts', 'subcontractor-payments', 'subcontractor-ledger']
+  },
+  {
+    id: 'clients',
+    title: 'Client Reports',
+    description: 'Invoices, receipts, outstanding balances, advances and aging.',
+    tone: 'green',
+    codes: ['client-billing', 'client-payments', 'client-outstanding', 'client-advance', 'client-aging']
+  },
+  {
+    id: 'bank',
+    title: 'Bank Account Reports',
+    description: 'Bank-account balances and account-level financial activity.',
+    tone: 'cyan',
+    codes: ['bank-accounts']
+  },
+  {
+    id: 'cash',
+    title: 'Cash Account Reports',
+    description: 'Cash-account opening balances, current balances and status.',
+    tone: 'teal',
+    codes: ['cash-accounts']
+  },
+  {
+    id: 'people',
+    title: 'Employees & Payroll',
+    description: 'Attendance, payroll and employee salary cost by Project.',
+    tone: 'rose',
+    codes: ['attendance', 'payroll', 'labour-cost']
+  },
+  {
+    id: 'finance',
+    title: 'Finance & Statements',
+    description: 'Combined accounts, General Ledger and core financial statements.',
+    tone: 'slate',
+    codes: ['cash-bank', 'general-ledger', 'profit-loss', 'balance-sheet', 'cash-flow']
+  }
+]);
+
+const REPORT_DESCRIPTIONS: Readonly<Partial<Record<ReportCode, string>>> = Object.freeze({
+  'supplier-purchases': 'Purchase orders raised for suppliers.',
+  'supplier-payables': 'Posted supplier invoices and outstanding amounts.',
+  'supplier-payments': 'Payments made to suppliers from Cash/Bank.',
+  'supplier-aging': 'Supplier outstanding grouped by aging position.',
+  'subcontractor-contracts': 'Agreed Project contracts and lifecycle status.',
+  'subcontractor-payments': 'Posted payments made against subcontract contracts.',
+  'subcontractor-ledger': 'Contract value, paid amount and remaining balance.',
+  'client-billing': 'Issued Client invoices and billed amounts.',
+  'client-payments': 'Client receipts and their Project allocation.',
+  'client-outstanding': 'Client amount still due for collection.',
+  'client-advance': 'Unallocated Client advances held by Project.',
+  'client-aging': 'Client receivables by aging position.',
+  'cash-accounts': 'Cashbook accounts with opening and current balances.',
+  'bank-accounts': 'Bank accounts with account numbers and current balances.'
+});
+
+/** Turn a server field key into a readable column heading. */
+function displayColumnName(column: string): string {
+  const explicit: Readonly<Record<string, string>> = {
+    vendorId: 'Supplier',
+    subcontractorId: 'Subcontractor',
+    projectId: 'Project',
+    clientId: 'Client',
+    cashBankAccountId: 'Cash / Bank account'
+  };
+  if (explicit[column]) return explicit[column];
+  return column.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replaceAll('_', ' ').replace(/^./, (value) => value.toUpperCase());
+}
 
 /** Return one readable request error without exposing backend internals. */
 function errorMessage(error: unknown): string | null {
@@ -196,7 +316,18 @@ function displayReportValue(value: unknown, column: string, vendorNames: Readonl
   if (column === 'vendorId' && typeof value === 'string') return vendorNames.get(value) ?? 'Unknown supplier';
   if (column === 'category' && value === 'labour') return 'Employee Salaries';
   if (column === 'category' && value === 'security') return 'Security Employee Salaries';
-  if (typeof value === 'object') return JSON.stringify(value);
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>;
+    const name = record.displayName ?? record.name ?? record.legalName;
+    const code = record.projectCode ?? record.code ?? record.paymentNo;
+    if (typeof name === 'string' && typeof code === 'string') return `${code} · ${name}`;
+    if (typeof name === 'string') return name;
+    if (typeof code === 'string') return code;
+    return Object.values(record)
+      .filter((item): item is string | number => typeof item === 'string' || typeof item === 'number')
+      .join(' · ') || '—';
+  }
+  if (Array.isArray(value)) return value.map((item) => displayReportValue(item, column, vendorNames)).join(', ');
   return String(value);
 }
 
@@ -350,21 +481,32 @@ function AnalyticsOverview({
 
 /** Render the permission-filtered Module 20 catalog, filters, results, saved filters and export workflow. */
 export function ReportsWorkspace(props: ReportsWorkspaceProps) {
-  const vendorsQuery = useVendors({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canRead);
+  const form = useForm<FilterFormValues>({ resolver: zodResolver(reportFilterFormSchema), defaultValues: EMPTY_FORM });
+  const [selectedReportCode, setSelectedReportCode] = useState<ReportCode | null>(null);
+  const [analyticsProjectId, setAnalyticsProjectId] = useState('');
+  const [globalProjectId, setGlobalProjectId] = useState('');
+  const [globalFromDate, setGlobalFromDate] = useState('');
+  const [globalToDate, setGlobalToDate] = useState('');
+  const [reportSearch, setReportSearch] = useState('');
+  const [savedFilterName, setSavedFilterName] = useState('');
+  const [outputFormat, setOutputFormat] = useState<ReportOutputFormat>('PDF');
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [appliedInput, setAppliedInput] = useState<RunReportInput | null>(null);
+  const watchedProjectId = form.watch('projectId');
+  const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
+  const clientsQuery = useClients({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadClients);
+  const vendorsQuery = useVendors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadVendors);
+  const subcontractorsQuery = useSubcontractors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadSubcontractors);
+  const stagesQuery = useProjectStages(watchedProjectId || null, props.canReadStages && Boolean(watchedProjectId));
+  const financeAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, props.canReadFinance);
+  const financePeriodsQuery = useFinancePeriods({ page: 1, pageSize: 100 }, props.canReadFinance);
   const vendorNames = useMemo(() => new Map((vendorsQuery.data?.items ?? []).map((vendor) => [vendor.id, vendor.displayName])), [vendorsQuery.data?.items]);
   const catalogQuery = useReportCatalog(props.canRead);
   const runMutation = useRunReport();
   const exportMutation = useCreateReportExport();
   const downloadMutation = useReportDownload();
   const saveFilterMutation = useSaveReportFilter();
-  const form = useForm<FilterFormValues>({ resolver: zodResolver(reportFilterFormSchema), defaultValues: EMPTY_FORM });
-  const [selectedReportCode, setSelectedReportCode] = useState<ReportCode | null>(null);
-  const [analyticsProjectId, setAnalyticsProjectId] = useState('');
   const savedFiltersQuery = useSavedReportFilters(selectedReportCode, props.canRead && props.canSaveFilters);
-  const [savedFilterName, setSavedFilterName] = useState('');
-  const [outputFormat, setOutputFormat] = useState<ReportOutputFormat>('PDF');
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
-  const [appliedInput, setAppliedInput] = useState<RunReportInput | null>(null);
   const runQuery = useReportRun(activeRunId, props.canRead && props.canExport);
   const selectedReport = catalogQuery.data?.items.find((item) => item.code === selectedReportCode) ?? null;
   const overviewEnabled = props.canRead && props.canViewOverview && selectedReport === null;
@@ -377,6 +519,23 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
       label: `${project.projectCode} · ${project.projectName}`
     }))).sort((left, right) => left.label.localeCompare(right.label)) ?? []
   ), [portfolioOverviewQuery.data]);
+  const projectOptions = useMemo(() => {
+    if (projectsQuery.data?.items.length) {
+      return projectsQuery.data.items.map((project) => ({ id: project.id, label: `${project.projectCode} · ${project.name}` }));
+    }
+    return analyticsProjectOptions;
+  }, [analyticsProjectOptions, projectsQuery.data?.items]);
+  const catalogByCode = useMemo(() => new Map((catalogQuery.data?.items ?? []).map((report) => [report.code, report])), [catalogQuery.data?.items]);
+  const visibleSections = useMemo(() => {
+    const search = reportSearch.trim().toLowerCase();
+    return REPORT_SECTIONS.map((section) => ({
+      ...section,
+      reports: section.codes
+        .map((code) => catalogByCode.get(code))
+        .filter((report): report is NonNullable<typeof report> => Boolean(report))
+        .filter((report) => !search || report.name.toLowerCase().includes(search) || section.title.toLowerCase().includes(search))
+    })).filter((section) => section.reports.length > 0);
+  }, [catalogByCode, reportSearch]);
   const activeFilterFields = selectedReportCode ? REPORT_FILTER_FIELDS[selectedReportCode] : [];
   const columns = reportColumns(runMutation.data?.rows ?? []);
   const currentPage = runMutation.data?.page ?? 1;
@@ -398,13 +557,54 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   /** Change report and clear filters/results that belong to the previously selected report contract. */
   function handleReportChange(reportCode: ReportCode | null): void {
     setSelectedReportCode(reportCode);
-    form.reset(reportCode ? { ...EMPTY_FORM, reportCode } : EMPTY_FORM);
+    const fields = reportCode ? REPORT_FILTER_FIELDS[reportCode] : [];
+    form.reset(reportCode ? {
+      ...EMPTY_FORM,
+      reportCode,
+      ...(fields.includes('projectId') && globalProjectId ? { projectId: globalProjectId } : {}),
+      ...(fields.includes('fromDate') && globalFromDate ? { fromDate: globalFromDate } : {}),
+      ...(fields.includes('toDate') && globalToDate ? { toDate: globalToDate } : {}),
+      ...(fields.includes('asOfDate') && globalToDate ? { asOfDate: globalToDate } : {})
+    } : EMPTY_FORM);
     runMutation.reset();
     exportMutation.reset();
     downloadMutation.reset();
     setAppliedInput(null);
     setActiveRunId(null);
     setSavedFilterName('');
+  }
+
+  /** Apply the global Project selection to the overview and any compatible detailed report. */
+  function handleGlobalProjectChange(projectId: string): void {
+    setGlobalProjectId(projectId);
+    setAnalyticsProjectId(projectId);
+    if (selectedReportCode && REPORT_FILTER_FIELDS[selectedReportCode].includes('projectId')) {
+      form.setValue('projectId', projectId, { shouldValidate: true });
+      form.setValue('stageId', '');
+    }
+  }
+
+  /** Apply one global date boundary only to compatible detailed reports. */
+  function handleGlobalDateChange(field: 'fromDate' | 'toDate', value: string): void {
+    if (field === 'fromDate') setGlobalFromDate(value);
+    else setGlobalToDate(value);
+    if (!selectedReportCode) return;
+    const fields = REPORT_FILTER_FIELDS[selectedReportCode];
+    if (fields.includes(field)) form.setValue(field, value, { shouldValidate: true });
+    if (field === 'toDate' && fields.includes('asOfDate')) form.setValue('asOfDate', value, { shouldValidate: true });
+  }
+
+  /** Clear the shared report context and the selected report's matching fields. */
+  function handleResetGlobalFilters(): void {
+    setGlobalProjectId('');
+    setAnalyticsProjectId('');
+    setGlobalFromDate('');
+    setGlobalToDate('');
+    if (selectedReportCode) {
+      form.reset({ ...EMPTY_FORM, reportCode: selectedReportCode });
+      runMutation.reset();
+      setAppliedInput(null);
+    }
   }
 
   /** Run the selected report from validated filters and start at its first bounded page. */
@@ -474,18 +674,54 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
 
   return (
     <div className="reports-workspace">
-      <section className="admin-card">
-        <div className="section-heading compact-heading">
-          <h1>Reports & Analytics</h1>
-          <p className="muted">Run permission-safe reports from approved source modules. Report values remain server-owned.</p>
+      <section className="admin-card reports-command-center">
+        <div className="section-heading reports-page-heading">
+          <div>
+            <span className="eyebrow">Management reporting</span>
+            <h1>Reports & Analytics</h1>
+            <p className="muted">One professional report center for Projects, suppliers, subcontractors, Clients, Cash, Bank and Finance.</p>
+          </div>
+          <span className="reports-live-badge">Live source data</span>
+        </div>
+        <div className="reports-global-filterbar" aria-label="Global report filters">
+          <div className="reports-global-filter-heading">
+            <strong>Global filters</strong>
+            <span>Applied automatically when the selected report supports them.</span>
+          </div>
+          <label>
+            Project
+            <select value={globalProjectId} onChange={(event) => handleGlobalProjectChange(event.target.value)}>
+              <option value="">All permitted Projects</option>
+              {projectOptions.map((project) => <option key={project.id} value={project.id}>{project.label}</option>)}
+            </select>
+          </label>
+          <label>
+            From date
+            <input type="date" value={globalFromDate} onChange={(event) => handleGlobalDateChange('fromDate', event.target.value)} />
+          </label>
+          <label>
+            To / as-of date
+            <input type="date" min={globalFromDate || undefined} value={globalToDate} onChange={(event) => handleGlobalDateChange('toDate', event.target.value)} />
+          </label>
+          <button type="button" className="secondary-button" onClick={handleResetGlobalFilters}>Reset</button>
         </div>
         {catalogQuery.isPending && <p>Loading report catalog…</p>}
+        <div className="reports-catalog-toolbar">
+          <div>
+            <h2>Report Catalog</h2>
+            <p className="muted">Choose a report from its business section. Your permissions and Project scope are enforced by the server.</p>
+          </div>
+          <label className="reports-search-field">
+            <span className="sr-only">Search reports</span>
+            <input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="Search reports" />
+          </label>
+        </div>
         {errorMessage(catalogQuery.error) && <div className="form-error" role="alert">{errorMessage(catalogQuery.error)}</div>}
         {catalogQuery.data && catalogQuery.data.items.length === 0 && <p className="muted">No reports are available for the current permissions.</p>}
         {catalogQuery.data && catalogQuery.data.items.length > 0 && (
           <div className="reports-catalog-grid">
             <label>
-              Report Catalog
+              Quick report switcher
               <select value={selectedReportCode ?? ''} onChange={(event) => handleReportChange(event.target.value ? event.target.value as ReportCode : null)}>
                 <option value="">Choose a detailed report</option>
                 {catalogQuery.data.items.map((report) => (
@@ -501,14 +737,59 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             )}
           </div>
         )}
+        {catalogQuery.data && catalogQuery.data.items.length > 0 && visibleSections.length === 0 && (
+          <p className="reports-empty-state">No report matches your search.</p>
+        )}
+        {visibleSections.length > 0 && (
+          <div className="reports-section-grid">
+            {visibleSections.map((section) => (
+              <section className={`reports-section-card tone-${section.tone}`} key={section.id} aria-labelledby={`report-section-${section.id}`}>
+                <div className="reports-section-heading">
+                  <span className="reports-section-icon" aria-hidden="true">{section.title.charAt(0)}</span>
+                  <div>
+                    <h3 id={`report-section-${section.id}`}>{section.title}</h3>
+                    <p>{section.description}</p>
+                  </div>
+                  <span className="reports-section-count">{section.reports.length}</span>
+                </div>
+                <div className="reports-section-links">
+                  {section.reports.map((report) => (
+                    <button
+                      type="button"
+                      key={report.code}
+                      className={selectedReportCode === report.code ? 'reports-report-link is-active' : 'reports-report-link'}
+                      onClick={() => handleReportChange(report.code)}
+                    >
+                      <span>
+                        <strong>{report.name}</strong>
+                        <small>{REPORT_DESCRIPTIONS[report.code] ?? `Source-derived ${report.domain.toLowerCase()} report.`}</small>
+                      </span>
+                      <span aria-hidden="true">→</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+        {selectedReport && (
+          <div className="reports-selected-report">
+            <div>
+              <span className="eyebrow">Selected report</span>
+              <strong>{selectedReport.name}</strong>
+              <span>{selectedReport.domain} · Export: {selectedReport.outputFormats.join(', ')}</span>
+            </div>
+            <button type="button" className="secondary-button" onClick={() => handleReportChange(null)}>Back to overview</button>
+          </div>
+        )}
       </section>
 
       {!selectedReport && props.canViewOverview && overviewQuery.data && (
         <AnalyticsOverview
           data={overviewQuery.data}
-          projectOptions={analyticsProjectOptions}
+          projectOptions={projectOptions}
           selectedProjectId={analyticsProjectId}
-          onProjectChange={setAnalyticsProjectId}
+          onProjectChange={handleGlobalProjectChange}
         />
       )}
       {!selectedReport && props.canViewOverview && overviewQuery.isPending && (
@@ -536,10 +817,28 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
                 {activeFilterFields.map((field) => (
                   <label key={field}>
                     {FILTER_LABELS[field]}
-                    {field === 'vendorId' ? (
-                      <select {...form.register(field)}><option value="">All suppliers</option>{(vendorsQuery.data?.items ?? []).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.displayName}</option>)}</select>
+                    {field === 'projectId' ? (
+                      <select {...form.register(field)}>
+                        <option value="">All permitted Projects</option>
+                        {projectOptions.map((project) => <option key={project.id} value={project.id}>{project.label}</option>)}
+                      </select>
+                    ) : field === 'stageId' ? (
+                      <select {...form.register(field)} disabled={!watchedProjectId}>
+                        <option value="">{watchedProjectId ? 'All Project stages' : 'Select a Project first'}</option>
+                        {(stagesQuery.data?.items ?? []).map((stage) => <option key={stage.id} value={stage.id}>{stage.code} · {stage.name}</option>)}
+                      </select>
+                    ) : field === 'clientId' ? (
+                      <select {...form.register(field)}><option value="">All Clients</option>{(clientsQuery.data?.items ?? []).map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}</select>
+                    ) : field === 'vendorId' ? (
+                      <select {...form.register(field)}><option value="">All suppliers</option>{(vendorsQuery.data?.items ?? []).map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select>
+                    ) : field === 'subcontractorId' ? (
+                      <select {...form.register(field)}><option value="">All subcontractors</option>{(subcontractorsQuery.data?.items ?? []).map((subcontractor) => <option key={subcontractor.id} value={subcontractor.id}>{subcontractor.name} · {subcontractor.specialty}</option>)}</select>
+                    ) : field === 'periodId' ? (
+                      <select {...form.register(field)}><option value="">Select fiscal period</option>{(financePeriodsQuery.data?.items ?? []).map((period) => <option key={period.id} value={period.id}>{period.fiscalYear} / {period.periodNo} · {period.startDate} to {period.endDate}</option>)}</select>
+                    ) : field === 'accountId' ? (
+                      <select {...form.register(field)}><option value="">All General Ledger accounts</option>{(financeAccountsQuery.data?.items ?? []).map((account) => <option key={account.id} value={account.id}>{account.accountCode} · {account.name}</option>)}</select>
                     ) : (
-                      <input type={field === 'fromDate' || field === 'toDate' || field === 'asOfDate' ? 'date' : 'text'} placeholder={field.endsWith('Id') ? 'UUID' : undefined} {...form.register(field)} />
+                      <input type={field === 'fromDate' || field === 'toDate' || field === 'asOfDate' ? 'date' : 'text'} placeholder={field.endsWith('Id') ? 'Record identifier' : undefined} {...form.register(field)} />
                     )}
                     {form.formState.errors[field] && <span className="field-error">{form.formState.errors[field]?.message}</span>}
                   </label>
@@ -574,7 +873,7 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             {runMutation.data.rows.length === 0 ? <p>No matching rows.</p> : (
               <div className="table-wrap">
                 <table className="admin-table reports-result-table">
-                  <thead><tr>{columns.map((column) => <th key={column}>{column === 'vendorId' ? 'Supplier' : column}</th>)}</tr></thead>
+                  <thead><tr>{columns.map((column) => <th key={column}>{displayColumnName(column)}</th>)}</tr></thead>
                   <tbody>
                     {runMutation.data.rows.map((row, rowIndex) => (
                       <tr key={rowIndex}>{columns.map((column) => <td key={column}>{displayReportValue(row[column], column, vendorNames)}</td>)}</tr>

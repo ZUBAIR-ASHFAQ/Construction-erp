@@ -105,7 +105,24 @@ export class VendorsSubcontractorsService {
       skip: (page - 1) * pageSize,
       take: pageSize
     });
-    return { items: result.items, total: result.total, page, pageSize };
+    let payableSummaries: ReadonlyMap<string, Readonly<{ outstandingAmount: string }>> | null = null;
+    try {
+      payableSummaries = await new SupplierPayablesService(this.db).getVendorPayableSummaries(
+        result.items.map((vendor) => vendor.id),
+        input.projectId
+      );
+    } catch (error) {
+      if (!(error instanceof AuthorizationError)) throw error;
+    }
+    return {
+      items: result.items.map((vendor) => ({
+        ...vendor,
+        payableOutstanding: payableSummaries?.get(vendor.id)?.outstandingAmount ?? null
+      })),
+      total: result.total,
+      page,
+      pageSize
+    };
   }
 
   /** Read Supplier Payables summary when the actor has matching source-module access. */

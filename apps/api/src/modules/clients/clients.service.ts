@@ -6,6 +6,7 @@ import { recordOutboxEvent } from '@construction-erp/outbox';
 import { hasPermission, requireRequestSecurityContext } from '@construction-erp/request-context';
 import { ClientBillingRepository } from '../client-billing/client-billing.repository.js';
 import { ClientReceiptsRepository, subtractMoneyAmounts } from '../client-receipts/client-receipts.repository.js';
+import { ProjectProfitabilityService } from '../project-profitability/project-profitability.service.js';
 import { ClientsRepository } from './clients.repository.js';
 import {
   createClientError,
@@ -20,6 +21,17 @@ import {
 const CLIENT_ACTIVE = 'ACTIVE';
 const CONTACT_ACTIVE = 'ACTIVE';
 const CLIENT_SEQUENCE_KEY = 'client';
+
+/** Convert an exact two-decimal API amount to minor units. */
+function moneyToMinorUnits(value: string): bigint {
+  const [whole = '0', fraction = ''] = value.split('.');
+  return (BigInt(whole) * 100n) + BigInt(`${fraction}00`.slice(0, 2));
+}
+
+/** Convert exact minor units to the stable API money representation. */
+function minorUnitsToMoney(value: bigint): string {
+  return `${value / 100n}.${(value % 100n).toString().padStart(2, '0')}`;
+}
 
 /** Business rules for final Client Management reads and commands. */
 export class ClientsService {
@@ -44,8 +56,40 @@ export class ClientsService {
       take: pageSize
     });
 
+    let remainingByClient: ReadonlyMap<string, readonly Readonly<{ currency: string; amount: string }>[]> | null = null;
+    try {
+      const wantedClientIds = new Set(result.items.map((client) => client.id));
+      const totals = new Map<string, Map<string, bigint>>();
+      const profitability = new ProjectProfitabilityService(this.db);
+      let portfolioPage = 1;
+      let portfolioTotal = 0;
+      do {
+        const portfolio = await profitability.getPortfolio({ page: portfolioPage, pageSize: 100 });
+        portfolioTotal = portfolio.total;
+        for (const project of portfolio.items) {
+          if (!wantedClientIds.has(project.clientId)) continue;
+          const byCurrency = totals.get(project.clientId) ?? new Map<string, bigint>();
+          byCurrency.set(
+            project.currency,
+            (byCurrency.get(project.currency) ?? 0n) + moneyToMinorUnits(project.commercialSummary.remainingToReceive)
+          );
+          totals.set(project.clientId, byCurrency);
+        }
+        portfolioPage += 1;
+      } while ((portfolioPage - 1) * 100 < portfolioTotal);
+      remainingByClient = new Map(result.items.map((client) => [
+        client.id,
+        [...(totals.get(client.id) ?? new Map<string, bigint>())].map(([currency, amount]) => ({ currency, amount: minorUnitsToMoney(amount) }))
+      ]));
+    } catch (error) {
+      if (!(error instanceof AuthorizationError)) throw error;
+    }
+
     return {
-      items: result.items,
+      items: result.items.map((client) => ({
+        ...client,
+        remainingByCurrency: remainingByClient?.get(client.id) ?? null
+      })),
       page,
       pageSize,
       total: result.total

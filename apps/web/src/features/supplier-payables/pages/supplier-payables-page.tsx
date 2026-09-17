@@ -3,7 +3,7 @@ import { useAuth, usePermission } from '../../administration/hooks/auth.js';
 import { SupplierPayablesWorkspace } from '../components/supplier-payables-workspace.js';
 
 /** Bind Module 17 Supplier Payables permissions to the React workspace. */
-export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = 'Supplier', initialVendorId = null }: Readonly<{ initialTab?: 'invoices' | 'payments' | 'aging'; accountLabel?: 'Supplier' | 'Subcontractor'; initialVendorId?: string | null }> = {}) {
+export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = 'Supplier', initialVendorId = null, initialPaymentId = null }: Readonly<{ initialTab?: 'invoices' | 'payments' | 'aging'; accountLabel?: 'Supplier' | 'Subcontractor'; initialVendorId?: string | null; initialPaymentId?: string | null }> = {}) {
   const auth = useAuth();
   const hasRestrictedProjects = auth.identity?.projectScope.kind === 'restricted' && auth.identity.projectScope.projectIds.length > 0;
   const canRead = usePermission('supplier_payables.read') || Boolean(hasRestrictedProjects);
@@ -27,6 +27,7 @@ export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = '
       <SupplierPayablesWorkspace
         initialTab={initialTab}
         initialVendorId={initialVendorId}
+        initialPaymentId={initialPaymentId}
         canRead={canRead}
         canCreateInvoice={canCreateInvoice}
         createInvoiceModalOpen={initialTab === 'invoices' && createInvoiceOpen}

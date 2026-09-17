@@ -5840,6 +5840,39 @@ body,
   text-align: center;
 }
 
+.finance-movement {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.finance-movement small {
+  color: currentColor;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.finance-money-in {
+  color: #15803d;
+}
+
+.finance-money-out {
+  color: #dc2626;
+}
+
+.client-balance-line {
+  display: block;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.finance-source-focus {
+  background: #eff6ff;
+  box-shadow: inset 4px 0 0 #2563eb;
+}
+
 /* Keep the Client New Payment action in the page header and its entry fields inside one focused dialog. */
 .client-payment-page-heading {
   display: flex;
@@ -6109,6 +6142,277 @@ body,
   margin-top: 20px;
   padding-top: 20px;
   border-top: 1px solid #e2e8f0;
+}
+
+/* Reports professional command center and grouped catalog */
+.reports-command-center {
+  display: grid;
+  gap: 1.25rem;
+  background:
+    radial-gradient(circle at 96% 0%, rgb(37 99 235 / 9%), transparent 25%),
+    #ffffff;
+}
+
+.reports-page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.reports-page-heading h1,
+.reports-catalog-toolbar h2 {
+  margin: 0.2rem 0 0;
+}
+
+.reports-global-filterbar {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.4fr) repeat(2, minmax(165px, 0.8fr)) auto;
+  align-items: end;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid #cddaf0;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f8fbff, #f5f8fd);
+}
+
+.reports-global-filter-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: baseline;
+  gap: 0.7rem;
+}
+
+.reports-global-filter-heading strong {
+  color: #14213a;
+  font-size: 0.95rem;
+}
+
+.reports-global-filter-heading span {
+  color: #6b7c93;
+  font-size: 0.8rem;
+}
+
+.reports-global-filterbar label,
+.reports-search-field {
+  display: grid;
+  gap: 0.4rem;
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.reports-global-filterbar select,
+.reports-global-filterbar input,
+.reports-search-field input,
+.reports-filter-grid select {
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid #bdcadb;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #14213a;
+}
+
+.reports-global-filterbar > button {
+  min-height: 44px;
+}
+
+.reports-catalog-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 1rem;
+  padding-top: 0.25rem;
+}
+
+.reports-catalog-toolbar p {
+  margin: 0.35rem 0 0;
+}
+
+.reports-search-field {
+  width: min(320px, 100%);
+}
+
+.reports-section-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.reports-section-card {
+  --report-tone: #2563eb;
+  --report-tint: #eff6ff;
+  overflow: hidden;
+  border: 1px solid #dbe5f2;
+  border-top: 3px solid var(--report-tone);
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgb(15 23 42 / 4%);
+}
+
+.reports-section-card.tone-amber { --report-tone: #c27803; --report-tint: #fffbeb; }
+.reports-section-card.tone-violet { --report-tone: #7c3aed; --report-tint: #f5f3ff; }
+.reports-section-card.tone-green { --report-tone: #16803d; --report-tint: #f0fdf4; }
+.reports-section-card.tone-cyan { --report-tone: #087ea4; --report-tint: #ecfeff; }
+.reports-section-card.tone-teal { --report-tone: #0f766e; --report-tint: #f0fdfa; }
+.reports-section-card.tone-rose { --report-tone: #be365f; --report-tint: #fff1f5; }
+.reports-section-card.tone-slate { --report-tone: #475569; --report-tint: #f8fafc; }
+
+.reports-section-heading {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-bottom: 1px solid #e6edf6;
+  background: linear-gradient(135deg, var(--report-tint), #ffffff);
+}
+
+.reports-section-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--report-tone);
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 900;
+}
+
+.reports-section-heading h3 {
+  margin: 0;
+  color: #14213a;
+  font-size: 1rem;
+}
+
+.reports-section-heading p {
+  margin: 0.25rem 0 0;
+  color: #6b7c93;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.reports-section-count {
+  min-width: 28px;
+  padding: 0.25rem 0.45rem;
+  border-radius: 999px;
+  background: var(--report-tint);
+  color: var(--report-tone);
+  font-size: 0.76rem;
+  font-weight: 900;
+  text-align: center;
+}
+
+.reports-section-links {
+  display: grid;
+  padding: 0.45rem;
+}
+
+.reports-report-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.72rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  background: transparent;
+  color: #41536c;
+  text-align: left;
+}
+
+.reports-report-link:hover,
+.reports-report-link.is-active {
+  border-color: color-mix(in srgb, var(--report-tone) 28%, #ffffff);
+  background: var(--report-tint);
+  color: var(--report-tone);
+}
+
+.reports-report-link > span:first-child {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.reports-report-link strong {
+  font-size: 0.86rem;
+}
+
+.reports-report-link small {
+  color: #718198;
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.reports-selected-report {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 14px;
+  background: #eff6ff;
+}
+
+.reports-selected-report > div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.reports-selected-report > div > strong {
+  color: #143f87;
+  font-size: 1.05rem;
+}
+
+.reports-selected-report > div > span:last-child {
+  color: #60738d;
+  font-size: 0.78rem;
+}
+
+.reports-empty-state {
+  margin: 0;
+  padding: 1.25rem;
+  border: 1px dashed #bdcadb;
+  border-radius: 12px;
+  color: #64748b;
+  text-align: center;
+}
+
+@media (max-width: 980px) {
+  .reports-global-filterbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .reports-global-filterbar > button {
+    width: fit-content;
+  }
+}
+
+@media (max-width: 720px) {
+  .reports-page-heading,
+  .reports-catalog-toolbar,
+  .reports-selected-report {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .reports-global-filterbar,
+  .reports-section-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reports-global-filter-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .reports-search-field {
+    width: 100%;
+  }
 }
 
 /* Reports executive analytics landing */

@@ -407,6 +407,32 @@ export class SupplierPayablesService {
     };
   }
 
+  /** Return payable summaries for a Supplier page without issuing per-row database queries. */
+  async getVendorPayableSummaries(vendorIds: readonly string[], projectId?: string) {
+    const visibility = await this.resolveVisibility(new AdministrationRepository(this.db), 'supplier_payables.read', new Date());
+    const sources = await new SupplierPayablesRepository(this.db).listVendorPayableSummarySources(vendorIds, projectId, visibility);
+    const totals = new Map<string, { postedInvoiceCount: number; postedInvoiceMinorUnits: bigint; allocatedPaymentMinorUnits: bigint }>();
+    for (const vendorId of vendorIds) totals.set(vendorId, { postedInvoiceCount: 0, postedInvoiceMinorUnits: 0n, allocatedPaymentMinorUnits: 0n });
+    for (const source of sources) {
+      const current = totals.get(source.vendorId);
+      if (!current) continue;
+      current.postedInvoiceCount += 1;
+      current.postedInvoiceMinorUnits += moneyToMinorUnits(source.totalAmount);
+      current.allocatedPaymentMinorUnits += source.allocations.reduce((sum, allocation) => sum + moneyToMinorUnits(allocation.amount), 0n);
+    }
+    return new Map([...totals].map(([vendorId, value]) => {
+      const outstanding = value.postedInvoiceMinorUnits > value.allocatedPaymentMinorUnits
+        ? value.postedInvoiceMinorUnits - value.allocatedPaymentMinorUnits
+        : 0n;
+      return [vendorId, {
+        postedInvoiceCount: value.postedInvoiceCount,
+        postedInvoiceTotal: minorUnitsToMoney(value.postedInvoiceMinorUnits),
+        allocatedPaymentTotal: minorUnitsToMoney(value.allocatedPaymentMinorUnits),
+        outstandingAmount: minorUnitsToMoney(outstanding)
+      }] as const;
+    }));
+  }
+
   /** Read one bounded permission-scoped Supplier Invoice register. */
   async listSupplierInvoices(query: ListSupplierInvoicesQuery) {
     const now = new Date();

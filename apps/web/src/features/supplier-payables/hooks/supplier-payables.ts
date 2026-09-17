@@ -6,6 +6,7 @@ import {
   getSupplierAging,
   getSupplierInvoice,
   getSupplierLedger,
+  listAllSupplierInvoices,
   listSupplierInvoices,
   listSupplierPayments,
   postSupplierInvoice,
@@ -55,6 +56,16 @@ export function useSupplierInvoices(input: ListSupplierInvoicesInput, enabled = 
     queryKey: [...SUPPLIER_PAYABLES_QUERY_KEY, 'invoices', input],
     queryFn: () => listSupplierInvoices(input),
     enabled,
+    retry: false
+  });
+}
+
+/** Load every Supplier Invoice page for one Project so Goods Receipts can show complete settlement totals. */
+export function useAllProjectSupplierInvoices(projectId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: [...SUPPLIER_PAYABLES_QUERY_KEY, 'invoices-all-project', projectId],
+    queryFn: () => listAllSupplierInvoices({ projectId: projectId as string }),
+    enabled: enabled && projectId !== null,
     retry: false
   });
 }

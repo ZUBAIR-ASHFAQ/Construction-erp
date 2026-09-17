@@ -467,7 +467,22 @@ export const employeeSalaryLedgerResponseSchema = z.object({
     payrollRunId: uuidSchema.nullable(),
     payrollLineId: uuidSchema.nullable(),
     advanceId: uuidSchema.nullable(),
-    paymentId: uuidSchema.nullable()
+    paymentId: uuidSchema.nullable(),
+    salarySlip: z.object({
+      paymentNo: z.string().min(1),
+      paymentDate: dateSchema,
+      payrollPeriodStart: dateSchema,
+      payrollPeriodEnd: dateSchema,
+      salaryBeforeAbsence: exactMoneySchema,
+      absenceDeduction: exactMoneySchema,
+      earnedSalary: exactMoneySchema,
+      advanceRecovery: exactMoneySchema,
+      netSalary: exactMoneySchema,
+      paymentAmount: exactMoneySchema,
+      cashBankAccountName: z.string().min(1),
+      status: z.enum(PAYROLL_PAYMENT_STATUS_VALUES),
+      generatedAt: z.string().datetime({ offset: true }).nullable()
+    }).strict().optional()
   }).strict())
 }).strict();
 

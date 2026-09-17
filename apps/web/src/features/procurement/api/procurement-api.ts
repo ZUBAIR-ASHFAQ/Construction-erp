@@ -164,6 +164,23 @@ export function listPurchaseOrders(projectId: string): Promise<Page<PurchaseOrde
   return authenticatedRequest<Page<PurchaseOrder>>(`procurement/purchase-orders${pageQuery(projectId)}`);
 }
 
+/** Load every Purchase Order page for one Project so its complete Goods Receipt history can be shown. */
+export async function listAllPurchaseOrders(projectId: string): Promise<PurchaseOrder[]> {
+  const pageSize = 100;
+  const loadPage = (page: number) => {
+    const query = new URLSearchParams({ projectId, page: String(page), pageSize: String(pageSize) });
+    return authenticatedRequest<Page<PurchaseOrder>>(`procurement/purchase-orders?${query.toString()}`);
+  };
+  const firstPage = await loadPage(1);
+  const items = [...firstPage.items];
+  for (let page = 2; items.length < firstPage.total; page += 1) {
+    const nextPage = await loadPage(page);
+    items.push(...nextPage.items);
+    if (nextPage.items.length === 0) break;
+  }
+  return items;
+}
+
 /** Create one Purchase Order from an approved material requirement. */
 export function createPurchaseOrder(input: CreatePurchaseOrderInput): Promise<PurchaseOrder> {
   return authenticatedRequest<PurchaseOrder>('procurement/purchase-orders', { method: 'POST', headers: writeHeaders(), body: JSON.stringify(input) });

@@ -12,6 +12,7 @@ export function ProcurementPage() {
   const canIssuePurchaseOrder = usePermission('purchase_orders.issue');
   const canCreateGoodsReceipt = usePermission('goods_receipts.create');
   const canReadStages = usePermission('stages.read');
+  const canReadSupplierPayables = usePermission('supplier_payables.read');
   const projects = useProjects({ page: 1, pageSize: 100 }, canRead || canCreateRequisition || canCreatePurchaseOrder);
   const [projectId, setProjectId] = useState('');
 
@@ -20,12 +21,12 @@ export function ProcurementPage() {
       <div className="section-heading">
         <p className="eyebrow">Procure-to-pay</p>
         <h1 id="procurement-title">Procurement</h1>
-        <p className="muted">Material Requirement → Purchase Order → Goods Receipt.</p>
+        <p className="muted">Material Requirement → Purchase Order → Goods Receipt → Supplier Invoice → Payment.</p>
       </div>
       <section className="admin-card">
         <label>Project<select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Select a Project</option>{(projects.data?.items ?? []).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
       </section>
-      {projectId && <ProcurementWorkspace projectId={projectId} canCreateRequisition={canCreateRequisition} canApproveRequisition={canApproveRequisition} canCreatePurchaseOrder={canCreatePurchaseOrder} canIssuePurchaseOrder={canIssuePurchaseOrder} canCreateGoodsReceipt={canCreateGoodsReceipt} canReadStages={canReadStages} />}
+      {projectId && <ProcurementWorkspace projectId={projectId} canRead={canRead} canCreateRequisition={canCreateRequisition} canApproveRequisition={canApproveRequisition} canCreatePurchaseOrder={canCreatePurchaseOrder} canIssuePurchaseOrder={canIssuePurchaseOrder} canCreateGoodsReceipt={canCreateGoodsReceipt} canReadStages={canReadStages} canReadSupplierPayables={canReadSupplierPayables} />}
     </section>
   );
 }

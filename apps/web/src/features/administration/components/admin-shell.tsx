@@ -337,6 +337,7 @@ export function AdminShell() {
   const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
   const [linkedFinanceAccountId, setLinkedFinanceAccountId] = useState<string | null>(null);
   const [linkedSupplierVendorId, setLinkedSupplierVendorId] = useState<string | null>(null);
+  const [linkedSupplierPaymentId, setLinkedSupplierPaymentId] = useState<string | null>(null);
   const [linkedSubcontractorId, setLinkedSubcontractorId] = useState<string | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -456,6 +457,20 @@ export function AdminShell() {
     setLinkedSubcontractorId(subcontractorId);
     setView('subcontractor-ledger');
     setIsSidebarOpen(false);
+  }
+
+  /** Route a Finance journal source back to the operational register that owns the payment and its proof. */
+  function showFinanceSource(source: Readonly<{ sourceType: string; sourceId: string | null }>): void {
+    const destinations: Readonly<Record<string, WorkspaceView>> = {
+      supplier_payment: 'supplier-payment',
+      client_receipt: 'client-ledger',
+      subcontract_payment: 'subcontractor-ledger',
+      payroll_payment: 'employee-payments',
+      site_expense: 'site-expenses'
+    };
+    const destination = destinations[source.sourceType];
+    if (source.sourceType === 'supplier_payment') setLinkedSupplierPaymentId(source.sourceId);
+    if (destination && viewAccess[destination]) selectView(destination);
   }
 
   /** Open one focused Employee workflow from the module landing page. */
@@ -716,7 +731,7 @@ export function AdminShell() {
           {activeView === 'project-team' && <ProjectTeamPage />}
           {activeView === 'finance' && <FinancePage onOpenLedger={showAccountLedger} />}
           {/* The Account Ledger remains compatible with its standalone <FinancePage view="ledger" /> form while accepting an optional row link. */}
-          {activeView === 'account-ledger' && <FinancePage view="ledger" initialAccountId={linkedFinanceAccountId} />}
+          {activeView === 'account-ledger' && <FinancePage view="ledger" initialAccountId={linkedFinanceAccountId} onOpenSource={showFinanceSource} />}
           {activeView === 'budgets-job-cost' && <BudgetsJobCostPage />}
           {activeView === 'procurement' && <ProcurementPage />}
           {activeView === 'materials' && <MaterialsPage />}
@@ -724,7 +739,7 @@ export function AdminShell() {
           {activeView === 'vendors-subcontractors' && <VendorsSubcontractorsPage {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
           {activeView === 'suppliers' && <VendorsSubcontractorsPage entity="supplier" {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
           {activeView === 'supplier-add' && <VendorsSubcontractorsPage entity="supplier" initialCreate {...(canUseSupplierPayables ? { onOpenSupplierLedger: (vendorId: string) => showSupplierLedger(vendorId) } : {})} />}
-          {activeView === 'supplier-payment' && <SupplierPayablesPage initialTab="payments" />}
+          {activeView === 'supplier-payment' && <SupplierPayablesPage key={`supplier-payment-${linkedSupplierPaymentId ?? 'all'}`} initialTab="payments" initialPaymentId={linkedSupplierPaymentId} />}
           {activeView === 'supplier-ledger' && <SupplierPayablesPage key={`supplier-ledger-${linkedSupplierVendorId ?? 'all'}`} initialTab="aging" initialVendorId={linkedSupplierVendorId} />}
           {activeView === 'subcontractors' && <VendorsSubcontractorsPage entity="subcontractor" onOpenSubcontractorLedger={(subcontractorId: string) => showSubcontractorLedger(subcontractorId)} />}
           {activeView === 'subcontractor-add' && <VendorsSubcontractorsPage entity="subcontractor" initialCreate onOpenSubcontractorLedger={(subcontractorId: string) => showSubcontractorLedger(subcontractorId)} />}

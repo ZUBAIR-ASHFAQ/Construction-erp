@@ -6,7 +6,7 @@ import { useEmployees } from '../../employees/hooks/employees.js';
 import { ProjectAccountCreateModal } from '../../finance/components/project-account-create-modal.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
-import type { AttendanceEntry, EmployeeAdvance, PayrollCashBankAccount, PayrollLine, PayrollPayment, PayrollRun } from '../api/labour-payroll-api.js';
+import type { AttendanceEntry, EmployeeAdvance, EmployeeSalaryLedger, PayrollCashBankAccount, PayrollLine, PayrollPayment, PayrollRun } from '../api/labour-payroll-api.js';
 import {
   useAttendance,
   useAttendanceAssignments,
@@ -219,12 +219,69 @@ function OpenPayrollAdvanceModal({ line, projects, accounts, canManageAccounts, 
   return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal" role="dialog" aria-modal="true" aria-labelledby="open-payroll-advance-title"><header className="finance-modal-header"><div><p className="eyebrow">Open payroll period</p><h2 id="open-payroll-advance-title">Pay advance to {line.employeeName}</h2><p>Earned so far {line.grossAmount} · Current net preview {line.netAmount}</p></div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close advance payment">×</button></header><div className="finance-modal-body"><form className="admin-form" onSubmit={form.handleSubmit(submit)}><input type="hidden" {...form.register('employeeId')} /><input type="hidden" {...form.register('projectId')} /><input type="hidden" {...form.register('stageId')} /><div className="form-grid"><label>Project / Stage<select value={destinationKey} onChange={(event) => selectDestination(event.target.value)}>{destinations.map((destination) => <option key={destination.key} value={destination.key}>{destination.label}</option>)}</select><span className="field-error">{form.formState.errors.projectId?.message}</span></label><label>Advance date<input type="date" {...form.register('advanceDate')} /><span className="field-error">{form.formState.errors.advanceDate?.message}</span></label><label>Advance amount<input inputMode="decimal" {...form.register('amount')} placeholder="2000.00" /><span className="field-error">{form.formState.errors.amount?.message}</span></label><label>Cash / Bank account<select {...form.register('cashBankAccountId')}><option value="">Select account</option>{eligibleAccounts.map((account) => <option key={account.id} value={account.id}>{account.code} · {account.name}{account.accountNumber ? ` · ${account.accountNumber}` : ''} · Balance {account.balance}</option>)}</select><span className="field-error">{form.formState.errors.cashBankAccountId?.message}</span></label><label>Reason<input {...form.register('reason')} /><span className="field-error">{form.formState.errors.reason?.message}</span></label><label>Reference (optional)<input {...form.register('reference')} /></label></div>{projectId && eligibleAccounts.length === 0 && canManageAccounts && <div className="form-actions"><button type="button" className="secondary-button" onClick={() => onAddAccount(projectId)}>Add Cash / Bank account</button></div>}<p className="muted">The month is still open, so this is recorded as a salary advance. It reduces Cash/Bank now and is automatically recovered when this Payroll is finalized.</p>{errorMessage(mutation.error) && <p className="field-error">{errorMessage(mutation.error)}</p>}<div className="form-actions"><button type="submit" disabled={mutation.isPending || destinations.length === 0 || eligibleAccounts.length === 0}>{mutation.isPending ? 'Posting…' : 'Pay advance from account'}</button><button type="button" className="secondary-button" onClick={onClose}>Cancel</button></div></form></div></section></div>;
 }
 
+type SalarySlip = NonNullable<EmployeeSalaryLedger['entries'][number]['salarySlip']>;
+
+/** Escape untrusted labels before placing them into the downloadable salary-slip HTML. */
+function escapeSalarySlipHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+}
+
+/** Download a print-ready salary slip regenerated from immutable Payroll and payment data. */
+function downloadSalarySlip(employee: EmployeeSalaryLedger['employee'], projectName: string, slip: SalarySlip): void {
+  const fields = [
+    ['Employee', `${employee.employeeNo} · ${employee.name}`],
+    ['Project', projectName],
+    ['Payroll period', `${slip.payrollPeriodStart} to ${slip.payrollPeriodEnd}`],
+    ['Payment', slip.paymentNo],
+    ['Payment date', slip.paymentDate],
+    ['Salary before absence', slip.salaryBeforeAbsence],
+    ['Absence deduction', slip.absenceDeduction],
+    ['Earned salary', slip.earnedSalary],
+    ['Advance recovery', slip.advanceRecovery],
+    ['Net salary', slip.netSalary],
+    ['Amount paid', slip.paymentAmount],
+    ['Paid from', slip.cashBankAccountName],
+    ['Status', slip.status]
+  ] as const;
+  const rows = fields.map(([label, value]) => `<tr><th>${escapeSalarySlipHtml(label)}</th><td>${escapeSalarySlipHtml(value)}</td></tr>`).join('');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><title>Salary slip ${escapeSalarySlipHtml(slip.paymentNo)}</title><style>body{font:14px Arial,sans-serif;color:#172033;margin:40px}.slip{max-width:760px;margin:auto;border:1px solid #d9e1ec;border-radius:12px;padding:28px}h1{margin:0 0 6px}p{color:#607087}table{width:100%;border-collapse:collapse;margin-top:24px}th,td{padding:10px;border-bottom:1px solid #e7edf5;text-align:left}th{width:42%;color:#52627a}@media print{body{margin:0}.slip{border:0}}</style></head><body><main class="slip"><h1>Employee Salary Slip</h1><p>System-generated from posted Payroll and salary-payment records.</p><table>${rows}</table></main></body></html>`;
+  const objectUrl = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+  const anchor = window.document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = `salary-slip-${slip.paymentNo}.html`;
+  window.document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+}
+
 /** Render the source-derived salary ledger for one Employee. */
 function SalaryLedgerModal({ employeeId, projects, onClose }: Readonly<{ employeeId: string; projects: readonly Readonly<{ id: string; projectCode: string; name: string }>[]; onClose: () => void }>) {
   const [projectId, setProjectId] = useState('');
+  const [selectedSlip, setSelectedSlip] = useState<Readonly<{ slip: SalarySlip; projectName: string }> | null>(null);
   const ledger = useEmployeeSalaryLedger(employeeId, projectId || undefined);
   const entryLabel = (type: string) => ({ SALARY_DUE: 'Salary earned', PAYMENT: 'Salary payment', PAYMENT_REVERSAL: 'Payment reversal', ADVANCE: 'Salary advance', ADVANCE_REVERSAL: 'Advance reversal', ADVANCE_RECOVERY: 'Advance recovered' }[type] ?? type);
-  return <div className="finance-modal-backdrop" role="presentation"><section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="salary-ledger-title"><header className="finance-modal-header"><div><p className="eyebrow">Employee account</p><h2 id="salary-ledger-title">Project-wise Employee Ledger</h2>{ledger.data && <p>{ledger.data.employee.employeeNo} · {ledger.data.employee.name}</p>}</div><button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close salary ledger">×</button></header><div className="finance-modal-body"><label>Project filter<select value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">All projects</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>{ledger.isPending && <p>Loading Employee ledger…</p>}{errorMessage(ledger.error) && <p className="field-error">{errorMessage(ledger.error)}</p>}{ledger.data && <div className="admin-stack"><div className="equipment-ledger-summary"><span><small>Salary earned</small><strong>{ledger.data.totalSalary}</strong></span><span><small>Salary paid</small><strong>{ledger.data.totalPaid}</strong></span><span><small>Advances paid</small><strong>{ledger.data.totalAdvances}</strong></span><span><small>Advances recovered</small><strong>{ledger.data.totalAdvanceRecovered}</strong></span><span><small>Advance outstanding</small><strong>{ledger.data.advanceOutstanding}</strong></span><span><small>Salary outstanding</small><strong>{ledger.data.outstanding}</strong></span></div><div className="table-scroll"><table><thead><tr><th>Date</th><th>Entry</th><th>Project / Stage</th><th>Reference</th><th>Earned / reversal</th><th>Paid / advance</th><th>Balance</th></tr></thead><tbody>{ledger.data.entries.map((entry) => <tr key={entry.id}><td>{entry.entryDate}</td><td>{entryLabel(entry.entryType)}</td><td>{entry.projectName ?? 'Company level'}{entry.stageName ? ` / ${entry.stageName}` : ''}</td><td>{entry.reference}</td><td>{entry.debit}</td><td>{entry.credit}</td><td><strong>{entry.balance}</strong></td></tr>)}{ledger.data.entries.length === 0 && <tr><td colSpan={7} className="muted">No salary, advance, or payment history exists for this selection.</td></tr>}</tbody></table></div></div>}</div></section></div>;
+
+  return (
+    <div className="finance-modal-backdrop" role="presentation">
+      <section className="finance-modal finance-modal-wide" role="dialog" aria-modal="true" aria-labelledby="salary-ledger-title">
+        <header className="finance-modal-header">
+          <div><p className="eyebrow">Employee account</p><h2 id="salary-ledger-title">Project-wise Employee Ledger</h2>{ledger.data && <p>{ledger.data.employee.employeeNo} · {ledger.data.employee.name}</p>}</div>
+          <button type="button" className="finance-modal-close" onClick={onClose} aria-label="Close salary ledger">×</button>
+        </header>
+        <div className="finance-modal-body">
+          <label>Project filter<select value={projectId} onChange={(event) => { setProjectId(event.target.value); setSelectedSlip(null); }}><option value="">All projects</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select></label>
+          {ledger.isPending && <p>Loading Employee ledger…</p>}
+          {errorMessage(ledger.error) && <p className="field-error">{errorMessage(ledger.error)}</p>}
+          {ledger.data && <div className="admin-stack">
+            <div className="equipment-ledger-summary"><span><small>Salary earned</small><strong>{ledger.data.totalSalary}</strong></span><span><small>Salary paid</small><strong>{ledger.data.totalPaid}</strong></span><span><small>Advances paid</small><strong>{ledger.data.totalAdvances}</strong></span><span><small>Advances recovered</small><strong>{ledger.data.totalAdvanceRecovered}</strong></span><span><small>Advance outstanding</small><strong>{ledger.data.advanceOutstanding}</strong></span><span><small>Salary outstanding</small><strong>{ledger.data.outstanding}</strong></span></div>
+            <div className="table-scroll"><table><thead><tr><th>Date</th><th>Entry</th><th>Project / Stage</th><th>Reference</th><th>Earned / reversal</th><th>Paid / advance</th><th>Balance</th><th>Salary slip</th></tr></thead><tbody>{ledger.data.entries.map((entry) => <tr key={entry.id}><td>{entry.entryDate}</td><td>{entryLabel(entry.entryType)}</td><td>{entry.projectName ?? 'Company level'}{entry.stageName ? ` / ${entry.stageName}` : ''}</td><td>{entry.reference}</td><td>{entry.debit}</td><td>{entry.credit}</td><td><strong>{entry.balance}</strong></td><td>{entry.salarySlip ? <button type="button" className="secondary-button" onClick={() => setSelectedSlip({ slip: entry.salarySlip as SalarySlip, projectName: entry.projectName ?? 'Company level' })}>View slip</button> : '—'}</td></tr>)}{ledger.data.entries.length === 0 && <tr><td colSpan={8} className="muted">No salary, advance, or payment history exists for this selection.</td></tr>}</tbody></table></div>
+            {selectedSlip && <section className="admin-card" aria-labelledby="salary-slip-preview-title"><div className="section-heading compact-heading"><div><p className="eyebrow">{selectedSlip.slip.paymentNo}</p><h3 id="salary-slip-preview-title">Salary slip</h3></div><button type="button" className="secondary-button" onClick={() => setSelectedSlip(null)}>Close preview</button></div><dl className="summary-grid"><div><dt>Payroll period</dt><dd>{selectedSlip.slip.payrollPeriodStart} to {selectedSlip.slip.payrollPeriodEnd}</dd></div><div><dt>Project</dt><dd>{selectedSlip.projectName}</dd></div><div><dt>Salary before absence</dt><dd>{selectedSlip.slip.salaryBeforeAbsence}</dd></div><div><dt>Absence deduction</dt><dd>{selectedSlip.slip.absenceDeduction}</dd></div><div><dt>Earned salary</dt><dd>{selectedSlip.slip.earnedSalary}</dd></div><div><dt>Advance recovery</dt><dd>{selectedSlip.slip.advanceRecovery}</dd></div><div><dt>Net salary</dt><dd>{selectedSlip.slip.netSalary}</dd></div><div><dt>Amount paid</dt><dd>{selectedSlip.slip.paymentAmount}</dd></div><div><dt>Paid from</dt><dd>{selectedSlip.slip.cashBankAccountName}</dd></div><div><dt>Status</dt><dd>{selectedSlip.slip.status}</dd></div></dl><button type="button" onClick={() => downloadSalarySlip(ledger.data.employee, selectedSlip.projectName, selectedSlip.slip)}>Download print-ready slip</button></section>}
+          </div>}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 /** Confirm reversal of an unrecovered salary advance. */

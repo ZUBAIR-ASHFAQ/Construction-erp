@@ -185,6 +185,20 @@ export function listSupplierInvoices(input: ListSupplierInvoicesInput = {}): Pro
   return authenticatedRequest<Page<SupplierInvoice>>(`supplier-payables/invoices${buildQuery(input)}`);
 }
 
+/** Load every Supplier Invoice page matching one read filter without changing the server paging contract. */
+export async function listAllSupplierInvoices(input: Omit<ListSupplierInvoicesInput, 'page' | 'pageSize'> = {}): Promise<SupplierInvoice[]> {
+  const pageSize = 100;
+  const loadPage = (page: number) => listSupplierInvoices({ ...input, page, pageSize });
+  const firstPage = await loadPage(1);
+  const items = [...firstPage.items];
+  for (let page = 2; items.length < firstPage.total; page += 1) {
+    const nextPage = await loadPage(page);
+    items.push(...nextPage.items);
+    if (nextPage.items.length === 0) break;
+  }
+  return items;
+}
+
 /** Create one DRAFT Supplier Invoice with server-calculated totals. */
 export function createSupplierInvoice(input: CreateSupplierInvoiceInput): Promise<SupplierInvoice> {
   return authenticatedRequest<SupplierInvoice>('supplier-payables/invoices', {

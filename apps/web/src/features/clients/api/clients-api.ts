@@ -17,6 +17,10 @@ export type Client = Readonly<{
   updatedAt: string;
 }>;
 
+export type ClientListItem = Client & Readonly<{
+  remainingByCurrency: readonly Readonly<{ currency: string; amount: string }>[] | null;
+}>;
+
 export type ClientContact = Readonly<{
   id: string;
   companyId: string;
@@ -32,7 +36,7 @@ export type ClientContact = Readonly<{
 }>;
 
 export type ClientPage = Readonly<{
-  items: Client[];
+  items: ClientListItem[];
   page: number;
   pageSize: number;
   total: number;

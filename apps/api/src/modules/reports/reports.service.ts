@@ -37,6 +37,12 @@ import {
   listSupplierPaymentsQuerySchema,
   supplierAgingQuerySchema
 } from '../supplier-payables/supplier-payables.schema.js';
+import { VendorsSubcontractorsService } from '../vendors-subcontractors/vendors-subcontractors.service.js';
+import {
+  listSubcontractContractsQuerySchema,
+  listSubcontractLedgerQuerySchema,
+  listSubcontractPaymentsQuerySchema
+} from '../vendors-subcontractors/vendors-subcontractors.schema.js';
 import { ReportsRepository } from './reports.repository.js';
 import {
   REPORT_CODES,
@@ -143,10 +149,15 @@ const REPORT_SOURCE_PERMISSIONS: Readonly<Record<ReportCode, readonly string[]>>
   'supplier-payables': ['supplier_payables.read'],
   'supplier-payments': ['supplier_payables.read'],
   'supplier-aging': ['supplier_payables.read'],
+  'subcontractor-contracts': ['subcontractors.read'],
+  'subcontractor-payments': ['subcontractors.read'],
+  'subcontractor-ledger': ['subcontractors.read'],
   attendance: ['attendance.read'],
   payroll: ['payroll.read'],
   'labour-cost': ['job_cost.read'],
   'cash-bank': ['finance.read'],
+  'cash-accounts': ['finance.read'],
+  'bank-accounts': ['finance.read'],
   'general-ledger': ['finance.read'],
   'profit-loss': ['finance.read'],
   'balance-sheet': ['finance.read'],
@@ -172,10 +183,15 @@ const REPORT_ALLOWED_FILTERS: Readonly<Record<ReportCode, readonly (keyof Report
   'supplier-payables': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status', 'page', 'pageSize'],
   'supplier-payments': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status', 'page', 'pageSize'],
   'supplier-aging': ['vendorId', 'projectId', 'asOfDate', 'page', 'pageSize'],
+  'subcontractor-contracts': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
+  'subcontractor-payments': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
+  'subcontractor-ledger': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
   attendance: ['projectId', 'employeeId', 'fromDate', 'toDate', 'page', 'pageSize'],
   payroll: ['page', 'pageSize'],
   'labour-cost': ['projectId', 'stageId', 'fromDate', 'toDate', 'page', 'pageSize'],
   'cash-bank': ['status', 'page', 'pageSize'],
+  'cash-accounts': ['projectId', 'status', 'page', 'pageSize'],
+  'bank-accounts': ['projectId', 'status', 'page', 'pageSize'],
   'general-ledger': ['periodId', 'accountId', 'projectId', 'stageId', 'page', 'pageSize'],
   'profit-loss': ['periodId'],
   'balance-sheet': ['periodId'],
@@ -792,6 +808,12 @@ export class ReportsService {
         return new SupplierPayablesService(this.db).listSupplierPayments(parseSourceQuery(listSupplierPaymentsQuerySchema, filters));
       case 'supplier-aging':
         return new SupplierPayablesService(this.db).getSupplierAging(parseSourceQuery(supplierAgingQuerySchema, filters));
+      case 'subcontractor-contracts':
+        return new VendorsSubcontractorsService(this.db).listSubcontractContracts(parseSourceQuery(listSubcontractContractsQuerySchema, filters));
+      case 'subcontractor-payments':
+        return new VendorsSubcontractorsService(this.db).listSubcontractPayments(parseSourceQuery(listSubcontractPaymentsQuerySchema, filters));
+      case 'subcontractor-ledger':
+        return new VendorsSubcontractorsService(this.db).listSubcontractLedger(parseSourceQuery(listSubcontractLedgerQuerySchema, filters));
       case 'attendance':
         return new LabourPayrollService(this.db).listAttendance(parseSourceQuery(listAttendanceQuerySchema, filters));
       case 'payroll':
@@ -800,6 +822,10 @@ export class ReportsService {
         return this.readLabourCost(filters);
       case 'cash-bank':
         return new FinanceService(this.db).listCashBankAccounts(parseSourceQuery(listCashBankAccountsQuerySchema, filters));
+      case 'cash-accounts':
+        return new FinanceService(this.db).listCashBankAccounts(parseSourceQuery(listCashBankAccountsQuerySchema, { ...filters, accountType: 'CASH' }));
+      case 'bank-accounts':
+        return new FinanceService(this.db).listCashBankAccounts(parseSourceQuery(listCashBankAccountsQuerySchema, { ...filters, accountType: 'BANK' }));
       case 'general-ledger':
         return new FinanceService(this.db).getLedger(parseSourceQuery(financeLedgerQuerySchema, filters));
       case 'profit-loss':

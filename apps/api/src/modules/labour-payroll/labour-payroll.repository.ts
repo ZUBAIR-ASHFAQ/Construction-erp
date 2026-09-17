@@ -826,7 +826,11 @@ export class LabourPayrollRepository {
       where: { employeeId, payrollRun: { companyId: scope.companyId, status: 'FINALIZED' } },
       include: {
         payrollRun: { select: { id: true, periodStart: true, periodEnd: true } },
-        payments: { orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }] },
+        payslip: { select: { id: true, generatedAt: true } },
+        payments: {
+          include: { cashBankAccount: { select: { name: true } } },
+          orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }]
+        },
         advanceRecoveries: { include: { employeeAdvance: { include: { project: { select: { name: true } }, stage: { select: { name: true } } } } } }
       },
       orderBy: [{ payrollRun: { periodEnd: 'asc' } }, { id: 'asc' }]

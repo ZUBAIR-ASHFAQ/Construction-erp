@@ -519,6 +519,34 @@ export class SupplierPayablesRepository {
     };
   }
 
+  /** Read posted invoice and allocation sources for a bounded Supplier list in one query. */
+  async listVendorPayableSummarySources(
+    vendorIds: readonly string[],
+    projectId: string | undefined,
+    visibility: SupplierPayablesRepositoryVisibility
+  ) {
+    const scope = requireCompanyRepositoryScope();
+    const allowedProjectIds = normalizeAllowedProjectIds(visibility.allowedProjectIds);
+    if (projectId && !isProjectAllowed(projectId, allowedProjectIds)) return [];
+    if (vendorIds.length === 0) return [];
+
+    return this.db.supplierInvoice.findMany({
+      where: scope.where({
+        vendorId: { in: [...new Set(vendorIds)] },
+        status: 'POSTED',
+        ...(projectId ? { projectId } : requiredProjectScopeWhere(allowedProjectIds))
+      }),
+      select: {
+        vendorId: true,
+        totalAmount: true,
+        allocations: {
+          where: { supplierPayment: { companyId: scope.companyId, status: 'POSTED' } },
+          select: { amount: true }
+        }
+      }
+    });
+  }
+
   /** Sum immutable allocations already applied to one same-Company Supplier Invoice. */
   async sumAllocatedAmountForSupplierInvoice(invoiceId: string) {
     const scope = requireCompanyRepositoryScope();

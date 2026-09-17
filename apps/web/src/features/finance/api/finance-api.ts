@@ -73,6 +73,9 @@ export type FinanceLedgerLine = Readonly<{
   journalId: string;
   journalNo: string;
   postingDate: string;
+  sourceType: string;
+  sourceId: string | null;
+  sourceKey: string | null;
   accountId: string;
   accountCode: string;
   accountName: string;
@@ -118,7 +121,7 @@ export type CashBankAccount = Readonly<{
 export type UpdateCashBankAccountInput = Readonly<{ name?: string; bankName?: string | null; accountReference?: string | null; status?: 'ACTIVE' | 'ARCHIVED' }>;
 
 export type CashBankAccountPage = Readonly<{ items: CashBankAccount[]; total: number; page: number; pageSize: number }>;
-export type ListCashBankAccountsInput = Readonly<{ page?: number; pageSize?: number; status?: string; projectId?: string }>;
+export type ListCashBankAccountsInput = Readonly<{ page?: number; pageSize?: number; status?: string; projectId?: string; accountType?: 'CASH' | 'BANK' }>;
 export type CreateBankReconciliationInput = Readonly<{ cashBankAccountId: string; statementDate: string }>;
 export type BankReconciliation = Readonly<{
   id: string;
@@ -195,6 +198,7 @@ export function getFinanceLedger(input: GetFinanceLedgerInput): Promise<FinanceL
   const query = new URLSearchParams({ periodId: input.periodId });
   if (input.accountId) query.set('accountId', input.accountId);
   if (input.projectId) query.set('projectId', input.projectId);
+  if (input.accountType) query.set('accountType', input.accountType);
   if (input.stageId) query.set('stageId', input.stageId);
   if (input.page !== undefined) query.set('page', String(input.page));
   if (input.pageSize !== undefined) query.set('pageSize', String(input.pageSize));

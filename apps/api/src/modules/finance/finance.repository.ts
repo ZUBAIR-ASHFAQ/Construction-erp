@@ -63,6 +63,7 @@ export type TrialBalanceRepositoryInput = Readonly<{
 
 export type ListCashBankAccountsRepositoryInput = FinanceRepositoryPageWindow & Readonly<{
   status?: string | undefined;
+  accountType?: 'CASH' | 'BANK' | undefined;
   projectId?: string | undefined;
   allowedProjectIds?: readonly string[] | null | undefined;
   includeCompanyAccounts?: boolean | undefined;
@@ -431,7 +432,7 @@ export class FinanceRepository {
       this.db.journalLine.findMany({
         where,
         include: {
-          journal: { select: { journalNo: true, postingDate: true } },
+          journal: { select: { journalNo: true, postingDate: true, sourceType: true, sourceId: true, sourceKey: true } },
           account: { select: { accountCode: true, name: true } },
           project: { select: { projectCode: true, name: true } },
           stage: { select: { code: true, name: true } }
@@ -448,6 +449,9 @@ export class FinanceRepository {
         journalId: row.journalId,
         journalNo: row.journal.journalNo,
         postingDate: row.journal.postingDate,
+        sourceType: row.journal.sourceType,
+        sourceId: row.journal.sourceId,
+        sourceKey: row.journal.sourceKey,
         accountId: row.accountId,
         accountCode: row.account.accountCode,
         accountName: row.account.name,
@@ -509,7 +513,11 @@ export class FinanceRepository {
         : input.includeCompanyAccounts
           ? { OR: [{ projectId: null }, { projectId: { in: allowedProjectIds } }] }
           : { projectId: { in: allowedProjectIds } };
-    const where = scope.where({ ...(input.status ? { status: input.status } : {}), ...projectWhere });
+    const where = scope.where({
+      ...(input.status ? { status: input.status } : {}),
+      ...(input.accountType ? { accountType: input.accountType } : {}),
+      ...projectWhere
+    });
     const [items, total] = await Promise.all([
       this.db.cashBankAccount.findMany({ where, include: { project: { select: { projectCode: true, name: true } } }, orderBy: [{ code: 'asc' }, { id: 'asc' }], skip: input.skip, take: input.take }),
       this.db.cashBankAccount.count({ where })

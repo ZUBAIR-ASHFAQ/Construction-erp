@@ -63,6 +63,8 @@ export const DOCUMENT_LINK_RESOURCE_TYPES = Object.freeze([
   'client_invoice',
   'client_receipt',
   'supplier_invoice',
+  'supplier_payment',
+  'subcontract_payment',
   'site_expense'
 ] as const);
 

@@ -18,6 +18,10 @@ export type Vendor = Readonly<{
   qualificationStatus: VendorQualificationStatus | null;
 }>;
 
+export type VendorListItem = Vendor & Readonly<{
+  payableOutstanding: string | null;
+}>;
+
 export type VendorContact = Readonly<{
   id: string;
   vendorId: string;
@@ -184,7 +188,7 @@ export type ListSubcontractLedgerInput = Readonly<{
 }>;
 
 /** Load one bounded supplier/vendor page from the final Module 5 API. */
-export function listVendors(input: ListVendorsInput = {}): Promise<Page<Vendor>> {
+export function listVendors(input: ListVendorsInput = {}): Promise<Page<VendorListItem>> {
   const query = new URLSearchParams();
   if (input.projectId) query.set('projectId', input.projectId);
   if (input.search) query.set('search', input.search);
@@ -193,7 +197,7 @@ export function listVendors(input: ListVendorsInput = {}): Promise<Page<Vendor>>
   if (input.page !== undefined) query.set('page', String(input.page));
   if (input.pageSize !== undefined) query.set('pageSize', String(input.pageSize));
   const suffix = query.size ? `?${query.toString()}` : '';
-  return authenticatedRequest<Page<Vendor>>(`vendors${suffix}`);
+  return authenticatedRequest<Page<VendorListItem>>(`vendors${suffix}`);
 }
 
 /** Load one supplier/vendor with contacts and source-derived purchase summary. */

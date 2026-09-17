@@ -769,6 +769,7 @@ export class FinanceService {
       skip: (page - 1) * pageSize,
       take: pageSize,
       status: input.status,
+      accountType: input.accountType,
       ...(input.projectId ? { projectId: input.projectId } : {}),
       ...visibility,
       journalStatuses: [JOURNAL_POSTED, JOURNAL_REVERSED]

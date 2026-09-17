@@ -9,6 +9,9 @@ export function SubcontractPaymentsPage({ view, initialSubcontractorId = null }:
       canReadSubcontractors={usePermission('subcontractors.read')}
       canManageSubcontractors={usePermission('subcontractors.manage')}
       canReadFinance={usePermission('finance.read') || usePermission('finance.accounts.manage')}
+      canReadDocuments={usePermission('documents.read')}
+      canUploadDocuments={usePermission('documents.upload')}
+      canLinkDocuments={usePermission('documents.link')}
       initialSubcontractorId={initialSubcontractorId}
     />
   );

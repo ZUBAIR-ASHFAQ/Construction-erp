@@ -7,6 +7,7 @@ import {
   createRequisition,
   getGoodsReceipt,
   issuePurchaseOrder,
+  listAllPurchaseOrders,
   listPurchaseOrders,
   listRequisitions,
   listVendors,
@@ -34,6 +35,11 @@ export function useRequisitions(projectId: string | null, enabled = true) {
 /** Load Purchase Orders for one Project. */
 export function useProcurementPurchaseOrders(projectId: string | null, enabled = true) {
   return useQuery({ queryKey: [...PROCUREMENT_QUERY_KEY, 'purchase-orders', projectId], queryFn: () => listPurchaseOrders(projectId as string), enabled: enabled && projectId !== null });
+}
+
+/** Load all Purchase Order pages for the selected Project's complete Goods Receipt history. */
+export function useAllProcurementPurchaseOrders(projectId: string | null, enabled = true) {
+  return useQuery({ queryKey: [...PROCUREMENT_QUERY_KEY, 'purchase-orders-all', projectId], queryFn: () => listAllPurchaseOrders(projectId as string), enabled: enabled && projectId !== null });
 }
 
 /** Load one Goods Receipt for durable browser readback. */

@@ -19,10 +19,15 @@ export const REPORT_CODES = [
   'supplier-payables',
   'supplier-payments',
   'supplier-aging',
+  'subcontractor-contracts',
+  'subcontractor-payments',
+  'subcontractor-ledger',
   'attendance',
   'payroll',
   'labour-cost',
   'cash-bank',
+  'cash-accounts',
+  'bank-accounts',
   'general-ledger',
   'profit-loss',
   'balance-sheet',
@@ -38,6 +43,7 @@ export type ReportFilters = Readonly<{
   stageId?: string;
   clientId?: string;
   vendorId?: string;
+  subcontractorId?: string;
   employeeId?: string;
   warehouseId?: string;
   materialId?: string;

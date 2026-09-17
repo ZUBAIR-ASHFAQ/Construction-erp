@@ -44,6 +44,8 @@ export type DocumentLinkResourceType =
   | 'client_invoice'
   | 'client_receipt'
   | 'supplier_invoice'
+  | 'supplier_payment'
+  | 'subcontract_payment'
   | 'site_expense';
 
 export type CreateDocumentLinkInput = Readonly<{

@@ -134,6 +134,11 @@ export type EmployeeSalaryLedger = Readonly<{
     id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
     debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
     payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null;
+    salarySlip?: Readonly<{
+      paymentNo: string; paymentDate: string; payrollPeriodStart: string; payrollPeriodEnd: string;
+      salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string;
+      netSalary: string; paymentAmount: string; cashBankAccountName: string; status: PayrollPaymentStatus; generatedAt: string | null;
+    }>;
   }>>;
 }>;
 

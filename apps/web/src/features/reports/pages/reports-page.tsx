@@ -19,6 +19,12 @@ export function ReportsPage() {
       canViewOverview={canViewOverview}
       canExport={usePermission('reports.export')}
       canSaveFilters={usePermission('reports.save_filters')}
+      canReadProjects={usePermission('projects.read')}
+      canReadClients={usePermission('clients.read')}
+      canReadVendors={usePermission('vendors.read')}
+      canReadSubcontractors={usePermission('subcontractors.read')}
+      canReadFinance={canReadFinance}
+      canReadStages={usePermission('stages.read')}
     />
   );
 }

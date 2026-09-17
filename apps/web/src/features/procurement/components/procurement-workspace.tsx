@@ -4,8 +4,11 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useMaterials } from '../../inventory/hooks/inventory.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
+import { useAllProjectSupplierInvoices } from '../../supplier-payables/hooks/supplier-payables.js';
+import type { SupplierInvoice } from '../../supplier-payables/api/supplier-payables-api.js';
 import type { PurchaseOrder } from '../api/procurement-api.js';
 import {
+  useAllProcurementPurchaseOrders,
   useApproveRequisition,
   useCancelProcurementPurchaseOrder,
   useCreateGoodsReceipt,
@@ -19,12 +22,14 @@ import {
 
 type ProcurementWorkspaceProps = Readonly<{
   projectId: string;
+  canRead: boolean;
   canCreateRequisition: boolean;
   canApproveRequisition: boolean;
   canCreatePurchaseOrder: boolean;
   canIssuePurchaseOrder: boolean;
   canCreateGoodsReceipt: boolean;
   canReadStages: boolean;
+  canReadSupplierPayables: boolean;
 }>;
 
 const uuidSchema = z.string().uuid('Enter a valid UUID.');
@@ -88,6 +93,30 @@ function acceptedQuantityPreview(delivered: string, rejected: string): string {
   return accepted < 0n ? '—' : scale4ToDecimal(accepted);
 }
 
+
+/** Convert one exact two-decimal money token to integer minor units for receipt settlement summaries. */
+function moneyToMinorUnits(value: string): bigint {
+  const text = value.trim();
+  const negative = text.startsWith('-');
+  const unsigned = negative ? text.slice(1) : text;
+  const [whole = '0', fraction = ''] = unsigned.split('.');
+  const minorUnits = (BigInt(whole || '0') * 100n) + BigInt(`${fraction}00`.slice(0, 2));
+  return negative ? -minorUnits : minorUnits;
+}
+
+/** Serialize exact minor units with two decimals for Procurement money displays. */
+function minorUnitsToMoney(value: bigint): string {
+  const negative = value < 0n;
+  const unsigned = negative ? -value : value;
+  const text = `${unsigned / 100n}.${(unsigned % 100n).toString().padStart(2, '0')}`;
+  return negative ? `-${text}` : text;
+}
+
+/** Sum exact Supplier Invoice money values without browser floating-point arithmetic. */
+function sumInvoiceMoney(invoices: readonly SupplierInvoice[], field: 'totalAmount' | 'allocatedAmount' | 'outstandingAmount'): bigint {
+  return invoices.reduce((total, invoice) => total + moneyToMinorUnits(invoice[field]), 0n);
+}
+
 /** Display one mutation error without exposing internal objects. */
 function mutationMessage(error: unknown): string {
   return error instanceof Error ? error.message : 'The request could not be completed.';
@@ -97,6 +126,8 @@ function mutationMessage(error: unknown): string {
 export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
   const requisitions = useRequisitions(props.projectId);
   const purchaseOrders = useProcurementPurchaseOrders(props.projectId);
+  const allPurchaseOrders = useAllProcurementPurchaseOrders(props.projectId, props.canRead || props.canCreateGoodsReceipt);
+  const supplierInvoices = useAllProjectSupplierInvoices(props.projectId, props.canReadSupplierPayables);
   const vendors = useProcurementVendors(props.projectId || null, Boolean(props.projectId));
   const vendorNames = useMemo(() => new Map((vendors.data?.items ?? []).map((vendor) => [vendor.id, vendor.displayName])), [vendors.data?.items]);
   const createRequisition = useCreateRequisition();
@@ -146,6 +177,20 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
     ? (purchaseOrders.data?.items ?? []).find((item) => item.id === latestGoodsReceipt.purchaseOrderId) ?? receiptPurchaseOrder
     : null;
   const stageOptions = stages.data?.items ?? [];
+  const goodsReceiptRows = useMemo(() => (
+    (allPurchaseOrders.data ?? []).flatMap((purchaseOrder) => purchaseOrder.goodsReceipts.map((receipt) => ({ purchaseOrder, receipt })))
+      .sort((left, right) => right.receipt.receivedAt.localeCompare(left.receipt.receivedAt))
+  ), [allPurchaseOrders.data]);
+  const invoicesByGoodsReceipt = useMemo(() => {
+    const grouped = new Map<string, SupplierInvoice[]>();
+    for (const invoice of supplierInvoices.data ?? []) {
+      if (!invoice.goodsReceiptId) continue;
+      const current = grouped.get(invoice.goodsReceiptId) ?? [];
+      current.push(invoice);
+      grouped.set(invoice.goodsReceiptId, current);
+    }
+    return grouped;
+  }, [supplierInvoices.data]);
 
   /** Submit one material requirement line for the selected Project. */
   async function handleCreateRequisition(values: RequisitionFormValues): Promise<void> {
@@ -301,17 +346,52 @@ export function ProcurementWorkspace(props: ProcurementWorkspaceProps) {
         </tbody></table></div>
       </section>
 
-      {props.canCreateGoodsReceipt && issuedPurchaseOrders.length > 0 && (
+      {(props.canRead || props.canCreateGoodsReceipt) && (
         <section className="admin-card procurement-stage-card" id="procurement-receipt">
           <div className="client-page-heading">
             <div>
               <p className="eyebrow">Steps 9–11</p>
               <h2>Supplier delivery &amp; Goods Receipt</h2>
-              <p className="muted">Receive only against an issued PO. Accepted quantities are posted automatically to Main Warehouse and become Inventory stock.</p>
+              <p className="muted">Receive against an issued PO, then track each receipt through its linked Supplier Invoice and allocated Supplier Payments.</p>
             </div>
-            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={() => { createGoodsReceipt.reset(); goodsReceiptForm.clearErrors(); setReceiptDialogOpen(true); }}>
-              <span aria-hidden="true">+</span> Receive goods
-            </button>
+            {props.canCreateGoodsReceipt && issuedPurchaseOrders.length > 0 && (
+              <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={() => { createGoodsReceipt.reset(); goodsReceiptForm.clearErrors(); setReceiptDialogOpen(true); }}>
+                <span aria-hidden="true">+</span> Receive goods
+              </button>
+            )}
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>Goods receipt</th><th>PO / Supplier</th><th>Received value</th><th>Invoiced</th><th>Paid</th><th>Remaining</th><th>Supplier invoices</th></tr></thead>
+              <tbody>
+                {goodsReceiptRows.map(({ purchaseOrder, receipt }) => {
+                  const linkedInvoices = invoicesByGoodsReceipt.get(receipt.id) ?? [];
+                  const invoicedMinorUnits = sumInvoiceMoney(linkedInvoices, 'totalAmount');
+                  const paidMinorUnits = sumInvoiceMoney(linkedInvoices, 'allocatedAmount');
+                  const receiptMinorUnits = moneyToMinorUnits(receipt.receivedAmount);
+                  const remainingMinorUnits = receiptMinorUnits > paidMinorUnits ? receiptMinorUnits - paidMinorUnits : 0n;
+                  return <tr key={receipt.id}>
+                    <td>{receipt.receiptNo}<br /><small>{new Date(receipt.receivedAt).toLocaleString()} · {receipt.status}</small></td>
+                    <td>{purchaseOrder.poNo}<br /><small>{vendorNames.get(purchaseOrder.vendorId) ?? 'Unknown supplier'}</small></td>
+                    <td>{purchaseOrder.currency} {minorUnitsToMoney(receiptMinorUnits)}</td>
+                    <td>{!props.canReadSupplierPayables ? 'Restricted' : supplierInvoices.isPending ? 'Loading…' : supplierInvoices.isError ? 'Unavailable' : `${purchaseOrder.currency} ${minorUnitsToMoney(invoicedMinorUnits)}`}</td>
+                    <td>{!props.canReadSupplierPayables ? 'Restricted' : supplierInvoices.isPending ? 'Loading…' : supplierInvoices.isError ? 'Unavailable' : `${purchaseOrder.currency} ${minorUnitsToMoney(paidMinorUnits)}`}</td>
+                    <td>{!props.canReadSupplierPayables ? 'Restricted' : supplierInvoices.isPending ? 'Loading…' : supplierInvoices.isError ? 'Unavailable' : `${purchaseOrder.currency} ${minorUnitsToMoney(remainingMinorUnits)}`}</td>
+                    <td>
+                      {!props.canReadSupplierPayables ? <small>Supplier Payables read permission required.</small> : supplierInvoices.isPending ? <small>Loading Supplier Invoices…</small> : supplierInvoices.isError ? <small>Supplier settlement could not be loaded.</small> : linkedInvoices.length === 0 ? <small>No Supplier Invoice linked yet.</small> : (
+                        <details>
+                          <summary>{linkedInvoices.length} invoice(s)</summary>
+                          {linkedInvoices.map((invoice) => <div key={invoice.id}>{invoice.invoiceNo} · {invoice.status} · Total {purchaseOrder.currency} {invoice.totalAmount} · Paid {purchaseOrder.currency} {invoice.allocatedAmount} · Remaining {purchaseOrder.currency} {invoice.outstandingAmount}</div>)}
+                        </details>
+                      )}
+                    </td>
+                  </tr>;
+                })}
+                {allPurchaseOrders.isPending && <tr><td colSpan={7} className="muted">Loading Goods Receipts…</td></tr>}
+                {allPurchaseOrders.isError && <tr><td colSpan={7} className="error-text">Goods Receipts could not be loaded.</td></tr>}
+                {allPurchaseOrders.isSuccess && goodsReceiptRows.length === 0 && <tr><td colSpan={7} className="muted">No Goods Receipts have been posted for this Project yet.</td></tr>}
+              </tbody>
+            </table>
           </div>
           {latestGoodsReceipt && (
             <div className="goods-receipt-result" aria-live="polite">

@@ -29,7 +29,7 @@ export type TransferMaterialInput = Readonly<{
 export type MaterialTransfer = Readonly<{
   transactions: LedgerRow[]; destinationProjectId: string | null; destinationStageId: string | null; lineCost: string;
 }>;
-export type AdjustStockInput = Readonly<{ projectId?: string; warehouseId: string; materialId: string; quantityDelta: string; reason: string }>;
+export type AdjustStockInput = Readonly<{ projectId?: string; materialId: string; quantityDelta: string; reason: string }>;
 
 /** Build one bounded Inventory query string. */
 function queryString(input: Readonly<Record<string, string | number | undefined | null>>): string {

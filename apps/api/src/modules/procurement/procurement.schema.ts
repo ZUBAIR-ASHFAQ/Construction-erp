@@ -181,7 +181,8 @@ export const purchaseOrderResponseSchema = z.object({
     receiptNo: textSchema,
     warehouseId: uuidSchema,
     receivedAt: z.string().datetime({ offset: true }),
-    status: statusSchema
+    status: statusSchema,
+    receivedAmount: moneySchema
   }).strict()),
   items: z.array(purchaseOrderItemResponseSchema)
 }).strict();
@@ -204,7 +205,7 @@ export const goodsReceiptItemInputSchema = z.object({
 
 export const createGoodsReceiptBodySchema = z.object({
   purchaseOrderId: uuidSchema,
-  warehouseId: uuidSchema,
+  warehouseId: uuidSchema.optional(),
   items: z.array(goodsReceiptItemInputSchema).min(1)
 }).strict();
 
@@ -230,6 +231,7 @@ export const goodsReceiptResponseSchema = z.object({
   receivedAt: z.string().datetime({ offset: true }),
   status: statusSchema,
   receivedBy: uuidSchema,
+  receivedAmount: moneySchema,
   items: z.array(goodsReceiptItemResponseSchema)
 }).strict();
 

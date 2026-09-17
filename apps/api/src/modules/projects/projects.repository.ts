@@ -222,6 +222,25 @@ export class ProjectsRepository {
     });
   }
 
+  /** Ensure the server-owned Project number sequence exists for the authenticated Company. */
+  async ensureProjectNumberSequence(): Promise<void> {
+    const scope = requireCompanyRepositoryScope();
+    await this.db.numberSequence.upsert({
+      where: { companyId_sequenceKey: { companyId: scope.companyId, sequenceKey: 'project' } },
+      create: {
+        companyId: scope.companyId,
+        sequenceKey: 'project',
+        prefix: 'PRJ-',
+        suffix: '',
+        padWidth: 5,
+        nextValue: 1n,
+        incrementBy: 1n,
+        status: 'ACTIVE'
+      },
+      update: {}
+    });
+  }
+
   /** Find one Client only inside the authenticated company for Project relationship validation. */
   async findClientById(clientId: string) {
     const scope = requireCompanyRepositoryScope();

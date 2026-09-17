@@ -67,7 +67,7 @@ const PURCHASE_ORDER_BODY_JSON_SCHEMA = {
 } as const;
 const CANCEL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['reason'], properties: { reason: { type: 'string', minLength: 1 } } } as const;
 const GOODS_RECEIPT_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['purchaseOrderId', 'warehouseId', 'items'],
+  type: 'object', additionalProperties: false, required: ['purchaseOrderId', 'items'],
   properties: {
     purchaseOrderId: UUID_JSON_SCHEMA,
     warehouseId: UUID_JSON_SCHEMA,

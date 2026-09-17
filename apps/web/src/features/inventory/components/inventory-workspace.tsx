@@ -32,7 +32,6 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const [issueMaterialId, setIssueMaterialId] = useState('');
   const [issueQuantity, setIssueQuantity] = useState('1.0000');
   const [issueDate, setIssueDate] = useState(new Date().toISOString().slice(0, 10));
-  const [directWarehouseId, setDirectWarehouseId] = useState('');
   const [directMaterialId, setDirectMaterialId] = useState('');
   const [directQuantity, setDirectQuantity] = useState('1.0000');
   const [directReason, setDirectReason] = useState('Direct stock entry');
@@ -61,8 +60,8 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   /** Add positive stock directly to the selected Project without a Procurement document. */
   function submitDirectStock(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!projectId || !directWarehouseId || !directMaterialId || Number(directQuantity) <= 0) return;
-    addDirectStock.mutate({ projectId, warehouseId: directWarehouseId, materialId: directMaterialId, quantityDelta: directQuantity, reason: directReason });
+    if (!projectId || !directMaterialId || Number(directQuantity) <= 0) return;
+    addDirectStock.mutate({ projectId, materialId: directMaterialId, quantityDelta: directQuantity, reason: directReason });
   }
 
   /** Move unused stock to another Project and recognize its receiving material cost. */
@@ -93,7 +92,6 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const stockedWarehouseIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0).map((row) => row.warehouseId));
   const stockedMaterialIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0 && (!issueWarehouseId || row.warehouseId === issueWarehouseId)).map((row) => row.materialId));
   const warehouseOptions = (stock.data?.warehouses ?? []).filter((warehouse) => stockedWarehouseIds.has(warehouse.id));
-  const directWarehouseOptions = stock.data?.warehouses ?? [];
   const transferMaterialIds = new Set((stock.data?.items ?? []).filter((row) => Number(row.quantityOnHand) > 0 && (!transferSourceWarehouseId || row.warehouseId === transferSourceWarehouseId)).map((row) => row.materialId));
   const transferMaterialOptions = (materials.data?.items ?? []).filter((material) => transferMaterialIds.has(material.id));
   const transferSourcePosition = (stock.data?.items ?? []).find((row) => row.warehouseId === transferSourceWarehouseId && row.materialId === transferMaterialId);
@@ -103,6 +101,8 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
   const warehouseNames = new Map((stock.data?.warehouses ?? []).map((warehouse) => [warehouse.id, warehouse.name]));
   const materialNames = new Map((materials.data?.items ?? []).map((material) => [material.id, material.name]));
   const stageNames = new Map((stages.data?.items ?? []).map((stage) => [stage.id, stage.name]));
+  const issuedStockRows = (ledger.data?.items ?? []).filter((row) => row.movementType.toUpperCase() === 'ISSUE');
+  const otherStockMovementRows = (ledger.data?.items ?? []).filter((row) => row.movementType.toUpperCase() !== 'ISSUE');
   const selectedProject = (projects.data?.items ?? []).find((project) => project.id === projectId);
   const selectedProjectLabel = selectedProject ? `${selectedProject.projectCode} · ${selectedProject.name}` : 'Selected project';
   const readError = [materials.error, stock.error, ledger.error].find((error): error is Error => error instanceof Error);
@@ -159,9 +159,36 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
 
       {props.canRead && projectId && (
         <section className="admin-card">
-          <h2>Append-only stock ledger <small className="muted">({ledger.data?.total ?? 0} row(s))</small></h2>
+          <h2>Issued stock <small className="muted">({issuedStockRows.length} row(s))</small></h2>
+          <p className="muted">Materials issued from warehouse stock to this project or one of its stages.</p>
+          <div className="table-scroll">
+            <table>
+              <thead><tr><th>When</th><th>Warehouse</th><th>Material</th><th>Project / Stage</th><th>Quantity issued</th><th>Unit cost</th></tr></thead>
+              <tbody>
+                {issuedStockRows.map((row) => (
+                  <tr key={row.id}>
+                    <td>{new Date(row.occurredAt).toLocaleString()}</td>
+                    <td>{warehouseNames.get(row.warehouseId) ?? 'Unknown warehouse'}</td>
+                    <td>{materialNames.get(row.materialId) ?? 'Unknown material'}</td>
+                    <td>{projects.data?.items.find((project) => project.id === row.projectId)?.name ?? 'Company'}{row.stageId ? ` / ${stageNames.get(row.stageId) ?? 'Project stage'}` : ''}</td>
+                    <td>{row.quantity.replace(/^-/, '')}</td>
+                    <td>{row.unitCost}</td>
+                  </tr>
+                ))}
+                {ledger.isSuccess && issuedStockRows.length === 0 && <tr><td colSpan={6} className="muted">No stock has been issued for this project yet.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {props.canRead && projectId && (
+        <section className="admin-card">
+          <h2>Append-only stock ledger <small className="muted">({otherStockMovementRows.length} other movement(s))</small></h2>
+          <p className="muted">Receipts, transfers and controlled adjustments are shown here. Material issues are separated above for clarity.</p>
           <div className="table-scroll"><table><thead><tr><th>When</th><th>Type</th><th>Warehouse</th><th>Material</th><th>Project / Stage</th><th>Source</th><th>Quantity</th><th>Unit cost</th></tr></thead><tbody>
-            {(ledger.data?.items ?? []).map((row) => <tr key={row.id}><td>{new Date(row.occurredAt).toLocaleString()}</td><td>{row.movementType}</td><td>{warehouseNames.get(row.warehouseId) ?? 'Unknown warehouse'}</td><td>{materialNames.get(row.materialId) ?? 'Unknown material'}</td><td>{projects.data?.items.find((project) => project.id === row.projectId)?.name ?? 'Company'}{row.stageId ? ` / ${stageNames.get(row.stageId) ?? 'Project stage'}` : ''}</td><td>{row.sourceType.replaceAll('_', ' ')}</td><td>{row.quantity}</td><td>{row.unitCost}</td></tr>)}
+            {otherStockMovementRows.map((row) => <tr key={row.id}><td>{new Date(row.occurredAt).toLocaleString()}</td><td>{row.movementType}</td><td>{warehouseNames.get(row.warehouseId) ?? 'Unknown warehouse'}</td><td>{materialNames.get(row.materialId) ?? 'Unknown material'}</td><td>{projects.data?.items.find((project) => project.id === row.projectId)?.name ?? 'Company'}{row.stageId ? ` / ${stageNames.get(row.stageId) ?? 'Project stage'}` : ''}</td><td>{row.sourceType.replaceAll('_', ' ')}</td><td>{row.quantity}</td><td>{row.unitCost}</td></tr>)}
+            {ledger.isSuccess && otherStockMovementRows.length === 0 && <tr><td colSpan={8} className="muted">No other stock movements have been recorded for this project yet.</td></tr>}
           </tbody></table></div>
         </section>
       )}
@@ -227,10 +254,10 @@ export function InventoryWorkspace(props: InventoryWorkspaceProps) {
               <button type="button" className="finance-modal-close" aria-label="Close direct stock form" onClick={() => setActiveAction(null)}>×</button>
             </header>
             <div className="finance-modal-body">
-              <p className="muted inventory-action-note">Use this only for opening stock or material received without Procurement. It is added directly to the selected project.</p>
+              <p className="muted inventory-action-note">Use this only for opening stock or material received without Procurement. It is added directly to the selected project in Main Warehouse.</p>
               <form className="inventory-action-form" onSubmit={submitDirectStock}>
                 <div className="inventory-action-form-grid">
-                  <label>Warehouse<select value={directWarehouseId} onChange={(event) => setDirectWarehouseId(event.target.value)} required><option value="">Select warehouse</option>{directWarehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.code} · {warehouse.name}</option>)}</select></label>
+                  <label>Main Warehouse<input value="MAIN · Main Warehouse" readOnly /></label>
                   <label>Material<select value={directMaterialId} onChange={(event) => setDirectMaterialId(event.target.value)} required><option value="">Select material</option>{(materials.data?.items ?? []).map((material) => <option key={material.id} value={material.id}>{material.code} · {material.name}</option>)}</select></label>
                   <label>Quantity<input inputMode="decimal" value={directQuantity} onChange={(event) => setDirectQuantity(event.target.value)} required /></label>
                   <label>Reason<input value={directReason} onChange={(event) => setDirectReason(event.target.value)} required /></label>

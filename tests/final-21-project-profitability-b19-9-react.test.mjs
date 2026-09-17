@@ -85,16 +85,17 @@ test('B19.9 displays all Project financial measures and keeps cash separate from
   assert.doesNotMatch(workspace, /receivedAmount\s*[-+*/]/);
 });
 
-/** Confirm Stage weight, physical progress and financial values remain distinct with Project-only reconciliation. */
-test('B19.9 keeps Stage physical and financial concepts separate and shows reconciliation buckets', () => {
+/** Confirm the Stage profitability API remains available without rendering that section in the Project workspace. */
+test('B19.9 keeps Stage profitability as a read-only API contract but omits the Stage financial position UI', () => {
+  const api = read(`${FEATURE}/api/project-profitability-api.ts`);
+  const hooks = read(`${FEATURE}/hooks/project-profitability.ts`);
   const workspace = read(`${FEATURE}/components/project-profitability-workspace.tsx`);
-  assert.match(workspace, /weightPercent/);
-  assert.match(workspace, /physicalProgressPercent/);
-  assert.match(workspace, /plannedAmount/);
-  assert.match(workspace, /projectOnly/);
-  assert.match(workspace, /projectTotal/);
-  assert.match(workspace, /Values without an authoritative Stage tag stay here/);
-  assert.match(workspace, /never distributed by Stage weight/);
+  assert.match(api, /getProjectProfitabilityStages/);
+  assert.match(hooks, /useProjectProfitabilityStages/);
+  assert.doesNotMatch(workspace, /Stage financial position/);
+  assert.doesNotMatch(workspace, /useProjectProfitabilityStages/);
+  assert.doesNotMatch(workspace, /stagesQuery/);
+  assert.doesNotMatch(workspace, /Values without an authoritative Stage tag stay here/);
 });
 
 /** Confirm the trend UI uses only server-returned recognized revenue, actual cost and profit points. */

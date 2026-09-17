@@ -101,6 +101,16 @@ function requisitionResponse(row: PurchaseRequisitionRecord) {
   };
 }
 
+
+/** Calculate the accepted Goods Receipt value at the Purchase Order unit rate. */
+function goodsReceiptAmount(items: readonly Readonly<{ acceptedQty: DecimalLike; sourceUnitCost: DecimalLike }>[]): string {
+  let amount = 0n;
+  for (const item of items) {
+    amount += divideRoundHalfUp(decimalToScale4(storedDecimal(item.acceptedQty)) * decimalToScale4(storedDecimal(item.sourceUnitCost)), 1_000_000n);
+  }
+  return minorUnitsToMoney(amount);
+}
+
 /** Map one persisted Purchase Order to the Final-21 response contract. */
 function purchaseOrderResponse(row: PurchaseOrderRecord) {
   return {
@@ -123,7 +133,8 @@ function purchaseOrderResponse(row: PurchaseOrderRecord) {
       receiptNo: receipt.receiptNo,
       warehouseId: receipt.warehouseId,
       receivedAt: receipt.receivedAt instanceof Date ? receipt.receivedAt.toISOString() : receipt.receivedAt,
-      status: receipt.status
+      status: receipt.status,
+      receivedAmount: goodsReceiptAmount(receipt.items)
     })),
     items: row.items.map((item: PurchaseOrderItemRecord) => ({
       id: item.id,
@@ -155,6 +166,7 @@ function goodsReceiptResponse(row: GoodsReceiptRecord) {
     receivedAt: row.receivedAt instanceof Date ? row.receivedAt.toISOString() : row.receivedAt,
     status: row.status,
     receivedBy: row.receivedBy,
+    receivedAmount: goodsReceiptAmount(row.items),
     items: row.items.map((item: GoodsReceiptItemRecord) => ({
       id: item.id,
       goodsReceiptId: item.goodsReceiptId,
@@ -538,7 +550,7 @@ export class ProcurementService {
     try {
       const received = await new InventoryService(this.db).receiveInventory({
         purchaseOrderId: input.purchaseOrderId,
-        warehouseId: input.warehouseId,
+        ...(input.warehouseId ? { warehouseId: input.warehouseId } : {}),
         items: input.items.map((item) => ({
           poItemId: item.poItemId,
           itemId: item.materialId,

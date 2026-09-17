@@ -6,6 +6,7 @@ import {
 } from '@construction-erp/database';
 import { AuthorizationError, ValidationError } from '@construction-erp/errors';
 import { recordOutboxEvent } from '@construction-erp/outbox';
+import { allocateCompanyNumber } from '@construction-erp/numbering';
 import {
   hasPermission,
   requireActorUserId,
@@ -42,6 +43,7 @@ const ASSIGNMENT_ACTIVE = 'ACTIVE';
 const ROLE_ACTIVE = 'ACTIVE';
 const SITE_MANAGER_ROLE_CODE = 'site-manager';
 const SYSTEM_ADMIN_ROLE_CODE = 'system-admin';
+const PROJECT_SEQUENCE_KEY = 'project';
 
 type ProjectCloseReadinessCheck = (
   tx: TransactionClient,
@@ -492,8 +494,16 @@ export class ProjectsService {
     try {
       return await withTransaction(this.db, async (tx) => {
         const repository = new ProjectsRepository(tx);
-        const duplicate = await repository.findProjectByCode(input.projectCode);
-        if (duplicate) throw createProjectError('DUPLICATE_PROJECT_CODE');
+        await repository.ensureProjectNumberSequence();
+        let projectCode: string | null = null;
+        for (let attempt = 0; attempt < 100; attempt += 1) {
+          const candidate = (await allocateCompanyNumber(tx, { sequenceKey: PROJECT_SEQUENCE_KEY })).formatted;
+          if (!(await repository.findProjectByCode(candidate))) {
+            projectCode = candidate;
+            break;
+          }
+        }
+        if (!projectCode) throw createProjectError('DUPLICATE_PROJECT_CODE');
 
         const costPlusPercent = input.costPlusPercent ?? null;
         assertValidCommercialModel(input.projectModel, input.projectValue, costPlusPercent);
@@ -503,7 +513,7 @@ export class ProjectsService {
         });
 
         const project = await repository.createProject({
-          projectCode: input.projectCode,
+          projectCode,
           name: input.name,
           clientId: input.clientId,
           projectModel: input.projectModel,

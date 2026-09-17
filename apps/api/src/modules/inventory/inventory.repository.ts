@@ -15,6 +15,8 @@ export type MaterialVisibility = Readonly<{
   includeUnassigned: boolean;
 }>;
 
+const MAIN_WAREHOUSE_CODE = 'MAIN';
+
 /** Reject invalid bounded pagination before it reaches persistence. */
 function assertPageWindow(input: PageWindow): void {
   if (!Number.isInteger(input.skip) || input.skip < 0) throw new RangeError('skip must be a non-negative integer.');
@@ -25,14 +27,16 @@ function assertPageWindow(input: PageWindow): void {
 
 type WarehouseVisibilityWhere = {
   projectId?: { in: string[] };
-  OR?: Array<{ projectId: null } | { projectId: { in: string[] } }>;
+  OR?: Array<{ projectId: null; code?: string } | { projectId: { in: string[] } }>;
 };
 
 /** Build a Project-safe Warehouse predicate from trusted request scope. */
 function warehouseVisibilityWhere(visibility: InventoryVisibility): WarehouseVisibilityWhere {
   if (visibility.allowedProjectIds === null) return {};
   const projectIds = [...new Set(visibility.allowedProjectIds)];
-  if (!visibility.includeCompanyWideWarehouses) return { projectId: { in: projectIds } };
+  if (!visibility.includeCompanyWideWarehouses) {
+    return { OR: [{ projectId: { in: projectIds } }, { projectId: null, code: MAIN_WAREHOUSE_CODE }] };
+  }
   return { OR: [{ projectId: null }, { projectId: { in: projectIds } }] };
 }
 
@@ -220,6 +224,22 @@ export class InventoryRepository {
     return this.db.warehouse.findFirst({ where: scope.where({ id: warehouseId, ...warehouseVisibilityWhere(visibility) }) });
   }
 
+  /** Ensure the Company-wide Main Warehouse exists for server-defaulted receipts and direct stock entry. */
+  async ensureMainWarehouse() {
+    const scope = requireCompanyRepositoryScope();
+    return this.db.warehouse.upsert({
+      where: { companyId_code: { companyId: scope.companyId, code: MAIN_WAREHOUSE_CODE } },
+      create: scope.createData({
+        projectId: null,
+        code: MAIN_WAREHOUSE_CODE,
+        name: 'Main Warehouse',
+        location: null,
+        status: 'ACTIVE'
+      }),
+      update: {}
+    });
+  }
+
   /** Ensure Material numbering exists before allocating a server-owned material code. */
   async ensureMaterialNumberSequence(): Promise<void> {
     const scope = requireCompanyRepositoryScope();
@@ -329,7 +349,11 @@ export class InventoryRepository {
       by: ['warehouseId', 'materialId', 'projectId'],
       where: {
         companyId: scope.companyId,
-        ...(input.projectId ? { projectId: input.projectId } : {}),
+        ...(input.projectId
+          ? { projectId: input.projectId }
+          : input.visibility.allowedProjectIds === null
+            ? {}
+            : { projectId: { in: [...new Set(input.visibility.allowedProjectIds)] } }),
         warehouseId: input.warehouseId ? input.warehouseId : { in: warehouseIds },
         ...(input.materialId ? { materialId: input.materialId } : {})
       },
@@ -362,7 +386,11 @@ export class InventoryRepository {
       companyId: scope.companyId,
       warehouseId: input.warehouseId ? input.warehouseId : { in: warehouseIds },
       ...(input.materialId ? { materialId: input.materialId } : {}),
-      ...(input.projectId ? { projectId: input.projectId } : {}),
+      ...(input.projectId
+        ? { projectId: input.projectId }
+        : input.visibility.allowedProjectIds === null
+          ? {}
+          : { projectId: { in: [...new Set(input.visibility.allowedProjectIds)] } }),
       ...(input.stageId ? { stageId: input.stageId } : {})
     };
     const [items, total] = await Promise.all([

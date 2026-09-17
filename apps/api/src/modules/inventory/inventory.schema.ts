@@ -130,7 +130,7 @@ export const transferMaterialBodySchema = z.object({
 /** Validate one controlled stock adjustment command. */
 export const adjustStockBodySchema = z.object({
   projectId: uuid.optional(),
-  warehouseId: uuid,
+  warehouseId: uuid.optional(),
   materialId: uuid,
   quantityDelta: signedDecimal,
   reason: z.string().trim().min(1).max(1000)
@@ -149,7 +149,7 @@ export const receiveInventoryItemInputSchema = z.object({
 /** Internal Procurement-to-Inventory receipt contract. */
 export const receiveInventoryBodySchema = z.object({
   purchaseOrderId: uuid,
-  warehouseId: uuid,
+  warehouseId: uuid.optional(),
   items: z.array(receiveInventoryItemInputSchema).min(1).max(200)
 }).strict();
 

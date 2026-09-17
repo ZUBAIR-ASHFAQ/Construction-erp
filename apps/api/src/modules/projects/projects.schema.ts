@@ -52,6 +52,7 @@ export const PROJECT_SERVER_OWNED_REQUEST_FIELDS = Object.freeze([
   'actorUserId',
   'permissions',
   'projectScope',
+  'projectCode',
   'status',
   'statusHistory',
   'changedBy',
@@ -170,7 +171,6 @@ export const listProjectsQuerySchema = z.object({
 
 /** Create one company-owned DRAFT Project without accepting server-owned lifecycle fields. */
 export const createProjectBodySchema = z.object({
-  projectCode: projectCodeSchema,
   name: projectNameSchema,
   clientId: uuidSchema,
   projectModel: projectModelRequestSchema,

@@ -456,11 +456,10 @@ export async function registerProjectsRoutes(app: FastifyInstance, options: Proj
         type: 'object',
         additionalProperties: false,
         required: [
-          'projectCode', 'name', 'clientId', 'projectModel', 'projectValue', 'currency',
+          'name', 'clientId', 'projectModel', 'projectValue', 'currency',
           'startDate', 'plannedEndDate'
         ],
         properties: {
-          projectCode: { type: 'string', minLength: 1, maxLength: 100 },
           name: { type: 'string', minLength: 1, maxLength: 300 },
           clientId: { type: 'string', format: 'uuid' },
           projectModel: PROJECT_MODEL_REQUEST_JSON_SCHEMA,

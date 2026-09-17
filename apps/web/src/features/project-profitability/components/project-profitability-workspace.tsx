@@ -12,7 +12,6 @@ import type {
 } from '../api/project-profitability-api.js';
 import {
   useProjectProfitabilityPortfolio,
-  useProjectProfitabilityStages,
   useProjectProfitabilitySummary,
   useProjectProfitabilityTrend
 } from '../hooks/project-profitability.js';
@@ -209,11 +208,6 @@ export function ProjectProfitabilityWorkspace({
     { asOfDate: appliedFilters.asOfDate },
     canRead
   );
-  const stagesQuery = useProjectProfitabilityStages(
-    selectedProjectId,
-    { asOfDate: appliedFilters.asOfDate },
-    canRead
-  );
   const trendQuery = useProjectProfitabilityTrend(
     selectedProjectId,
     {
@@ -376,41 +370,6 @@ export function ProjectProfitabilityWorkspace({
       </section>
 
       <section className="admin-card">
-        <h2>Stage financial position</h2>
-        {stagesQuery.isPending && selectedProjectId && <p>Loading Stage profitability…</p>}
-        {stagesQuery.error instanceof Error && <div className="form-error" role="alert">{stagesQuery.error.message}</div>}
-        {stagesQuery.data && (
-          <>
-            <div className="table-wrap">
-              <table className="admin-table profitability-table">
-                <thead><tr><th>Stage</th><th>Weight</th><th>Physical</th><th>Planned</th><th>Revenue</th><th>Cost</th><th>Profit</th><th>Billed</th><th>Received</th><th>Outstanding</th></tr></thead>
-                <tbody>
-                  {stagesQuery.data.stages.map((stage) => (
-                    <tr key={stage.stageId}>
-                      <td>{stage.stageCode}<span>{stage.stageName}</span></td>
-                      <td>{stage.weightPercent}%</td>
-                      <td>{stage.physicalProgressPercent}%</td>
-                      <td>{stage.plannedAmount === null ? '—' : displayMoney(stage.plannedAmount, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.recognizedRevenue, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.actualCost, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.profitAmount, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.billedAmount, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.receivedAmount, stagesQuery.data.currency)}</td>
-                      <td>{displayMoney(stage.outstandingAmount, stagesQuery.data.currency)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="profitability-reconciliation-grid">
-              <div><h3>Project-only</h3><p className="muted">Values without an authoritative Stage tag stay here. They are never distributed by Stage weight.</p><FinancialGrid values={stagesQuery.data.projectOnly} currency={stagesQuery.data.currency} /></div>
-              <div><h3>Project total</h3><p className="muted">Server-verified total for Stage rows plus Project-only values.</p><FinancialGrid values={stagesQuery.data.projectTotal} currency={stagesQuery.data.currency} /></div>
-            </div>
-          </>
-        )}
-      </section>
-
-      <section className="admin-card">
         <h2>Revenue, cost and profit trend</h2>
         {trendQuery.isPending && selectedProjectId && <p>Loading trend…</p>}
         {trendQuery.error instanceof Error && <div className="form-error" role="alert">{trendQuery.error.message}</div>}
@@ -472,7 +431,7 @@ export function ProjectProfitabilityWorkspace({
 
           <section className="admin-card profitability-contract-note">
             <h2>Read-only contract</h2>
-            <p>Module 19 owns no browser-created financial values. Revenue, categorized actual cost, profit, Client receivable/cash, and Supplier invoice/payment/payable positions are read from the four frozen GET operations and remain subject to server-side Company, Project, as-of-date, and permission checks.</p>
+            <p>Module 19 owns no browser-created financial values. Revenue, categorized actual cost, profit, Client receivable/cash, and Supplier invoice/payment/payable positions are read from authoritative server GET operations and remain subject to server-side Company, Project, as-of-date, and permission checks.</p>
           </section>
     </div>
   );

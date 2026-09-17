@@ -11,7 +11,6 @@ import { useCreateProject, useProjects } from '../hooks/projects.js';
 import type { ProjectModel, ProjectStatus } from '../api/projects-api.js';
 
 const createProjectSchema = z.object({
-  projectCode: z.string().trim().min(1, 'Project code is required.').max(100),
   name: z.string().trim().min(1, 'Project name is required.').max(300),
   clientId: z.string().uuid('Select or enter a valid Client ID.'),
   projectModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
@@ -95,7 +94,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const createForm = useForm<CreateProjectValues>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
-      projectCode: '',
       name: '',
       clientId: initialClientId ?? '',
       projectModel: 'FIXED_PRICE',
@@ -135,7 +133,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   /** Create one DRAFT Project from every validated create field and open the new Project details. */
   async function handleCreate(values: CreateProjectValues): Promise<void> {
     const project = await createMutation.mutateAsync({
-      projectCode: values.projectCode,
       name: values.name,
       clientId: values.clientId,
       projectModel: values.projectModel,
@@ -148,7 +145,6 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
     });
 
     createForm.reset({
-      projectCode: '',
       name: '',
       clientId: clientId || initialClientId || '',
       projectModel: 'FIXED_PRICE',
@@ -275,8 +271,7 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
         <ProjectModal title="Create project" eyebrow="New project" onClose={closeDialog}>
           <form className="admin-form project-modal-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="project-form-grid project-modal-grid">
-              <label>Project code<input autoFocus {...createForm.register('projectCode')} /></label>
-              <label>Project name<input {...createForm.register('name')} /></label>
+              <label>Project name<input autoFocus {...createForm.register('name')} /></label>
               <label>
                 Client
                 <select {...createForm.register('clientId')} disabled={!canReadClients}>

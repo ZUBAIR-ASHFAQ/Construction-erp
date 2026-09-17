@@ -25,6 +25,7 @@ const RECEIVED = 'RECEIVED';
 const MATERIAL_SEQUENCE = 'material';
 const MATERIAL_ISSUE_SEQUENCE = 'material-issue';
 const GOODS_RECEIPT_SEQUENCE = 'goods-receipt';
+const MAIN_WAREHOUSE_CODE = 'MAIN';
 const SCALE_4 = 10_000n;
 const MONEY_DIVISOR = 1_000_000n;
 
@@ -183,9 +184,19 @@ export class InventoryService {
   }
 
   /** Require Warehouse permission using its owning Project or Company scope. */
-  private async requireWarehousePermission(repository: AdministrationRepository, warehouse: WarehouseRecord, permission: string, asOf: Date): Promise<void> {
+  private async requireWarehousePermission(
+    repository: AdministrationRepository,
+    warehouse: WarehouseRecord,
+    permission: string,
+    asOf: Date,
+    projectId?: string | null
+  ): Promise<void> {
     if (warehouse.projectId) {
       await this.requireProjectPermission(repository, warehouse.projectId, permission, asOf);
+      return;
+    }
+    if (token(warehouse.code) === MAIN_WAREHOUSE_CODE && projectId) {
+      await this.requireProjectPermission(repository, projectId, permission, asOf);
       return;
     }
     if (requireRequestSecurityContext().projectScope.kind !== 'all') throw new AuthorizationError();
@@ -346,7 +357,7 @@ export class InventoryService {
     const visibility: InventoryVisibility = { allowedProjectIds: [input.projectId], includeCompanyWideWarehouses: requireRequestSecurityContext().projectScope.kind === 'all' };
     const warehouse = await repository.findWarehouseById(input.warehouseId, visibility);
     if (!warehouse) throw createModule11Error('WAREHOUSE_NOT_FOUND');
-    await this.requireWarehousePermission(users, warehouse, 'inventory.issue', now);
+    await this.requireWarehousePermission(users, warehouse, 'inventory.issue', now, input.projectId);
     if (warehouse.projectId && warehouse.projectId !== input.projectId) throw createModule11Error('WAREHOUSE_NOT_FOUND');
 
     const uniqueMaterialIds = new Set(input.items.map((item) => item.materialId));
@@ -441,8 +452,8 @@ export class InventoryService {
       const effectiveDestinationProjectId = destinationProjectId ?? destination.projectId ?? null;
       this.requireMaterialProject(material, effectiveSourceProjectId);
       this.requireMaterialProject(material, effectiveDestinationProjectId);
-      await this.requireWarehousePermission(users, source, 'inventory.transfer', now);
-      await this.requireWarehousePermission(users, destination, 'inventory.transfer', now);
+      await this.requireWarehousePermission(users, source, 'inventory.transfer', now, effectiveSourceProjectId);
+      await this.requireWarehousePermission(users, destination, 'inventory.transfer', now, effectiveDestinationProjectId);
       if (sourceProjectId && destinationProjectId) {
         await this.requireProjectPermission(users, sourceProjectId, 'inventory.transfer', now);
         await this.requireProjectPermission(users, destinationProjectId, 'inventory.transfer', now);
@@ -501,10 +512,13 @@ export class InventoryService {
       const visibility = await this.resolveVisibility(users, 'inventory.adjust', now);
       const repository = new InventoryRepository(tx);
       const [warehouse, material] = await Promise.all([
-        repository.findWarehouseById(input.warehouseId, visibility),
+        input.warehouseId
+          ? repository.findWarehouseById(input.warehouseId, visibility)
+          : repository.ensureMainWarehouse(),
         repository.findMaterialById(input.materialId)
       ]);
       if (!warehouse) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+      if (token(warehouse.status) !== ACTIVE) throw createModule11Error('WAREHOUSE_NOT_FOUND');
       if (!material || token(material.status) !== ACTIVE) throw createModule11Error('MATERIAL_NOT_FOUND');
       if (input.projectId) {
         await this.requireProjectPermission(users, input.projectId, 'inventory.adjust', now);
@@ -512,7 +526,7 @@ export class InventoryService {
         if (!project || token(project.status) !== ACTIVE) throw createModule11Error('WAREHOUSE_NOT_FOUND');
         if (warehouse.projectId && warehouse.projectId !== input.projectId) throw createModule11Error('WAREHOUSE_NOT_FOUND');
       }
-      await this.requireWarehousePermission(users, warehouse, 'inventory.adjust', now);
+      await this.requireWarehousePermission(users, warehouse, 'inventory.adjust', now, input.projectId ?? null);
       await repository.lockStockKey(warehouse.id, material.id);
       const stockProjectId = input.projectId ?? warehouse.projectId;
       this.requireMaterialProject(material, stockProjectId ?? null);
@@ -557,9 +571,12 @@ export class InventoryService {
     if (!purchaseOrder || token(purchaseOrder.status) !== ISSUED) throw new ConflictError({ message: 'Purchase Order is not receivable.' });
     await this.requireProjectPermission(users, purchaseOrder.projectId, 'goods_receipts.create', now);
     const visibility: InventoryVisibility = { allowedProjectIds: [purchaseOrder.projectId], includeCompanyWideWarehouses: requireRequestSecurityContext().projectScope.kind === 'all' };
-    const warehouse = await repository.findWarehouseById(input.warehouseId, visibility);
+    const warehouse = input.warehouseId
+      ? await repository.findWarehouseById(input.warehouseId, visibility)
+      : await repository.ensureMainWarehouse();
     if (!warehouse || (warehouse.projectId && warehouse.projectId !== purchaseOrder.projectId)) throw createModule11Error('WAREHOUSE_NOT_FOUND');
-    await this.requireWarehousePermission(users, warehouse, 'goods_receipts.create', now);
+    if (token(warehouse.status) !== ACTIVE) throw createModule11Error('WAREHOUSE_NOT_FOUND');
+    await this.requireWarehousePermission(users, warehouse, 'goods_receipts.create', now, purchaseOrder.projectId);
     const poItems = new Map(purchaseOrder.items.map((row) => [row.id, row]));
     const requestedPoItemIds = new Set(input.items.map((item) => item.poItemId));
     if (requestedPoItemIds.size !== input.items.length) throw new ValidationError({ message: 'A Purchase Order line may appear only once in one Goods Receipt.' });

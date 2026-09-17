@@ -70,6 +70,7 @@ export type PurchaseOrder = Readonly<{
     warehouseId: string;
     receivedAt: string;
     status: string;
+    receivedAmount: string;
   }>>;
   items: PurchaseOrderItem[];
 }>;
@@ -96,7 +97,6 @@ export type CreatePurchaseOrderInput = Readonly<{
 
 export type CreateGoodsReceiptInput = Readonly<{
   purchaseOrderId: string;
-  warehouseId: string;
   items: Array<Readonly<{ poItemId: string; materialId: string; quantity: string; acceptedQuantity: string; rejectedQuantity: string; batchNo?: string | null }>>;
 }>;
 
@@ -122,6 +122,7 @@ export type GoodsReceipt = Readonly<{
   receivedAt: string;
   status: string;
   receivedBy: string;
+  receivedAmount: string;
   items: GoodsReceiptItem[];
 }>;
 

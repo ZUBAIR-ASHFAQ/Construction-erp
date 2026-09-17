@@ -171,11 +171,18 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
       && (!watchedInvoiceVendorId || purchaseOrder.vendorId === watchedInvoiceVendorId)
     ))
   ), [purchaseOrdersQuery.data?.items, watchedInvoiceVendorId]);
+  const selectedPurchaseOrder = useMemo(
+    () => availablePurchaseOrders.find((purchaseOrder) => purchaseOrder.id === watchedPurchaseOrderId) ?? null,
+    [availablePurchaseOrders, watchedPurchaseOrderId]
+  );
   const availableGoodsReceipts = useMemo(() => (
-    availablePurchaseOrders
-      .find((purchaseOrder) => purchaseOrder.id === watchedPurchaseOrderId)
-      ?.goodsReceipts.filter((receipt) => receipt.status.toUpperCase() === 'RECEIVED') ?? []
-  ), [availablePurchaseOrders, watchedPurchaseOrderId]);
+    selectedPurchaseOrder?.goodsReceipts.filter((receipt) => receipt.status.toUpperCase() === 'RECEIVED') ?? []
+  ), [selectedPurchaseOrder]);
+  const watchedGoodsReceiptId = invoiceForm.watch('goodsReceiptId');
+  const selectedGoodsReceipt = useMemo(
+    () => availableGoodsReceipts.find((receipt) => receipt.id === watchedGoodsReceiptId) ?? null,
+    [availableGoodsReceipts, watchedGoodsReceiptId]
+  );
   const purchaseOrderNames = useMemo(() => new Map((allPurchaseOrdersQuery.data?.items ?? []).map((order) => [order.id, order.poNo])), [allPurchaseOrdersQuery.data?.items]);
   const goodsReceiptNames = useMemo(() => new Map((allPurchaseOrdersQuery.data?.items ?? []).flatMap((order) => order.goodsReceipts.map((receipt) => [receipt.id, receipt.receiptNo] as const))), [allPurchaseOrdersQuery.data?.items]);
 
@@ -483,10 +490,10 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                     <select {...invoiceForm.register('goodsReceiptId')} disabled={!watchedPurchaseOrderId}>
                       <option value="">{watchedPurchaseOrderId ? 'No Goods Receipt' : 'Not applicable for direct invoice'}</option>
                       {availableGoodsReceipts.map((receipt) => (
-                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()}</option>
+                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()} · {selectedPurchaseOrder?.currency ?? ''} {displayMoney(receipt.receivedAmount)}</option>
                       ))}
                     </select>
-                    <small className="muted">Only received deliveries for the selected issued PO are shown.</small>
+                    <small className="muted">{selectedGoodsReceipt && selectedPurchaseOrder ? `Selected receipt amount: ${selectedPurchaseOrder.currency} ${displayMoney(selectedGoodsReceipt.receivedAmount)}. ` : ''}Only received deliveries for the selected issued PO are shown.</small>
                     <span className="field-error">{invoiceForm.formState.errors.goodsReceiptId?.message}</span>
                   </label>
                   <label>Tax amount<input inputMode="decimal" {...invoiceForm.register('taxAmount')} /><span className="field-error">{invoiceForm.formState.errors.taxAmount?.message}</span></label>
@@ -623,10 +630,10 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
                     <select {...invoiceForm.register('goodsReceiptId')} disabled={!watchedPurchaseOrderId}>
                       <option value="">{watchedPurchaseOrderId ? 'No Goods Receipt' : 'Not applicable for direct invoice'}</option>
                       {availableGoodsReceipts.map((receipt) => (
-                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()}</option>
+                        <option key={receipt.id} value={receipt.id}>{receipt.receiptNo} · {new Date(receipt.receivedAt).toLocaleDateString()} · {selectedPurchaseOrder?.currency ?? ''} {displayMoney(receipt.receivedAmount)}</option>
                       ))}
                     </select>
-                    <small className="muted">Only received deliveries for the selected issued PO are shown.</small>
+                    <small className="muted">{selectedGoodsReceipt && selectedPurchaseOrder ? `Selected receipt amount: ${selectedPurchaseOrder.currency} ${displayMoney(selectedGoodsReceipt.receivedAmount)}. ` : ''}Only received deliveries for the selected issued PO are shown.</small>
                     <span className="field-error">{invoiceForm.formState.errors.goodsReceiptId?.message}</span>
                   </label>
                   <label>Tax amount<input inputMode="decimal" {...invoiceForm.register('taxAmount')} /><span className="field-error">{invoiceForm.formState.errors.taxAmount?.message}</span></label>

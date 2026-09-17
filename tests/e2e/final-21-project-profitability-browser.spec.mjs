@@ -188,7 +188,7 @@ function isAllowedProjectProfitabilityPath(method, pathname) {
 test.beforeAll(async () => { await seedProjectProfitabilityBrowserScenario(); });
 test.afterAll(async () => { await database?.$disconnect(); });
 
-test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio follows each Project commercial model', async ({ page }) => {
+test('Final-21 Project Profitability summary -> trend -> portfolio follows each Project commercial model', async ({ page }) => {
   const requests = trackProjectProfitabilityRequests(page);
   await signIn(page);
   await page.getByRole('button', { name: 'Project Profitability' }).click();
@@ -214,13 +214,7 @@ test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio foll
   await expect(summary).toContainText('Total profit (client received - total cost)PKR 300.00');
   await expect(summary).toContainText('Commercial totals use Client cash as requested');
 
-  const stages = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Stage financial position' }) });
-  await expect(stages).toContainText('Grey Structure');
-  await expect(stages).toContainText('Finishing');
-  await expect(stages).toContainText('60%');
-  await expect(stages).toContainText('25%');
-  await expect(stages).toContainText('Project-only');
-  await expect(stages).toContainText('Project total');
+  await expect(page.getByRole('heading', { name: 'Stage financial position' })).toHaveCount(0);
 
   const trend = page.locator('section.admin-card').filter({ has: page.getByRole('heading', { name: 'Revenue, cost and profit trend' }) });
   await expect(trend).toContainText('2026-08-20');
@@ -236,13 +230,12 @@ test('Final-21 Project Profitability summary -> Stage -> trend -> portfolio foll
   await expect(summary).toContainText('Recognized revenuePKR 0.00');
   await expect(summary).toContainText('Advance / unallocatedPKR 500,000.00');
 
-  await expect(page.locator('section.admin-card.profitability-contract-note')).toContainText('four frozen GET operations');
+  await expect(page.locator('section.admin-card.profitability-contract-note')).toContainText('authoritative server GET operations');
   expect(requests.length).toBeGreaterThan(0);
   for (const request of requests) expect(isAllowedProjectProfitabilityPath(request.method, request.pathname)).toBe(true);
   expect(new Set(requests.map((request) => request.pathname.replace(/\/projects\/[^/]+/, '/projects/:projectId')))).toEqual(new Set([
     '/api/v1/project-profitability/portfolio',
     '/api/v1/project-profitability/projects/:projectId',
-    '/api/v1/project-profitability/projects/:projectId/stages',
     '/api/v1/project-profitability/projects/:projectId/trend'
   ]));
 });

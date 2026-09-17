@@ -226,12 +226,12 @@ test('Module 5 Zod contract preserves the Stage-7 HTTP and membership boundary',
 test('Module 5 request schemas reject server-owned authority fields by strict shape', () => {
   for (const field of [
     'companyId', 'actorUserId', 'permissions', 'projectScope', 'status',
-    'statusHistory', 'changedBy', 'createdAt', 'updatedAt'
+    'projectCode', 'statusHistory', 'changedBy', 'createdAt', 'updatedAt'
   ]) assert.match(schema, new RegExp(`'${field}'`), field);
 
   const createSection = schema.slice(schema.indexOf('export const createProjectBodySchema'), schema.indexOf('/** Update only normal editable'));
   const updateSection = schema.slice(schema.indexOf('export const updateProjectBodySchema'), schema.indexOf('/** Activation is an explicit'));
-  assert.match(createSection, /projectCode:/);
+  assert.doesNotMatch(createSection, /projectCode:/);
   assert.doesNotMatch(updateSection, /projectCode:/);
   for (const forbidden of ['companyId:', 'actorUserId:', 'permissions:', 'projectScope:', 'status:', 'changedBy:']) {
     assert.doesNotMatch(createSection, new RegExp(forbidden));

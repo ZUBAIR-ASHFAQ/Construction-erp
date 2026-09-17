@@ -108,7 +108,6 @@ export type ListProjectsInput = Readonly<{
 }>;
 
 export type CreateProjectInput = Readonly<{
-  projectCode: string;
   name: string;
   clientId: string;
   projectModel: ProjectModel;

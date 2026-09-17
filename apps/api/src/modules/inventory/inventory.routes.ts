@@ -69,7 +69,7 @@ const TRANSFER_BODY_JSON_SCHEMA = {
   }
 } as const;
 const ADJUSTMENT_BODY_JSON_SCHEMA = {
-  type: 'object', additionalProperties: false, required: ['warehouseId', 'materialId', 'quantityDelta', 'reason'],
+  type: 'object', additionalProperties: false, required: ['materialId', 'quantityDelta', 'reason'],
   properties: { projectId: UUID_JSON_SCHEMA, warehouseId: UUID_JSON_SCHEMA, materialId: UUID_JSON_SCHEMA, quantityDelta: SIGNED_DECIMAL_JSON_SCHEMA, reason: { type: 'string', minLength: 1, maxLength: 1000 } }
 } as const;
 const SUCCESS_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['data'], properties: { data: { type: 'object', additionalProperties: true } } } as const;

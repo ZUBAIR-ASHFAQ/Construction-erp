@@ -69,23 +69,24 @@ test('B19.10 replays guarded reconciliation/security integration and freezes liv
   assert.match(read('scripts/testing/run-integration.mjs'), /final-21-project-profitability-api\.integration\.test\.mjs/);
 });
 
-test('B19.10 adds one guarded Playwright workflow over all four frozen GET operations', () => {
+test('B19.10 adds one guarded Playwright workflow over the rendered Project profitability reads', () => {
   const e2e = read(E2E);
   const config = read('playwright.config.mjs');
-  for (const text of ['summary -> Stage -> trend -> portfolio', 'follows each Project commercial model', '500,000.00', 'four frozen GET operations']) assert.match(e2e, new RegExp(text, 'i'));
+  for (const text of ['summary -> trend -> portfolio', 'follows each Project commercial model', '500,000.00', 'authoritative server GET operations']) assert.match(e2e, new RegExp(text, 'i'));
   assert.match(e2e, /isAllowedProjectProfitabilityPath/);
   assert.match(config, /RUN_FINAL_21_PROJECT_PROFITABILITY_E2E/);
   assert.match(config, /final-21-project-profitability-browser\.spec\.mjs/);
 });
 
-test('B19.10 keeps the React browser read-only and server-derived', () => {
+test('B19.10 keeps the React browser read-only and server-derived without the Stage financial position section', () => {
   const api = read(`${FEATURE}/api/project-profitability-api.ts`);
   const component = read(`${FEATURE}/components/project-profitability-workspace.tsx`);
   assert.doesNotMatch(api, /method:\s*['"](?:POST|PUT|PATCH|DELETE)/);
+  assert.match(api, /getProjectProfitabilityStages/);
   assert.match(component, /Commercial totals use Client cash as requested/);
-  assert.match(component, /Project-only/);
   assert.match(component, /does not create unsafe cross-currency grand totals/);
-  assert.match(component, /four frozen GET operations/);
+  assert.match(component, /authoritative server GET operations/);
+  assert.doesNotMatch(component, /Stage financial position|useProjectProfitabilityStages|stagesQuery/);
 });
 
 test('B19.10 supersedes the B19.9 gate without growing the package-script surface', () => {

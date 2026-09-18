@@ -113,8 +113,10 @@ const dateSchema = z.string()
     const parsed = new Date(Date.UTC(year ?? 0, (month ?? 0) - 1, day ?? 0));
     return parsed.getUTCFullYear() === year && parsed.getUTCMonth() === (month ?? 0) - 1 && parsed.getUTCDate() === day;
   }, 'date must be a valid calendar date');
+const timeSchema = z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/, 'time must use HH:MM in 24-hour format');
 const exactHoursSchema = z.string().trim().regex(/^(?:0|[1-9]\d{0,2})(?:\.\d{1,4})?$/, 'hours must be an exact non-negative decimal with up to 4 decimals');
 const exactMoneySchema = z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'money must be an exact non-negative decimal with up to 2 decimals');
+const signedMoneySchema = z.string().trim().regex(/^-?(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'money must be an exact signed decimal with up to 2 decimals');
 const overtimeMultiplierSchema = z.string().trim()
   .regex(/^(?:[1-9]\d{0,2})(?:\.\d{1,4})?$/, 'overtimeMultiplier must be a positive decimal with up to 4 decimals')
   .refine((value) => Number(value) <= 10, 'overtimeMultiplier must be between 1 and 10');
@@ -156,10 +158,18 @@ export const createAttendanceBodySchema = z.object({
   projectId: uuidSchema,
   stageId: uuidSchema.nullable().optional(),
   workDate: dateSchema,
+  startTime: timeSchema.nullable().optional(),
+  endTime: timeSchema.nullable().optional(),
   status: z.enum(ATTENDANCE_STATUS_VALUES),
   hours: exactHoursSchema.nullable().optional(),
   overtimeHours: exactHoursSchema.nullable().optional()
 }).strict().superRefine((value, ctx) => {
+  if ((value.startTime === null || value.startTime === undefined) !== (value.endTime === null || value.endTime === undefined)) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endTime'], message: 'startTime and endTime must be supplied together.' });
+  }
+  if (value.startTime && value.endTime && value.startTime === value.endTime) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endTime'], message: 'endTime must differ from startTime.' });
+  }
   const hours = Number(value.hours ?? '0');
   const overtime = Number(value.overtimeHours ?? '0');
   if (hours + overtime > 24) {
@@ -173,10 +183,18 @@ export const createAttendanceBodySchema = z.object({
 /** Validate an unposted attendance correction without changing Employee or Project ownership. */
 export const updateAttendanceBodySchema = z.object({
   stageId: uuidSchema.nullable().optional(),
+  startTime: timeSchema.nullable().optional(),
+  endTime: timeSchema.nullable().optional(),
   status: z.enum(ATTENDANCE_STATUS_VALUES).optional(),
   hours: exactHoursSchema.nullable().optional(),
   overtimeHours: exactHoursSchema.nullable().optional()
 }).strict().refine((value) => Object.keys(value).length > 0, 'At least one attendance field must be supplied.').superRefine((value, ctx) => {
+  if ((value.startTime === null) !== (value.endTime === null) && value.startTime !== undefined && value.endTime !== undefined) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endTime'], message: 'startTime and endTime must be supplied together.' });
+  }
+  if (value.startTime && value.endTime && value.startTime === value.endTime) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['endTime'], message: 'endTime must differ from startTime.' });
+  }
   const hours = Number(value.hours ?? '0');
   const overtime = Number(value.overtimeHours ?? '0');
   if (hours + overtime > 24) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['hours'], message: 'hours plus overtimeHours cannot exceed 24.' });
@@ -192,9 +210,14 @@ export const listPayrollRunsQuerySchema = z.object({ ...paginationShape }).stric
 export const listPayrollPaymentsQuerySchema = z.object({
   employeeId: uuidSchema.optional(),
   payrollRunId: uuidSchema.optional(),
+  fromDate: dateSchema.optional(),
+  toDate: dateSchema.optional(),
   status: z.enum(PAYROLL_PAYMENT_STATUS_VALUES).optional(),
   ...paginationShape
-}).strict();
+}).strict().refine((value) => !value.fromDate || !value.toDate || value.toDate >= value.fromDate, {
+  message: 'toDate cannot precede fromDate.',
+  path: ['toDate']
+});
 
 /** Validate bounded Employee advance filters. */
 export const listEmployeeAdvancesQuerySchema = z.object({
@@ -234,35 +257,46 @@ export const createPayrollPaymentBodySchema = z.object({
 /** Validate the accounting date used for an append-only salary-payment reversal. */
 export const reversePayrollPaymentBodySchema = z.object({ reversalDate: dateSchema }).strict();
 
-/** Validate one Payroll period. Salary runs intentionally use a date period only; posting date is the period end. */
+/** Validate one Payroll date range plus the recurring attendance time window selected for each work date. */
 export const createPayrollRunBodySchema = z.object({
   payCycle: z.enum(['DAILY', 'MONTHLY']).optional(),
   periodStart: dateSchema,
-  periodEnd: dateSchema
+  periodEnd: dateSchema,
+  fromTime: timeSchema.optional(),
+  toTime: timeSchema.optional()
 }).strict().superRefine((value, context) => {
   if (value.periodEnd < value.periodStart) {
     context.addIssue({ code: 'custom', message: 'periodEnd cannot precede periodStart.', path: ['periodEnd'] });
   }
+  if ((value.fromTime === undefined) !== (value.toTime === undefined)) {
+    context.addIssue({ code: 'custom', message: 'fromTime and toTime must be supplied together.', path: ['toTime'] });
+  }
+  if (value.fromTime && value.toTime && value.fromTime === value.toTime) {
+    context.addIssue({ code: 'custom', message: 'toTime must differ from fromTime.', path: ['toTime'] });
+  }
   if (value.payCycle === 'DAILY' && value.periodStart !== value.periodEnd) {
     context.addIssue({ code: 'custom', message: 'Daily settlement must use one work date.', path: ['periodEnd'] });
   }
-  if (value.payCycle === 'MONTHLY') {
-    const start = new Date(`${value.periodStart}T00:00:00.000Z`);
-    const end = new Date(`${value.periodEnd}T00:00:00.000Z`);
-    const expectedEnd = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0));
-    if (start.getUTCDate() !== 1 || end.getTime() !== expectedEnd.getTime()) {
-      context.addIssue({ code: 'custom', message: 'Monthly payroll must cover one complete calendar month.', path: ['periodEnd'] });
-    }
+  if (value.payCycle === 'MONTHLY' && value.periodStart.slice(0, 7) !== value.periodEnd.slice(0, 7)) {
+    context.addIssue({ code: 'custom', message: 'Monthly payroll date range must stay within one calendar month.', path: ['periodEnd'] });
   }
 });
 
-/** Validate the only editable fields on one DRAFT Daily Settlement. */
+/** Validate the editable date/time window on one DRAFT Daily Settlement. */
 export const updateDailyPayrollRunBodySchema = z.object({
   periodStart: dateSchema,
-  periodEnd: dateSchema
+  periodEnd: dateSchema,
+  fromTime: timeSchema.optional(),
+  toTime: timeSchema.optional()
 }).strict().superRefine((value, context) => {
   if (value.periodStart !== value.periodEnd) {
     context.addIssue({ code: 'custom', message: 'Daily settlement must use one work date.', path: ['periodEnd'] });
+  }
+  if ((value.fromTime === undefined) !== (value.toTime === undefined)) {
+    context.addIssue({ code: 'custom', message: 'fromTime and toTime must be supplied together.', path: ['toTime'] });
+  }
+  if (value.fromTime && value.toTime && value.fromTime === value.toTime) {
+    context.addIssue({ code: 'custom', message: 'toTime must differ from fromTime.', path: ['toTime'] });
   }
 });
 
@@ -301,6 +335,8 @@ export const attendanceResponseSchema = z.object({
   stageId: uuidSchema.nullable(),
   stageName: z.string().nullable(),
   workDate: dateSchema,
+  startTime: timeSchema.nullable(),
+  endTime: timeSchema.nullable(),
   status: z.enum(ATTENDANCE_STATUS_VALUES),
   hours: exactHoursSchema.nullable(),
   overtimeHours: exactHoursSchema.nullable(),
@@ -338,6 +374,11 @@ export const payrollLineResponseSchema = z.object({
   netAmount: exactMoneySchema,
   paidAmount: exactMoneySchema,
   outstandingAmount: exactMoneySchema,
+  settlements: z.array(z.object({
+    paymentNo: z.string().min(1),
+    paymentDate: dateSchema,
+    amount: exactMoneySchema
+  }).strict()),
   projectAllocation: z.array(payrollAllocationResponseSchema),
   payslip: z.object({
     id: uuidSchema,
@@ -460,7 +501,7 @@ export const employeeSalaryLedgerResponseSchema = z.object({
     reference: z.string().min(1),
     debit: exactMoneySchema,
     credit: exactMoneySchema,
-    balance: exactMoneySchema,
+    balance: signedMoneySchema,
     projectId: uuidSchema.nullable(),
     projectName: z.string().nullable(),
     stageName: z.string().nullable(),
@@ -468,6 +509,27 @@ export const employeeSalaryLedgerResponseSchema = z.object({
     payrollLineId: uuidSchema.nullable(),
     advanceId: uuidSchema.nullable(),
     paymentId: uuidSchema.nullable(),
+    payslip: z.object({
+      payslipId: uuidSchema,
+      generatedAt: z.string().datetime({ offset: true }),
+      payCycle: z.enum(['DAILY', 'MONTHLY', 'LEGACY']),
+      payrollPeriodStart: dateSchema,
+      payrollPeriodEnd: dateSchema,
+      payrollFromTime: timeSchema.nullable(),
+      payrollToTime: timeSchema.nullable(),
+      salaryBeforeAbsence: exactMoneySchema,
+      absenceDeduction: exactMoneySchema,
+      earnedSalary: exactMoneySchema,
+      advanceRecovery: exactMoneySchema,
+      netSalary: exactMoneySchema,
+      paidAmount: exactMoneySchema,
+      outstandingAmount: exactMoneySchema,
+      settlements: z.array(z.object({
+        paymentNo: z.string().min(1),
+        paymentDate: dateSchema,
+        amount: exactMoneySchema
+      }).strict())
+    }).strict().optional(),
     salarySlip: z.object({
       paymentNo: z.string().min(1),
       paymentDate: dateSchema,
@@ -492,6 +554,8 @@ export const payrollRunResponseSchema = z.object({
   payCycle: z.enum(['DAILY', 'MONTHLY', 'LEGACY']),
   periodStart: dateSchema,
   periodEnd: dateSchema,
+  fromTime: timeSchema.nullable(),
+  toTime: timeSchema.nullable(),
   status: z.enum(PAYROLL_RUN_STATUS_VALUES),
   createdBy: uuidSchema,
   createdByName: z.string().min(1),
@@ -544,10 +608,10 @@ const ERROR_MESSAGES: Readonly<Record<LabourPayrollErrorCode, string>> = Object.
   PAYROLL_CASH_BANK_INVALID: 'Select an active same-Company Cash or Bank account.',
   EMPLOYEE_ADVANCE_INVALID: 'The selected Employee salary advance, Project, Stage, or Employee is invalid.',
   EMPLOYEE_ADVANCE_ALREADY_RECOVERED: 'This salary advance has already been recovered by finalized Payroll and cannot be reversed.',
-  PAYROLL_NO_ATTENDANCE: 'No attendance records exist inside this Payroll period. Mark attendance before calculating Payroll.',
+  PAYROLL_NO_ATTENDANCE: 'No attendance records match this Payroll date/time window. Mark attendance and its shift before calculating Payroll.',
   PAYROLL_COMPENSATION_MISSING: 'An Employee in this Payroll period has no single effective salary, daily wage or hourly rate for all recorded attendance dates.',
-  PAYROLL_SALARY_PERIOD_INVALID: 'Salaried Employees require a complete calendar-month Payroll period.',
-  PAYROLL_PERIOD_OPEN: 'Payroll cannot be finalized before the Payroll period end date.',
+  PAYROLL_SALARY_PERIOD_INVALID: 'Salaried Employees require a Payroll date range inside one calendar month.',
+  PAYROLL_PERIOD_OPEN: 'Payroll cannot be finalized before the selected Payroll date/time window has ended.',
   PAYROLL_NO_EARNINGS: 'The Payroll period contains no payable present days or worked hours.',
   PAYROLL_POSTING_SETUP_INVALID: 'Payroll Finance posting accounts are incomplete or invalid.',
   PAYROLL_NOT_READY: 'Payroll cannot continue because required attendance, compensation, posting accounts or calculation state is incomplete.'

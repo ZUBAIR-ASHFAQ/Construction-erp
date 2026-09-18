@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useClientInvoices } from '../../client-billing/hooks/client-billing.js';
 import { useClients } from '../../clients/hooks/clients.js';
 import { getDocumentDownload, listDocuments } from '../../documents-audit/api/documents-api.js';
+import { PaymentProofActions } from '../../documents-audit/components/payment-proof-actions.js';
 import { useCreateDocumentLink, useUploadDocument } from '../../documents-audit/hooks/documents.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
@@ -61,6 +62,7 @@ type ClientReceiptsWorkspaceProps = Readonly<{
   canReadInvoices: boolean;
   canUploadDocuments: boolean;
   canLinkDocuments: boolean;
+  canVersionDocuments: boolean;
   canReadDocuments: boolean;
 }>;
 
@@ -100,8 +102,6 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   const [receiptEvidenceInputKey, setReceiptEvidenceInputKey] = useState(0);
   const [evidenceMessage, setEvidenceMessage] = useState<string | null>(null);
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
-  const [detailEvidence, setDetailEvidence] = useState<File | null>(null);
-  const [detailEvidenceInputKey, setDetailEvidenceInputKey] = useState(0);
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const [editEvidence, setEditEvidence] = useState<File | null>(null);
   const [editEvidenceInputKey, setEditEvidenceInputKey] = useState(0);
@@ -259,7 +259,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
     } catch (error) {
       setReceiptEvidence(null);
       setReceiptEvidenceInputKey((value) => value + 1);
-      setEvidenceError(`Payment ${created.receiptNo} was posted, but its evidence was not attached. Click View, select the file again and retry: ${error instanceof Error ? error.message : 'Upload failed.'}`);
+      setEvidenceError(`Payment ${created.receiptNo} was posted, but its evidence was not saved. Use Edit proof in the payment row to retry: ${error instanceof Error ? error.message : 'Upload failed.'}`);
     }
   }
 
@@ -327,7 +327,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
       });
       setEvidenceMessage(`Payment was corrected as ${replacement.receiptNo}, and ${editEvidence.name} was attached.`);
     } catch (error) {
-      setEvidenceError(`Corrected payment ${replacement.receiptNo} was posted, but its evidence was not attached. Open it with View to retry: ${error instanceof Error ? error.message : 'Upload failed.'}`);
+      setEvidenceError(`Corrected payment ${replacement.receiptNo} was posted, but its evidence was not saved. Use Edit proof in the payment row to retry: ${error instanceof Error ? error.message : 'Upload failed.'}`);
     } finally {
       setEditEvidence(null);
       setEditEvidenceInputKey((value) => value + 1);
@@ -338,35 +338,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   function openReceiptDetails(receiptId: string): void {
     setEvidenceMessage(null);
     setEvidenceError(null);
-    setDetailEvidence(null);
-    setDetailEvidenceInputKey((value) => value + 1);
     setSelectedReceiptId(receiptId);
-  }
-
-  /** Upload or retry an image/PDF for the selected posted Client Payment. */
-  async function attachSelectedReceiptEvidence(): Promise<void> {
-    const receipt = receiptDetailQuery.data;
-    if (!receipt || !detailEvidence || !props.canUploadDocuments || !props.canLinkDocuments) return;
-    setEvidenceMessage(null);
-    setEvidenceError(null);
-    try {
-      const uploaded = await uploadReceiptDocument.mutateAsync({
-        file: detailEvidence,
-        title: `Client payment ${receipt.receiptNo}`,
-        category: 'client_receipt',
-        projectId: receipt.projectId,
-        documentNo: receipt.receiptNo
-      });
-      await linkReceiptDocument.mutateAsync({
-        documentId: uploaded.document.id,
-        link: { versionId: uploaded.version.id, resourceType: 'client_receipt', resourceId: receipt.id }
-      });
-      setEvidenceMessage(`${detailEvidence.name} was uploaded and linked to payment ${receipt.receiptNo}.`);
-      setDetailEvidence(null);
-      setDetailEvidenceInputKey((value) => value + 1);
-    } catch (error) {
-      setEvidenceError(error instanceof Error ? error.message : 'The payment evidence could not be attached.');
-    }
   }
 
   /** Download the selected receipt evidence through an authorized short-lived URL. */
@@ -543,8 +515,9 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
                   <td>
                     <div className="admin-actions">
                       <button type="button" className="secondary-button" onClick={() => openReceiptDetails(receipt.id)}>View</button>
+                      <PaymentProofActions id={receipt.id} paymentNo={receipt.receiptNo} projectId={receipt.projectId} resourceType="client_receipt" titlePrefix="Client payment proof" category="client_receipt" canRead={props.canReadDocuments} canEdit={props.view !== 'ledger' && props.canUploadDocuments && props.canLinkDocuments && props.canVersionDocuments} />
                       {props.canCreate && props.canReverse && props.canAllocate && receipt.status === 'POSTED'
-                        ? <button type="button" className="secondary-button" onClick={() => openReceiptEditor(receipt)}>Edit</button>
+                        ? <button type="button" className="secondary-button" onClick={() => openReceiptEditor(receipt)}>Edit payment</button>
                         : null}
                     </div>
                   </td>
@@ -666,16 +639,6 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
                     {props.canAllocate && receiptDetailQuery.data.status === 'POSTED' && Number(receiptDetailQuery.data.unallocatedAmount) > 0 ? <button type="button" onClick={() => { setAllocationReceipt(receiptDetailQuery.data!); allocationForm.reset({ clientInvoiceId: '', amount: '' }); setSelectedReceiptId(null); }}>Allocate</button> : null}
                     {props.canReverse && receiptDetailQuery.data.status === 'POSTED' && receiptDetailQuery.data.allocations.length === 0 ? <button type="button" className="secondary-button" disabled={reverseReceipt.isPending} onClick={() => void reverseSelectedReceipt(receiptDetailQuery.data!)}>Reverse receipt</button> : null}
                   </div>
-                  {props.canUploadDocuments && props.canLinkDocuments ? (
-                    <div className="admin-card">
-                      <h3>Payment evidence</h3>
-                      <p className="muted">Attach a client receipt, bank slip or cash evidence. You can also retry an upload that failed after the payment was posted.</p>
-                      <div className="admin-actions">
-                        <input key={detailEvidenceInputKey} type="file" accept="image/jpeg,image/png,application/pdf" onChange={(event) => setDetailEvidence(event.target.files?.[0] ?? null)} />
-                        <button type="button" disabled={!detailEvidence || uploadReceiptDocument.isPending || linkReceiptDocument.isPending} onClick={() => void attachSelectedReceiptEvidence()}>{uploadReceiptDocument.isPending || linkReceiptDocument.isPending ? 'Uploading…' : 'Attach image / PDF'}</button>
-                      </div>
-                    </div>
-                  ) : null}
                   {evidenceMessage ? <p className="muted">{evidenceMessage}</p> : null}
                   {evidenceError ? <div className="form-error" role="alert">{evidenceError}</div> : null}
                   <div>

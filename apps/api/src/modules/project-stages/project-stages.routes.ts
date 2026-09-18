@@ -11,7 +11,8 @@ import {
   projectStageParamsSchema,
   projectStageProjectParamsSchema,
   stageProgressApprovalParamsSchema,
-  updateProjectStageBodySchema
+  updateProjectStageBodySchema,
+  updateStageProgressBodySchema
 } from './project-stages.schema.js';
 import { ProjectStagesService } from './project-stages.service.js';
 
@@ -208,6 +209,23 @@ export async function registerProjectStagesRoutes(app: FastifyInstance, options:
     const { projectId, stageId } = parseRequest(projectStageParamsSchema, request.params, 'params');
     const body = parseRequest(createStageProgressBodySchema, request.body, 'body');
     return reply.code(201).send({ data: await service.recordProgress(projectId, stageId, body, readIdempotencyKey(request)) });
+  });
+
+  app.patch('/api/v1/projects/:projectId/stages/:stageId/progress/:updateId', {
+    schema: {
+      tags: ['Module 7 - Project Stages / Progress'],
+      operationId: 'module7UpdateStageProgress',
+      summary: 'Edit one submitted physical Stage progress update',
+      security: BEARER_SECURITY,
+      params: APPROVAL_PARAMS_JSON_SCHEMA,
+      body: PROGRESS_BODY_JSON_SCHEMA,
+      response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES }
+    }
+  }, async (request, reply) => {
+    await authenticateRequest(request, options.database);
+    const { projectId, stageId, updateId } = parseRequest(stageProgressApprovalParamsSchema, request.params, 'params');
+    const body = parseRequest(updateStageProgressBodySchema, request.body, 'body');
+    return reply.send({ data: await service.updateProgress(projectId, stageId, updateId, body, readIdempotencyKey(request)) });
   });
 
   app.post('/api/v1/projects/:projectId/stages/:stageId/progress/:updateId/approve', {

@@ -59,6 +59,7 @@ export type Module21EventType = (typeof MODULE_21_EVENT_TYPES)[number];
 export const DOCUMENT_LINK_RESOURCE_TYPES = Object.freeze([
   'project',
   'employee',
+  'employee_advance',
   'project_stage',
   'client_invoice',
   'client_receipt',

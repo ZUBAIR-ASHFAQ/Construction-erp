@@ -102,6 +102,7 @@ const expectedRoutes = Object.freeze({
     'PATCH /api/v1/projects/:projectId/stages/:stageId',
     'POST /api/v1/projects/:projectId/stages/baseline/freeze',
     'POST /api/v1/projects/:projectId/stages/:stageId/progress',
+    'PATCH /api/v1/projects/:projectId/stages/:stageId/progress/:updateId',
     'POST /api/v1/projects/:projectId/stages/:stageId/progress/:updateId/approve',
     'GET /api/v1/projects/:projectId/stages/:stageId/financials'
   ],

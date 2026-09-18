@@ -44,6 +44,7 @@ export type LabourPayrollRoutesOptions = Readonly<{ database: DatabaseClient }>;
 const BEARER_SECURITY = [{ bearerAuth: [] }];
 const UUID_JSON_SCHEMA = { type: 'string', format: 'uuid' } as const;
 const DATE_JSON_SCHEMA = { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' } as const;
+const TIME_JSON_SCHEMA = { type: 'string', pattern: '^(?:[01]\\d|2[0-3]):[0-5]\\d$' } as const;
 const HOURS_JSON_SCHEMA = { type: 'string', pattern: '^(?:0|[1-9]\\d{0,2})(?:\\.\\d{1,4})?$' } as const;
 const OVERTIME_MULTIPLIER_JSON_SCHEMA = { type: 'string', pattern: '^(?:[1-9]\\d{0,2})(?:\\.\\d{1,4})?$' } as const;
 const NULLABLE_UUID_JSON_SCHEMA = { anyOf: [UUID_JSON_SCHEMA, { type: 'null' }] } as const;
@@ -55,10 +56,12 @@ const ATTENDANCE_QUERY_JSON_SCHEMA = {
   properties: { projectId: UUID_JSON_SCHEMA, employeeId: UUID_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, toDate: DATE_JSON_SCHEMA, ...PAGE_PROPERTIES }
 } as const;
 const PAYROLL_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: PAGE_PROPERTIES } as const;
-const PAYROLL_PAYMENT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { employeeId: UUID_JSON_SCHEMA, payrollRunId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['POSTED', 'REVERSED'] }, ...PAGE_PROPERTIES } } as const;
+const PAYROLL_PAYMENT_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { employeeId: UUID_JSON_SCHEMA, payrollRunId: UUID_JSON_SCHEMA, fromDate: DATE_JSON_SCHEMA, toDate: DATE_JSON_SCHEMA, status: { type: 'string', enum: ['POSTED', 'REVERSED'] }, ...PAGE_PROPERTIES } } as const;
 const EMPLOYEE_ADVANCE_LIST_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { employeeId: UUID_JSON_SCHEMA, projectId: UUID_JSON_SCHEMA, status: { type: 'string', enum: ['POSTED', 'REVERSED'] }, ...PAGE_PROPERTIES } } as const;
 const ATTENDANCE_BODY_PROPERTIES = {
   stageId: NULLABLE_UUID_JSON_SCHEMA,
+  startTime: { anyOf: [TIME_JSON_SCHEMA, { type: 'null' }] },
+  endTime: { anyOf: [TIME_JSON_SCHEMA, { type: 'null' }] },
   status: { type: 'string', enum: ['PRESENT', 'ABSENT'] },
   hours: NULLABLE_HOURS_JSON_SCHEMA,
   overtimeHours: NULLABLE_HOURS_JSON_SCHEMA
@@ -70,11 +73,11 @@ const CREATE_ATTENDANCE_BODY_JSON_SCHEMA = {
 const UPDATE_ATTENDANCE_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, minProperties: 1, properties: ATTENDANCE_BODY_PROPERTIES } as const;
 const CREATE_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
-  properties: { payCycle: { type: 'string', enum: ['DAILY', 'MONTHLY'] }, periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
+  properties: { payCycle: { type: 'string', enum: ['DAILY', 'MONTHLY'] }, periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA, fromTime: TIME_JSON_SCHEMA, toTime: TIME_JSON_SCHEMA }
 } as const;
 const UPDATE_DAILY_PAYROLL_RUN_BODY_JSON_SCHEMA = {
   type: 'object', additionalProperties: false, required: ['periodStart', 'periodEnd'],
-  properties: { periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA }
+  properties: { periodStart: DATE_JSON_SCHEMA, periodEnd: DATE_JSON_SCHEMA, fromTime: TIME_JSON_SCHEMA, toTime: TIME_JSON_SCHEMA }
 } as const;
 const CALCULATE_PAYROLL_BODY_JSON_SCHEMA = { type: 'object', additionalProperties: false, properties: { projectId: UUID_JSON_SCHEMA, employeeId: UUID_JSON_SCHEMA, overtimeMultiplier: OVERTIME_MULTIPLIER_JSON_SCHEMA } } as const;
 const PAYROLL_ELIGIBLE_EMPLOYEES_QUERY_JSON_SCHEMA = { type: 'object', additionalProperties: false, required: ['projectId'], properties: { projectId: UUID_JSON_SCHEMA } } as const;
@@ -180,7 +183,7 @@ export async function registerLabourPayrollRoutes(app: FastifyInstance, options:
   });
 
   app.patch('/api/v1/payroll/runs/:id', {
-    schema: { tags: ['Labour & Payroll'], operationId: 'updateDraftDailyPayrollRun', summary: 'Edit a DRAFT Daily Settlement work date', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: UPDATE_DAILY_PAYROLL_RUN_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
+    schema: { tags: ['Labour & Payroll'], operationId: 'updateDraftDailyPayrollRun', summary: 'Edit a DRAFT Daily Settlement date and time window', security: BEARER_SECURITY, headers: IDEMPOTENCY_HEADERS_JSON_SCHEMA, params: ID_PARAMS_JSON_SCHEMA, body: UPDATE_DAILY_PAYROLL_RUN_BODY_JSON_SCHEMA, response: { 200: SUCCESS_JSON_SCHEMA, ...COMMON_RESPONSES } }
   }, async (request, reply) => {
     await authenticateRequest(request, options.database);
     const params = parseRequest(payrollRunIdParamsSchema, request.params, 'params');

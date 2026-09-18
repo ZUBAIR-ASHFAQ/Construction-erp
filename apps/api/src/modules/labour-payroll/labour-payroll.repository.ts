@@ -15,7 +15,7 @@ const attendanceInclude = {
 
 const payrollPaymentInclude = {
   employee: { select: { employeeNo: true, name: true } },
-  payrollLine: { select: { payrollRunId: true, payrollRun: { select: { periodStart: true, periodEnd: true } } } },
+  payrollLine: { select: { payrollRunId: true, payrollRun: { select: { periodStart: true, periodEnd: true, fromMinute: true, toMinute: true } } } },
   cashBankAccount: { select: { name: true, code: true, accountType: true, accountReference: true, glAccountId: true, status: true } },
   creator: { select: { name: true } }
 } as const;
@@ -42,10 +42,42 @@ function projectVisibilityWhere(visibility: LabourPayrollProjectVisibility) {
   return visibility.allowedProjectIds === null ? {} : { projectId: { in: [...new Set(visibility.allowedProjectIds)] } };
 }
 
+/** Split one recurring clock window into non-wrapping minute segments; null means legacy all-day coverage. */
+function minuteWindowSegments(startMinute: number | null, endMinute: number | null): ReadonlyArray<readonly [number, number]> | null {
+  if (startMinute === null || endMinute === null) return null;
+  return startMinute < endMinute ? [[startMinute, endMinute]] : [[startMinute, 1440], [0, endMinute]];
+}
+
+/** Return whether two recurring clock windows overlap, including overnight windows. */
+function timeWindowsOverlap(firstStart: number | null, firstEnd: number | null, secondStart: number | null, secondEnd: number | null): boolean {
+  const first = minuteWindowSegments(firstStart, firstEnd);
+  const second = minuteWindowSegments(secondStart, secondEnd);
+  if (first === null || second === null) return true;
+  return first.some(([firstFrom, firstTo]) => second.some(([secondFrom, secondTo]) => firstFrom < secondTo && secondFrom < firstTo));
+}
+
+/** Match legacy date-only Payroll to all attendance, but require an explicit shift for a timed Payroll window. */
+function attendanceMatchesWindow(
+  attendance: Readonly<{ startMinute: number | null; endMinute: number | null }>,
+  fromMinute: number | null,
+  toMinute: number | null
+): boolean {
+  if (fromMinute === null || toMinute === null) return true;
+  if (attendance.startMinute === null || attendance.endMinute === null) return false;
+  return timeWindowsOverlap(attendance.startMinute, attendance.endMinute, fromMinute, toMinute);
+}
+
 /** Final Module 13 persistence for attendance, payroll lines and source postings. */
 export class LabourPayrollRepository {
   /** Bind Labour/Payroll persistence to Prisma or one active transaction. */
   constructor(private readonly db: RepositoryClient) {}
+
+  /** Read the authenticated Company's timezone for time-aware Payroll finalization. */
+  async getCompanyTimeZone(): Promise<string> {
+    const scope = requireCompanyRepositoryScope();
+    const company = await this.db.company.findUnique({ where: { id: scope.companyId }, select: { timeZone: true } });
+    return company?.timeZone ?? 'UTC';
+  }
 
   /** List Company attendance inside the actor's allowed Project scope. */
   async listAttendance(input: Readonly<{
@@ -157,6 +189,8 @@ export class LabourPayrollRepository {
     projectId: string;
     stageId: string | null;
     workDate: Date;
+    startMinute: number | null;
+    endMinute: number | null;
     status: AttendanceStatus;
     hours: string | null;
     overtimeHours: string | null;
@@ -169,6 +203,8 @@ export class LabourPayrollRepository {
   /** Update only correctable attendance fields inside the authenticated Company. */
   async updateAttendance(attendanceId: string, input: Readonly<{
     stageId?: string | null;
+    startMinute?: number | null;
+    endMinute?: number | null;
     status?: AttendanceStatus;
     hours?: string | null;
     overtimeHours?: string | null;
@@ -179,16 +215,24 @@ export class LabourPayrollRepository {
     return this.findAttendanceById(attendanceId);
   }
 
-  /** Check whether finalized Payroll already consumes this Employee/date history. */
-  async isAttendanceLockedByFinalizedPayroll(employeeId: string, workDate: Date): Promise<boolean> {
+  /** Check whether finalized Payroll already consumes this Employee/date/shift history. */
+  async isAttendanceLockedByFinalizedPayroll(
+    employeeId: string,
+    workDate: Date,
+    startMinute: number | null,
+    endMinute: number | null
+  ): Promise<boolean> {
     const scope = requireCompanyRepositoryScope();
-    const count = await this.db.payrollLine.count({
-      where: {
-        employeeId,
-        payrollRun: { companyId: scope.companyId, status: 'FINALIZED', periodStart: { lte: workDate }, periodEnd: { gte: workDate } }
-      }
+    const runs = await this.db.payrollRun.findMany({
+      where: scope.where({
+        status: 'FINALIZED',
+        periodStart: { lte: workDate },
+        periodEnd: { gte: workDate },
+        lines: { some: { employeeId } }
+      }),
+      select: { fromMinute: true, toMinute: true }
     });
-    return count > 0;
+    return runs.some((run) => attendanceMatchesWindow({ startMinute, endMinute }, run.fromMinute, run.toMinute));
   }
 
   /** List Company Payroll Runs with bounded deterministic pagination. */
@@ -227,7 +271,7 @@ export class LabourPayrollRepository {
           include: {
             payslip: true,
             employee: { select: { employeeNo: true, name: true, employmentType: true } },
-            payments: { where: { status: 'POSTED' }, select: { amount: true } }
+            payments: { where: { status: 'POSTED' }, select: { paymentNo: true, paymentDate: true, amount: true }, orderBy: [{ paymentDate: 'asc' }, { id: 'asc' }] }
           },
           orderBy: [{ employeeId: 'asc' }, { id: 'asc' }]
         }
@@ -250,12 +294,15 @@ export class LabourPayrollRepository {
       payCycle: string;
       periodStart: Date;
       periodEnd: Date;
+      fromMinute: number | null;
+      toMinute: number | null;
       status: string;
       createdBy: string;
       finalizedAt: Date | null;
       overtimeMultiplier: { toString(): string } | null;
     }>>`
-      SELECT id, pay_cycle AS "payCycle", period_start AS "periodStart", period_end AS "periodEnd", status,
+      SELECT id, pay_cycle AS "payCycle", period_start AS "periodStart", period_end AS "periodEnd",
+             from_minute AS "fromMinute", to_minute AS "toMinute", status,
              overtime_multiplier AS "overtimeMultiplier", created_by AS "createdBy", finalized_at AS "finalizedAt"
       FROM payroll_runs
       WHERE id = ${payrollRunId}::uuid AND company_id = ${scope.companyId}::uuid
@@ -265,17 +312,25 @@ export class LabourPayrollRepository {
   }
 
   /** Create one Company-owned DRAFT Payroll Run. */
-  async createPayrollRun(input: Readonly<{ payCycle: string; periodStart: Date; periodEnd: Date; status: string; createdBy: string }>) {
+  async createPayrollRun(input: Readonly<{
+    payCycle: string;
+    periodStart: Date;
+    periodEnd: Date;
+    fromMinute: number | null;
+    toMinute: number | null;
+    status: string;
+    createdBy: string;
+  }>) {
     const scope = requireCompanyRepositoryScope();
     return this.db.payrollRun.create({ data: scope.createData({ ...input, finalizedAt: null }), include: { creator: { select: { name: true } } } });
   }
 
-  /** Update only the work date of one Company-owned DRAFT Daily Settlement. */
-  async updateDraftDailyPayrollRun(payrollRunId: string, periodStart: Date, periodEnd: Date) {
+  /** Update only the date/time window of one Company-owned DRAFT Daily Settlement. */
+  async updateDraftDailyPayrollRun(payrollRunId: string, periodStart: Date, periodEnd: Date, fromMinute: number | null, toMinute: number | null) {
     const scope = requireCompanyRepositoryScope();
     const updated = await this.db.payrollRun.updateMany({
       where: scope.where({ id: payrollRunId, payCycle: 'DAILY', status: 'DRAFT' }),
-      data: { periodStart, periodEnd }
+      data: { periodStart, periodEnd, fromMinute, toMinute }
     });
     if (updated.count !== 1) return null;
     return this.findPayrollRunById(payrollRunId);
@@ -294,18 +349,27 @@ export class LabourPayrollRepository {
     return deleted.count === 1;
   }
 
-  /** Find any other finalized Payroll Run that overlaps the candidate period. */
-  async findOverlappingFinalizedPayrollRun(periodStart: Date, periodEnd: Date, payCycle: string, excludeId?: string) {
+  /** Find any other finalized Payroll Run whose date range and recurring time window overlap this candidate. */
+  async findOverlappingFinalizedPayrollRun(
+    periodStart: Date,
+    periodEnd: Date,
+    payCycle: string,
+    fromMinute: number | null,
+    toMinute: number | null,
+    excludeId?: string
+  ) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.payrollRun.findFirst({
+    const candidates = await this.db.payrollRun.findMany({
       where: scope.where({
         status: 'FINALIZED',
         payCycle: { in: payCycle === 'LEGACY' ? ['LEGACY'] : [payCycle, 'LEGACY'] },
         ...(excludeId ? { id: { not: excludeId } } : {}),
         periodStart: { lte: periodEnd },
         periodEnd: { gte: periodStart }
-      })
+      }),
+      select: { id: true, fromMinute: true, toMinute: true }
     });
+    return candidates.find((run) => timeWindowsOverlap(fromMinute, toMinute, run.fromMinute, run.toMinute)) ?? null;
   }
 
   /** Delete only recalculable DRAFT/CALCULATED Payroll lines and generated draft payslips. */
@@ -320,11 +384,18 @@ export class LabourPayrollRepository {
     await this.db.payrollLine.deleteMany({ where: { payrollRunId, employeeId } });
   }
 
-  /** List active monthly-salary Employees assigned to one Project during this Payroll period. */
-  async listMonthlyPayrollEligibleEmployees(projectId: string, periodStart: Date, periodEnd: Date) {
+  /** List active monthly-salary Employees with attendance in the selected Project/date/time window. */
+  async listMonthlyPayrollEligibleEmployees(projectId: string, periodStart: Date, periodEnd: Date, fromMinute: number | null, toMinute: number | null) {
     const scope = requireCompanyRepositoryScope();
+    const attendance = await this.db.attendanceEntry.findMany({
+      where: scope.where({ projectId, workDate: { gte: periodStart, lte: periodEnd }, status: 'PRESENT' }),
+      select: { employeeId: true, startMinute: true, endMinute: true }
+    });
+    const employeeIds = [...new Set(attendance.filter((row) => attendanceMatchesWindow(row, fromMinute, toMinute)).map((row) => row.employeeId))];
+    if (employeeIds.length === 0) return [];
     return this.db.employee.findMany({
       where: scope.where({
+        id: { in: employeeIds },
         status: 'ACTIVE',
         joinDate: { lte: periodEnd },
         OR: [{ endDate: null }, { endDate: { gte: periodStart } }],
@@ -365,11 +436,18 @@ export class LabourPayrollRepository {
     });
   }
 
-  /** List active daily/hourly Employees with present attendance in one Project on the settlement date. */
-  async listDailyPayrollEligibleEmployees(projectId: string, workDate: Date) {
+  /** List active daily/hourly Employees with present attendance in one Project and selected time window. */
+  async listDailyPayrollEligibleEmployees(projectId: string, workDate: Date, fromMinute: number | null, toMinute: number | null) {
     const scope = requireCompanyRepositoryScope();
+    const attendance = await this.db.attendanceEntry.findMany({
+      where: scope.where({ projectId, workDate, status: 'PRESENT' }),
+      select: { employeeId: true, startMinute: true, endMinute: true }
+    });
+    const employeeIds = [...new Set(attendance.filter((row) => attendanceMatchesWindow(row, fromMinute, toMinute)).map((row) => row.employeeId))];
+    if (employeeIds.length === 0) return [];
     return this.db.employee.findMany({
       where: scope.where({
+        id: { in: employeeIds },
         status: 'ACTIVE',
         joinDate: { lte: workDate },
         OR: [{ endDate: null }, { endDate: { gte: workDate } }],
@@ -381,7 +459,6 @@ export class LabourPayrollRepository {
             OR: [{ toDate: null }, { toDate: { gte: workDate } }]
           }
         },
-        attendanceEntries: { some: { projectId, workDate, status: 'PRESENT' } },
         compensations: {
           some: {
             payType: { in: ['DAILY', 'HOURLY'] },
@@ -409,10 +486,10 @@ export class LabourPayrollRepository {
     });
   }
 
-  /** Read Payroll attendance, optionally narrowed to selected Employees. */
-  async listPayrollAttendance(periodStart: Date, periodEnd: Date, employeeIds?: readonly string[]) {
+  /** Read Payroll attendance inside the selected recurring time window, optionally narrowed to Employees. */
+  async listPayrollAttendance(periodStart: Date, periodEnd: Date, fromMinute: number | null, toMinute: number | null, employeeIds?: readonly string[]) {
     const scope = requireCompanyRepositoryScope();
-    return this.db.attendanceEntry.findMany({
+    const rows = await this.db.attendanceEntry.findMany({
       where: scope.where({
         workDate: { gte: periodStart, lte: periodEnd },
         ...(employeeIds && employeeIds.length > 0 ? { employeeId: { in: [...new Set(employeeIds)] } } : {})
@@ -420,6 +497,7 @@ export class LabourPayrollRepository {
       include: { employee: { select: { id: true, employmentType: true, joinDate: true, endDate: true } } },
       orderBy: [{ employeeId: 'asc' }, { workDate: 'asc' }, { projectId: 'asc' }, { id: 'asc' }]
     });
+    return rows.filter((row) => attendanceMatchesWindow(row, fromMinute, toMinute));
   }
 
   /** Persist the explicit overtime multiplier for one mutable Payroll Run. */
@@ -563,7 +641,7 @@ export class LabourPayrollRepository {
   async createPayslip(payrollLineId: string, generatedAt: Date) {
     return this.db.payslip.upsert({
       where: { payrollLineId },
-      update: {},
+      update: { generatedAt },
       create: { payrollLineId, documentId: null, generatedAt }
     });
   }
@@ -749,6 +827,8 @@ export class LabourPayrollRepository {
   async listPayrollPayments(input: Readonly<{
     employeeId?: string;
     payrollRunId?: string;
+    fromDate?: Date;
+    toDate?: Date;
     status?: 'POSTED' | 'REVERSED';
   }> & LabourPayrollPageWindow) {
     assertPageWindow(input);
@@ -756,6 +836,7 @@ export class LabourPayrollRepository {
     const where = scope.where({
       ...(input.employeeId ? { employeeId: input.employeeId } : {}),
       ...(input.payrollRunId ? { payrollLine: { payrollRunId: input.payrollRunId } } : {}),
+      ...(input.fromDate || input.toDate ? { paymentDate: { ...(input.fromDate ? { gte: input.fromDate } : {}), ...(input.toDate ? { lte: input.toDate } : {}) } } : {}),
       ...(input.status ? { status: input.status } : {})
     });
     const [items, total] = await Promise.all([
@@ -825,7 +906,7 @@ export class LabourPayrollRepository {
     const lines = await this.db.payrollLine.findMany({
       where: { employeeId, payrollRun: { companyId: scope.companyId, status: 'FINALIZED' } },
       include: {
-        payrollRun: { select: { id: true, periodStart: true, periodEnd: true } },
+        payrollRun: { select: { id: true, payCycle: true, periodStart: true, periodEnd: true, fromMinute: true, toMinute: true } },
         payslip: { select: { id: true, generatedAt: true } },
         payments: {
           include: { cashBankAccount: { select: { name: true } } },

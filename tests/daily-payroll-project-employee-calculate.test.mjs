@@ -14,9 +14,10 @@ test('daily settlement exposes only present daily/hourly Employees for the selec
   ]);
   assert.match(schema, /payType: z\.enum\(\['SALARY', 'DAILY', 'HOURLY'\]\)/);
   assert.match(repository, /listDailyPayrollEligibleEmployees/);
-  assert.match(repository, /attendanceEntries: \{ some: \{ projectId, workDate, status: 'PRESENT' \} \}/);
+  assert.match(repository, /where: scope\.where\(\{ projectId, workDate, status: 'PRESENT' \}\)/);
+  assert.match(repository, /attendanceMatchesWindow\(row, fromMinute, toMinute\)/);
   assert.match(repository, /payType: \{ in: \['DAILY', 'HOURLY'\] \}/);
-  assert.match(service, /run\.payCycle === 'MONTHLY'[\s\S]*listDailyPayrollEligibleEmployees\(query\.projectId, run\.periodStart\)/);
+  assert.match(service, /run\.payCycle === 'MONTHLY'[\s\S]*listDailyPayrollEligibleEmployees\(query\.projectId, run\.periodStart, run\.fromMinute, run\.toMinute\)/);
 });
 
 test('targeted daily calculation preserves other Employee lines and keeps advance recovery in the shared payroll calculation', async () => {
@@ -24,7 +25,7 @@ test('targeted daily calculation preserves other Employee lines and keeps advanc
     read(`${backend}/labour-payroll.repository.ts`),
     read(`${backend}/labour-payroll.service.ts`)
   ]);
-  assert.match(service, /locked\.payCycle === 'MONTHLY'[\s\S]*listDailyPayrollEligibleEmployees\(input\.projectId, locked\.periodStart\)/);
+  assert.match(service, /locked\.payCycle === 'MONTHLY'[\s\S]*listDailyPayrollEligibleEmployees\(input\.projectId, locked\.periodStart, locked\.fromMinute, locked\.toMinute\)/);
   assert.match(service, /selectedEmployeeIds = input\.employeeId \? \[input\.employeeId\] : undefined/);
   assert.match(service, /clearPayrollCalculationForEmployee\(payrollRunId, input\.employeeId\)/);
   assert.match(repository, /clearPayrollCalculationForEmployee/);

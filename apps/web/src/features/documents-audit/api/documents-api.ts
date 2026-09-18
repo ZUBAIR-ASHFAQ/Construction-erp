@@ -40,6 +40,7 @@ export type DocumentLink = Readonly<{
 export type DocumentLinkResourceType =
   | 'project'
   | 'employee'
+  | 'employee_advance'
   | 'project_stage'
   | 'client_invoice'
   | 'client_receipt'

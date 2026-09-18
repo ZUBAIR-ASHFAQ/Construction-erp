@@ -209,6 +209,32 @@ export class ProjectStagesRepository {
     });
   }
 
+  /** Update one still-submitted physical-progress row without mutating approved history. */
+  async updateSubmittedProgress(projectId: string, stageId: string, updateId: string, input: Readonly<{
+    progressPercent: string;
+    progressDate: Date;
+    note?: string | null;
+    evidenceDocumentId?: string | null;
+  }>) {
+    const scope = requireCompanyRepositoryScope();
+    const result = await this.db.stageProgressUpdate.updateMany({
+      where: {
+        id: updateId,
+        stageId,
+        status: 'SUBMITTED',
+        stage: { projectId, companyId: scope.companyId }
+      },
+      data: {
+        progressPercent: input.progressPercent,
+        progressDate: input.progressDate,
+        note: input.note ?? null,
+        ...(input.evidenceDocumentId === undefined ? {} : { evidenceDocumentId: input.evidenceDocumentId })
+      }
+    });
+    if (result.count !== 1) return null;
+    return this.findProgressUpdate(projectId, stageId, updateId);
+  }
+
   /** Find one progress update only through its Company-owned Project Stage. */
   async findProgressUpdate(projectId: string, stageId: string, updateId: string) {
     const scope = requireCompanyRepositoryScope();

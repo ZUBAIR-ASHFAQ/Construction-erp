@@ -18,7 +18,8 @@ import {
   type CreateProjectStageBody,
   type CreateStageProgressBody,
   type StagePermissionCode,
-  type UpdateProjectStageBody
+  type UpdateProjectStageBody,
+  type UpdateStageProgressBody
 } from './project-stages.schema.js';
 
 const PROJECT_ACTIVE = 'ACTIVE';
@@ -521,6 +522,55 @@ export class ProjectStagesService {
     await recordAudit(tx, { action: 'project_stage.progress_recorded', entityType: 'stage_progress_update', entityId: update.id, projectId, stageId, after: response });
     await recordOutboxEvent(tx, { eventType: 'project_stage.progress_recorded', resourceType: 'stage_progress_update', resourceId: update.id, payload: { projectId, stageId, progressPercent: update.progressPercent.toString(), progressDate: dateOnly(update.progressDate) } });
     return { statusCode: 201, body: response };
+  }
+
+  /** Edit one still-submitted physical-progress update exactly once. */
+  async updateProgress(projectId: string, stageId: string, updateId: string, input: UpdateStageProgressBody, idempotencyKey: string) {
+    const result = await executeIdempotentCommand(
+      this.db,
+      { operation: 'project-stages.progress.update', idempotencyKey, fingerprintInput: { projectId, stageId, updateId, input } },
+      async (tx) => this.updateProgressOnce(tx, projectId, stageId, updateId, input)
+    );
+    return result.response.body;
+  }
+
+  /** Persist a submitted-progress correction while preserving approved progress history. */
+  private async updateProgressOnce(tx: TransactionClient, projectId: string, stageId: string, updateId: string, input: UpdateStageProgressBody) {
+    await this.requireProjectPermission(new AdministrationRepository(tx), projectId, 'stages.progress.update', new Date());
+    const repository = new ProjectStagesRepository(tx);
+    await repository.lockStage(projectId, stageId);
+    const project = await repository.findProject(projectId);
+    if (!project) throw createStageError('STAGE_NOT_FOUND');
+    if (project.status !== PROJECT_ACTIVE) throw createStageError('INVALID_STAGE_PROGRESS');
+    const baseline = await repository.findLatestBaseline(projectId);
+    if (!baseline || baseline.status !== BASELINE_FROZEN) throw createStageError('INVALID_STAGE_PROGRESS');
+    const stage = await repository.findStage(projectId, stageId);
+    if (!stage) throw createStageError('STAGE_NOT_FOUND');
+    if (stage.status !== STAGE_ACTIVE && stage.status !== STAGE_COMPLETED) throw createStageError('INVALID_STAGE_PROGRESS');
+
+    const before = await repository.findProgressUpdate(projectId, stageId, updateId);
+    if (!before) throw createStageError('STAGE_NOT_FOUND');
+    if (before.status !== 'SUBMITTED') throw createStageError('INVALID_STAGE_PROGRESS');
+
+    if (input.evidenceDocumentId) {
+      await this.requireProjectPermission(new AdministrationRepository(tx), projectId, 'documents.read', new Date());
+      const evidence = await repository.findProjectEvidenceDocument(projectId, input.evidenceDocumentId);
+      if (!evidence) {
+        throw new ValidationError({ fieldErrors: [{ field: 'evidenceDocumentId', message: 'Evidence Document must belong to this Company and Project.' }] });
+      }
+    }
+
+    const updated = await repository.updateSubmittedProgress(projectId, stageId, updateId, {
+      progressPercent: input.progressPercent,
+      progressDate: inputDate(input.progressDate),
+      note: input.note ?? null,
+      ...(input.evidenceDocumentId === undefined ? {} : { evidenceDocumentId: input.evidenceDocumentId })
+    });
+    if (!updated) throw createStageError('INVALID_STAGE_PROGRESS');
+    const response = progressResponse(updated);
+    await recordAudit(tx, { action: 'project_stage.progress_updated', entityType: 'stage_progress_update', entityId: updateId, projectId, stageId, before: progressResponse(before), after: response });
+    await recordOutboxEvent(tx, { eventType: 'project_stage.progress_updated', resourceType: 'stage_progress_update', resourceId: updateId, payload: { projectId, stageId, progressPercent: updated.progressPercent.toString(), progressDate: dateOnly(updated.progressDate) } });
+    return { statusCode: 200, body: response };
   }
 
   /** Approve one submitted physical-progress update exactly once. */

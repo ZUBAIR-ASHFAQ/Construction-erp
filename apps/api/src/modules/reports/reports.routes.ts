@@ -71,6 +71,7 @@ const FILTERS = {
     stageId: UUID,
     clientId: UUID,
     vendorId: UUID,
+    subcontractorId: UUID,
     employeeId: UUID,
     warehouseId: UUID,
     materialId: UUID,

@@ -15,7 +15,7 @@ test('salary payroll reads ABSENT attendance while DAILY and HOURLY use only pre
 test('monthly SALARY is prorated from unique PRESENT dates against the full calendar month', () => {
   assert.match(service, /function prorateCents\(totalCents: bigint, earnedDays: bigint, periodDays: bigint\)/);
   assert.match(service, /const presentDates = new Set\(rows\.filter\(\(item\) => item\.status === 'PRESENT'\)/);
-  assert.match(service, /const periodDays = BigInt\(periodEnd\.getUTCDate\(\)\)/);
+  assert.match(service, /const periodDays = calendarMonthDays\(periodStart\)/);
   assert.match(service, /grossCents = prorateCents\(moneyCents\(salaryCompensation\.baseSalary\), BigInt\(presentDates\.size\), periodDays\)/);
   assert.doesNotMatch(service, /recordedDates|BigInt\(recordedDates\.size\)/);
   assert.doesNotMatch(service, /grossCents = moneyCents\(salaryCompensation\.baseSalary\);/);

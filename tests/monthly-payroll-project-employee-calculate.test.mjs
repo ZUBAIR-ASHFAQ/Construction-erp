@@ -22,13 +22,14 @@ test('monthly Payroll exposes Project-scoped salary Employee selection without c
   assert.match(repository, /clearPayrollCalculationForEmployee/);
 });
 
-test('targeted monthly calculation replaces only the selected Employee while finalization still revalidates the complete Payroll period', async () => {
+test('targeted monthly calculation replaces only the selected Employee and finalization revalidates that exact calculated set', async () => {
   const service = await read(`${backend}/labour-payroll.service.ts`);
   assert.match(service, /requireProjectPermission\(administration, input\.projectId, 'payroll\.calculate'/);
   assert.match(service, /eligible\.some\(\(employee\) => employee\.id === input\.employeeId\)/);
   assert.match(service, /selectedEmployeeIds = input\.employeeId \? \[input\.employeeId\] : undefined/);
   assert.match(service, /clearPayrollCalculationForEmployee\(payrollRunId, input\.employeeId\)/);
-  assert.match(service, /const recalculated = await this\.calculateDraftLines\(repository, locked\.periodStart, locked\.periodEnd, locked\.overtimeMultiplier, locked\.payCycle\);/);
+  assert.match(service, /const calculatedEmployeeIds = \[\.\.\.new Set\(snapshot\.lines\.map\(\(line\) => line\.employeeId\)\)\]/);
+  assert.match(service, /const recalculated = await this\.calculateDraftLines\([\s\S]*locked\.payCycle,[\s\S]*calculatedEmployeeIds/);
 });
 
 test('monthly Payroll workspace provides Project and monthly-salary Employee selectors and a professional calculation view', async () => {

@@ -39,6 +39,46 @@ export class EquipmentRepository {
     return { items, total };
   }
 
+  /** List bounded Equipment usage with readable Equipment and Project labels inside trusted Project visibility. */
+  async listEquipmentUsage(input: Readonly<{
+    projectId?: string;
+    fromDate?: Date;
+    toDate?: Date;
+  }> & EquipmentPageWindow, visibility: EquipmentProjectVisibility) {
+    assertPageWindow(input);
+    const scope = requireCompanyRepositoryScope();
+    const usageDate = input.fromDate || input.toDate
+      ? { ...(input.fromDate ? { gte: input.fromDate } : {}), ...(input.toDate ? { lte: input.toDate } : {}) }
+      : undefined;
+    const where = {
+      ...(usageDate ? { usageDate } : {}),
+      assignment: {
+        ...projectVisibilityWhere(visibility),
+        ...(input.projectId ? { projectId: input.projectId } : {}),
+        equipment: { companyId: scope.companyId },
+        project: { companyId: scope.companyId }
+      }
+    };
+    const include = {
+      assignment: {
+        select: {
+          projectId: true,
+          stageId: true,
+          status: true,
+          equipment: { select: { id: true, code: true, name: true } },
+          project: { select: { projectCode: true, name: true } },
+          stage: { select: { code: true, name: true } }
+        }
+      },
+      enteredByUser: { select: { name: true } }
+    } as const;
+    const [items, total] = await Promise.all([
+      this.db.equipmentUsage.findMany({ where, include, orderBy: [{ usageDate: 'desc' }, { id: 'desc' }], skip: input.skip, take: input.take }),
+      this.db.equipmentUsage.count({ where })
+    ]);
+    return { items, total };
+  }
+
   /** Find one Equipment row inside the authenticated Company. */
   async findEquipmentById(equipmentId: string) {
     const scope = requireCompanyRepositoryScope();

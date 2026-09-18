@@ -18,14 +18,18 @@ export function ProjectStagesPage() {
   const selectedProject = (projectsQuery.data?.items ?? []).find((project) => project.id === projectId) ?? null;
 
   return (
-    <section className="admin-stack" aria-labelledby="project-stages-title">
+    <section className="admin-stack project-stages-page" aria-labelledby="project-stages-title">
       <div className="section-heading">
-        <p className="eyebrow">Module 7</p>
-        <h1 id="project-stages-title">Project Stages / Progress</h1>
-        <p className="muted">Configure the 100% Stage baseline, record approved physical progress and read Stage financial hooks without treating billing, cash or cost as physical completion.</p>
+        <p className="eyebrow">Project control</p>
+        <h1 id="project-stages-title">Project Stages & Progress</h1>
+        <p className="muted">Build the Stage baseline, monitor approved physical progress, and review each Stage's source-derived financial position in one place.</p>
       </div>
 
-      <section className="admin-card">
+      <section className="admin-card project-stage-project-picker">
+        <div>
+          <strong>Select Project</strong>
+          <span>Choose the Project whose Stage baseline and progress you want to manage.</span>
+        </div>
         <label>Project
           <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
             <option value="">Select Project</option>
@@ -38,12 +42,15 @@ export function ProjectStagesPage() {
         {projectsQuery.error instanceof Error && <div className="form-error" role="alert">{projectsQuery.error.message}</div>}
       </section>
 
-      {projectId !== '' && (
+      {selectedProject && (
         <ProjectStagesWorkspace
-          key={projectId}
-          projectId={projectId}
-          projectModel={selectedProject?.projectModel ?? 'FIXED_PRICE'}
-          projectCostPlusPercent={selectedProject?.costPlusPercent ?? null}
+          key={selectedProject.id}
+          projectId={selectedProject.id}
+          projectCode={selectedProject.projectCode}
+          projectName={selectedProject.name}
+          projectCurrency={selectedProject.currency}
+          projectModel={selectedProject.projectModel}
+          projectCostPlusPercent={selectedProject.costPlusPercent}
           canManage={canManage}
           canFreeze={canFreeze}
           canRecordProgress={canRecordProgress}

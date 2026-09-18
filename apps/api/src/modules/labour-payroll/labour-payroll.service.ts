@@ -62,11 +62,13 @@ type AttendanceLike = Readonly<{
   projectId: string;
   stageId: string | null;
   workDate: Date;
+  startMinute: number | null;
+  endMinute: number | null;
   status: string;
   hours: DecimalLike | null;
   overtimeHours: DecimalLike | null;
   enteredBy: string;
-  employee?: Readonly<{ id?: string; employeeNo?: string; name?: string; employmentType: string; joinDate?: Date }>;
+  employee?: Readonly<{ id?: string; employeeNo?: string; name?: string; employmentType: string; joinDate?: Date; endDate?: Date | null }>;
   project?: Readonly<{ projectCode: string; name: string }>;
   stage?: Readonly<{ name: string }> | null;
   enteredByUser?: Readonly<{ name: string }>;
@@ -87,6 +89,26 @@ function inputDate(value: string): Date {
 /** Serialize one database date as YYYY-MM-DD. */
 function dateOnly(value: Date): string {
   return value.toISOString().slice(0, 10);
+}
+
+/** Convert one validated HH:MM value into minutes after midnight. */
+function inputMinute(value: string): number {
+  const [hours = '0', minutes = '0'] = value.split(':');
+  return (Number(hours) * 60) + Number(minutes);
+}
+
+/** Serialize nullable minutes after midnight as HH:MM. */
+function minuteTime(value: number | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  return `${String(Math.floor(value / 60)).padStart(2, '0')}:${String(value % 60).padStart(2, '0')}`;
+}
+
+/** Build one readable Payroll date/time window label. */
+function payrollPeriodLabel(periodStart: Date, periodEnd: Date, fromMinute?: number | null, toMinute?: number | null): string {
+  const dates = `${dateOnly(periodStart)} to ${dateOnly(periodEnd)}`;
+  const fromTime = minuteTime(fromMinute);
+  const toTime = minuteTime(toMinute);
+  return fromTime && toTime ? `${dates} · ${fromTime}–${toTime}` : dates;
 }
 
 /** Convert one exact decimal to four-decimal integer units. */
@@ -110,6 +132,13 @@ function moneyString(cents: bigint): string {
   return `${cents / 100n}.${(cents % 100n).toString().padStart(2, '0')}`;
 }
 
+/** Serialize a signed Employee-ledger balance while preserving the Payroll money range. */
+function ledgerBalanceString(cents: bigint): string {
+  const absolute = cents < 0n ? -cents : cents;
+  if (absolute > MAX_MONEY_CENTS) throw new ValidationError({ message: 'Payroll amount exceeds the supported money range.' });
+  return `${cents < 0n ? '-' : ''}${absolute / 100n}.${(absolute % 100n).toString().padStart(2, '0')}`;
+}
+
 /** Multiply four-decimal quantity and rate values and half-up round to cents. */
 function multiplyToCents(quantityUnits: bigint, rateUnits: bigint): bigint {
   const product = quantityUnits * rateUnits;
@@ -128,11 +157,58 @@ function prorateCents(totalCents: bigint, earnedDays: bigint, periodDays: bigint
   return ((totalCents * earnedDays) + (periodDays / 2n)) / periodDays;
 }
 
-/** Return whether one Payroll period is exactly one complete calendar month. */
-function isFullCalendarMonth(start: Date, end: Date): boolean {
-  if (start.getUTCDate() !== 1 || start.getUTCFullYear() !== end.getUTCFullYear() || start.getUTCMonth() !== end.getUTCMonth()) return false;
-  const lastDay = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 0)).getUTCDate();
-  return end.getUTCDate() === lastDay;
+/** Return whether one monthly Payroll date range stays inside one calendar month. */
+function isSingleCalendarMonth(start: Date, end: Date): boolean {
+  return start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth();
+}
+
+/** Return the number of calendar days in the month that owns this Payroll range. */
+function calendarMonthDays(value: Date): bigint {
+  return BigInt(new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 0)).getUTCDate());
+}
+
+/** Add one calendar day to a date-only value without depending on the server timezone. */
+function nextDateOnly(value: string): string {
+  const date = inputDate(value);
+  date.setUTCDate(date.getUTCDate() + 1);
+  return dateOnly(date);
+}
+
+/** Read the current local date/minute for one Company timezone. */
+function zonedDateMinute(value: Date, timeZone: string): Readonly<{ date: string; minute: number }> {
+  let formatter: Intl.DateTimeFormat;
+  try {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    });
+  } catch {
+    formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'UTC',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+    });
+  }
+  const parts = Object.fromEntries(formatter.formatToParts(value).map((part) => [part.type, part.value]));
+  return {
+    date: `${parts.year}-${parts.month}-${parts.day}`,
+    minute: (Number(parts.hour) * 60) + Number(parts.minute)
+  };
+}
+
+/** Return whether the selected Payroll date/time window has completely ended in the Company timezone. */
+function payrollWindowClosed(
+  now: Date,
+  periodEnd: Date,
+  fromMinute: number | null,
+  toMinute: number | null,
+  timeZone: string
+): boolean {
+  if (fromMinute === null || toMinute === null) return inputDate(dateOnly(now)) >= periodEnd;
+  const local = zonedDateMinute(now, timeZone);
+  const endDate = fromMinute > toMinute ? nextDateOnly(dateOnly(periodEnd)) : dateOnly(periodEnd);
+  return local.date > endDate || (local.date === endDate && local.minute >= toMinute);
 }
 
 /** Return the compensation record effective on one attendance date. */
@@ -199,6 +275,8 @@ function attendanceResponse(row: AttendanceLike) {
     stageId: row.stageId,
     stageName: row.stage?.name ?? null,
     workDate: dateOnly(row.workDate),
+    startTime: minuteTime(row.startMinute),
+    endTime: minuteTime(row.endMinute),
     status: row.status,
     hours: row.hours === null ? null : row.hours.toString(),
     overtimeHours: row.overtimeHours === null ? null : row.overtimeHours.toString(),
@@ -237,6 +315,8 @@ function payrollRunResponse(run: Readonly<{
   payCycle: string;
   periodStart: Date;
   periodEnd: Date;
+  fromMinute?: number | null;
+  toMinute?: number | null;
   status: string;
   createdBy: string;
   finalizedAt: Date | null;
@@ -254,7 +334,7 @@ function payrollRunResponse(run: Readonly<{
     projectAllocationJson: unknown;
     employee?: Readonly<{ employeeNo: string; name: string; employmentType: string }>;
     payslip?: Readonly<{ id: string; documentId: string | null; generatedAt: Date | null }> | null;
-    payments?: readonly Readonly<{ amount: DecimalLike }>[];
+    payments?: readonly Readonly<{ paymentNo: string; paymentDate: Date; amount: DecimalLike }>[];
   }>[];
 }>, allowedProjectIds: readonly string[] | null = null) {
   return {
@@ -262,6 +342,8 @@ function payrollRunResponse(run: Readonly<{
     payCycle: run.payCycle,
     periodStart: dateOnly(run.periodStart),
     periodEnd: dateOnly(run.periodEnd),
+    fromTime: minuteTime(run.fromMinute),
+    toTime: minuteTime(run.toMinute),
     status: run.status,
     createdBy: run.createdBy,
     createdByName: run.creator?.name ?? 'System user',
@@ -285,6 +367,11 @@ function payrollRunResponse(run: Readonly<{
       netAmount: line.netAmount.toString(),
       paidAmount: moneyString(paid),
       outstandingAmount: moneyString(net > paid ? net - paid : 0n),
+      settlements: (line.payments ?? []).map((payment) => ({
+        paymentNo: payment.paymentNo,
+        paymentDate: dateOnly(payment.paymentDate),
+        amount: moneyString(moneyCents(payment.amount))
+      })),
       projectAllocation: allocationResponse(line.projectAllocationJson),
       payslip: line.payslip ? { id: line.payslip.id, documentId: line.payslip.documentId, generatedAt: line.payslip.generatedAt?.toISOString() ?? null } : null
       };
@@ -310,7 +397,7 @@ type PayrollPaymentLike = Readonly<{
   reversalDate: Date | null;
   createdAt: Date;
   employee: Readonly<{ employeeNo: string; name: string }>;
-  payrollLine: Readonly<{ payrollRunId: string; payrollRun: Readonly<{ periodStart: Date; periodEnd: Date }> }>;
+  payrollLine: Readonly<{ payrollRunId: string; payrollRun: Readonly<{ periodStart: Date; periodEnd: Date; fromMinute: number | null; toMinute: number | null }> }>;
   cashBankAccount: Readonly<{ name: string }>;
   creator: Readonly<{ name: string }>;
 }>;
@@ -326,7 +413,7 @@ function payrollPaymentResponse(row: PayrollPaymentLike) {
     employeeName: row.employee.name,
     paymentNo: row.paymentNo,
     paymentDate: dateOnly(row.paymentDate),
-    payrollPeriod: `${dateOnly(row.payrollLine.payrollRun.periodStart)} to ${dateOnly(row.payrollLine.payrollRun.periodEnd)}`,
+    payrollPeriod: payrollPeriodLabel(row.payrollLine.payrollRun.periodStart, row.payrollLine.payrollRun.periodEnd, row.payrollLine.payrollRun.fromMinute, row.payrollLine.payrollRun.toMinute),
     amount: row.amount.toString(),
     cashBankAccountId: row.cashBankAccountId,
     cashBankAccountName: row.cashBankAccount.name,
@@ -384,9 +471,19 @@ function employeeAdvanceResponse(row: EmployeeAdvanceLike) {
 function payrollDraftFingerprint(lines: readonly PayrollDraftLine[]): string {
   return JSON.stringify([...lines]
     .map((line) => ({
-      ...line,
-      projectAllocation: [...line.projectAllocation].sort((a, b) => `${a.projectId}:${a.stageId ?? ''}`.localeCompare(`${b.projectId}:${b.stageId ?? ''}`)),
-      advanceRecoveries: [...line.advanceRecoveries].sort((a, b) => a.advanceId.localeCompare(b.advanceId))
+      employeeId: line.employeeId,
+      salaryBeforeAbsence: moneyString(moneyCents(line.salaryBeforeAbsence)),
+      absenceDeduction: moneyString(moneyCents(line.absenceDeduction)),
+      grossAmount: moneyString(moneyCents(line.grossAmount)),
+      advanceDeduction: moneyString(moneyCents(line.advanceDeduction)),
+      deductions: moneyString(moneyCents(line.deductions)),
+      netAmount: moneyString(moneyCents(line.netAmount)),
+      projectAllocation: [...line.projectAllocation]
+        .map((allocation) => ({ ...allocation, amount: moneyString(moneyCents(allocation.amount)) }))
+        .sort((a, b) => `${a.projectId}:${a.stageId ?? ''}`.localeCompare(`${b.projectId}:${b.stageId ?? ''}`)),
+      advanceRecoveries: [...line.advanceRecoveries]
+        .map((recovery) => ({ ...recovery, amount: moneyString(moneyCents(recovery.amount)) }))
+        .sort((a, b) => a.advanceId.localeCompare(b.advanceId))
     }))
     .sort((a, b) => a.employeeId.localeCompare(b.employeeId)));
 }
@@ -511,9 +608,16 @@ export class LabourPayrollService {
     return { items: result.items.map(attendanceResponse), total: result.total, page: window.page, pageSize: window.pageSize };
   }
 
-  /** List only effective Project/Stage destinations the selected Employee may use for attendance. */
+  /** List only effective Project/Stage destinations usable for attendance or Employee advances. */
   async listAttendanceAssignments(query: ListAttendanceAssignmentsQuery) {
-    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'attendance.create', new Date());
+    const administration = new AdministrationRepository(this.db);
+    const asOf = new Date();
+    const security = requireRequestSecurityContext();
+    if (security.projectScope.kind === 'not-resolved'
+      || (!(await this.hasCompanyPermission(administration, 'attendance.create', asOf))
+        && !(await this.hasCompanyPermission(administration, 'payroll.advances.create', asOf)))) {
+      throw new AuthorizationError();
+    }
     const assignments = await new LabourPayrollRepository(this.db).listEffectiveAttendanceAssignments(
       query.employeeId,
       inputDate(query.workDate),
@@ -560,6 +664,8 @@ export class LabourPayrollService {
       projectId: input.projectId,
       stageId,
       workDate,
+      startMinute: input.startTime ? inputMinute(input.startTime) : null,
+      endMinute: input.endTime ? inputMinute(input.endTime) : null,
       status: input.status,
       hours: input.hours ?? null,
       overtimeHours: input.overtimeHours ?? null,
@@ -580,10 +686,22 @@ export class LabourPayrollService {
       const before = await repository.findAttendanceById(attendanceId);
       if (!before) throw createLabourPayrollError('EMPLOYEE_NOT_ASSIGNED');
       await this.requireProjectPermission(new AdministrationRepository(tx), before.projectId, 'attendance.correct', new Date());
-      if (await repository.isAttendanceLockedByFinalizedPayroll(before.employeeId, before.workDate)) throw createLabourPayrollError('PAYROLL_LOCKED');
+      if (await repository.isAttendanceLockedByFinalizedPayroll(before.employeeId, before.workDate, before.startMinute, before.endMinute)) throw createLabourPayrollError('PAYROLL_LOCKED');
       const stageId = input.stageId === undefined ? before.stageId : input.stageId;
       await this.requireAttendanceAssignment(repository, before.employeeId, before.projectId, stageId, before.workDate);
       const status = input.status ?? before.status;
+      const startMinute = input.startTime === undefined ? before.startMinute : input.startTime === null ? null : inputMinute(input.startTime);
+      const endMinute = input.endTime === undefined ? before.endMinute : input.endTime === null ? null : inputMinute(input.endTime);
+      if ((startMinute === null) !== (endMinute === null)) {
+        throw new ValidationError({ fieldErrors: [{ field: 'endTime', message: 'startTime and endTime must be supplied together.' }] });
+      }
+      if (startMinute !== null && startMinute === endMinute) {
+        throw new ValidationError({ fieldErrors: [{ field: 'endTime', message: 'endTime must differ from startTime.' }] });
+      }
+      if ((startMinute !== before.startMinute || endMinute !== before.endMinute)
+        && await repository.isAttendanceLockedByFinalizedPayroll(before.employeeId, before.workDate, startMinute, endMinute)) {
+        throw createLabourPayrollError('PAYROLL_LOCKED');
+      }
       const hours = input.hours === undefined ? before.hours?.toString() ?? null : input.hours;
       const overtimeHours = input.overtimeHours === undefined ? before.overtimeHours?.toString() ?? null : input.overtimeHours;
       if (decimal4Units(hours) + decimal4Units(overtimeHours) > 24n * SCALE_4) {
@@ -598,6 +716,8 @@ export class LabourPayrollService {
       }
       const updated = await repository.updateAttendance(attendanceId, {
         ...(input.stageId === undefined ? {} : { stageId }),
+        ...(input.startTime === undefined ? {} : { startMinute }),
+        ...(input.endTime === undefined ? {} : { endMinute }),
         ...(input.status === undefined ? {} : { status: input.status }),
         ...(input.hours === undefined ? {} : { hours: input.hours }),
         ...(input.overtimeHours === undefined ? {} : { overtimeHours: input.overtimeHours })
@@ -653,9 +773,11 @@ export class LabourPayrollService {
       const repository = new LabourPayrollRepository(tx);
       const periodStart = inputDate(input.periodStart);
       const periodEnd = inputDate(input.periodEnd);
+      const fromMinute = input.fromTime ? inputMinute(input.fromTime) : null;
+      const toMinute = input.toTime ? inputMinute(input.toTime) : null;
       const payCycle = input.payCycle ?? 'LEGACY';
-      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, payCycle)) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const created = await repository.createPayrollRun({ payCycle, periodStart, periodEnd, status: PAYROLL_DRAFT, createdBy: requireRequestSecurityContext().actorUserId });
+      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, payCycle, fromMinute, toMinute)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      const created = await repository.createPayrollRun({ payCycle, periodStart, periodEnd, fromMinute, toMinute, status: PAYROLL_DRAFT, createdBy: requireRequestSecurityContext().actorUserId });
       const response = payrollRunResponse(created);
       await recordAudit(tx, { action: 'payroll.created', entityType: 'payroll_run', entityId: created.id, after: response });
       await recordOutboxEvent(tx, { eventType: 'payroll.created', resourceType: 'payroll_run', resourceId: created.id, payload: response });
@@ -664,7 +786,7 @@ export class LabourPayrollService {
     return result.response.body;
   }
 
-  /** Edit the work date of one DRAFT Daily Settlement before any calculation exists. */
+  /** Edit the date/time window of one DRAFT Daily Settlement before any calculation exists. */
   async updateDailyPayrollRun(payrollRunId: string, input: UpdateDailyPayrollRunBody, idempotencyKey: string) {
     const result = await executeIdempotentCommand(this.db, {
       operation: 'payroll.daily.update', idempotencyKey, fingerprintInput: { payrollRunId, input }
@@ -676,9 +798,15 @@ export class LabourPayrollService {
       if (locked.status !== PAYROLL_DRAFT || locked.payCycle !== 'DAILY') throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
       const periodStart = inputDate(input.periodStart);
       const periodEnd = inputDate(input.periodEnd);
-      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, 'DAILY', payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const before = { periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd), status: locked.status, payCycle: locked.payCycle };
-      const updated = await repository.updateDraftDailyPayrollRun(payrollRunId, periodStart, periodEnd);
+      const fromMinute = input.fromTime ? inputMinute(input.fromTime) : locked.fromMinute;
+      const toMinute = input.toTime ? inputMinute(input.toTime) : locked.toMinute;
+      if ((fromMinute === null) !== (toMinute === null)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      if (await repository.findOverlappingFinalizedPayrollRun(periodStart, periodEnd, 'DAILY', fromMinute, toMinute, payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      const before = {
+        periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd),
+        fromTime: minuteTime(locked.fromMinute), toTime: minuteTime(locked.toMinute), status: locked.status, payCycle: locked.payCycle
+      };
+      const updated = await repository.updateDraftDailyPayrollRun(payrollRunId, periodStart, periodEnd, fromMinute, toMinute);
       if (!updated) throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
       const response = payrollRunResponse(updated);
       await recordAudit(tx, { action: 'payroll.updated', entityType: 'payroll_run', entityId: payrollRunId, before, after: response });
@@ -698,7 +826,10 @@ export class LabourPayrollService {
       const locked = await repository.lockPayrollRunForWrite(payrollRunId);
       if (!locked) throw createLabourPayrollError('PAYROLL_NOT_FOUND');
       if (locked.status !== PAYROLL_DRAFT || locked.payCycle !== 'DAILY') throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
-      const before = { id: locked.id, periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd), status: locked.status, payCycle: locked.payCycle };
+      const before = {
+        id: locked.id, periodStart: dateOnly(locked.periodStart), periodEnd: dateOnly(locked.periodEnd),
+        fromTime: minuteTime(locked.fromMinute), toTime: minuteTime(locked.toMinute), status: locked.status, payCycle: locked.payCycle
+      };
       if (!(await repository.deleteDraftDailyPayrollRun(payrollRunId))) throw createLabourPayrollError('PAYROLL_DRAFT_DAILY_ONLY');
       await recordAudit(tx, { action: 'payroll.deleted', entityType: 'payroll_run', entityId: payrollRunId, before, after: { deleted: true } });
       await recordOutboxEvent(tx, { eventType: 'payroll.deleted', resourceType: 'payroll_run', resourceId: payrollRunId, payload: before });
@@ -715,7 +846,7 @@ export class LabourPayrollService {
     await this.requireProjectPermission(new AdministrationRepository(this.db), query.projectId, 'payroll.calculate', new Date());
     if (run.status === PAYROLL_FINALIZED || run.payCycle === 'LEGACY') return [];
     if (run.payCycle === 'MONTHLY') {
-      const employees = await repository.listMonthlyPayrollEligibleEmployees(query.projectId, run.periodStart, run.periodEnd);
+      const employees = await repository.listMonthlyPayrollEligibleEmployees(query.projectId, run.periodStart, run.periodEnd, run.fromMinute, run.toMinute);
       return employees.flatMap((employee) => {
         const compensation = employee.compensations[0];
         if (!compensation?.baseSalary) return [];
@@ -725,7 +856,7 @@ export class LabourPayrollService {
         }];
       });
     }
-    const employees = await repository.listDailyPayrollEligibleEmployees(query.projectId, run.periodStart);
+    const employees = await repository.listDailyPayrollEligibleEmployees(query.projectId, run.periodStart, run.fromMinute, run.toMinute);
     return employees.flatMap((employee) => {
       const compensation = employee.compensations[0];
       if (!compensation || !['DAILY', 'HOURLY'].includes(compensation.payType)) return [];
@@ -743,11 +874,13 @@ export class LabourPayrollService {
     repository: LabourPayrollRepository,
     periodStart: Date,
     periodEnd: Date,
+    fromMinute: number | null,
+    toMinute: number | null,
     overtimeMultiplier: DecimalLike | null,
     payCycle = 'LEGACY',
     employeeIds?: readonly string[]
   ): Promise<PayrollDraftLine[]> {
-    const attendance = await repository.listPayrollAttendance(periodStart, periodEnd, employeeIds);
+    const attendance = await repository.listPayrollAttendance(periodStart, periodEnd, fromMinute, toMinute, employeeIds);
     if (attendance.length === 0) throw createLabourPayrollError('PAYROLL_NO_ATTENDANCE');
     const attendanceEmployeeIds = [...new Set(attendance.map((item) => item.employeeId))];
     const drafts: PayrollDraftLine[] = [];
@@ -773,7 +906,7 @@ export class LabourPayrollService {
       let absenceDeductionCents = 0n;
 
       if (payType === 'SALARY') {
-        if (!isFullCalendarMonth(periodStart, periodEnd)) throw createLabourPayrollError('PAYROLL_SALARY_PERIOD_INVALID');
+        if (!isSingleCalendarMonth(periodStart, periodEnd)) throw createLabourPayrollError('PAYROLL_SALARY_PERIOD_INVALID');
         const salaryCompensations = rows.map((row) => compensationForDate(compensations, row.workDate));
         const salaryCompensation = salaryCompensations[0] ?? null;
         if (!salaryCompensation
@@ -784,16 +917,18 @@ export class LabourPayrollService {
         }
         const presentDates = new Set(rows.filter((item) => item.status === 'PRESENT').map((item) => dateOnly(item.workDate)));
         if (presentDates.size === 0) continue;
-        const periodDays = BigInt(periodEnd.getUTCDate());
-        const eligibleStart = rows[0]?.employee?.joinDate && rows[0].employee.joinDate > periodStart
+        const periodDays = calendarMonthDays(periodStart);
+        let eligibleStart = rows[0]?.employee?.joinDate && rows[0].employee.joinDate > periodStart
           ? rows[0].employee.joinDate
           : periodStart;
+        if (salaryCompensation.effectiveFrom > eligibleStart) eligibleStart = salaryCompensation.effectiveFrom;
         const employeeEnd = rows[0]?.employee?.endDate && rows[0].employee.endDate < periodEnd
           ? rows[0].employee.endDate
           : periodEnd;
         const compensationEnd = salaryCompensation.effectiveTo && salaryCompensation.effectiveTo < employeeEnd
           ? salaryCompensation.effectiveTo
           : employeeEnd;
+        if (eligibleStart > compensationEnd) continue;
         const eligibleDays = inclusiveDays(eligibleStart, compensationEnd);
         salaryBeforeAbsenceCents = prorateCents(moneyCents(salaryCompensation.baseSalary), eligibleDays, periodDays);
         grossCents = prorateCents(moneyCents(salaryCompensation.baseSalary), BigInt(presentDates.size), periodDays);
@@ -887,8 +1022,8 @@ export class LabourPayrollService {
       if (input.projectId && input.employeeId) {
         if (locked.payCycle === 'LEGACY') throw createLabourPayrollError('PAYROLL_NOT_READY');
         const eligible = locked.payCycle === 'MONTHLY'
-          ? await repository.listMonthlyPayrollEligibleEmployees(input.projectId, locked.periodStart, locked.periodEnd)
-          : await repository.listDailyPayrollEligibleEmployees(input.projectId, locked.periodStart);
+          ? await repository.listMonthlyPayrollEligibleEmployees(input.projectId, locked.periodStart, locked.periodEnd, locked.fromMinute, locked.toMinute)
+          : await repository.listDailyPayrollEligibleEmployees(input.projectId, locked.periodStart, locked.fromMinute, locked.toMinute);
         if (!eligible.some((employee) => employee.id === input.employeeId)) throw createLabourPayrollError('EMPLOYEE_NOT_ASSIGNED');
       }
       const overtimeMultiplier = input.overtimeMultiplier ?? locked.overtimeMultiplier?.toString() ?? null;
@@ -896,7 +1031,7 @@ export class LabourPayrollService {
         if (!(await repository.updatePayrollRunOvertimeMultiplier(payrollRunId, input.overtimeMultiplier))) throw createLabourPayrollError('PAYROLL_NOT_READY');
       }
       const selectedEmployeeIds = input.employeeId ? [input.employeeId] : undefined;
-      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, overtimeMultiplier, locked.payCycle, selectedEmployeeIds);
+      const drafts = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.fromMinute, locked.toMinute, overtimeMultiplier, locked.payCycle, selectedEmployeeIds);
       if (input.employeeId) await repository.clearPayrollCalculationForEmployee(payrollRunId, input.employeeId);
       else await repository.clearPayrollCalculation(payrollRunId);
       for (const line of drafts) {
@@ -938,12 +1073,28 @@ export class LabourPayrollService {
         return { statusCode: 200, body: payrollRunResponse(existing) };
       }
       if (locked.status !== PAYROLL_CALCULATED) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      if (inputDate(dateOnly(new Date())) < locked.periodEnd) throw createLabourPayrollError('PAYROLL_PERIOD_OPEN');
-      if (await repository.findOverlappingFinalizedPayrollRun(locked.periodStart, locked.periodEnd, locked.payCycle, payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
+      const companyTimeZone = locked.fromMinute === null || locked.toMinute === null ? 'UTC' : await repository.getCompanyTimeZone();
+      if (!payrollWindowClosed(new Date(), locked.periodEnd, locked.fromMinute, locked.toMinute, companyTimeZone)) {
+        throw createLabourPayrollError('PAYROLL_PERIOD_OPEN');
+      }
+      if (await repository.findOverlappingFinalizedPayrollRun(locked.periodStart, locked.periodEnd, locked.payCycle, locked.fromMinute, locked.toMinute, payrollRunId)) throw createLabourPayrollError('PAYROLL_NOT_READY');
 
       const snapshot = await repository.findPayrollRunById(payrollRunId);
       if (!snapshot || snapshot.lines.length === 0) throw createLabourPayrollError('PAYROLL_NOT_READY');
-      const recalculated = await this.calculateDraftLines(repository, locked.periodStart, locked.periodEnd, locked.overtimeMultiplier, locked.payCycle);
+      // A run may intentionally contain only the Employees selected and calculated by the user.
+      // Revalidate that exact immutable draft set instead of widening finalization to every
+      // otherwise-eligible Employee in the period.
+      const calculatedEmployeeIds = [...new Set(snapshot.lines.map((line) => line.employeeId))];
+      const recalculated = await this.calculateDraftLines(
+        repository,
+        locked.periodStart,
+        locked.periodEnd,
+        locked.fromMinute,
+        locked.toMinute,
+        locked.overtimeMultiplier,
+        locked.payCycle,
+        calculatedEmployeeIds
+      );
       const persistedDrafts: PayrollDraftLine[] = snapshot.lines.map((line) => ({
         employeeId: line.employeeId,
         salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),
@@ -1014,7 +1165,7 @@ export class LabourPayrollService {
         sourceId: payrollRunId,
         sourceKey: `payroll_run:${payrollRunId}`,
         postingDate,
-        description: `Payroll ${dateOnly(locked.periodStart)} to ${dateOnly(locked.periodEnd)}`,
+        description: `Payroll ${payrollPeriodLabel(locked.periodStart, locked.periodEnd, locked.fromMinute, locked.toMinute)}`,
         lines: [
           ...debitLines,
           ...advanceCreditLines,
@@ -1087,6 +1238,8 @@ export class LabourPayrollService {
       take: window.take,
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
       ...(query.payrollRunId ? { payrollRunId: query.payrollRunId } : {}),
+      ...(query.fromDate ? { fromDate: inputDate(query.fromDate) } : {}),
+      ...(query.toDate ? { toDate: inputDate(query.toDate) } : {}),
       ...(query.status ? { status: query.status } : {})
     });
     return { items: result.items.map((row) => payrollPaymentResponse(row)), total: result.total, page: window.page, pageSize: window.pageSize };
@@ -1319,6 +1472,13 @@ export class LabourPayrollService {
       id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
       debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
       payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null; sortOrder: number;
+      payslip?: Readonly<{
+        payslipId: string; generatedAt: string; payCycle: 'DAILY' | 'MONTHLY' | 'LEGACY';
+        payrollPeriodStart: string; payrollPeriodEnd: string; payrollFromTime: string | null; payrollToTime: string | null;
+        salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string; netSalary: string;
+        paidAmount: string; outstandingAmount: string;
+        settlements: readonly Readonly<{ paymentNo: string; paymentDate: string; amount: string }>[];
+      }>;
       salarySlip?: Readonly<{
         paymentNo: string; paymentDate: string; payrollPeriodStart: string; payrollPeriodEnd: string;
         salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string;
@@ -1333,9 +1493,50 @@ export class LabourPayrollService {
       const allocations = allocationResponse(line.projectAllocationJson);
       const visibleAllocations = query.projectId ? allocations.filter((allocation) => allocation.projectId === query.projectId) : allocations;
       const salaryCents = visibleAllocations.reduce((sum, allocation) => sum + moneyCents(allocation.amount), 0n);
+      const postedPayments = line.payments.filter((payment) => payment.status === 'POSTED');
+      const paidCents = postedPayments.reduce((sum, payment) => sum + moneyCents(payment.amount), 0n);
       totalSalary += salaryCents;
       const primaryProjectId = visibleAllocations[0]?.projectId ?? null;
-      entries.push({ id: `salary:${line.id}`, entryDate: dateOnly(line.payrollRun.periodEnd), entryType: 'SALARY_DUE', reference: `Payroll ${dateOnly(line.payrollRun.periodStart)} to ${dateOnly(line.payrollRun.periodEnd)}`, debit: moneyString(salaryCents), credit: ZERO_MONEY, balance: ZERO_MONEY, projectId: primaryProjectId, projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null, stageName: null, payrollRunId: line.payrollRun.id, payrollLineId: line.id, advanceId: null, paymentId: null, sortOrder: 0 });
+      entries.push({
+        id: `salary:${line.id}`,
+        entryDate: dateOnly(line.payrollRun.periodEnd),
+        entryType: 'SALARY_DUE',
+        reference: `Payroll ${payrollPeriodLabel(line.payrollRun.periodStart, line.payrollRun.periodEnd, line.payrollRun.fromMinute, line.payrollRun.toMinute)}`,
+        debit: moneyString(salaryCents),
+        credit: ZERO_MONEY,
+        balance: ZERO_MONEY,
+        projectId: primaryProjectId,
+        projectName: primaryProjectId ? projectNames.get(primaryProjectId) ?? 'Project' : null,
+        stageName: null,
+        payrollRunId: line.payrollRun.id,
+        payrollLineId: line.id,
+        advanceId: null,
+        paymentId: null,
+        sortOrder: 0,
+        ...(line.payslip?.generatedAt ? {
+          payslip: {
+            payslipId: line.payslip.id,
+            generatedAt: line.payslip.generatedAt.toISOString(),
+            payCycle: line.payrollRun.payCycle as 'DAILY' | 'MONTHLY' | 'LEGACY',
+            payrollPeriodStart: dateOnly(line.payrollRun.periodStart),
+            payrollPeriodEnd: dateOnly(line.payrollRun.periodEnd),
+            payrollFromTime: minuteTime(line.payrollRun.fromMinute),
+            payrollToTime: minuteTime(line.payrollRun.toMinute),
+            salaryBeforeAbsence: line.salaryBeforeAbsence.toString(),
+            absenceDeduction: line.absenceDeduction.toString(),
+            earnedSalary: line.grossAmount.toString(),
+            advanceRecovery: line.advanceDeduction.toString(),
+            netSalary: line.netAmount.toString(),
+            paidAmount: moneyString(paidCents),
+            outstandingAmount: moneyString(moneyCents(line.netAmount) > paidCents ? moneyCents(line.netAmount) - paidCents : 0n),
+            settlements: postedPayments.map((payment) => ({
+              paymentNo: payment.paymentNo,
+              paymentDate: dateOnly(payment.paymentDate),
+              amount: moneyString(moneyCents(payment.amount))
+            }))
+          }
+        } : {})
+      });
       for (const payment of line.payments) {
         entries.push({
           id: `payment:${payment.id}`,
@@ -1391,7 +1592,7 @@ export class LabourPayrollService {
     let balance = 0n;
     const ledgerEntries = entries.map(({ sortOrder: _sortOrder, ...entry }) => {
       balance += moneyCents(entry.debit) - moneyCents(entry.credit);
-      return { ...entry, balance: moneyString(balance) };
+      return { ...entry, balance: ledgerBalanceString(balance) };
     });
     return {
       employee: sources.employee,

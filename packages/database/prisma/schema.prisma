@@ -1737,6 +1737,8 @@ model AttendanceEntry {
   projectId     String   @map("project_id") @db.Uuid
   stageId       String?  @map("stage_id") @db.Uuid
   workDate      DateTime @map("work_date") @db.Date
+  startMinute   Int?     @map("start_minute")
+  endMinute     Int?     @map("end_minute")
   status        String   @db.VarChar(32)
   hours         Decimal? @db.Decimal(18, 4)
   overtimeHours Decimal? @map("overtime_hours") @db.Decimal(18, 4)
@@ -1800,6 +1802,8 @@ model PayrollRun {
   payCycle           String    @default("LEGACY") @map("pay_cycle") @db.VarChar(16)
   periodStart        DateTime  @map("period_start") @db.Date
   periodEnd          DateTime  @map("period_end") @db.Date
+  fromMinute         Int?      @map("from_minute")
+  toMinute           Int?      @map("to_minute")
   status             String    @db.VarChar(32)
   overtimeMultiplier Decimal?  @map("overtime_multiplier") @db.Decimal(8, 4)
   createdBy          String    @map("created_by") @db.Uuid

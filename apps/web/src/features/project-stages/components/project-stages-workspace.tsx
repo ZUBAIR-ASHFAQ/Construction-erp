@@ -10,7 +10,8 @@ import {
   useFreezeProjectStageBaseline,
   useProjectStages,
   useRecordStageProgress,
-  useUpdateProjectStage
+  useUpdateProjectStage,
+  useUpdateStageProgress
 } from '../hooks/project-stages.js';
 import type { ProjectStage, StageProgressUpdate } from '../api/project-stages-api.js';
 
@@ -47,6 +48,9 @@ type ProgressFormValues = z.infer<typeof progressFormSchema>;
 
 export type ProjectStagesWorkspaceProps = Readonly<{
   projectId: string;
+  projectCode: string;
+  projectName: string;
+  projectCurrency: string;
   projectModel: 'FIXED_PRICE' | 'COST_PLUS_PERCENTAGE';
   projectCostPlusPercent: string | null;
   canManage: boolean;
@@ -78,35 +82,97 @@ function isAutomaticSequenceConflict(error: unknown): boolean {
   return error instanceof Error && error.message === 'Stage sequence number is already in use inside the Project.';
 }
 
-/** Render one Stage row without confusing physical progress with weight or money. */
-function StageRow({ stage, fallbackPercent, canEdit, onEdit }: Readonly<{
+/** Format an exact API percentage for compact Stage display without changing its stored value. */
+function formatPercent(value: string | null | undefined, decimals = 2): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return value;
+  return `${numeric.toFixed(decimals).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1')}%`;
+}
+
+/** Format an exact money string with grouping while keeping the API value read-only. */
+function formatMoney(value: string | null | undefined, currency: string): string {
+  if (value === null || value === undefined || value === '') return '—';
+  const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(value);
+  if (!match) return `${currency} ${value}`;
+  const sign = match[1] ?? '';
+  const whole = (match[2] ?? '0').replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const fraction = (match[3] ?? '').padEnd(2, '0').slice(0, 2);
+  return `${currency} ${sign}${whole}.${fraction}`;
+}
+
+/** Convert one persisted date-only value into the short date style used across list pages. */
+function formatDate(value: string | null): string {
+  if (!value) return '—';
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString();
+}
+
+/** Return the neutral status class used by Stage and progress status chips. */
+function statusClass(status: string): string {
+  return `project-stage-status project-stage-status-${status.toLowerCase().replace(/_/g, '-')}`;
+}
+
+/** Render one Stage row as a compact operational summary instead of exposing internal identifiers. */
+function StageRow({ stage, fallbackPercent, currency, canEdit, onEdit }: Readonly<{
   stage: ProjectStage;
   fallbackPercent: string | null;
+  currency: string;
   canEdit: boolean;
   onEdit: (stage: ProjectStage) => void;
 }>) {
+  const progress = Math.max(0, Math.min(100, Number(stage.approvedPhysicalProgressPercent ?? '0')));
+  const markup = stage.costPlusPercent ? `${formatPercent(stage.costPlusPercent)} Stage rate` : fallbackPercent ? `Project ${fallbackPercent}%` : 'Not applicable';
+
   return (
     <tr>
-      <td>{stage.sequenceNo}</td>
-      <td><strong>{stage.code}</strong><br />{stage.name}<br /><small>{stage.id} · Project {stage.projectId}</small></td>
-      <td>{stage.weightPercent}%</td>
-      <td>{stage.costPlusPercent ? `${stage.costPlusPercent}%` : fallbackPercent ? `Project ${fallbackPercent}%` : '—'}</td>
-      <td>{stage.approvedPhysicalProgressPercent ?? '0.0000'}%</td>
-      <td>{stage.plannedAmount ?? '—'}</td>
-      <td>{stage.financials?.actualCost ?? 'Restricted'}</td>
-      <td>{stage.financials?.billedAmount ?? 'Restricted'}</td>
-      <td>{stage.financials?.receivedAmount ?? 'Restricted'}</td>
-      <td>{stage.financials?.allocatedReceiptAmount ?? 'Restricted'}</td>
-      <td>{stage.financials?.advanceAmount ?? 'Restricted'}</td>
-      <td>{stage.financials?.outstandingAmount ?? 'Restricted'}</td>
-      <td>Planned {stage.plannedStartDate ?? '—'} → {stage.plannedEndDate ?? '—'}<br /><small>Actual {stage.actualStartDate ?? '—'} → {stage.actualEndDate ?? '—'}</small></td>
-      <td>{stage.status}</td>
+      <td>
+        <div className="project-stage-identity">
+          <span className="project-stage-sequence">{stage.sequenceNo}</span>
+          <div>
+            <strong>{stage.code}</strong>
+            <span>{stage.name}</span>
+          </div>
+        </div>
+      </td>
+      <td>
+        <strong>{formatPercent(stage.weightPercent)}</strong>
+        <small>{markup}</small>
+      </td>
+      <td>
+        <div className="project-stage-progress-cell">
+          <div className="project-stage-progress-track" aria-hidden="true"><span style={{ width: `${progress}%` }} /></div>
+          <strong>{formatPercent(stage.approvedPhysicalProgressPercent ?? '0.0000')}</strong>
+        </div>
+      </td>
+      <td>
+        {stage.financials ? (
+          <div className="project-stage-financial-grid">
+            <div><span>Planned</span><strong>{formatMoney(stage.financials.plannedAmount ?? stage.plannedAmount, currency)}</strong></div>
+            <div><span>Actual cost</span><strong>{formatMoney(stage.financials.actualCost, currency)}</strong></div>
+            <div><span>Billed</span><strong>{formatMoney(stage.financials.billedAmount, currency)}</strong></div>
+            <div><span>Received</span><strong>{formatMoney(stage.financials.receivedAmount, currency)}</strong></div>
+            <div><span>Allocated</span><strong>{formatMoney(stage.financials.allocatedReceiptAmount, currency)}</strong></div>
+            <div><span>Outstanding</span><strong>{formatMoney(stage.financials.outstandingAmount, currency)}</strong></div>
+            {Number(stage.financials.advanceAmount) !== 0 && <div><span>Advance</span><strong>{formatMoney(stage.financials.advanceAmount, currency)}</strong></div>}
+          </div>
+        ) : (
+          <span className="project-stage-restricted">Financial details restricted</span>
+        )}
+      </td>
+      <td>
+        <div className="project-stage-dates">
+          <span><strong>Planned</strong>{formatDate(stage.plannedStartDate)} → {formatDate(stage.plannedEndDate)}</span>
+          <span><strong>Actual</strong>{formatDate(stage.actualStartDate)} → {formatDate(stage.actualEndDate)}</span>
+        </div>
+      </td>
+      <td><span className={statusClass(stage.status)}>{stage.status}</span></td>
       <td>{canEdit ? <button type="button" className="secondary-button client-edit-button" onClick={() => onEdit(stage)}>Edit</button> : '—'}</td>
     </tr>
   );
 }
 
-/** Render the minimal Stage setup, baseline and progress workspace required by Module 7. */
+/** Render the Stage setup, frozen baseline, progress history and progress-entry workflow. */
 export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   const stagesQuery = useProjectStages(props.projectId);
   const canReadDocuments = usePermission('documents.read');
@@ -116,7 +182,8 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const updateMutation = useUpdateProjectStage(props.projectId, editingStageId ?? '');
   const freezeMutation = useFreezeProjectStageBaseline(props.projectId);
-  const [submittedUpdate, setSubmittedUpdate] = useState<StageProgressUpdate | null>(null);
+  const [progressDialogOpen, setProgressDialogOpen] = useState(false);
+  const [editingProgress, setEditingProgress] = useState<Readonly<{ stageId: string; update: StageProgressUpdate }> | null>(null);
 
   const stageForm = useForm<StageFormValues>({
     resolver: zodResolver(stageFormSchema),
@@ -129,7 +196,8 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
 
   const progressStageId = progressForm.watch('stageId');
   const progressMutation = useRecordStageProgress(props.projectId, progressStageId);
-  const approvalMutation = useApproveStageProgress(props.projectId, progressStageId);
+  const updateProgressMutation = useUpdateStageProgress(props.projectId);
+  const approvalMutation = useApproveStageProgress(props.projectId);
   const stages = stagesQuery.data?.items ?? [];
   const automaticSequenceNo = nextStageSequenceNo(stages);
 
@@ -214,93 +282,173 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
     stageForm.reset({ code: '', name: '', sequenceNo: automaticSequenceNo, weightPercent: '', costPlusPercent: '', plannedStartDate: '', plannedEndDate: '' });
   }
 
-  /** Submit one physical-progress update and preserve its id for immediate approval when allowed. */
-  async function handleRecordProgress(values: ProgressFormValues): Promise<void> {
-    const update = await progressMutation.mutateAsync({
-      progressPercent: values.progressPercent,
-      progressDate: values.progressDate,
-      ...(values.note === '' ? {} : { note: values.note }),
-      ...(values.evidenceDocumentId === '' ? {} : { evidenceDocumentId: values.evidenceDocumentId })
-    });
-    setSubmittedUpdate(update);
+  /** Open the progress editor with a clean form for one new submitted update. */
+  function handleAddProgress(): void {
+    setEditingProgress(null);
+    progressMutation.reset();
+    updateProgressMutation.reset();
+    progressForm.reset({ stageId: '', progressPercent: '', progressDate: '', note: '', evidenceDocumentId: '' });
+    setProgressDialogOpen(true);
   }
 
-  /** Approve the most recently submitted progress row returned by the server. */
-  async function handleApproveLatest(): Promise<void> {
-    if (!submittedUpdate) return;
-    const approved = await approvalMutation.mutateAsync(submittedUpdate.id);
-    setSubmittedUpdate(approved);
+  /** Open one progress row for an in-place submitted edit or an approved correction. */
+  function handleEditProgress(stageId: string, update: StageProgressUpdate): void {
+    progressMutation.reset();
+    updateProgressMutation.reset();
+    setEditingProgress({ stageId, update });
+    progressForm.reset({
+      stageId,
+      progressPercent: update.progressPercent,
+      progressDate: update.progressDate ?? '',
+      note: update.note ?? '',
+      evidenceDocumentId: update.evidenceDocumentId ?? ''
+    });
+    setProgressDialogOpen(true);
+  }
+
+  /** Close the progress editor without changing persisted progress. */
+  function handleCloseProgressDialog(): void {
+    setEditingProgress(null);
+    setProgressDialogOpen(false);
+    progressMutation.reset();
+    updateProgressMutation.reset();
+    progressForm.reset({ stageId: '', progressPercent: '', progressDate: '', note: '', evidenceDocumentId: '' });
+  }
+
+  /** Create or edit one submitted physical-progress row from the shared modal form. */
+  async function handleSaveProgress(values: ProgressFormValues): Promise<void> {
+    const input = {
+      progressPercent: values.progressPercent,
+      progressDate: values.progressDate,
+      note: values.note === '' ? null : values.note,
+      ...(canReadDocuments ? { evidenceDocumentId: values.evidenceDocumentId === '' ? null : values.evidenceDocumentId } : {})
+    };
+    if (editingProgress?.update.status === 'SUBMITTED') {
+      await updateProgressMutation.mutateAsync({
+        stageId: editingProgress.stageId,
+        updateId: editingProgress.update.id,
+        input
+      });
+    } else {
+      await progressMutation.mutateAsync(input);
+    }
+    handleCloseProgressDialog();
+  }
+
+  /** Approve one submitted progress row directly from the history list. */
+  async function handleApproveProgress(stageId: string, updateId: string): Promise<void> {
+    await approvalMutation.mutateAsync({ stageId, updateId });
   }
 
   const documents = documentsQuery.data?.items ?? [];
   const documentLabels = new Map(documents.map((document) => [document.id, document.documentNo ? `${document.documentNo} · ${document.title}` : document.title]));
   const weightTotal = stages.reduce((sum, stage) => sum + Number(stage.weightPercent), 0);
+  const baseline = stagesQuery.data?.baseline ?? null;
+  const canFreezeNow = stages.length > 0 && Math.abs(weightTotal - 100) < 0.00001;
+  const progressUpdates = stages.flatMap((stage) => (stage.progressUpdates ?? []).map((update) => ({ stage, update })));
+  const editingProgressStage = editingProgress ? stages.find((stage) => stage.id === editingProgress.stageId) ?? null : null;
 
   return (
-    <div className="admin-stack">
-      <section className="admin-card">
-        <div className="client-page-heading">
+    <div className="admin-stack project-stages-workspace">
+      <section className="admin-card project-stages-baseline-card">
+        <div className="client-page-heading project-stages-heading">
           <div>
-            <h2>Stage baseline</h2>
-            <p className="muted">Weight, Profit / Markup %, physical progress, cost, billing and receipts stay separate. Cost + Percentage Stages may override the Project rate; blank uses the Project fallback. Freeze is allowed only when Stage weights total exactly 100.0000%.</p>
+            <p className="eyebrow">Stage baseline</p>
+            <h2>{props.projectCode} · {props.projectName}</h2>
+            <p className="muted">Plan the Project into weighted Stages, freeze the 100% baseline, then track approved physical progress independently from cost, billing and receipts.</p>
           </div>
-          {props.canManage && !stagesQuery.data?.baseline && (
+          {props.canManage && !baseline ? (
             <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={handleAddStage}>
               <span aria-hidden="true">+</span> Add stage
             </button>
-          )}
+          ) : props.canRecordProgress && baseline ? (
+            <button type="button" className="client-primary-action" aria-haspopup="dialog" onClick={handleAddProgress}>
+              <span aria-hidden="true">+</span> Add progress
+            </button>
+          ) : null}
         </div>
-        {stagesQuery.isPending && <p>Loading Project Stages…</p>}
+
+        {stagesQuery.isPending && <div className="project-stage-loading">Loading Project Stages…</div>}
         {errorMessage(stagesQuery.error) && <div className="form-error" role="alert">{errorMessage(stagesQuery.error)}</div>}
+
         {stagesQuery.data && (
           <>
-            <p><strong>Project:</strong> {stagesQuery.data.projectId} · <strong>Overall physical progress:</strong> {stagesQuery.data.overallPhysicalProgressPercent}%</p>
-            <p><strong>Weight total:</strong> {weightTotal.toFixed(4)}% · <strong>Baseline:</strong> {stagesQuery.data.baseline?.status ?? 'Not frozen'}</p>
-            {stagesQuery.data.baseline && <p className="muted">Baseline {stagesQuery.data.baseline.id} · Project {stagesQuery.data.baseline.projectId} · Version {stagesQuery.data.baseline.versionNo} · Server weight {stagesQuery.data.baseline.totalWeightPercent}% · Frozen {stagesQuery.data.baseline.frozenAt ? new Date(stagesQuery.data.baseline.frozenAt).toLocaleString() : '—'} by {stagesQuery.data.baseline.frozenBy ?? '—'}</p>}
-            <div className="table-scroll">
-              <table>
+            {!baseline && props.canFreeze ? (
+              <div className="project-stage-freeze-row">
+                <div>
+                  <strong>{canFreezeNow ? 'Baseline is ready to freeze' : 'Complete the Stage weights before freezing'}</strong>
+                  <span>{canFreezeNow ? 'Freezing locks Stage planning and activates physical-progress tracking.' : `Current total is ${formatPercent(weightTotal.toFixed(4), 4)}. The server requires exactly 100.0000%.`}</span>
+                </div>
+                <button type="button" onClick={() => void freezeMutation.mutateAsync()} disabled={freezeMutation.isPending || !canFreezeNow}>
+                  {freezeMutation.isPending ? 'Freezing…' : 'Freeze baseline'}
+                </button>
+              </div>
+            ) : null}
+
+            <div className="project-stage-table-wrap">
+              <table className="project-stage-table">
                 <thead>
-                  <tr><th>#</th><th>Stage</th><th>Weight</th><th>Profit / Markup</th><th>Physical</th><th>Planned value</th><th>Actual cost</th><th>Billed</th><th>Received</th><th>Allocated receipts</th><th>Advance</th><th>Outstanding</th><th>Dates</th><th>Status</th><th>Action</th></tr>
+                  <tr><th>Stage</th><th>Weight / Markup</th><th>Physical progress</th><th>Financial position</th><th>Schedule</th><th>Status</th><th>Action</th></tr>
                 </thead>
                 <tbody>
-                  {stages.map((stage) => <StageRow key={stage.id} stage={stage} fallbackPercent={props.projectModel === 'COST_PLUS_PERCENTAGE' ? props.projectCostPlusPercent : null} canEdit={props.canManage && !stagesQuery.data?.baseline && stage.status === 'DRAFT'} onEdit={handleEditStage} />)}
-                  {stages.length === 0 && <tr><td colSpan={15} className="muted">No Stage has been created yet.</td></tr>}
+                  {stages.map((stage) => (
+                    <StageRow
+                      key={stage.id}
+                      stage={stage}
+                      fallbackPercent={props.projectModel === 'COST_PLUS_PERCENTAGE' ? props.projectCostPlusPercent : null}
+                      currency={props.projectCurrency}
+                      canEdit={props.canManage && !baseline && stage.status === 'DRAFT'}
+                      onEdit={handleEditStage}
+                    />
+                  ))}
+                  {stages.length === 0 && <tr><td colSpan={7} className="muted project-stage-empty">No Stage has been created yet. Add the first Stage to start the Project baseline.</td></tr>}
                 </tbody>
               </table>
             </div>
-            {stages.some((stage) => (stage.progressUpdates?.length ?? 0) > 0) && (
-              <div className="table-scroll">
-                <h3>Progress timeline</h3>
-                <table>
-                  <thead><tr><th>Stage</th><th>Date</th><th>Physical</th><th>Status</th><th>Note</th><th>Evidence</th><th>Entered / approved</th><th>Created</th></tr></thead>
-                  <tbody>
-                    {stages.flatMap((stage) => (stage.progressUpdates ?? []).map((update) => (
-                      <tr key={update.id}>
-                        <td>{stage.name}</td>
-                        <td>{update.progressDate ?? '—'}</td>
-                        <td>{update.progressPercent}%</td>
-                        <td>{update.status}</td>
-                        <td>{update.note ?? '—'}</td>
-                        <td>{update.evidenceDocumentId ? (documentLabels.get(update.evidenceDocumentId) ?? update.evidenceDocumentId) : 'None'}</td>
-                        <td>{update.enteredBy}<br /><small>Approved by {update.approvedBy ?? '—'} · {update.approvedAt ? new Date(update.approvedAt).toLocaleString() : '—'} · Stage {update.stageId} · {update.id}</small></td>
-                        <td>{new Date(update.createdAt).toLocaleString()}</td>
-                      </tr>
-                    )))}
-                  </tbody>
-                </table>
-              </div>
+
+            {progressUpdates.length > 0 && (
+              <section className="project-stage-history-section" aria-labelledby="project-stage-history-title">
+                <div className="project-section-heading">
+                  <div>
+                    <p className="eyebrow">History</p>
+                    <h3 id="project-stage-history-title">Progress timeline</h3>
+                  </div>
+                  <span className="project-record-count">{progressUpdates.length} update{progressUpdates.length === 1 ? '' : 's'}</span>
+                </div>
+                <div className="table-scroll project-stage-history-table">
+                  <table>
+                    <thead><tr><th>Stage</th><th>Date</th><th>Physical</th><th>Status</th><th>Note / evidence</th><th>Recorded / approved</th><th>Action</th></tr></thead>
+                    <tbody>
+                      {progressUpdates.map(({ stage, update }) => (
+                        <tr key={update.id}>
+                          <td><strong>{stage.code}</strong><br /><small>{stage.name}</small></td>
+                          <td>{formatDate(update.progressDate)}</td>
+                          <td><strong>{formatPercent(update.progressPercent)}</strong></td>
+                          <td><span className={statusClass(update.status)}>{update.status}</span></td>
+                          <td>{update.note ?? 'No note recorded.'}{update.evidenceDocumentId && <><br /><small>Evidence: {documentLabels.get(update.evidenceDocumentId) ?? 'Attached document'}</small></>}</td>
+                          <td>Recorded {new Date(update.createdAt).toLocaleString()}{update.approvedAt && <><br /><small>Approved {new Date(update.approvedAt).toLocaleString()}</small></>}</td>
+                          <td>
+                            {(props.canRecordProgress || (props.canApproveProgress && update.status === 'SUBMITTED')) ? (
+                              <div className="client-row-actions">
+                                {props.canRecordProgress && <button type="button" className="secondary-button client-edit-button" onClick={() => handleEditProgress(stage.id, update)}>Edit</button>}
+                                {props.canApproveProgress && update.status === 'SUBMITTED' && <button type="button" className="secondary-button client-edit-button" onClick={() => void handleApproveProgress(stage.id, update.id)} disabled={approvalMutation.isPending}>Approve</button>}
+                              </div>
+                            ) : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {errorMessage(approvalMutation.error) && <div className="form-error" role="alert">{errorMessage(approvalMutation.error)}</div>}
+              </section>
             )}
           </>
-        )}
-        {props.canFreeze && !stagesQuery.data?.baseline && (
-          <button type="button" onClick={() => void freezeMutation.mutateAsync()} disabled={freezeMutation.isPending || stages.length === 0}>
-            {freezeMutation.isPending ? 'Freezing…' : 'Freeze 100% baseline'}
-          </button>
         )}
         {errorMessage(freezeMutation.error) && <div className="form-error" role="alert">{errorMessage(freezeMutation.error)}</div>}
       </section>
 
-      {stageDialogOpen && props.canManage && !stagesQuery.data?.baseline && (
+      {stageDialogOpen && props.canManage && !baseline && (
         <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) handleCancelStageEdit(); }}>
           <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="stage-editor-title">
             <header className="client-modal-header">
@@ -335,44 +483,56 @@ export function ProjectStagesWorkspace(props: ProjectStagesWorkspaceProps) {
         </div>
       )}
 
-      {props.canRecordProgress && stagesQuery.data?.baseline && (
-        <section className="admin-card">
-          <h2>Record physical progress</h2>
-          <form onSubmit={progressForm.handleSubmit((values) => void handleRecordProgress(values))}>
-            <div className="form-grid">
-              <label>Stage
-                <select {...progressForm.register('stageId')}>
-                  <option value="">Select Stage</option>
-                  {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.sequenceNo}. {stage.name}</option>)}
-                </select>
-              </label>
-              <label>Physical progress %<input inputMode="decimal" {...progressForm.register('progressPercent')} /></label>
-              <label>Progress date<input type="date" {...progressForm.register('progressDate')} /></label>
-              <label>Evidence document (optional)
-                <select {...progressForm.register('evidenceDocumentId')} disabled={!canReadDocuments}>
-                  <option value="">{canReadDocuments ? 'No evidence document' : 'Document read permission required'}</option>
-                  {documents.map((document) => <option key={document.id} value={document.id}>{document.documentNo ? `${document.documentNo} · ${document.title}` : document.title}</option>)}
-                </select>
-              </label>
-              <label>Note / correction reason<textarea {...progressForm.register('note')} /></label>
+      {progressDialogOpen && props.canRecordProgress && baseline && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) handleCloseProgressDialog(); }}>
+          <section className="client-modal client-modal-wide" role="dialog" aria-modal="true" aria-labelledby="progress-editor-title">
+            <header className="client-modal-header">
+              <div>
+                <p className="eyebrow">Physical progress</p>
+                <h2 id="progress-editor-title">{editingProgress?.update.status === 'APPROVED' ? 'Correct progress' : editingProgress ? 'Edit progress' : 'Add progress'}</h2>
+              </div>
+              <button type="button" className="client-modal-close" aria-label="Close progress editor" onClick={handleCloseProgressDialog}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="client-modal-form" onSubmit={progressForm.handleSubmit((values) => void handleSaveProgress(values))}>
+                <div className="client-form-grid">
+                  <label>Stage
+                    {editingProgress ? (
+                      <>
+                        <input value={editingProgressStage ? `${editingProgressStage.sequenceNo}. ${editingProgressStage.code} · ${editingProgressStage.name}` : 'Selected Stage'} disabled />
+                        <input type="hidden" {...progressForm.register('stageId')} />
+                      </>
+                    ) : (
+                      <select {...progressForm.register('stageId')}>
+                        <option value="">Select Stage</option>
+                        {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.sequenceNo}. {stage.code} · {stage.name}</option>)}
+                      </select>
+                    )}
+                  </label>
+                  <label>Physical progress %<input inputMode="decimal" {...progressForm.register('progressPercent')} /></label>
+                  <label>Progress date<input type="date" {...progressForm.register('progressDate')} /></label>
+                  <label>Evidence document (optional)
+                    <select {...progressForm.register('evidenceDocumentId')} disabled={!canReadDocuments}>
+                      <option value="">{canReadDocuments ? 'No evidence document' : 'Document read permission required'}</option>
+                      {documents.map((document) => <option key={document.id} value={document.id}>{document.documentNo ? `${document.documentNo} · ${document.title}` : document.title}</option>)}
+                    </select>
+                  </label>
+                  <label className="client-form-wide">Note / correction reason<textarea rows={4} {...progressForm.register('note')} /></label>
+                </div>
+                {editingProgress?.update.status === 'APPROVED' ? <p className="muted">Approved progress remains in the audit history. Saving creates a new submitted correction for approval.</p> : editingProgress ? <p className="muted">Submitted progress can be corrected here until it is approved.</p> : null}
+                {formErrorMessages(progressForm.formState.errors as Record<string, unknown>).map((message, index) => <div key={index} className="form-error">{message}</div>)}
+                {errorMessage(progressMutation.error ?? updateProgressMutation.error) && <div className="form-error" role="alert">{errorMessage(progressMutation.error ?? updateProgressMutation.error)}</div>}
+                {errorMessage(documentsQuery.error) && <div className="form-error" role="alert">{errorMessage(documentsQuery.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={handleCloseProgressDialog}>Cancel</button>
+                  <button type="submit" disabled={progressMutation.isPending || updateProgressMutation.isPending || progressStageId === ''}>
+                    {progressMutation.isPending || updateProgressMutation.isPending ? 'Saving…' : editingProgress?.update.status === 'APPROVED' ? 'Submit correction' : editingProgress ? 'Update progress' : 'Add progress'}
+                  </button>
+                </div>
+              </form>
             </div>
-            {formErrorMessages(progressForm.formState.errors as Record<string, unknown>).map((message, index) => <div key={index} className="form-error">{message}</div>)}
-            {errorMessage(progressMutation.error) && <div className="form-error" role="alert">{errorMessage(progressMutation.error)}</div>}
-            <button type="submit" disabled={progressMutation.isPending || progressStageId === ''}>{progressMutation.isPending ? 'Recording…' : 'Record progress'}</button>
-          </form>
-          {submittedUpdate && (
-            <div>
-              <p className="form-success">Progress {submittedUpdate.progressPercent}% is {submittedUpdate.status.toLowerCase()}.</p>
-              {props.canApproveProgress && submittedUpdate.status === 'SUBMITTED' && (
-                <button type="button" onClick={() => void handleApproveLatest()} disabled={approvalMutation.isPending}>
-                  {approvalMutation.isPending ? 'Approving…' : 'Approve this progress'}
-                </button>
-              )}
-            </div>
-          )}
-          {errorMessage(documentsQuery.error) && <div className="form-error" role="alert">{errorMessage(documentsQuery.error)}</div>}
-          {errorMessage(approvalMutation.error) && <div className="form-error" role="alert">{errorMessage(approvalMutation.error)}</div>}
-        </section>
+          </section>
+        </div>
       )}
     </div>
   );

@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useClients } from '../../clients/hooks/clients.js';
+import { useClients, useCreateClient } from '../../clients/hooks/clients.js';
 import { listUsers } from '../../administration/api/admin-api.js';
 import { usePermission, useProjectWorkspaceVisibility } from '../../administration/hooks/auth.js';
 import { ProjectDetailsPanel } from '../components/project-details-panel.js';
@@ -48,9 +48,17 @@ const createProjectSchema = z.object({
   }
 });
 
+const quickClientSchema = z.object({
+  name: z.string().trim().min(1, 'Client name is required.').max(240),
+  phone: z.union([z.literal(''), z.string().trim().min(7, 'Phone must contain at least 7 characters.').max(50)]),
+  billingAddress: z.string().trim().min(1, 'Billing address is required.').max(1000)
+});
+
 type CreateProjectValues = z.infer<typeof createProjectSchema>;
+type QuickClientValues = z.infer<typeof quickClientSchema>;
 type ProjectDialog =
   | Readonly<{ kind: 'create' }>
+  | Readonly<{ kind: 'quick-client' }>
   | Readonly<{ kind: 'open'; projectId: string }>
   | Readonly<{ kind: 'edit'; projectId: string }>
   | null;
@@ -66,6 +74,7 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const canCreate = usePermission('projects.create');
   const canUpdate = usePermission('projects.update');
   const canReadClients = usePermission('clients.read');
+  const canCreateClients = usePermission('clients.create');
   const canReadUsers = usePermission('admin.users.read');
   const [searchText, setSearchText] = useState('');
   const [search, setSearch] = useState('');
@@ -73,6 +82,9 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const [projectModelText, setProjectModelText] = useState<ProjectModel | ''>('');
   const [clientFilterText, setClientFilterText] = useState(initialClientId ?? '');
   const [clientId, setClientId] = useState(initialClientId ?? '');
+  const [clientSearchText, setClientSearchText] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [quickCreatedClient, setQuickCreatedClient] = useState<Readonly<{ id: string; label: string }> | null>(null);
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<ProjectDialog>(null);
 
@@ -91,6 +103,7 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
     enabled: canReadUsers
   });
   const createMutation = useCreateProject();
+  const quickClientMutation = useCreateClient();
   const createForm = useForm<CreateProjectValues>({
     resolver: zodResolver(createProjectSchema),
     defaultValues: {
@@ -105,6 +118,17 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
       location: ''
     }
   });
+  const quickClientForm = useForm<QuickClientValues>({
+    resolver: zodResolver(quickClientSchema),
+    defaultValues: { name: '', phone: '', billingAddress: '' }
+  });
+  const selectedCreateClientId = createForm.watch('clientId');
+  const clientOptionsQuery = useClients({
+    status: 'ACTIVE',
+    ...(clientSearchText.trim() ? { search: clientSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, canReadClients && dialog?.kind === 'create');
   const selectedProjectModel = createForm.watch('projectModel');
 
   if (!canRead) {
@@ -120,6 +144,9 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
   const pageCount = projectsQuery.data ? Math.max(1, Math.ceil(projectsQuery.data.total / projectsQuery.data.pageSize)) : 1;
   const activeManagers = (managersQuery.data?.items ?? []).filter((user) => user.status === 'ACTIVE');
   const clientLabels = new Map((clientsQuery.data?.items ?? []).map((client) => [client.id, `${client.code} · ${client.displayName}`]));
+  if (quickCreatedClient) clientLabels.set(quickCreatedClient.id, quickCreatedClient.label);
+  const clientOptions = clientOptionsQuery.data?.items ?? [];
+  const quickCreatedClientMissing = quickCreatedClient !== null && !clientOptions.some((client) => client.id === quickCreatedClient.id);
   const managerLabels = new Map(activeManagers.map((user) => [user.id, `${user.name} · ${user.email}`]));
 
   /** Apply Project register filters from page one without changing any active Project record. */
@@ -128,6 +155,53 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
     setSearch(searchText.trim());
     setClientId(clientFilterText.trim());
     setPage(1);
+  }
+
+  /** Search active Clients inside the single Client picker; typing intentionally clears the prior selection. */
+  function handleClientSearch(value: string): void {
+    setClientSearchText(value);
+    setClientPickerOpen(true);
+    if (createForm.getValues('clientId')) {
+      createForm.setValue('clientId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one active Client from the searchable picker without requiring a second dropdown field. */
+  function handleClientSelect(client: Readonly<{ id: string; code: string; displayName: string }>): void {
+    createForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    setClientSearchText(client.displayName);
+    setClientPickerOpen(false);
+  }
+
+  /** Create a minimal Client through the existing Client Management command, then select it for this Project. */
+  async function handleQuickClientCreate(values: QuickClientValues): Promise<void> {
+    const client = await quickClientMutation.mutateAsync({
+      legalName: values.name,
+      displayName: values.name,
+      billingAddress: values.billingAddress,
+      creditTermsDays: null,
+      ...(values.phone ? {
+        contact: {
+          name: values.name,
+          phone: values.phone,
+          isPrimary: true
+        }
+      } : {})
+    });
+
+    const label = `${client.code} · ${client.displayName}`;
+    setQuickCreatedClient({ id: client.id, label });
+    setClientSearchText(client.displayName);
+    setClientPickerOpen(false);
+    createForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    quickClientForm.reset({ name: '', phone: '', billingAddress: '' });
+    setDialog({ kind: 'create' });
+  }
+
+  /** Return from quick Client creation without losing the in-progress Project form. */
+  function closeQuickClientDialog(): void {
+    quickClientForm.reset({ name: '', phone: '', billingAddress: '' });
+    setDialog({ kind: 'create' });
   }
 
   /** Create one DRAFT Project from every validated create field and open the new Project details. */
@@ -272,15 +346,77 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
           <form className="admin-form project-modal-form" onSubmit={createForm.handleSubmit(handleCreate)} noValidate>
             <div className="project-form-grid project-modal-grid">
               <label>Project name<input autoFocus {...createForm.register('name')} /></label>
-              <label>
-                Client
-                <select {...createForm.register('clientId')} disabled={!canReadClients}>
-                  <option value="">{canReadClients ? 'Select active Client' : 'Client read permission required'}</option>
-                  {(clientsQuery.data?.items ?? []).map((client) => (
-                    <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>
-                  ))}
-                </select>
-              </label>
+              <div className="project-client-field">
+                <label htmlFor="project-client-search">Client</label>
+                <div className="project-client-search-row">
+                  <div
+                    className="project-client-combobox"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setClientPickerOpen(false);
+                    }}
+                  >
+                    <input
+                      id="project-client-search"
+                      type="search"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-controls="project-client-options"
+                      aria-expanded={clientPickerOpen}
+                      value={clientSearchText}
+                      onChange={(event) => handleClientSearch(event.target.value)}
+                      onFocus={() => setClientPickerOpen(true)}
+                      onClick={() => setClientPickerOpen(true)}
+                      onKeyDown={(event) => { if (event.key === 'Escape') setClientPickerOpen(false); }}
+                      placeholder={canReadClients ? 'Search active clients by name or code' : 'Client read permission required'}
+                      autoComplete="off"
+                      disabled={!canReadClients}
+                    />
+                    {clientPickerOpen && canReadClients && (
+                      <div id="project-client-options" className="project-client-options" role="listbox" aria-label="Active clients">
+                        {clientOptionsQuery.isFetching && <div className="project-client-option-state">Searching active clients…</div>}
+                        {!clientOptionsQuery.isFetching && quickCreatedClientMissing && quickCreatedClient && (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={selectedCreateClientId === quickCreatedClient.id}
+                            className="project-client-option"
+                            onClick={() => {
+                              createForm.setValue('clientId', quickCreatedClient.id, { shouldDirty: true, shouldValidate: true });
+                              setClientSearchText(quickCreatedClient.label);
+                              setClientPickerOpen(false);
+                            }}
+                          >
+                            {quickCreatedClient.label}
+                          </button>
+                        )}
+                        {!clientOptionsQuery.isFetching && clientOptions.map((client) => (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={selectedCreateClientId === client.id}
+                            className="project-client-option"
+                            key={client.id}
+                            onClick={() => handleClientSelect(client)}
+                          >
+                            <strong>{client.code}</strong>
+                            <span>{client.displayName}</span>
+                          </button>
+                        ))}
+                        {!clientOptionsQuery.isFetching && clientOptions.length === 0 && !quickCreatedClientMissing && (
+                          <div className="project-client-option-state">No active clients match this search.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {canReadClients && canCreateClients && (
+                    <button type="button" className="secondary-button project-client-create-button" onClick={() => setDialog({ kind: 'quick-client' })}>
+                      + Create client
+                    </button>
+                  )}
+                </div>
+                <input type="hidden" {...createForm.register('clientId')} />
+                {clientOptionsQuery.error instanceof Error && <span className="field-error">{clientOptionsQuery.error.message}</span>}
+              </div>
               <label>
                 Commercial model
                 <select {...createForm.register('projectModel')}>
@@ -303,12 +439,41 @@ export function ProjectsPage({ initialClientId = null }: ProjectsPageProps = {})
             {Object.values(createForm.formState.errors).map((error, index) => (
               <span className="field-error" key={index}>{error?.message}</span>
             ))}
-            {clientsQuery.error instanceof Error && <div className="form-error" role="alert">{clientsQuery.error.message}</div>}
             {managersQuery.error instanceof Error && <div className="form-error" role="alert">{managersQuery.error.message}</div>}
             {createMutation.error instanceof Error && <div className="form-error" role="alert">{createMutation.error.message}</div>}
             <div className="project-modal-actions">
               <button type="button" className="secondary-button" onClick={closeDialog}>Cancel</button>
               <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Creating…' : 'Create Project'}</button>
+            </div>
+          </form>
+        </ProjectModal>
+      )}
+
+      {dialog?.kind === 'quick-client' && (
+        <ProjectModal title="Create client" eyebrow="Quick client" onClose={closeQuickClientDialog}>
+          <form className="admin-form project-modal-form" onSubmit={quickClientForm.handleSubmit(handleQuickClientCreate)} noValidate>
+            <div className="project-form-grid project-modal-grid">
+              <label>
+                Client name
+                <input autoFocus {...quickClientForm.register('name')} />
+              </label>
+              <label>
+                Phone (optional)
+                <input inputMode="tel" {...quickClientForm.register('phone')} />
+              </label>
+              <label className="project-form-wide">
+                Billing address
+                <textarea rows={3} {...quickClientForm.register('billingAddress')} />
+              </label>
+            </div>
+            <p className="muted project-edit-note">The Client code is generated automatically. This creates the normal Client Management record, selects it for this Project, and it remains editable from the Clients page.</p>
+            {Object.values(quickClientForm.formState.errors).map((error, index) => (
+              <span className="field-error" key={index}>{error?.message}</span>
+            ))}
+            {quickClientMutation.error instanceof Error && <div className="form-error" role="alert">{quickClientMutation.error.message}</div>}
+            <div className="project-modal-actions">
+              <button type="button" className="secondary-button" onClick={closeQuickClientDialog}>Back to Project</button>
+              <button type="submit" disabled={quickClientMutation.isPending}>{quickClientMutation.isPending ? 'Creating…' : 'Create client'}</button>
             </div>
           </form>
         </ProjectModal>

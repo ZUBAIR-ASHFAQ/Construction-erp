@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useClients } from '../../clients/hooks/clients.js';
+import { getDocumentDownload, listDocuments, type DocumentLinkResourceType } from '../../documents-audit/api/documents-api.js';
 import { useFinanceAccounts, useFinancePeriods } from '../../finance/hooks/finance.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
@@ -12,15 +13,11 @@ import {
   type ReportAnalyticsOverview,
   type ReportCode,
   type ReportFilters,
-  type ReportOutputFormat,
   type RunReportInput,
   type SavedReportFilter
 } from '../api/reports-api.js';
 import {
-  useCreateReportExport,
   useReportCatalog,
-  useReportDownload,
-  useReportRun,
   useRunReport,
   useReportsAnalyticsOverview,
   useSaveReportFilter,
@@ -40,6 +37,7 @@ type ReportsWorkspaceProps = Readonly<{
   canReadSubcontractors: boolean;
   canReadFinance: boolean;
   canReadStages: boolean;
+  canReadDocuments: boolean;
 }>;
 
 const uuidOrEmptySchema = z.union([z.literal(''), z.string().uuid('Use a valid UUID.')]);
@@ -65,10 +63,12 @@ const REPORT_FILTER_FIELDS: Readonly<Record<ReportCode, readonly FilterField[]>>
   'supplier-payments': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status'],
   'supplier-aging': ['vendorId', 'projectId', 'asOfDate'],
   'subcontractor-contracts': ['subcontractorId', 'projectId', 'status'],
-  'subcontractor-payments': ['subcontractorId', 'projectId', 'status'],
+  'subcontractor-payments': ['subcontractorId', 'projectId', 'fromDate', 'toDate', 'status'],
   'subcontractor-ledger': ['subcontractorId', 'projectId', 'status'],
+  'equipment-usage': ['projectId', 'fromDate', 'toDate'],
   attendance: ['projectId', 'employeeId', 'fromDate', 'toDate'],
   payroll: [],
+  'employee-payments': ['employeeId', 'fromDate', 'toDate', 'status'],
   'labour-cost': ['projectId', 'stageId', 'fromDate', 'toDate'],
   'cash-bank': ['status'],
   'cash-accounts': ['projectId', 'status'],
@@ -110,8 +110,10 @@ const PAGINATED_REPORTS = new Set<ReportCode>([
   'subcontractor-contracts',
   'subcontractor-payments',
   'subcontractor-ledger',
+  'equipment-usage',
   'attendance',
   'payroll',
+  'employee-payments',
   'labour-cost',
   'cash-bank',
   'cash-accounts',
@@ -185,68 +187,70 @@ type ReportSection = Readonly<{
   id: string;
   title: string;
   description: string;
-  tone: string;
   codes: readonly ReportCode[];
 }>;
 
 const REPORT_SECTIONS: readonly ReportSection[] = Object.freeze([
   {
-    id: 'projects',
-    title: 'Projects & Cost Control',
-    description: 'Project cost, budget, profitability, material and stage performance.',
-    tone: 'blue',
-    codes: ['project-cost', 'budget-vs-actual', 'project-profit-loss', 'project-expenses', 'project-material', 'stage-progress', 'stage-cost', 'stage-billing', 'stage-receipts']
-  },
-  {
     id: 'suppliers',
-    title: 'Supplier Reports',
-    description: 'Purchases, invoices, payments, outstanding payables and aging.',
-    tone: 'amber',
-    codes: ['supplier-purchases', 'supplier-payables', 'supplier-payments', 'supplier-aging']
+    title: 'Suppliers',
+    description: 'Supplier purchases, invoices, payments and outstanding balances.',
+    codes: ['supplier-payables', 'supplier-payments', 'supplier-purchases', 'supplier-aging']
   },
   {
     id: 'subcontractors',
-    title: 'Subcontractor Reports',
-    description: 'Project contracts, posted payments and remaining contract balances.',
-    tone: 'violet',
-    codes: ['subcontractor-contracts', 'subcontractor-payments', 'subcontractor-ledger']
+    title: 'Subcontractors',
+    description: 'Subcontract agreements, payments and remaining contract balances.',
+    codes: ['subcontractor-payments', 'subcontractor-contracts', 'subcontractor-ledger']
   },
   {
     id: 'clients',
-    title: 'Client Reports',
-    description: 'Invoices, receipts, outstanding balances, advances and aging.',
-    tone: 'green',
+    title: 'Clients',
+    description: 'Client invoices, payments, outstanding balances, advances and aging.',
     codes: ['client-billing', 'client-payments', 'client-outstanding', 'client-advance', 'client-aging']
   },
   {
-    id: 'bank',
-    title: 'Bank Account Reports',
-    description: 'Bank-account balances and account-level financial activity.',
-    tone: 'cyan',
-    codes: ['bank-accounts']
-  },
-  {
-    id: 'cash',
-    title: 'Cash Account Reports',
-    description: 'Cash-account opening balances, current balances and status.',
-    tone: 'teal',
-    codes: ['cash-accounts']
+    id: 'equipment',
+    title: 'Equipment',
+    description: 'Posted Equipment usage with Project, date, quantity, rate and cost.',
+    codes: ['equipment-usage']
   },
   {
     id: 'people',
     title: 'Employees & Payroll',
-    description: 'Attendance, payroll and employee salary cost by Project.',
-    tone: 'rose',
-    codes: ['attendance', 'payroll', 'labour-cost']
+    description: 'Employee salary payments, payroll runs, attendance and Project labour cost.',
+    codes: ['employee-payments', 'payroll', 'attendance', 'labour-cost']
+  },
+  {
+    id: 'projects',
+    title: 'Projects & Cost Control',
+    description: 'Project cost, budget, profitability, material and stage performance.',
+    codes: ['project-cost', 'budget-vs-actual', 'project-profit-loss', 'project-expenses', 'project-material', 'stage-progress', 'stage-cost', 'stage-billing', 'stage-receipts']
+  },
+  {
+    id: 'accounts',
+    title: 'Cash & Bank Accounts',
+    description: 'Cash and Bank account registers plus the combined Cash/Bank view.',
+    codes: ['cash-accounts', 'bank-accounts', 'cash-bank']
   },
   {
     id: 'finance',
     title: 'Finance & Statements',
-    description: 'Combined accounts, General Ledger and core financial statements.',
-    tone: 'slate',
-    codes: ['cash-bank', 'general-ledger', 'profit-loss', 'balance-sheet', 'cash-flow']
+    description: 'General Ledger and core financial statements.',
+    codes: ['general-ledger', 'profit-loss', 'balance-sheet', 'cash-flow']
   }
 ]);
+
+const REPORT_DISPLAY_NAMES: Readonly<Partial<Record<ReportCode, string>>> = Object.freeze({
+  'supplier-payables': 'Supplier Invoices',
+  'supplier-payments': 'Supplier Payments',
+  'subcontractor-payments': 'Subcontractor Payments',
+  'client-billing': 'Client Invoices',
+  'client-payments': 'Client Payments',
+  'equipment-usage': 'Equipment Usage',
+  'employee-payments': 'Employee Payments',
+  payroll: 'Payroll Runs'
+});
 
 const REPORT_DESCRIPTIONS: Readonly<Partial<Record<ReportCode, string>>> = Object.freeze({
   'supplier-purchases': 'Purchase orders raised for suppliers.',
@@ -256,14 +260,49 @@ const REPORT_DESCRIPTIONS: Readonly<Partial<Record<ReportCode, string>>> = Objec
   'subcontractor-contracts': 'Agreed Project contracts and lifecycle status.',
   'subcontractor-payments': 'Posted payments made against subcontract contracts.',
   'subcontractor-ledger': 'Contract value, paid amount and remaining balance.',
+  'equipment-usage': 'Every posted Equipment usage entry with Project, date, quantity, rate and cost.',
   'client-billing': 'Issued Client invoices and billed amounts.',
   'client-payments': 'Client receipts and their Project allocation.',
   'client-outstanding': 'Client amount still due for collection.',
   'client-advance': 'Unallocated Client advances held by Project.',
   'client-aging': 'Client receivables by aging position.',
   'cash-accounts': 'Cashbook accounts with opening and current balances.',
-  'bank-accounts': 'Bank accounts with account numbers and current balances.'
+  'bank-accounts': 'Bank accounts with account numbers and current balances.',
+  'employee-payments': 'Employee salary payments with payment number, date, amount and Cash/Bank account.',
+  payroll: 'Payroll run history and status.'
 });
+
+/** Business-facing columns for the register-style lists. Internal IDs and nested line payloads stay out of the table. */
+const REPORT_LIST_COLUMNS: Readonly<Partial<Record<ReportCode, readonly string[]>>> = Object.freeze({
+  'supplier-payables': ['invoiceNo', 'invoiceDate', 'dueDate', 'status', 'totalAmount', 'allocatedAmount', 'outstandingAmount'],
+  'supplier-payments': ['paymentNo', 'paymentDate', 'status', 'amount', 'allocatedAmount', 'remainingAmount', 'reference'],
+  'supplier-purchases': ['poNo', 'orderDate', 'currency', 'status', 'subtotal', 'taxAmount', 'totalAmount'],
+  'supplier-aging': ['invoiceNo', 'invoiceDate', 'dueDate', 'totalAmount', 'allocatedAmount', 'outstandingAmount', 'ageDays'],
+  'subcontractor-contracts': ['subcontractor', 'project', 'contractDate', 'contractAmount', 'status', 'finishedAt'],
+  'subcontractor-payments': ['paymentNo', 'paymentDate', 'subcontractor', 'project', 'cashBankAccount', 'amount', 'status', 'reference'],
+  'subcontractor-ledger': ['subcontractor', 'project', 'contractDate', 'contractAmount', 'paidAmount', 'balanceAmount', 'status'],
+  'client-billing': ['invoiceNo', 'invoiceDate', 'dueDate', 'status', 'totalAmount', 'allocatedAmount', 'outstandingAmount'],
+  'client-payments': ['receiptNo', 'receiptDate', 'receiptType', 'paymentMethod', 'status', 'amount', 'allocatedAmount', 'unallocatedAmount', 'reference'],
+  'equipment-usage': ['usageDate', 'projectName', 'stageName', 'quantity', 'rate', 'amount', 'status'],
+  attendance: ['workDate', 'employeeName', 'projectName', 'stageName', 'status', 'hours', 'overtimeHours'],
+  payroll: ['payCycle', 'periodStart', 'periodEnd', 'status', 'createdByName', 'finalizedAt', 'overtimeMultiplier'],
+  'employee-payments': ['paymentNo', 'paymentDate', 'employeeName', 'payrollPeriod', 'cashBankAccountName', 'amount', 'status', 'reference'],
+  'cash-bank': ['code', 'name', 'accountType', 'accountNumber', 'projectName', 'balance', 'status'],
+  'cash-accounts': ['code', 'name', 'accountNumber', 'projectName', 'balance', 'status'],
+  'bank-accounts': ['code', 'name', 'accountNumber', 'projectName', 'balance', 'status']
+});
+
+const TECHNICAL_REPORT_COLUMNS = new Set([
+  'id', 'createdAt', 'updatedAt', 'createdBy', 'enteredBy', 'allocatedBy', 'costActualId', 'financeJournalId',
+  'lines', 'items', 'allocations', 'goodsReceipts', 'projectAllocation', 'payslip'
+]);
+
+type ReportDisplayLookups = Readonly<{
+  vendorNames: ReadonlyMap<string, string>;
+  projectNames: ReadonlyMap<string, string>;
+  clientNames: ReadonlyMap<string, string>;
+  subcontractorNames: ReadonlyMap<string, string>;
+}>;
 
 /** Turn a server field key into a readable column heading. */
 function displayColumnName(column: string): string {
@@ -305,30 +344,240 @@ function formValuesFromSavedFilter(saved: SavedReportFilter): FilterFormValues {
   return { ...EMPTY_FORM, reportCode: saved.reportCode, ...Object.fromEntries(storedFields) };
 }
 
-/** Build stable table columns directly from the server-returned report row keys. */
-function reportColumns(rows: Record<string, unknown>[]): string[] {
-  return [...new Set(rows.flatMap((row) => Object.keys(row)))];
+/** Seed one report with only the compatible shared Project and date filters from the command center. */
+function formValuesWithGlobalFilters(
+  reportCode: ReportCode,
+  projectId: string,
+  fromDate: string,
+  toDate: string
+): FilterFormValues {
+  const fields = REPORT_FILTER_FIELDS[reportCode];
+  return {
+    ...EMPTY_FORM,
+    reportCode,
+    ...(fields.includes('projectId') && projectId ? { projectId } : {}),
+    ...(fields.includes('fromDate') && fromDate ? { fromDate } : {}),
+    ...(fields.includes('toDate') && toDate ? { toDate } : {}),
+    ...(fields.includes('asOfDate') && toDate ? { asOfDate: toDate } : {})
+  };
 }
 
-/** Format one server-returned report cell for generic tabular display without recalculating values. */
-function displayReportValue(value: unknown, column: string, vendorNames: ReadonlyMap<string, string>): string {
+/** Build a compact business register instead of exposing every internal source-model field. */
+function reportColumns(reportCode: ReportCode, rows: Record<string, unknown>[]): string[] {
+  const available = new Set(rows.flatMap((row) => Object.keys(row)));
+  const preferred = (REPORT_LIST_COLUMNS[reportCode] ?? []).filter((column) => available.has(column));
+  if (preferred.length > 0) return [...preferred];
+
+  return [...available]
+    .filter((column) => !TECHNICAL_REPORT_COLUMNS.has(column))
+    .filter((column) => !column.endsWith('Id'))
+    .filter((column) => rows.some((row) => {
+      const value = row[column];
+      return value === null || value === undefined || ['string', 'number', 'boolean'].includes(typeof value);
+    }))
+    .slice(0, 9);
+}
+
+/** Use report-specific financial wording so "paid", "allocated", and "remaining" are never ambiguous. */
+function displayReportColumnName(reportCode: ReportCode, column: string): string {
+  const reportLabels: Readonly<Partial<Record<ReportCode, Readonly<Record<string, string>>>>> = {
+    'supplier-payables': { invoiceNo: 'Invoice', allocatedAmount: 'Paid', outstandingAmount: 'Remaining' },
+    'supplier-payments': { paymentNo: 'Payment', amount: 'Total', allocatedAmount: 'Allocated', remainingAmount: 'Remaining' },
+    'supplier-aging': { invoiceNo: 'Invoice', allocatedAmount: 'Paid', outstandingAmount: 'Remaining', ageDays: 'Age days' },
+    'supplier-purchases': { poNo: 'PO' },
+    'subcontractor-payments': { paymentNo: 'Payment', cashBankAccount: 'Cash / Bank account' },
+    'subcontractor-ledger': { paidAmount: 'Paid', balanceAmount: 'Remaining' },
+    'client-billing': { invoiceNo: 'Invoice', allocatedAmount: 'Received', outstandingAmount: 'Remaining' },
+    'client-payments': { receiptNo: 'Receipt', allocatedAmount: 'Allocated', unallocatedAmount: 'Unallocated' },
+    'employee-payments': { paymentNo: 'Payment', cashBankAccountName: 'Cash / Bank account' }
+  };
+  return reportLabels[reportCode]?.[column] ?? displayColumnName(column);
+}
+
+/** Resolve one nested source object into the same concise labels used by the operational workspaces. */
+function displayNestedRecord(record: Record<string, unknown>): string {
+  const name = record.displayName ?? record.name ?? record.legalName;
+  const code = record.projectCode ?? record.code ?? record.paymentNo ?? record.invoiceNo;
+  if (typeof name === 'string' && typeof code === 'string') return `${code} · ${name}`;
+  if (typeof name === 'string') return name;
+  if (typeof code === 'string') return code;
+  return Object.values(record)
+    .filter((item): item is string | number => typeof item === 'string' || typeof item === 'number')
+    .slice(0, 3)
+    .join(' · ') || '—';
+}
+
+/** Format one server-returned report cell without recalculating any source-owned values. */
+function displayReportValue(value: unknown, column: string, lookups: ReportDisplayLookups): string {
   if (value === null || value === undefined || value === '') return '—';
-  if (column === 'vendorId' && typeof value === 'string') return vendorNames.get(value) ?? 'Unknown supplier';
+  if (column === 'vendorId' && typeof value === 'string') return lookups.vendorNames.get(value) ?? 'Unknown supplier';
+  if (column === 'projectId' && typeof value === 'string') return lookups.projectNames.get(value) ?? 'Unknown Project';
+  if (column === 'clientId' && typeof value === 'string') return lookups.clientNames.get(value) ?? 'Unknown Client';
+  if (column === 'subcontractorId' && typeof value === 'string') return lookups.subcontractorNames.get(value) ?? 'Unknown subcontractor';
   if (column === 'category' && value === 'labour') return 'Employee Salaries';
   if (column === 'category' && value === 'security') return 'Security Employee Salaries';
-  if (typeof value === 'object' && !Array.isArray(value)) {
-    const record = value as Record<string, unknown>;
-    const name = record.displayName ?? record.name ?? record.legalName;
-    const code = record.projectCode ?? record.code ?? record.paymentNo;
-    if (typeof name === 'string' && typeof code === 'string') return `${code} · ${name}`;
-    if (typeof name === 'string') return name;
-    if (typeof code === 'string') return code;
-    return Object.values(record)
-      .filter((item): item is string | number => typeof item === 'string' || typeof item === 'number')
-      .join(' · ') || '—';
+  if (typeof value === 'object' && !Array.isArray(value)) return displayNestedRecord(value as Record<string, unknown>);
+  if (Array.isArray(value)) return value.map((item) => displayReportValue(item, column, lookups)).join(', ');
+  if (typeof value === 'string' && /(?:amount|balance|subtotal|total|cost|rate)$/i.test(column) && /^-?\d+(?:\.\d+)?$/.test(value)) {
+    const negative = value.startsWith('-');
+    const unsigned = negative ? value.slice(1) : value;
+    const [integer = '0', fraction = ''] = unsigned.split('.');
+    const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return `${negative ? '-' : ''}${grouped}${fraction ? `.${fraction}` : ''}`;
   }
-  if (Array.isArray(value)) return value.map((item) => displayReportValue(item, column, vendorNames)).join(', ');
-  return String(value);
+  return String(value).replaceAll('_', ' ');
+}
+
+/** Return the compact context line shown below the primary reference, matching the native module lists. */
+function reportRowSubtitle(reportCode: ReportCode, row: Record<string, unknown>, lookups: ReportDisplayLookups): string | null {
+  const projectId = typeof row.projectId === 'string' ? row.projectId : null;
+  const projectName = projectId ? lookups.projectNames.get(projectId) : null;
+  if (reportCode.startsWith('supplier-')) {
+    const vendorId = typeof row.vendorId === 'string' ? row.vendorId : null;
+    const supplier = vendorId ? lookups.vendorNames.get(vendorId) : null;
+    return [supplier ? `Supplier ${supplier}` : null, projectName ? `Project ${projectName}` : null].filter(Boolean).join(' · ') || null;
+  }
+  if (reportCode.startsWith('client-')) {
+    const clientId = typeof row.clientId === 'string' ? row.clientId : null;
+    const client = clientId ? lookups.clientNames.get(clientId) : null;
+    return [client ? `Client ${client}` : null, projectName ? `Project ${projectName}` : null].filter(Boolean).join(' · ') || null;
+  }
+  if (reportCode.startsWith('subcontractor-')) {
+    const subcontractor = row.subcontractor && typeof row.subcontractor === 'object' ? displayNestedRecord(row.subcontractor as Record<string, unknown>) : null;
+    const project = row.project && typeof row.project === 'object' ? displayNestedRecord(row.project as Record<string, unknown>) : projectName;
+    return [subcontractor, project].filter(Boolean).join(' · ') || null;
+  }
+  if (reportCode === 'employee-payments') {
+    const employeeNo = typeof row.employeeNo === 'string' ? row.employeeNo : null;
+    const employeeName = typeof row.employeeName === 'string' ? row.employeeName : null;
+    return [employeeNo, employeeName].filter(Boolean).join(' · ') || null;
+  }
+  if (reportCode === 'equipment-usage' || reportCode === 'attendance') {
+    const project = typeof row.projectName === 'string' ? row.projectName : projectName;
+    const stage = typeof row.stageName === 'string' ? row.stageName : null;
+    return [project, stage].filter(Boolean).join(' · ') || null;
+  }
+  return null;
+}
+
+/** Identify the register reference that should carry the secondary business context line. */
+function primaryReportColumn(reportCode: ReportCode, columns: readonly string[]): string | null {
+  const preferred: Readonly<Partial<Record<ReportCode, string>>> = {
+    'supplier-payables': 'invoiceNo',
+    'supplier-payments': 'paymentNo',
+    'supplier-purchases': 'poNo',
+    'supplier-aging': 'invoiceNo',
+    'subcontractor-payments': 'paymentNo',
+    'client-billing': 'invoiceNo',
+    'client-payments': 'receiptNo',
+    'employee-payments': 'paymentNo',
+    'equipment-usage': 'usageDate',
+    attendance: 'employeeName'
+  };
+  const candidate = preferred[reportCode];
+  return candidate && columns.includes(candidate) ? candidate : columns[0] ?? null;
+}
+
+type ReportEvidenceReference = Readonly<{
+  resourceType?: DocumentLinkResourceType;
+  resourceId?: string;
+  documentId?: string;
+  reference: string;
+  actionLabel: string;
+  fallbackFileName: string;
+}>;
+
+const SOURCE_AUTHORIZED_EVIDENCE_REPORTS = new Set<ReportCode>([
+  'supplier-payables',
+  'supplier-payments',
+  'supplier-aging',
+  'subcontractor-payments'
+]);
+
+const DOCUMENT_PERMISSION_EVIDENCE_REPORTS = new Set<ReportCode>([
+  'client-billing',
+  'client-payments',
+  'client-aging',
+  'project-expenses'
+]);
+
+/** Return whether this report can expose an original source attachment to the current actor. */
+function canDownloadReportEvidence(reportCode: ReportCode, canReadDocuments: boolean): boolean {
+  return SOURCE_AUTHORIZED_EVIDENCE_REPORTS.has(reportCode)
+    || (canReadDocuments && DOCUMENT_PERMISSION_EVIDENCE_REPORTS.has(reportCode));
+}
+
+/** Resolve one report row to the immutable ERP document that represents its uploaded source evidence. */
+function reportEvidenceReference(reportCode: ReportCode, row: Record<string, unknown>): ReportEvidenceReference | null {
+  const id = typeof row.id === 'string' ? row.id : null;
+  const documentId = typeof row.documentId === 'string' ? row.documentId : null;
+  const invoiceNo = typeof row.invoiceNo === 'string' ? row.invoiceNo : null;
+  const paymentNo = typeof row.paymentNo === 'string' ? row.paymentNo : null;
+  const receiptNo = typeof row.receiptNo === 'string' ? row.receiptNo : null;
+
+  if (reportCode === 'supplier-payables' && id && invoiceNo) {
+    return { resourceType: 'supplier_invoice', resourceId: id, reference: invoiceNo, actionLabel: 'Download invoice', fallbackFileName: `supplier-invoice-${invoiceNo}` };
+  }
+  if (reportCode === 'supplier-aging' && typeof row.supplierInvoiceId === 'string' && invoiceNo) {
+    return { resourceType: 'supplier_invoice', resourceId: row.supplierInvoiceId, reference: invoiceNo, actionLabel: 'Download invoice', fallbackFileName: `supplier-invoice-${invoiceNo}` };
+  }
+  if (reportCode === 'supplier-payments' && id && paymentNo) {
+    return { resourceType: 'supplier_payment', resourceId: id, reference: paymentNo, actionLabel: 'Download proof', fallbackFileName: `supplier-payment-proof-${paymentNo}` };
+  }
+  if (reportCode === 'subcontractor-payments' && id && paymentNo) {
+    return { resourceType: 'subcontract_payment', resourceId: id, reference: paymentNo, actionLabel: 'Download proof', fallbackFileName: `subcontract-payment-proof-${paymentNo}` };
+  }
+  if (reportCode === 'client-billing' && id && invoiceNo) {
+    return { resourceType: 'client_invoice', resourceId: id, reference: invoiceNo, actionLabel: 'Download invoice', fallbackFileName: `client-invoice-${invoiceNo}` };
+  }
+  if (reportCode === 'client-aging' && typeof row.invoiceId === 'string' && invoiceNo) {
+    return { resourceType: 'client_invoice', resourceId: row.invoiceId, reference: invoiceNo, actionLabel: 'Download invoice', fallbackFileName: `client-invoice-${invoiceNo}` };
+  }
+  if (reportCode === 'client-payments' && id && receiptNo) {
+    return { resourceType: 'client_receipt', resourceId: id, reference: receiptNo, actionLabel: 'Download proof', fallbackFileName: `client-payment-${receiptNo}` };
+  }
+  if (reportCode === 'project-expenses' && id) {
+    const reference = typeof row.expenseNo === 'string' ? row.expenseNo : id;
+    return {
+      ...(documentId ? { documentId } : { resourceType: 'site_expense' as const, resourceId: id }),
+      reference,
+      actionLabel: 'Download proof',
+      fallbackFileName: `site-expense-${reference}`
+    };
+  }
+  return null;
+}
+
+/** Download the exact original image/PDF attached to one selected business record. */
+async function downloadReportEvidence(reference: ReportEvidenceReference): Promise<void> {
+  let documentId = reference.documentId ?? null;
+  let fallbackFileName = reference.fallbackFileName;
+
+  if (!documentId) {
+    if (!reference.resourceType || !reference.resourceId) throw new Error(`No proof is attached to ${reference.reference}.`);
+    const documents = await listDocuments({
+      resourceType: reference.resourceType,
+      resourceId: reference.resourceId,
+      page: 1,
+      pageSize: 1
+    });
+    const document = documents.items[0];
+    if (!document) throw new Error(`No original image or PDF is attached to ${reference.reference}.`);
+    documentId = document.id;
+    fallbackFileName = document.fileName || fallbackFileName;
+  }
+
+  const download = await getDocumentDownload(documentId);
+  const response = await fetch(download.url);
+  if (!response.ok) throw new Error(`Original-file download failed with status ${response.status}.`);
+  const objectUrl = URL.createObjectURL(await response.blob());
+  const anchor = window.document.createElement('a');
+  anchor.href = objectUrl;
+  anchor.download = download.version.originalName || fallbackFileName;
+  window.document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
 }
 
 /** Format one exact server-owned money value without applying browser arithmetic. */
@@ -479,7 +728,7 @@ function AnalyticsOverview({
   );
 }
 
-/** Render the permission-filtered Module 20 catalog, filters, results, saved filters and export workflow. */
+/** Render the permission-filtered Module 20 catalog, native register lists, saved filters and row downloads. */
 export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   const form = useForm<FilterFormValues>({ resolver: zodResolver(reportFilterFormSchema), defaultValues: EMPTY_FORM });
   const [selectedReportCode, setSelectedReportCode] = useState<ReportCode | null>(null);
@@ -487,27 +736,24 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
   const [globalProjectId, setGlobalProjectId] = useState('');
   const [globalFromDate, setGlobalFromDate] = useState('');
   const [globalToDate, setGlobalToDate] = useState('');
-  const [reportSearch, setReportSearch] = useState('');
+  const [activeSectionId, setActiveSectionId] = useState('suppliers');
   const [savedFilterName, setSavedFilterName] = useState('');
-  const [outputFormat, setOutputFormat] = useState<ReportOutputFormat>('PDF');
-  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [downloadingEvidenceKey, setDownloadingEvidenceKey] = useState<string | null>(null);
+  const [evidenceDownloadError, setEvidenceDownloadError] = useState<string | null>(null);
   const [appliedInput, setAppliedInput] = useState<RunReportInput | null>(null);
   const watchedProjectId = form.watch('projectId');
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
-  const clientsQuery = useClients({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadClients);
-  const vendorsQuery = useVendors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadVendors);
-  const subcontractorsQuery = useSubcontractors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadSubcontractors);
+  const clientsQuery = useClients({ page: 1, pageSize: 100 }, props.canReadClients);
+  const vendorsQuery = useVendors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), page: 1, pageSize: 100 }, props.canReadVendors);
+  const subcontractorsQuery = useSubcontractors({ ...(globalProjectId ? { projectId: globalProjectId } : {}), page: 1, pageSize: 100 }, props.canReadSubcontractors);
   const stagesQuery = useProjectStages(watchedProjectId || null, props.canReadStages && Boolean(watchedProjectId));
   const financeAccountsQuery = useFinanceAccounts({ page: 1, pageSize: 100 }, props.canReadFinance);
   const financePeriodsQuery = useFinancePeriods({ page: 1, pageSize: 100 }, props.canReadFinance);
   const vendorNames = useMemo(() => new Map((vendorsQuery.data?.items ?? []).map((vendor) => [vendor.id, vendor.displayName])), [vendorsQuery.data?.items]);
   const catalogQuery = useReportCatalog(props.canRead);
   const runMutation = useRunReport();
-  const exportMutation = useCreateReportExport();
-  const downloadMutation = useReportDownload();
   const saveFilterMutation = useSaveReportFilter();
   const savedFiltersQuery = useSavedReportFilters(selectedReportCode, props.canRead && props.canSaveFilters);
-  const runQuery = useReportRun(activeRunId, props.canRead && props.canExport);
   const selectedReport = catalogQuery.data?.items.find((item) => item.code === selectedReportCode) ?? null;
   const overviewEnabled = props.canRead && props.canViewOverview && selectedReport === null;
   const portfolioOverviewQuery = useReportsAnalyticsOverview(undefined, overviewEnabled);
@@ -525,25 +771,30 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
     }
     return analyticsProjectOptions;
   }, [analyticsProjectOptions, projectsQuery.data?.items]);
+  const projectNames = useMemo(() => new Map(projectOptions.map((project) => [project.id, project.label])), [projectOptions]);
+  const clientNames = useMemo(() => new Map((clientsQuery.data?.items ?? []).map((client) => [client.id, `${client.code} · ${client.displayName}`])), [clientsQuery.data?.items]);
+  const subcontractorNames = useMemo(() => new Map((subcontractorsQuery.data?.items ?? []).map((subcontractor) => [subcontractor.id, subcontractor.name])), [subcontractorsQuery.data?.items]);
+  const reportLookups = useMemo<ReportDisplayLookups>(() => ({ vendorNames, projectNames, clientNames, subcontractorNames }), [clientNames, projectNames, subcontractorNames, vendorNames]);
   const catalogByCode = useMemo(() => new Map((catalogQuery.data?.items ?? []).map((report) => [report.code, report])), [catalogQuery.data?.items]);
-  const visibleSections = useMemo(() => {
-    const search = reportSearch.trim().toLowerCase();
-    return REPORT_SECTIONS.map((section) => ({
-      ...section,
-      reports: section.codes
-        .map((code) => catalogByCode.get(code))
-        .filter((report): report is NonNullable<typeof report> => Boolean(report))
-        .filter((report) => !search || report.name.toLowerCase().includes(search) || section.title.toLowerCase().includes(search))
-    })).filter((section) => section.reports.length > 0);
-  }, [catalogByCode, reportSearch]);
+  const availableSections = useMemo(() => REPORT_SECTIONS.map((section) => ({
+    ...section,
+    reports: section.codes
+      .map((code) => catalogByCode.get(code))
+      .filter((report): report is NonNullable<typeof report> => Boolean(report))
+  })).filter((section) => section.reports.length > 0), [catalogByCode]);
+  const activeSection = availableSections.find((section) => section.id === activeSectionId) ?? availableSections[0] ?? null;
   const activeFilterFields = selectedReportCode ? REPORT_FILTER_FIELDS[selectedReportCode] : [];
-  const columns = reportColumns(runMutation.data?.rows ?? []);
+  const columns = selectedReportCode ? reportColumns(selectedReportCode, runMutation.data?.rows ?? []) : [];
+  const primaryColumn = selectedReportCode ? primaryReportColumn(selectedReportCode, columns) : null;
   const currentPage = runMutation.data?.page ?? 1;
   const pageSize = runMutation.data?.pageSize ?? 25;
   const pageCount = runMutation.data?.total === undefined ? null : Math.max(1, Math.ceil(runMutation.data.total / pageSize));
   const canGoNext = runMutation.data !== undefined && (
     pageCount !== null ? currentPage < pageCount : runMutation.data.rows.length === pageSize
   );
+  const showEvidenceActions = selectedReportCode !== null
+    && canDownloadReportEvidence(selectedReportCode, props.canReadDocuments)
+    && (runMutation.data?.rows.some((row) => reportEvidenceReference(selectedReportCode, row) !== null) ?? false);
 
   useEffect(() => {
     if (!selectedReportCode) return;
@@ -554,24 +805,61 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
     }
   }, [catalogQuery.data, form, selectedReportCode]);
 
+  useEffect(() => {
+    if (availableSections.length === 0) return;
+    if (!availableSections.some((section) => section.id === activeSectionId)) {
+      setActiveSectionId(availableSections[0]?.id ?? 'suppliers');
+    }
+  }, [activeSectionId, availableSections]);
+
+
   /** Change report and clear filters/results that belong to the previously selected report contract. */
   function handleReportChange(reportCode: ReportCode | null): void {
     setSelectedReportCode(reportCode);
-    const fields = reportCode ? REPORT_FILTER_FIELDS[reportCode] : [];
-    form.reset(reportCode ? {
-      ...EMPTY_FORM,
-      reportCode,
-      ...(fields.includes('projectId') && globalProjectId ? { projectId: globalProjectId } : {}),
-      ...(fields.includes('fromDate') && globalFromDate ? { fromDate: globalFromDate } : {}),
-      ...(fields.includes('toDate') && globalToDate ? { toDate: globalToDate } : {}),
-      ...(fields.includes('asOfDate') && globalToDate ? { asOfDate: globalToDate } : {})
-    } : EMPTY_FORM);
+    form.reset(reportCode
+      ? formValuesWithGlobalFilters(reportCode, globalProjectId, globalFromDate, globalToDate)
+      : EMPTY_FORM);
     runMutation.reset();
-    exportMutation.reset();
-    downloadMutation.reset();
     setAppliedInput(null);
-    setActiveRunId(null);
     setSavedFilterName('');
+    setEvidenceDownloadError(null);
+    setDownloadingEvidenceKey(null);
+  }
+
+  /** Download the original uploaded proof for one selected report row. */
+  async function handleEvidenceDownload(reference: ReportEvidenceReference): Promise<void> {
+    const key = `${reference.resourceType ?? 'document'}:${reference.resourceId ?? reference.documentId ?? reference.reference}`;
+    setEvidenceDownloadError(null);
+    setDownloadingEvidenceKey(key);
+    try {
+      await downloadReportEvidence(reference);
+    } catch (error) {
+      setEvidenceDownloadError(error instanceof Error ? error.message : `The original file for ${reference.reference} could not be downloaded.`);
+    } finally {
+      setDownloadingEvidenceKey(null);
+    }
+  }
+
+  /** Show one business section at a time and clear detail from another section. */
+  function handleSectionChange(sectionId: string): void {
+    setActiveSectionId(sectionId);
+    const section = REPORT_SECTIONS.find((item) => item.id === sectionId);
+    if (selectedReportCode && section && !section.codes.includes(selectedReportCode)) handleReportChange(null);
+  }
+
+  /** Open one list report and run it immediately when its shared filters are sufficient. */
+  function handleCatalogView(reportCode: ReportCode): void {
+    const values = formValuesWithGlobalFilters(reportCode, globalProjectId, globalFromDate, globalToDate);
+    handleReportChange(reportCode);
+    const parsed = reportFilterFormSchema.safeParse(values);
+    if (!parsed.success) {
+      form.reset(values);
+      void form.trigger();
+      requestAnimationFrame(() => document.getElementById('report-filters')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      return;
+    }
+    handleRunReport(parsed.data);
+    requestAnimationFrame(() => document.getElementById('report-results')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   /** Apply the global Project selection to the overview and any compatible detailed report. */
@@ -623,17 +911,6 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
     });
   }
 
-  /** Queue an export from the same validated business filters without browser pagination. */
-  function handleExport(values: FilterFormValues): void {
-    exportMutation.mutate({
-      reportCode: values.reportCode,
-      filters: businessFiltersFromValues(values),
-      outputFormat
-    }, {
-      onSuccess: (run) => setActiveRunId(run.id)
-    });
-  }
-
   /** Save the current validated business filters under the authenticated user. */
   function handleSaveFilter(values: FilterFormValues): void {
     const name = savedFilterName.trim();
@@ -653,14 +930,6 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
     form.reset(formValuesFromSavedFilter(saved));
     runMutation.reset();
     setAppliedInput(null);
-  }
-
-  /** Navigate to the short-lived signed URL returned for one completed export. */
-  function handleDownload(): void {
-    if (!runQuery.data || runQuery.data.status !== 'COMPLETED') return;
-    downloadMutation.mutate(runQuery.data.id, {
-      onSuccess: (download) => window.location.assign(download.url)
-    });
   }
 
   if (!props.canRead) {
@@ -706,81 +975,55 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
           <button type="button" className="secondary-button" onClick={handleResetGlobalFilters}>Reset</button>
         </div>
         {catalogQuery.isPending && <p>Loading report catalog…</p>}
-        <div className="reports-catalog-toolbar">
+        <div className="reports-library-heading">
           <div>
             <h2>Report Catalog</h2>
-            <p className="muted">Choose a report from its business section. Your permissions and Project scope are enforced by the server.</p>
+            <p className="muted">Choose a business section, then open the exact list you need. Data remains permission and Project scoped by the server.</p>
           </div>
-          <label className="reports-search-field">
-            <span className="sr-only">Search reports</span>
-            <input value={reportSearch} onChange={(event) => setReportSearch(event.target.value)} placeholder="Search reports" />
-          </label>
+          {activeSection && <span className="reports-library-count">{activeSection.reports.length} report{activeSection.reports.length === 1 ? '' : 's'}</span>}
         </div>
         {errorMessage(catalogQuery.error) && <div className="form-error" role="alert">{errorMessage(catalogQuery.error)}</div>}
         {catalogQuery.data && catalogQuery.data.items.length === 0 && <p className="muted">No reports are available for the current permissions.</p>}
-        {catalogQuery.data && catalogQuery.data.items.length > 0 && (
-          <div className="reports-catalog-grid">
-            <label>
-              Quick report switcher
-              <select value={selectedReportCode ?? ''} onChange={(event) => handleReportChange(event.target.value ? event.target.value as ReportCode : null)}>
-                <option value="">Choose a detailed report</option>
-                {catalogQuery.data.items.map((report) => (
-                  <option key={report.code} value={report.code}>{report.name} · {report.domain}</option>
-                ))}
-              </select>
-            </label>
-            {selectedReport && (
-              <div className="reports-catalog-note">
-                <strong>{selectedReport.name}</strong>
-                <span>{selectedReport.domain} · {selectedReport.status} · Export: {selectedReport.outputFormats.join(', ')} · Permissions: {selectedReport.requiredPermissions.join(', ') || 'None'}</span>
-              </div>
-            )}
-          </div>
-        )}
-        {catalogQuery.data && catalogQuery.data.items.length > 0 && visibleSections.length === 0 && (
-          <p className="reports-empty-state">No report matches your search.</p>
-        )}
-        {visibleSections.length > 0 && (
-          <div className="reports-section-grid">
-            {visibleSections.map((section) => (
-              <section className={`reports-section-card tone-${section.tone}`} key={section.id} aria-labelledby={`report-section-${section.id}`}>
-                <div className="reports-section-heading">
-                  <span className="reports-section-icon" aria-hidden="true">{section.title.charAt(0)}</span>
-                  <div>
-                    <h3 id={`report-section-${section.id}`}>{section.title}</h3>
-                    <p>{section.description}</p>
-                  </div>
-                  <span className="reports-section-count">{section.reports.length}</span>
-                </div>
-                <div className="reports-section-links">
-                  {section.reports.map((report) => (
-                    <button
-                      type="button"
-                      key={report.code}
-                      className={selectedReportCode === report.code ? 'reports-report-link is-active' : 'reports-report-link'}
-                      onClick={() => handleReportChange(report.code)}
-                    >
-                      <span>
-                        <strong>{report.name}</strong>
-                        <small>{REPORT_DESCRIPTIONS[report.code] ?? `Source-derived ${report.domain.toLowerCase()} report.`}</small>
-                      </span>
-                      <span aria-hidden="true">→</span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+        {availableSections.length > 0 && (
+          <div className="reports-section-selector" role="tablist" aria-label="Report business sections">
+            {availableSections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={activeSection?.id === section.id}
+                className={activeSection?.id === section.id ? 'reports-section-tab is-active' : 'reports-section-tab'}
+                onClick={() => handleSectionChange(section.id)}
+              >
+                {section.title}
+              </button>
             ))}
           </div>
         )}
-        {selectedReport && (
-          <div className="reports-selected-report">
-            <div>
-              <span className="eyebrow">Selected report</span>
-              <strong>{selectedReport.name}</strong>
-              <span>{selectedReport.domain} · Export: {selectedReport.outputFormats.join(', ')}</span>
+        {activeSection && (
+          <section className="reports-section-panel" aria-labelledby={`report-section-${activeSection.id}`}>
+            <div className="reports-section-panel-heading">
+              <div>
+                <h3 id={`report-section-${activeSection.id}`}>{activeSection.title}</h3>
+                <p>{activeSection.description}</p>
+              </div>
             </div>
-            <button type="button" className="secondary-button" onClick={() => handleReportChange(null)}>Back to overview</button>
-          </div>
+            <div className="reports-dataset-list">
+              {activeSection.reports.map((report) => (
+                <div className={selectedReportCode === report.code ? 'reports-dataset-row is-active' : 'reports-dataset-row'} key={report.code}>
+                  <div className="reports-dataset-copy">
+                    <strong>{REPORT_DISPLAY_NAMES[report.code] ?? report.name}</strong>
+                    <span>{REPORT_DESCRIPTIONS[report.code] ?? `Source-derived ${report.domain.toLowerCase()} report.`}</span>
+                  </div>
+                  <div className="reports-dataset-actions">
+                    <button type="button" className="secondary-button" onClick={() => handleCatalogView(report.code)}>
+                      View
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
         )}
       </section>
 
@@ -806,7 +1049,88 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
       )}
 
       {selectedReport && (
-        <section className="admin-card">
+        <section className="admin-card reports-selected-data" id="report-results" aria-label="Report Results">
+          <div className="reports-selected-data-heading">
+            <div>
+              <span className="eyebrow">Selected list</span>
+              <h2>{REPORT_DISPLAY_NAMES[selectedReport.code] ?? selectedReport.name}</h2>
+              <p className="muted">{REPORT_DESCRIPTIONS[selectedReport.code] ?? selectedReport.domain}</p>
+            </div>
+            <div className="reports-selected-data-actions">
+              <span className="muted">Download the original uploaded invoice or payment proof from the row you need.</span>
+              <button type="button" className="secondary-button" onClick={() => handleReportChange(null)}>Close list</button>
+            </div>
+          </div>
+          {runMutation.isPending && <p>Loading {REPORT_DISPLAY_NAMES[selectedReport.code] ?? selectedReport.name}…</p>}
+          {!runMutation.data && !runMutation.isPending && <p className="muted">Use View above to load this list, or adjust its filters below and run it again.</p>}
+          {errorMessage(runMutation.error) && <div className="form-error" role="alert">{errorMessage(runMutation.error)}</div>}
+          {evidenceDownloadError && <div className="form-error" role="alert">{evidenceDownloadError}</div>}
+          {runMutation.data && (
+            <>
+              <p className="muted reports-result-meta">Generated {new Date(runMutation.data.generatedAt).toLocaleString()}{runMutation.data.asOfDate ? ` · As of ${runMutation.data.asOfDate}` : ''}</p>
+              {runMutation.data.rows.length === 0 ? <p>No matching rows.</p> : (
+                <div className="table-wrap reports-selected-table-wrap">
+                  <table className="admin-table reports-result-table reports-register-table">
+                    <thead>
+                      <tr>
+                        {columns.map((column) => <th key={column}>{displayReportColumnName(selectedReport.code, column)}</th>)}
+                        {showEvidenceActions && <th className="reports-row-action-heading">Proof</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runMutation.data.rows.map((row, rowIndex) => {
+                        const subtitle = reportRowSubtitle(selectedReport.code, row, reportLookups);
+                        const evidenceReference = reportEvidenceReference(selectedReport.code, row);
+                        const evidenceKey = evidenceReference
+                          ? `${evidenceReference.resourceType ?? 'document'}:${evidenceReference.resourceId ?? evidenceReference.documentId ?? evidenceReference.reference}`
+                          : null;
+                        return (
+                          <tr key={rowIndex}>
+                            {columns.map((column) => (
+                              <td key={column}>
+                                {column === primaryColumn ? (
+                                  <div className="reports-primary-cell">
+                                    <strong>{displayReportValue(row[column], column, reportLookups)}</strong>
+                                    {subtitle && <small>{subtitle}</small>}
+                                  </div>
+                                ) : displayReportValue(row[column], column, reportLookups)}
+                              </td>
+                            ))}
+                            {showEvidenceActions && (
+                              <td className="reports-row-action-cell">
+                                {evidenceReference ? (
+                                  <button
+                                    type="button"
+                                    className="secondary-button"
+                                    disabled={downloadingEvidenceKey !== null}
+                                    onClick={() => void handleEvidenceDownload(evidenceReference)}
+                                  >
+                                    {downloadingEvidenceKey === evidenceKey ? 'Downloading…' : evidenceReference.actionLabel}
+                                  </button>
+                                ) : <span className="muted">—</span>}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {PAGINATED_REPORTS.has(runMutation.data.reportCode) && (
+                <div className="pagination-row">
+                  <button type="button" className="secondary-button" disabled={currentPage <= 1 || runMutation.isPending} onClick={() => handleResultPage(currentPage - 1)}>Previous</button>
+                  <span>Page {currentPage}{pageCount === null ? '' : ` of ${pageCount}`}{runMutation.data.total === undefined ? '' : ` · ${runMutation.data.total} row(s)`}</span>
+                  <button type="button" className="secondary-button" disabled={!canGoNext || runMutation.isPending} onClick={() => handleResultPage(currentPage + 1)}>Next</button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+      )}
+
+      {selectedReport && (
+        <section className="admin-card" id="report-filters">
           <h2>Report Filters</h2>
           <p className="muted">Only filters documented for the selected report are sent. Company, permissions and Project scope stay server-derived.</p>
           <form className="admin-form" onSubmit={form.handleSubmit(handleRunReport)}>
@@ -847,51 +1171,10 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
             )}
             <div className="reports-action-row">
               <button type="submit" disabled={runMutation.isPending}>{runMutation.isPending ? 'Running…' : 'Run Report'}</button>
-              {props.canExport && (
-                <>
-                  <select value={outputFormat} onChange={(event) => setOutputFormat(event.target.value as ReportOutputFormat)} aria-label="Export format">
-                    {(selectedReport.outputFormats ?? []).map((format) => <option key={format} value={format}>{format}</option>)}
-                  </select>
-                  <button type="button" className="secondary-button" disabled={exportMutation.isPending} onClick={() => void form.handleSubmit(handleExport)()}>
-                    {exportMutation.isPending ? 'Queuing…' : 'Export'}
-                  </button>
-                </>
-              )}
             </div>
           </form>
-          {errorMessage(runMutation.error) && <div className="form-error" role="alert">{errorMessage(runMutation.error)}</div>}
-          {errorMessage(exportMutation.error) && <div className="form-error" role="alert">{errorMessage(exportMutation.error)}</div>}
         </section>
       )}
-
-      {selectedReport && <section className="admin-card">
-        <h2>Report Results</h2>
-        {!runMutation.data && !runMutation.isPending && <p className="muted">Run a report to display its server-returned rows.</p>}
-        {runMutation.data && (
-          <>
-            <p className="muted">Generated {new Date(runMutation.data.generatedAt).toLocaleString()}{runMutation.data.asOfDate ? ` · As of ${runMutation.data.asOfDate}` : ''}</p>
-            {runMutation.data.rows.length === 0 ? <p>No matching rows.</p> : (
-              <div className="table-wrap">
-                <table className="admin-table reports-result-table">
-                  <thead><tr>{columns.map((column) => <th key={column}>{displayColumnName(column)}</th>)}</tr></thead>
-                  <tbody>
-                    {runMutation.data.rows.map((row, rowIndex) => (
-                      <tr key={rowIndex}>{columns.map((column) => <td key={column}>{displayReportValue(row[column], column, vendorNames)}</td>)}</tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {PAGINATED_REPORTS.has(runMutation.data.reportCode) && (
-              <div className="pagination-row">
-                <button type="button" className="secondary-button" disabled={currentPage <= 1 || runMutation.isPending} onClick={() => handleResultPage(currentPage - 1)}>Previous</button>
-                <span>Page {currentPage}{pageCount === null ? '' : ` of ${pageCount}`}{runMutation.data.total === undefined ? '' : ` · ${runMutation.data.total} row(s)`}</span>
-                <button type="button" className="secondary-button" disabled={!canGoNext || runMutation.isPending} onClick={() => handleResultPage(currentPage + 1)}>Next</button>
-              </div>
-            )}
-          </>
-        )}
-      </section>}
 
       {props.canSaveFilters && selectedReport && (
         <section className="admin-card">
@@ -919,27 +1202,6 @@ export function ReportsWorkspace(props: ReportsWorkspaceProps) {
         </section>
       )}
 
-      {props.canExport && selectedReport && (
-        <section className="admin-card">
-          <h2>Export Status</h2>
-          {!activeRunId && <p className="muted">Choose an export format and queue an export from the Report Filters section.</p>}
-          {runQuery.isPending && activeRunId && <p>Checking export…</p>}
-          {errorMessage(runQuery.error) && <div className="form-error" role="alert">{errorMessage(runQuery.error)}</div>}
-          {runQuery.data && (
-            <div className="reports-export-status">
-              <div><strong>{runQuery.data.reportCode}</strong><span>{runQuery.data.outputFormat} · Run {runQuery.data.id}</span></div>
-              <div><strong>{runQuery.data.status}</strong><span>{runQuery.data.errorCode ?? 'No error'} · File {runQuery.data.fileId ?? '—'}</span></div>
-              <div><strong>Started</strong><span>{runQuery.data.startedAt ? new Date(runQuery.data.startedAt).toLocaleString() : '—'}</span></div>
-              <div><strong>Finished</strong><span>{runQuery.data.finishedAt ? new Date(runQuery.data.finishedAt).toLocaleString() : '—'}</span></div>
-              {runQuery.data.status === 'COMPLETED' && (
-                <button type="button" onClick={handleDownload} disabled={downloadMutation.isPending}>{downloadMutation.isPending ? 'Authorizing…' : 'Download export'}</button>
-              )}
-            </div>
-          )}
-          {errorMessage(downloadMutation.error) && <div className="form-error" role="alert">{errorMessage(downloadMutation.error)}</div>}
-          {downloadMutation.data && <p className="muted">Signed access expires {new Date(downloadMutation.data.expiresAt).toLocaleString()}.</p>}
-        </section>
-      )}
     </div>
   );
 }

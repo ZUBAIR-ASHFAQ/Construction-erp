@@ -434,6 +434,10 @@ export class DocumentsService {
 
       const resource = await repository.findLinkableResource(resourceType, input.linkedResourceId);
       if (!resource) throw createModule21Error('DOCUMENT_LINK_INVALID');
+      if (resourceType === 'employee_advance') {
+        if (!resource.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+        await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'payroll.read', new Date());
+      }
       if (resourceType === 'supplier_invoice') {
         if (!resource.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, resource.projectId, 'supplier_payables.read', new Date());
@@ -548,6 +552,10 @@ export class DocumentsService {
       ) {
         throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
       }
+      if (link.linkedResourceType === 'employee_advance') {
+        if (!link.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
+        await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'payroll.read', new Date());
+      }
       if (link.linkedResourceType === 'supplier_invoice') {
         if (!link.projectId) throw createModule21Error('DOCUMENT_LINK_INVALID');
         await this.requireLinkedProjectPermission(usersRepository, link.projectId, 'supplier_payables.read', new Date());
@@ -611,12 +619,16 @@ export class DocumentsService {
     const pageSize = input.pageSize ?? 25;
     const asOf = new Date();
     let visibility: Readonly<{ includeCompanyWide: boolean; allowedProjectIds: readonly string[] | null }>;
-    if (input.resourceId && ['supplier_invoice', 'supplier_payment', 'subcontract_payment'].includes(input.resourceType ?? '')) {
-      const resourceType = input.resourceType as 'supplier_invoice' | 'supplier_payment' | 'subcontract_payment';
+    if (input.resourceId && ['employee_advance', 'supplier_invoice', 'supplier_payment', 'subcontract_payment'].includes(input.resourceType ?? '')) {
+      const resourceType = input.resourceType as 'employee_advance' | 'supplier_invoice' | 'supplier_payment' | 'subcontract_payment';
       const resource = await this.repository.findLinkableResource(resourceType, input.resourceId);
       if (!resource) throw createModule21Error('DOCUMENT_LINK_INVALID');
       if (input.projectId && input.projectId !== resource.projectId) throw createModule21Error('DOCUMENT_SCOPE_FORBIDDEN');
-      const permission = resourceType === 'subcontract_payment' ? 'subcontractors.read' : 'supplier_payables.read';
+      const permission = resourceType === 'employee_advance'
+        ? 'payroll.read'
+        : resourceType === 'subcontract_payment'
+          ? 'subcontractors.read'
+          : 'supplier_payables.read';
       if (resource.projectId) {
         await this.requireLinkedProjectPermission(this.usersRepository, resource.projectId, permission, asOf);
         visibility = { includeCompanyWide: false, allowedProjectIds: [resource.projectId] };

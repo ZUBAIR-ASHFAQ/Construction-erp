@@ -33,6 +33,8 @@ export type ListSubcontractPaymentsRepositoryInput = PageWindow & Readonly<{
   subcontractorId?: string;
   projectId?: string;
   subcontractContractId?: string;
+  fromDate?: Date;
+  toDate?: Date;
   status?: string;
   allowedProjectIds: readonly string[] | null;
 }>;
@@ -492,6 +494,7 @@ export class VendorsSubcontractorsRepository {
     const scope = requireCompanyRepositoryScope();
     const where = scope.where({
       ...(input.subcontractContractId ? { subcontractContractId: input.subcontractContractId } : {}),
+      ...(input.fromDate || input.toDate ? { paymentDate: { ...(input.fromDate ? { gte: input.fromDate } : {}), ...(input.toDate ? { lte: input.toDate } : {}) } } : {}),
       ...(input.status ? { status: input.status } : {}),
       subcontractContract: {
         companyId: scope.companyId,

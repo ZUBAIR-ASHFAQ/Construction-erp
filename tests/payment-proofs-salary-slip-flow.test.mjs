@@ -20,7 +20,7 @@ test('finalized Employee Salary is a Project cost and cash settlement never dupl
   assert.match(projectDetails, /Includes finalized Employee Salaries/);
 });
 
-test('supplier and subcontractor payment proofs use durable linked documents with retry and download actions', async () => {
+test('payment proofs use durable linked documents, versioned edits and persistent downloads', async () => {
   const [documentSchema, documentRepository, documentService, proofActions, supplierWorkspace, subcontractWorkspace] = await Promise.all([
     read('apps/api/src/modules/documents-audit/documents-audit.schema.ts'),
     read('apps/api/src/modules/documents-audit/documents-audit.repository.ts'),
@@ -36,8 +36,10 @@ test('supplier and subcontractor payment proofs use durable linked documents wit
   assert.match(documentService, /supplier_payables\.read/);
   assert.match(documentService, /subcontractors\.read/);
   assert.match(proofActions, /createDocumentLink/);
+  assert.match(proofActions, /uploadDocumentVersion/);
   assert.match(proofActions, /Download proof/);
-  assert.match(proofActions, /Attach proof/);
+  assert.match(proofActions, /Edit proof/);
+  assert.doesNotMatch(proofActions, /Attach proof/);
   assert.match(supplierWorkspace, /resourceType="supplier_payment"/);
   assert.match(subcontractWorkspace, /resourceType="subcontract_payment"/);
   assert.match(supplierWorkspace, /Payment proof \(optional\)/);
@@ -48,7 +50,9 @@ test('client payment proof stays optional, persistent, retryable and downloadabl
   const workspace = await read('apps/web/src/features/client-receipts/components/client-receipts-workspace.tsx');
   assert.match(workspace, /Payment evidence \(optional\)/);
   assert.match(workspace, /resourceType: 'client_receipt'/);
-  assert.match(workspace, /attachSelectedReceiptEvidence/);
+  assert.match(workspace, /resourceType="client_receipt"/);
+  assert.match(workspace, /PaymentProofActions/);
+  assert.doesNotMatch(workspace, /attachSelectedReceiptEvidence/);
   assert.match(workspace, /downloadReceiptEvidence/);
   assert.match(workspace, /Download evidence/);
 });
@@ -65,9 +69,31 @@ test('Employee ledger exposes a regenerated print-ready salary slip for every sa
   assert.match(service, /salarySlip:\s*\{/);
   assert.match(service, /absenceDeduction: line\.absenceDeduction/);
   assert.match(service, /advanceRecovery: line\.advanceDeduction/);
+  assert.match(service, /paymentDate: dateOnly\(payment\.paymentDate\)/);
   assert.match(schema, /salarySlip: z\.object/);
   assert.match(api, /salarySlip\?: Readonly/);
-  assert.match(workspace, /View slip/);
+  assert.match(workspace, /View payment slip/);
+  assert.match(workspace, /Payment date/);
   assert.match(workspace, /Download print-ready slip/);
   assert.match(workspace, /salary-slip-\$\{slip\.paymentNo\}\.html/);
+});
+
+test('finalized payslip is exposed independently on the Employee salary ledger', async () => {
+  const [repository, service, schema, api, workspace] = await Promise.all([
+    read('apps/api/src/modules/labour-payroll/labour-payroll.repository.ts'),
+    read('apps/api/src/modules/labour-payroll/labour-payroll.service.ts'),
+    read('apps/api/src/modules/labour-payroll/labour-payroll.schema.ts'),
+    read('apps/web/src/features/labour-payroll/api/labour-payroll-api.ts'),
+    read('apps/web/src/features/labour-payroll/components/labour-payroll-workspace.tsx')
+  ]);
+  assert.match(repository, /payslip: \{ select: \{ id: true, generatedAt: true \} \}/);
+  assert.match(service, /payslip:\s*\{[\s\S]*payslipId: line\.payslip\.id/);
+  assert.match(service, /settlements: postedPayments\.map/);
+  assert.match(schema, /payslip: z\.object\([\s\S]*payslipId: uuidSchema/);
+  assert.match(schema, /settlements: z\.array/);
+  assert.match(api, /payslip\?: Readonly/);
+  assert.match(workspace, /function downloadLedgerPayslip/);
+  assert.match(workspace, /Payment history/);
+  assert.match(workspace, /Outstanding/);
+  assert.match(workspace, /Download payslip/);
 });

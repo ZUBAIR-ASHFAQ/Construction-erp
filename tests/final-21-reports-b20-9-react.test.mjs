@@ -66,24 +66,31 @@ test('B20.9 validates report filters with React Hook Form and Zod and sends only
   assert.doesNotMatch(workspace, /register\('companyId'\)|formula|metricExpression|raw SQL|queryText/i);
 });
 
-test('B20.9 exposes catalog results saved filters exports and signed-download status without browser formulas', () => {
+test('B20.9 exposes native register rows with original source-evidence download while retaining the server export API', () => {
   const workspace = read(`${FEATURE}/components/reports-workspace.tsx`);
-  for (const label of ['Report Catalog', 'Report Filters', 'Report Results', 'Saved Filters', 'Export Status', 'Download export']) {
+  for (const label of ['Report Catalog', 'Report Filters', 'Report Results', 'Saved Filters', 'Download the original uploaded invoice or payment proof']) {
     assert.match(workspace, new RegExp(label));
   }
+  assert.match(workspace, /REPORT_LIST_COLUMNS/);
   assert.match(workspace, /reportColumns/);
   assert.match(workspace, /displayReportValue/);
-  assert.match(workspace, /window\.location\.assign\(download\.url\)/);
+  assert.match(workspace, /downloadReportEvidence/);
+  assert.match(workspace, /listDocuments/);
+  assert.match(workspace, /getDocumentDownload/);
+  assert.match(workspace, /anchor\.download = download\.version\.originalName/);
+  assert.match(workspace, /supplier_invoice|supplier_payment|subcontract_payment|client_receipt/);
+  assert.doesNotMatch(workspace, /text\/csv;charset=utf-8|safeCsvValue|downloadReportRow/);
+  assert.doesNotMatch(workspace, /Export Status|Download format|window\.location\.assign\(download\.url\)/);
   assert.doesNotMatch(workspace, /recognizedRevenue\s*[-+]\s*actualCost|receivedAmount\s*[-+*/]|reduce\([^)]*(?:cost|profit|billed|received)/i);
 });
 
-test('B20.9 keeps export and saved-filter controls permission-aware while the server remains authoritative', () => {
+test('B20.9 keeps document download and saved-filter controls permission-aware while the server remains authoritative', () => {
   const page = read(`${FEATURE}/pages/reports-page.tsx`);
   const workspace = read(`${FEATURE}/components/reports-workspace.tsx`);
-  for (const permission of ['reports.read', 'reports.export', 'reports.save_filters']) {
+  for (const permission of ['reports.read', 'reports.export', 'reports.save_filters', 'documents.read']) {
     assert.match(page, new RegExp(permission.replace('.', '\\.')));
   }
-  assert.match(workspace, /props\.canExport/);
+  assert.match(workspace, /props\.canReadDocuments/);
   assert.match(workspace, /props\.canSaveFilters/);
   assert.match(workspace, /permission-filtered Module 20 catalog/i);
 });

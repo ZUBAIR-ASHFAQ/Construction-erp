@@ -66,6 +66,7 @@ test('B7 exposes the exact final Project Stages route surface with no generic de
     "PATCH', route: '/api/v1/projects/:projectId/stages/:stageId'",
     "POST', route: '/api/v1/projects/:projectId/stages/baseline/freeze'",
     "POST', route: '/api/v1/projects/:projectId/stages/:stageId/progress'",
+    "PATCH', route: '/api/v1/projects/:projectId/stages/:stageId/progress/:updateId'",
     "POST', route: '/api/v1/projects/:projectId/stages/:stageId/progress/:updateId/approve'",
     "GET', route: '/api/v1/projects/:projectId/stages/:stageId/financials'"
   ];
@@ -82,7 +83,7 @@ test('B7 uses the required Stage permission, error and event vocabulary', () => 
   for (const code of ['STAGE_NOT_FOUND', 'STAGE_WEIGHT_TOTAL_INVALID', 'STAGE_BASELINE_LOCKED', 'INVALID_STAGE_PROGRESS', 'STAGE_SCOPE_FORBIDDEN']) {
     assert.ok(schema.includes(`'${code}'`), `missing ${code}`);
   }
-  for (const event of ['project_stage.created', 'project_stage.baseline_frozen', 'project_stage.progress_recorded', 'project_stage.progress_approved', 'project_stage.completed']) {
+  for (const event of ['project_stage.created', 'project_stage.baseline_frozen', 'project_stage.progress_recorded', 'project_stage.progress_updated', 'project_stage.progress_approved', 'project_stage.completed']) {
     assert.ok(schema.includes(`'${event}'`), `missing ${event}`);
   }
 });

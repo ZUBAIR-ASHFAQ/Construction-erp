@@ -14,14 +14,16 @@ test('Payroll Run persists an explicit daily or monthly settlement cycle without
   assert.match(migration, /'DAILY', 'MONTHLY', 'LEGACY'/);
 });
 
-test('daily settlements use one date and monthly payroll uses a complete calendar month', async () => {
+test('daily settlements use one date and monthly payroll supports a selected same-month date and time window', async () => {
   const [schema, service] = await Promise.all([
     read('apps/api/src/modules/labour-payroll/labour-payroll.schema.ts'),
     read('apps/api/src/modules/labour-payroll/labour-payroll.service.ts')
   ]);
   assert.match(schema, /payCycle: z\.enum\(\['DAILY', 'MONTHLY'\]\)/);
   assert.match(schema, /Daily settlement must use one work date/);
-  assert.match(schema, /Monthly payroll must cover one complete calendar month/);
+  assert.match(schema, /Monthly payroll date range must stay within one calendar month/);
+  assert.match(schema, /fromTime: timeSchema/);
+  assert.match(schema, /toTime: timeSchema/);
   assert.match(service, /payCycle === 'DAILY' && payType === 'SALARY'/);
   assert.match(service, /payCycle === 'MONTHLY' && payType !== 'SALARY'/);
 });
@@ -47,9 +49,11 @@ test('the web workflow clearly separates daily-paid workers and monthly employee
   assert.match(workspace, /Monthly employees/);
   assert.match(workspace, /'daily settlement'/);
   assert.match(workspace, /'monthly payroll'/);
-  assert.match(workspace, /type=\"month\"/);
-  assert.match(workspace, /changePayrollMonth/);
-  assert.match(workspace, /calendarMonthPeriod/);
+  assert.match(workspace, /From date/);
+  assert.match(workspace, /To date/);
+  assert.match(workspace, /From hour/);
+  assert.match(workspace, /To hour/);
+  assert.doesNotMatch(workspace, /type=\"month\"/);
   assert.match(employeePage, /Payment basis/);
   assert.match(employeePage, /Employment end date \(optional\)/);
 });

@@ -36,6 +36,7 @@ export function ClientReceiptsPage({ view = 'ledger' }: Readonly<{ view?: 'payme
         canReadInvoices={usePermission('client_invoices.read') || Boolean(hasRestrictedProjects)}
         canUploadDocuments={usePermission('documents.upload')}
         canLinkDocuments={usePermission('documents.link')}
+        canVersionDocuments={usePermission('documents.version')}
         canReadDocuments={canReadDocuments}
       />
     </section>

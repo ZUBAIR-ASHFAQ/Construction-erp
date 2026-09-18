@@ -15,6 +15,8 @@ export type AttendanceEntry = Readonly<{
   stageId: string | null;
   stageName: string | null;
   workDate: string;
+  startTime: string | null;
+  endTime: string | null;
   status: AttendanceStatus;
   hours: string | null;
   overtimeHours: string | null;
@@ -55,6 +57,7 @@ export type PayrollLine = Readonly<{
   netAmount: string;
   paidAmount: string;
   outstandingAmount: string;
+  settlements: ReadonlyArray<Readonly<{ paymentNo: string; paymentDate: string; amount: string }>>;
   projectAllocation: PayrollAllocation[];
   payslip: Readonly<{ id: string; documentId: string | null; generatedAt: string | null }> | null;
 }>;
@@ -64,6 +67,8 @@ export type PayrollRun = Readonly<{
   payCycle: PayrollPayCycle;
   periodStart: string;
   periodEnd: string;
+  fromTime: string | null;
+  toTime: string | null;
   status: PayrollRunStatus;
   createdBy: string;
   createdByName: string;
@@ -92,18 +97,22 @@ export type CreateAttendanceInput = Readonly<{
   projectId: string;
   stageId?: string | null;
   workDate: string;
+  startTime: string;
+  endTime: string;
   status: AttendanceStatus;
   hours?: string | null;
   overtimeHours?: string | null;
 }>;
 export type UpdateAttendanceInput = Readonly<{
   stageId?: string | null;
+  startTime?: string | null;
+  endTime?: string | null;
   status?: AttendanceStatus;
   hours?: string | null;
   overtimeHours?: string | null;
 }>;
-export type CreatePayrollRunInput = Readonly<{ payCycle: Exclude<PayrollPayCycle, 'LEGACY'>; periodStart: string; periodEnd: string }>;
-export type UpdateDailyPayrollRunInput = Readonly<{ periodStart: string; periodEnd: string }>;
+export type CreatePayrollRunInput = Readonly<{ payCycle: Exclude<PayrollPayCycle, 'LEGACY'>; periodStart: string; periodEnd: string; fromTime: string; toTime: string }>;
+export type UpdateDailyPayrollRunInput = Readonly<{ periodStart: string; periodEnd: string; fromTime: string; toTime: string }>;
 export type CalculatePayrollRunInput = Readonly<{ projectId?: string; employeeId?: string; overtimeMultiplier?: string }>;
 export type PayrollEligibleEmployee = Readonly<{ id: string; employeeNo: string; name: string; payType: 'SALARY' | 'DAILY' | 'HOURLY'; baseSalary: string | null; hourlyRate: string | null }>;
 export type PayrollCashBankAccount = Readonly<{ id: string; code: string; name: string; accountType: 'CASH' | 'BANK'; accountNumber: string | null; projectId: string | null; projectCode: string | null; projectName: string | null; balance: string }>;
@@ -134,6 +143,13 @@ export type EmployeeSalaryLedger = Readonly<{
     id: string; entryDate: string; entryType: 'SALARY_DUE' | 'PAYMENT' | 'PAYMENT_REVERSAL' | 'ADVANCE' | 'ADVANCE_REVERSAL' | 'ADVANCE_RECOVERY'; reference: string;
     debit: string; credit: string; balance: string; projectId: string | null; projectName: string | null; stageName: string | null;
     payrollRunId: string | null; payrollLineId: string | null; advanceId: string | null; paymentId: string | null;
+    payslip?: Readonly<{
+      payslipId: string; generatedAt: string; payCycle: PayrollPayCycle;
+      payrollPeriodStart: string; payrollPeriodEnd: string; payrollFromTime: string | null; payrollToTime: string | null;
+      salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string; netSalary: string;
+      paidAmount: string; outstandingAmount: string;
+      settlements: ReadonlyArray<Readonly<{ paymentNo: string; paymentDate: string; amount: string }>>;
+    }>;
     salarySlip?: Readonly<{
       paymentNo: string; paymentDate: string; payrollPeriodStart: string; payrollPeriodEnd: string;
       salaryBeforeAbsence: string; absenceDeduction: string; earnedSalary: string; advanceRecovery: string;

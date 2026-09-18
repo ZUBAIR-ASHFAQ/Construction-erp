@@ -125,6 +125,15 @@ export function recordStageProgress(projectId: string, stageId: string, input: R
   });
 }
 
+/** Edit one submitted Stage physical-progress update before approval. */
+export function updateStageProgress(projectId: string, stageId: string, updateId: string, input: RecordStageProgressInput): Promise<StageProgressUpdate> {
+  return authenticatedRequest<StageProgressUpdate>(`projects/${projectId}/stages/${stageId}/progress/${updateId}`, {
+    method: 'PATCH',
+    headers: idempotencyHeaders(),
+    body: JSON.stringify(input)
+  });
+}
+
 /** Approve one submitted Stage physical-progress update. */
 export function approveStageProgress(projectId: string, stageId: string, updateId: string): Promise<StageProgressUpdate> {
   return authenticatedRequest<StageProgressUpdate>(`projects/${projectId}/stages/${stageId}/progress/${updateId}/approve`, {

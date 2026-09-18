@@ -18,6 +18,10 @@ export function LabourPayrollPage({ view }: Readonly<{ view: LabourPayrollWorksp
       canCreateEmployeeAdvance={usePermission('payroll.advances.create')}
       canReverseEmployeeAdvance={usePermission('payroll.advances.reverse')}
       canManageAccounts={usePermission('finance.accounts.manage')}
+      canReadDocuments={usePermission('documents.read')}
+      canUploadDocuments={usePermission('documents.upload')}
+      canLinkDocuments={usePermission('documents.link')}
+      canVersionDocuments={usePermission('documents.version')}
     />
   );
 }

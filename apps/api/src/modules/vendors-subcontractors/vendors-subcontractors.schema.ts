@@ -192,9 +192,14 @@ export const listSubcontractPaymentsQuerySchema = z.object({
   subcontractorId: uuidSchema.optional(),
   projectId: uuidSchema.optional(),
   subcontractContractId: uuidSchema.optional(),
+  fromDate: contractDateSchema.optional(),
+  toDate: contractDateSchema.optional(),
   status: z.enum(SUBCONTRACT_PAYMENT_STATUS_VALUES).optional(),
   ...paginationQueryShape
-}).strict();
+}).strict().refine((value) => !value.fromDate || !value.toDate || value.toDate >= value.fromDate, {
+  path: ['toDate'],
+  message: 'toDate cannot precede fromDate.'
+});
 
 /** Create one direct subcontract payment; Project and subcontractor are server-derived from the contract. */
 export const createSubcontractPaymentBodySchema = z.object({

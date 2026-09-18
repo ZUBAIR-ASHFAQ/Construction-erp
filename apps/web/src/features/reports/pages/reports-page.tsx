@@ -25,6 +25,7 @@ export function ReportsPage() {
       canReadSubcontractors={usePermission('subcontractors.read')}
       canReadFinance={canReadFinance}
       canReadStages={usePermission('stages.read')}
+      canReadDocuments={usePermission('documents.read')}
     />
   );
 }

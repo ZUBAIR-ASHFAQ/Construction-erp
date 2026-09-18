@@ -18,11 +18,14 @@ import {
   financeLedgerQuerySchema,
   listCashBankAccountsQuerySchema
 } from '../finance/finance.schema.js';
+import { EquipmentService } from '../equipment/equipment.service.js';
+import { listEquipmentUsageQuerySchema } from '../equipment/equipment.schema.js';
 import { InventoryService } from '../inventory/inventory.service.js';
 import { listLedgerQuerySchema } from '../inventory/inventory.schema.js';
 import { LabourPayrollService } from '../labour-payroll/labour-payroll.service.js';
 import {
   listAttendanceQuerySchema,
+  listPayrollPaymentsQuerySchema,
   listPayrollRunsQuerySchema
 } from '../labour-payroll/labour-payroll.schema.js';
 import { ProcurementService } from '../procurement/procurement.service.js';
@@ -152,8 +155,10 @@ const REPORT_SOURCE_PERMISSIONS: Readonly<Record<ReportCode, readonly string[]>>
   'subcontractor-contracts': ['subcontractors.read'],
   'subcontractor-payments': ['subcontractors.read'],
   'subcontractor-ledger': ['subcontractors.read'],
+  'equipment-usage': ['equipment.read'],
   attendance: ['attendance.read'],
   payroll: ['payroll.read'],
+  'employee-payments': ['payroll.read'],
   'labour-cost': ['job_cost.read'],
   'cash-bank': ['finance.read'],
   'cash-accounts': ['finance.read'],
@@ -184,10 +189,12 @@ const REPORT_ALLOWED_FILTERS: Readonly<Record<ReportCode, readonly (keyof Report
   'supplier-payments': ['vendorId', 'projectId', 'fromDate', 'toDate', 'status', 'page', 'pageSize'],
   'supplier-aging': ['vendorId', 'projectId', 'asOfDate', 'page', 'pageSize'],
   'subcontractor-contracts': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
-  'subcontractor-payments': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
+  'subcontractor-payments': ['subcontractorId', 'projectId', 'fromDate', 'toDate', 'status', 'page', 'pageSize'],
   'subcontractor-ledger': ['subcontractorId', 'projectId', 'status', 'page', 'pageSize'],
+  'equipment-usage': ['projectId', 'fromDate', 'toDate', 'page', 'pageSize'],
   attendance: ['projectId', 'employeeId', 'fromDate', 'toDate', 'page', 'pageSize'],
   payroll: ['page', 'pageSize'],
+  'employee-payments': ['employeeId', 'fromDate', 'toDate', 'status', 'page', 'pageSize'],
   'labour-cost': ['projectId', 'stageId', 'fromDate', 'toDate', 'page', 'pageSize'],
   'cash-bank': ['status', 'page', 'pageSize'],
   'cash-accounts': ['projectId', 'status', 'page', 'pageSize'],
@@ -814,10 +821,14 @@ export class ReportsService {
         return new VendorsSubcontractorsService(this.db).listSubcontractPayments(parseSourceQuery(listSubcontractPaymentsQuerySchema, filters));
       case 'subcontractor-ledger':
         return new VendorsSubcontractorsService(this.db).listSubcontractLedger(parseSourceQuery(listSubcontractLedgerQuerySchema, filters));
+      case 'equipment-usage':
+        return new EquipmentService(this.db).listEquipmentUsage(parseSourceQuery(listEquipmentUsageQuerySchema, filters));
       case 'attendance':
         return new LabourPayrollService(this.db).listAttendance(parseSourceQuery(listAttendanceQuerySchema, filters));
       case 'payroll':
         return new LabourPayrollService(this.db).listPayrollRuns(parseSourceQuery(listPayrollRunsQuerySchema, filters));
+      case 'employee-payments':
+        return new LabourPayrollService(this.db).listPayrollPayments(parseSourceQuery(listPayrollPaymentsQuerySchema, filters));
       case 'labour-cost':
         return this.readLabourCost(filters);
       case 'cash-bank':

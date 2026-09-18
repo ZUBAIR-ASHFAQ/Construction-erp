@@ -3,7 +3,8 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { usePermission } from '../../administration/hooks/auth.js';
-import { useEmployees } from '../../employees/hooks/employees.js';
+import { useCreateEmployee, useEmployees } from '../../employees/hooks/employees.js';
+import type { Employee } from '../../employees/api/employees-api.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
 import { useProjects } from '../../projects/hooks/projects.js';
 import type { ProjectTeamAssignment } from '../api/project-team-api.js';
@@ -47,9 +48,17 @@ const endAssignmentSchema = z.object({
   note: z.string().trim().max(2000, 'End note must be at most 2000 characters.')
 });
 
+const quickEmployeeSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required.').max(200),
+  phone: z.string().trim().min(7, 'Phone must contain at least 7 digits.').max(50)
+    .transform((value) => value.replace(/[\s().-]/g, ''))
+    .refine((value) => /^\+?\d{7,15}$/.test(value), 'Phone must contain 7 to 15 digits with an optional leading +.')
+});
+
 type AssignmentFormValues = z.infer<typeof assignmentSchema>;
 type EditAssignmentFormValues = z.infer<typeof editAssignmentSchema>;
 type EndAssignmentFormValues = z.infer<typeof endAssignmentSchema>;
+type QuickEmployeeFormValues = z.infer<typeof quickEmployeeSchema>;
 
 export type ProjectTeamWorkspaceProps = Readonly<{
   canRead: boolean;
@@ -61,20 +70,38 @@ function errorMessage(error: unknown): string | null {
   return error instanceof Error ? error.message : null;
 }
 
+/** Return today's browser-local date for a minimal Employee record when no assignment start date is entered yet. */
+function localToday(): string {
+  const now = new Date();
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
 /** Render Project Team setup and history using readable source-module selectors instead of raw identifiers. */
 export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
   const canReadProjects = usePermission('projects.read');
   const canReadEmployees = usePermission('employees.read');
+  const canCreateEmployees = usePermission('employees.create');
   const canReadStages = usePermission('stages.read');
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, canReadProjects && props.canRead);
-  const employeesQuery = useEmployees({ status: 'ACTIVE', page: 1, pageSize: 100 }, canReadEmployees && props.canManage);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const employeesQuery = useEmployees({
+    status: 'ACTIVE',
+    ...(employeeSearch.trim() ? { search: employeeSearch.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, canReadEmployees && props.canManage);
   const [projectId, setProjectId] = useState('');
   const stagesQuery = useProjectStages(projectId || null, canReadStages && projectId !== '');
   const teamQuery = useProjectTeam(projectId, props.canRead && projectId !== '');
   const createMutation = useCreateProjectTeamAssignment();
   const updateMutation = useUpdateProjectTeamAssignment();
   const endMutation = useEndProjectTeamAssignment();
+  const quickEmployeeMutation = useCreateEmployee();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [quickEmployeeDialogOpen, setQuickEmployeeDialogOpen] = useState(false);
+  const [employeePickerOpen, setEmployeePickerOpen] = useState(false);
+  const [selectedEmployeeOption, setSelectedEmployeeOption] = useState<Employee | null>(null);
   const [editingAssignmentId, setEditingAssignmentId] = useState<string | null>(null);
   const [endingAssignmentId, setEndingAssignmentId] = useState<string | null>(null);
   const createForm = useForm<AssignmentFormValues>({
@@ -89,11 +116,19 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
     resolver: zodResolver(endAssignmentSchema),
     defaultValues: { endDate: '', note: '' }
   });
+  const quickEmployeeForm = useForm<QuickEmployeeFormValues>({
+    resolver: zodResolver(quickEmployeeSchema),
+    defaultValues: { name: '', phone: '' }
+  });
 
   /** Change the active Project and clear dependent create/edit/end state. */
   function selectProject(nextProjectId: string): void {
     setProjectId(nextProjectId);
     setCreateDialogOpen(false);
+    setQuickEmployeeDialogOpen(false);
+    setEmployeePickerOpen(false);
+    setSelectedEmployeeOption(null);
+    setEmployeeSearch('');
     setEditingAssignmentId(null);
     setEndingAssignmentId(null);
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
@@ -115,6 +150,9 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
       }
     });
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
+    setEmployeePickerOpen(false);
+    setSelectedEmployeeOption(null);
+    setEmployeeSearch('');
     setCreateDialogOpen(false);
   }
 
@@ -124,8 +162,56 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
     createMutation.reset();
     setEditingAssignmentId(null);
     setEndingAssignmentId(null);
+    setQuickEmployeeDialogOpen(false);
+    setEmployeePickerOpen(false);
+    setSelectedEmployeeOption(null);
+    setEmployeeSearch('');
     createForm.reset({ employeeId: '', projectRole: '', allocationPercent: '100', stageId: '', fromDate: '', toDate: '' });
     setCreateDialogOpen(true);
+  }
+
+  /** Open the quick Employee creator without closing the assignment being prepared. */
+  function startQuickEmployeeCreate(): void {
+    quickEmployeeMutation.reset();
+    quickEmployeeForm.reset({ name: employeeSearch.trim(), phone: '' });
+    setEmployeePickerOpen(false);
+    setQuickEmployeeDialogOpen(true);
+  }
+
+  /** Create a minimal Employee master and immediately select it in the pending Project assignment. */
+  async function handleQuickEmployeeCreate(values: QuickEmployeeFormValues): Promise<void> {
+    const assignmentStart = createForm.getValues('fromDate');
+    const projectRole = createForm.getValues('projectRole').trim();
+    const employee = await quickEmployeeMutation.mutateAsync({
+      name: values.name,
+      phone: values.phone,
+      jobTitle: projectRole || 'Employee',
+      joiningDate: assignmentStart || localToday()
+    });
+    setSelectedEmployeeOption(employee);
+    setEmployeeSearch('');
+    setEmployeePickerOpen(false);
+    createForm.setValue('employeeId', employee.id, { shouldDirty: true, shouldValidate: true });
+    quickEmployeeForm.reset({ name: '', phone: '' });
+    setQuickEmployeeDialogOpen(false);
+  }
+
+  /** Select one searched Employee without rendering a second select field. */
+  function handleEmployeeSelection(employee: Employee): void {
+    setSelectedEmployeeOption(employee);
+    setEmployeeSearch('');
+    setEmployeePickerOpen(false);
+    createForm.setValue('employeeId', employee.id, { shouldDirty: true, shouldValidate: true });
+  }
+
+  /** Start a new search and clear the previous selection only after the user actually types. */
+  function handleEmployeeSearchChange(value: string): void {
+    if (selectedEmployeeOption) {
+      setSelectedEmployeeOption(null);
+      createForm.setValue('employeeId', '', { shouldDirty: true, shouldValidate: true });
+    }
+    setEmployeeSearch(value);
+    setEmployeePickerOpen(true);
   }
 
   /** Open the readable assignment editor without asking the user to type a Stage UUID. */
@@ -187,6 +273,12 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
 
   const projects = projectsQuery.data?.items ?? [];
   const employees = employeesQuery.data?.items ?? [];
+  const employeeOptions = selectedEmployeeOption && !employees.some((employee) => employee.id === selectedEmployeeOption.id)
+    ? [selectedEmployeeOption, ...employees]
+    : employees;
+  const selectedEmployeeLabel = selectedEmployeeOption
+    ? `${selectedEmployeeOption.employeeNo} · ${selectedEmployeeOption.name}`
+    : '';
   const stages = stagesQuery.data?.items ?? [];
   const canCreateWithSelectors = props.canManage && projectId !== '' && canReadEmployees;
 
@@ -279,12 +371,53 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
             <div className="client-modal-body">
               <form className="admin-form client-modal-form" onSubmit={createForm.handleSubmit((values) => void handleCreate(values))}>
                 <div className="client-form-grid">
-                  <label>Employee
-                    <select {...createForm.register('employeeId')}>
-                      <option value="">Select active Employee</option>
-                      {employees.map((employee) => <option key={employee.id} value={employee.id}>{employee.employeeNo} · {employee.name}</option>)}
-                    </select>
-                  </label>
+                  <div className="project-team-employee-picker" onBlur={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setEmployeePickerOpen(false);
+                  }}>
+                    <div className="project-team-employee-field-row">
+                      <label>Employee
+                        <input
+                          role="combobox"
+                          aria-expanded={employeePickerOpen}
+                          aria-controls="project-team-employee-options"
+                          aria-autocomplete="list"
+                          value={employeePickerOpen ? employeeSearch : (selectedEmployeeLabel || employeeSearch)}
+                          onFocus={() => {
+                            if (selectedEmployeeOption) setEmployeeSearch('');
+                            setEmployeePickerOpen(true);
+                          }}
+                          onChange={(event) => handleEmployeeSearchChange(event.target.value)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setEmployeePickerOpen(false); }}
+                          placeholder="Search active Employees by name, employee no. or phone"
+                          autoComplete="off"
+                        />
+                      </label>
+                      {canCreateEmployees && (
+                        <button type="button" className="secondary-button project-team-employee-add" onClick={startQuickEmployeeCreate}>+ Add employee</button>
+                      )}
+                    </div>
+                    <input type="hidden" {...createForm.register('employeeId')} />
+                    {employeePickerOpen && (
+                      <div className="project-team-employee-options" id="project-team-employee-options" role="listbox" aria-label="Active Employees">
+                        {employeesQuery.isPending && <p className="muted">Searching Employees…</p>}
+                        {!employeesQuery.isPending && employeeOptions.map((employee) => (
+                          <button
+                            type="button"
+                            role="option"
+                            aria-selected={selectedEmployeeOption?.id === employee.id}
+                            className="secondary-button project-team-employee-option"
+                            key={employee.id}
+                            onClick={() => handleEmployeeSelection(employee)}
+                          >
+                            <strong>{employee.employeeNo} · {employee.name}</strong>
+                            {employee.phone && <span>{employee.phone}</span>}
+                          </button>
+                        ))}
+                        {!employeesQuery.isPending && employeeOptions.length === 0 && <p className="muted">No active Employees match this search.</p>}
+                      </div>
+                    )}
+                    {errorMessage(employeesQuery.error) && <p className="field-error">Could not load Employees: {errorMessage(employeesQuery.error)}</p>}
+                  </div>
                   <label>Project role<input {...createForm.register('projectRole')} /></label>
                   <label>Allocation %<input {...createForm.register('allocationPercent')} /></label>
                   <label>Stage (optional)
@@ -301,6 +434,32 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
                 <div className="client-modal-actions">
                   <button type="button" className="secondary-button" onClick={() => setCreateDialogOpen(false)}>Cancel</button>
                   <button type="submit" disabled={createMutation.isPending}>{createMutation.isPending ? 'Assigning…' : 'Assign Employee'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {quickEmployeeDialogOpen && createDialogOpen && canCreateEmployees && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuickEmployeeDialogOpen(false); }}>
+          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="project-team-quick-employee-title">
+            <header className="client-modal-header">
+              <div><p className="eyebrow">Quick employee</p><h2 id="project-team-quick-employee-title">Add Employee</h2></div>
+              <button type="button" className="client-modal-close" aria-label="Close quick Employee form" onClick={() => setQuickEmployeeDialogOpen(false)}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={quickEmployeeForm.handleSubmit((values) => void handleQuickEmployeeCreate(values))}>
+                <div className="client-form-grid">
+                  <label>Name<input autoFocus {...quickEmployeeForm.register('name')} /></label>
+                  <label>Phone<input inputMode="tel" autoComplete="tel" {...quickEmployeeForm.register('phone')} /></label>
+                </div>
+                <p className="muted">This creates an active Employee with a server-generated Employee number. You can complete job details and salary later from Employee List.</p>
+                {Object.values(quickEmployeeForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
+                {errorMessage(quickEmployeeMutation.error) && <div className="form-error" role="alert">{errorMessage(quickEmployeeMutation.error)}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" onClick={() => setQuickEmployeeDialogOpen(false)}>Cancel</button>
+                  <button type="submit" disabled={quickEmployeeMutation.isPending}>{quickEmployeeMutation.isPending ? 'Creating…' : 'Create & select Employee'}</button>
                 </div>
               </form>
             </div>

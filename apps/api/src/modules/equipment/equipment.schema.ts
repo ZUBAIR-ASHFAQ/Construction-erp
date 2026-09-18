@@ -89,6 +89,17 @@ export const equipmentAssignmentParamsSchema = z.object({ id: uuid, assignmentId
 /** Validate bounded Equipment list pagination. */
 export const listEquipmentQuerySchema = z.object({ ...pageShape }).strict();
 
+/** Validate bounded Equipment usage filters used by Reports and other read-only consumers. */
+export const listEquipmentUsageQuerySchema = z.object({
+  projectId: uuid.optional(),
+  fromDate: date.optional(),
+  toDate: date.optional(),
+  ...pageShape
+}).strict().refine((value) => !value.fromDate || !value.toDate || value.toDate >= value.fromDate, {
+  path: ['toDate'],
+  message: 'toDate cannot precede fromDate.'
+});
+
 /** Validate the bounded combined history read. */
 export const equipmentHistoryQuerySchema = z.object({
   pageSize: z.coerce.number().int().min(1).max(MODULE_12_MAX_PAGE_SIZE).optional()
@@ -260,6 +271,7 @@ export function createModule12Error(code: Module12ErrorCode): AppError {
 }
 
 export type ListEquipmentQuery = z.infer<typeof listEquipmentQuerySchema>;
+export type ListEquipmentUsageQuery = z.infer<typeof listEquipmentUsageQuerySchema>;
 export type EquipmentHistoryQuery = z.infer<typeof equipmentHistoryQuerySchema>;
 export type CreateEquipmentBody = z.infer<typeof createEquipmentBodySchema>;
 export type UpdateEquipmentBody = z.infer<typeof updateEquipmentBodySchema>;

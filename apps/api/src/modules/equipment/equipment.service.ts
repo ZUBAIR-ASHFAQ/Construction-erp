@@ -15,6 +15,7 @@ import {
   type EndEquipmentAssignmentBody,
   type EquipmentHistoryQuery,
   type ListEquipmentQuery,
+  type ListEquipmentUsageQuery,
   type Module12PermissionCode,
   type RecordEquipmentUsageBody,
   type ReverseEquipmentAssignmentBody,
@@ -143,7 +144,7 @@ function dateOnly(value: Date): string {
 }
 
 /** Return a deterministic page window for one Equipment list. */
-function pageWindow(query: ListEquipmentQuery) {
+function pageWindow(query: Readonly<{ page?: number; pageSize?: number }>) {
   const page = query.page ?? 1;
   const pageSize = query.pageSize ?? 50;
   return { page, pageSize, skip: (page - 1) * pageSize, take: pageSize };
@@ -317,6 +318,46 @@ export class EquipmentService {
     const page = pageWindow(query);
     const result = await new EquipmentRepository(this.db).listEquipment(page);
     return { items: result.items.map(equipmentResponse), total: result.total, page: page.page, pageSize: page.pageSize };
+  }
+
+  /** List bounded Equipment usage for Reports without changing Equipment or Project state. */
+  async listEquipmentUsage(query: ListEquipmentUsageQuery) {
+    await this.requireCompanyPermission(new AdministrationRepository(this.db), 'equipment.read', new Date());
+    const visibility = this.historyVisibility();
+    if (query.projectId && visibility.allowedProjectIds !== null && !visibility.allowedProjectIds.includes(query.projectId)) {
+      throw new AuthorizationError();
+    }
+    const page = pageWindow(query);
+    const result = await new EquipmentRepository(this.db).listEquipmentUsage({
+      skip: page.skip,
+      take: page.take,
+      ...(query.projectId ? { projectId: query.projectId } : {}),
+      ...(query.fromDate ? { fromDate: inputDate(query.fromDate) } : {}),
+      ...(query.toDate ? { toDate: inputDate(query.toDate) } : {})
+    }, visibility);
+    return {
+      items: result.items.map((row) => ({
+        id: row.id,
+        equipmentId: row.assignment.equipment.id,
+        equipmentCode: row.assignment.equipment.code,
+        equipmentName: row.assignment.equipment.name,
+        projectId: row.assignment.projectId,
+        projectCode: row.assignment.project.projectCode,
+        projectName: row.assignment.project.name,
+        stageId: row.assignment.stageId,
+        stageCode: row.assignment.stage?.code ?? null,
+        stageName: row.assignment.stage?.name ?? null,
+        usageDate: dateOnly(row.usageDate),
+        quantity: decimalString(row.quantity),
+        rate: decimalString(row.rate),
+        amount: moneyString(row.amount),
+        status: token(row.assignment.status) === REVERSED ? REVERSED : row.status,
+        enteredByName: row.enteredByUser.name
+      })),
+      total: result.total,
+      page: page.page,
+      pageSize: page.pageSize
+    };
   }
 
   /** Create one Equipment master exactly once. */

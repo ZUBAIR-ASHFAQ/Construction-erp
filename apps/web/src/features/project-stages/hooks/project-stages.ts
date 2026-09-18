@@ -6,6 +6,7 @@ import {
   getProjectStages,
   recordStageProgress,
   updateProjectStage,
+  updateStageProgress,
   type CreateProjectStageInput,
   type RecordStageProgressInput,
   type UpdateProjectStageInput
@@ -66,11 +67,23 @@ export function useRecordStageProgress(projectId: string, stageId: string) {
   });
 }
 
-/** Approve one submitted Stage progress update. */
-export function useApproveStageProgress(projectId: string, stageId: string) {
+/** Edit one submitted Stage progress update and refresh the Stage history. */
+export function useUpdateStageProgress(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (updateId: string) => approveStageProgress(projectId, stageId, updateId),
+    mutationFn: ({ stageId, updateId, input }: Readonly<{ stageId: string; updateId: string; input: RecordStageProgressInput }>) =>
+      updateStageProgress(projectId, stageId, updateId, input),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: STAGES_QUERY_KEY });
+    }
+  });
+}
+
+/** Approve one submitted Stage progress update. */
+export function useApproveStageProgress(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stageId, updateId }: Readonly<{ stageId: string; updateId: string }>) => approveStageProgress(projectId, stageId, updateId),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: STAGES_QUERY_KEY });
     }

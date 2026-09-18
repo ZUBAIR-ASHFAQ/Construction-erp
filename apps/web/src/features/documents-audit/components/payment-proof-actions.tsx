@@ -4,10 +4,11 @@ import {
   getDocumentDownload,
   listDocuments,
   uploadDocument,
+  uploadDocumentVersion,
   type DocumentLinkResourceType
 } from '../api/documents-api.js';
 
-export type PaymentProofResourceType = Extract<DocumentLinkResourceType, 'supplier_payment' | 'subcontract_payment'>;
+export type PaymentProofResourceType = Extract<DocumentLinkResourceType, 'client_receipt' | 'employee_advance' | 'supplier_payment' | 'subcontract_payment'>;
 
 type PaymentProofReference = Readonly<{
   id: string;
@@ -18,8 +19,20 @@ type PaymentProofReference = Readonly<{
   category: string;
 }>;
 
-/** Store an immutable payment-proof file and link it to its accounting payment. */
+/** Create the first proof or replace it through the existing Document's immutable version history. */
 export async function savePaymentProof(payment: PaymentProofReference, file: File): Promise<void> {
+  const existing = await listDocuments({
+    ...(payment.projectId ? { projectId: payment.projectId } : {}),
+    resourceType: payment.resourceType,
+    resourceId: payment.id,
+    page: 1,
+    pageSize: 1
+  });
+  const currentProof = existing.items[0];
+  if (currentProof) {
+    await uploadDocumentVersion({ documentId: currentProof.id, file, revisionCode: 'PAYMENT-PROOF-UPDATE' });
+    return;
+  }
   const uploaded = await uploadDocument({
     file,
     title: `${payment.titlePrefix} ${payment.paymentNo}`,
@@ -58,17 +71,17 @@ export async function downloadPaymentProof(payment: PaymentProofReference): Prom
   window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
 }
 
-/** Keep proof upload and download available beside every persisted payment row. */
+/** Keep proof editing and download available beside every persisted payment row. */
 export function PaymentProofActions(props: PaymentProofReference & Readonly<{
   canRead: boolean;
-  canAttach: boolean;
+  canEdit: boolean;
 }>) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<'upload' | 'download' | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const payment: PaymentProofReference = props;
 
-  async function attach(file: File | null): Promise<void> {
+  async function edit(file: File | null): Promise<void> {
     if (!file) return;
     setBusy('upload');
     setMessage(null);
@@ -99,9 +112,9 @@ export function PaymentProofActions(props: PaymentProofReference & Readonly<{
     <div className="payment-proof-actions">
       <div className="button-row">
         {props.canRead && <button type="button" className="secondary-button" disabled={busy !== null} onClick={() => void download()}>{busy === 'download' ? 'Downloading…' : 'Download proof'}</button>}
-        {props.canAttach && <>
-          <input ref={inputRef} hidden type="file" accept="image/jpeg,image/png,application/pdf" onChange={(event) => void attach(event.target.files?.[0] ?? null)} />
-          <button type="button" className="secondary-button" disabled={busy !== null} onClick={() => inputRef.current?.click()}>{busy === 'upload' ? 'Uploading…' : 'Attach proof'}</button>
+        {props.canEdit && <>
+          <input ref={inputRef} hidden type="file" accept="image/jpeg,image/png,application/pdf" onChange={(event) => void edit(event.target.files?.[0] ?? null)} />
+          <button type="button" className="secondary-button" disabled={busy !== null} onClick={() => inputRef.current?.click()}>{busy === 'upload' ? 'Saving…' : 'Edit proof'}</button>
         </>}
       </div>
       {message && <small className="muted" role="status">{message}</small>}

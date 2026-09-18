@@ -121,6 +121,7 @@
     "20260912000600_project_operational_resource_scope": "09e3f7dcaacdeef5a7645de2d650c68059b509db0ec2fb9f7d432ad85306996d",
     "20260915000100_employee_pay_cycle_payroll": "a5d79dd7281d2cda1c33d52dfeb251be6d4219651bb93c94aa3d42ca515947db",
     "20260915000200_site_manager_purchase_order_create_repair": "0071d3a39c0df1e7059ee36b41110b25869c665e882e8233f386e7fe5459f01b",
-    "20260915000300_site_manager_inventory_command_scope": "de655c9ebe54497544a6b84efacbbd17392697d97a353366250bd9333b7637cc"
+    "20260915000300_site_manager_inventory_command_scope": "de655c9ebe54497544a6b84efacbbd17392697d97a353366250bd9333b7637cc",
+    "20260917000100_payroll_shift_windows": "9fbf4fae91c10f1a1b9f819ccb537e04a44be8ada540071be24e8bbe1a3091e6"
   }
 }

@@ -30,6 +30,7 @@ type WorkspaceProps = Readonly<{
   canReadDocuments: boolean;
   canUploadDocuments: boolean;
   canLinkDocuments: boolean;
+  canVersionDocuments: boolean;
   initialSubcontractorId?: string | null;
 }>;
 
@@ -118,7 +119,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
         }, paymentProof);
         setPaymentProofMessage(`Payment ${created.paymentNo} and ${paymentProof.name} were saved successfully.`);
       } catch (error) {
-        setPaymentProofMessage(`Payment ${created.paymentNo} was posted, but its optional proof could not be stored: ${error instanceof Error ? error.message : 'Upload failed.'} Use Attach proof in the payment row to retry.`);
+        setPaymentProofMessage(`Payment ${created.paymentNo} was posted, but its optional proof could not be stored: ${error instanceof Error ? error.message : 'Upload failed.'} Use Edit proof in the payment row to retry.`);
       }
     } else {
       setPaymentProofMessage(`Payment ${created.paymentNo} was posted successfully.`);
@@ -194,7 +195,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     <td>{payment.cashBankAccount.name}</td>
                     <td>{payment.status}</td>
                     <td>{payment.reference || '—'}</td>
-                    <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /></td>
+                    <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canEdit={props.canUploadDocuments && props.canLinkDocuments && props.canVersionDocuments} /></td>
                   </tr>
                 ))}
                 {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={9}>No subcontractor payments yet.</td></tr>}
@@ -374,7 +375,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                   <td>{formatMoney(payment.amount, payment.project.currency)}</td>
                   <td>{payment.cashBankAccount.name}</td>
                   <td>{payment.reference || '—'}</td>
-                  <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canAttach={props.canUploadDocuments && props.canLinkDocuments} /></td>
+                  <td><PaymentProofActions id={payment.id} paymentNo={payment.paymentNo} projectId={payment.project.id} resourceType="subcontract_payment" titlePrefix="Subcontractor payment proof" category="subcontract_payment_proof" canRead={props.canReadDocuments} canEdit={false} /></td>
                 </tr>
               ))}
               {!payments.isLoading && (payments.data?.items.length ?? 0) === 0 && <tr><td colSpan={8}>No subcontractor payments match these filters.</td></tr>}

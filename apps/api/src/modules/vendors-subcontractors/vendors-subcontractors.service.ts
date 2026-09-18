@@ -483,6 +483,8 @@ export class VendorsSubcontractorsService {
       ...(input.subcontractorId === undefined ? {} : { subcontractorId: input.subcontractorId }),
       ...(input.projectId === undefined ? {} : { projectId: input.projectId }),
       ...(input.subcontractContractId === undefined ? {} : { subcontractContractId: input.subcontractContractId }),
+      ...(input.fromDate === undefined ? {} : { fromDate: new Date(`${input.fromDate}T00:00:00.000Z`) }),
+      ...(input.toDate === undefined ? {} : { toDate: new Date(`${input.toDate}T00:00:00.000Z`) }),
       ...(input.status === undefined ? {} : { status: input.status }),
       allowedProjectIds,
       skip: (page - 1) * pageSize,

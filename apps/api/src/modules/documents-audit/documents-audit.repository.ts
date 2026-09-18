@@ -358,6 +358,14 @@ export class DocumentsRepository {
       return employee ? { id: employee.id, projectId: null, stageId: null } : null;
     }
 
+    if (resourceType === 'employee_advance') {
+      const advance = await this.db.employeeAdvance.findFirst({
+        where: scope.where({ id: resourceId }),
+        select: { id: true, projectId: true, stageId: true }
+      });
+      return advance ? { id: advance.id, projectId: advance.projectId, stageId: advance.stageId } : null;
+    }
+
     if (resourceType === 'project_stage') {
       const stage = await this.db.projectStage.findFirst({
         where: scope.where({ id: resourceId }),

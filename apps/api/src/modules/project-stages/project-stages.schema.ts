@@ -22,6 +22,7 @@ export const STAGE_EVENT_TYPES = Object.freeze([
   'project_stage.created',
   'project_stage.baseline_frozen',
   'project_stage.progress_recorded',
+  'project_stage.progress_updated',
   'project_stage.progress_approved',
   'project_stage.completed'
 ] as const);
@@ -32,6 +33,7 @@ export const STAGE_HTTP_ROUTES = Object.freeze([
   Object.freeze({ method: 'PATCH', route: '/api/v1/projects/:projectId/stages/:stageId' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:projectId/stages/baseline/freeze' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:projectId/stages/:stageId/progress' }),
+  Object.freeze({ method: 'PATCH', route: '/api/v1/projects/:projectId/stages/:stageId/progress/:updateId' }),
   Object.freeze({ method: 'POST', route: '/api/v1/projects/:projectId/stages/:stageId/progress/:updateId/approve' }),
   Object.freeze({ method: 'GET', route: '/api/v1/projects/:projectId/stages/:stageId/financials' })
 ] as const);
@@ -131,12 +133,16 @@ export const createStageProgressBodySchema = z.object({
   evidenceDocumentId: uuidSchema.nullable().optional()
 }).strict();
 
+/** Validate an editable submitted progress row using the same fields as initial entry. */
+export const updateStageProgressBodySchema = createStageProgressBodySchema;
+
 /** Approval is an explicit bodyless command. */
 export const approveStageProgressBodySchema = z.object({}).strict();
 
 export type CreateProjectStageBody = z.infer<typeof createProjectStageBodySchema>;
 export type UpdateProjectStageBody = z.infer<typeof updateProjectStageBodySchema>;
 export type CreateStageProgressBody = z.infer<typeof createStageProgressBodySchema>;
+export type UpdateStageProgressBody = z.infer<typeof updateStageProgressBodySchema>;
 
 const ERROR_MESSAGES: Readonly<Record<StageErrorCode, string>> = Object.freeze({
   STAGE_NOT_FOUND: 'The requested Project Stage was not found.',

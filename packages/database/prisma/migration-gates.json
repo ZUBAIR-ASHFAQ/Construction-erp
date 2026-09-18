@@ -961,6 +961,14 @@
       "migrations": [
         "20260915000300_site_manager_inventory_command_scope"
       ]
+    },
+    {
+      "stage": 86,
+      "gate": "payroll-shift-windows",
+      "description": "Adds attendance shift times and Payroll date/time windows so day and overnight workers can be settled independently without changing historical untimed records.",
+      "migrations": [
+        "20260917000100_payroll_shift_windows"
+      ]
     }
   ]
 }

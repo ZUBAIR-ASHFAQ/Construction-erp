@@ -38,8 +38,12 @@ export function SupplierPayablesPage({ initialTab = 'invoices', accountLabel = '
         onCloseCreatePaymentModal={() => setCreatePaymentOpen(false)}
         canAllocatePayment={usePermission('supplier_payments.allocate')}
         canReadProjects={usePermission('projects.read') || Boolean(hasRestrictedProjects)}
+        canCreateProjects={usePermission('projects.create')}
+        canReadClients={usePermission('clients.read')}
+        canCreateClients={usePermission('clients.create')}
         canReadStages={usePermission('stages.read') || Boolean(hasRestrictedProjects)}
         canReadVendors={usePermission('vendors.read')}
+        canCreateVendors={usePermission('vendors.create')}
         canReadProcurement={usePermission('procurement.read') || Boolean(hasRestrictedProjects)}
         canReadFinance={usePermission('finance.read') || Boolean(hasRestrictedProjects)}
         canUploadDocuments={usePermission('documents.upload')}

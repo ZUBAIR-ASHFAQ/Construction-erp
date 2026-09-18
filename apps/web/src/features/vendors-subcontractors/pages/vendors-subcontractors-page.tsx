@@ -12,6 +12,10 @@ export function VendorsSubcontractorsPage({ entity = 'all', initialCreate = fals
       canUpdateVendors={usePermission('vendors.update')}
       canReadSubcontractors={usePermission('subcontractors.read')}
       canManageSubcontractors={usePermission('subcontractors.manage')}
+      canReadProjects={usePermission('projects.read')}
+      canCreateProjects={usePermission('projects.create')}
+      canReadClients={usePermission('clients.read')}
+      canCreateClients={usePermission('clients.create')}
       {...(onOpenSupplierLedger ? { onOpenSupplierLedger } : {})}
       {...(onOpenSubcontractorLedger ? { onOpenSubcontractorLedger } : {})}
     />

@@ -8,6 +8,9 @@ export function SubcontractContractsPage() {
       canReadSubcontractors={usePermission('subcontractors.read')}
       canManageSubcontractors={usePermission('subcontractors.manage')}
       canReadProjects={usePermission('projects.read')}
+      canCreateProjects={usePermission('projects.create')}
+      canReadClients={usePermission('clients.read')}
+      canCreateClients={usePermission('clients.create')}
     />
   );
 }

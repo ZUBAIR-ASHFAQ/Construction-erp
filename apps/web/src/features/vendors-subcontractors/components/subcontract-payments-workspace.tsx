@@ -56,20 +56,10 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofInputKey, setPaymentProofInputKey] = useState(0);
   const [paymentProofMessage, setPaymentProofMessage] = useState<string | null>(null);
-  const subcontractors = useSubcontractors({ page: 1, pageSize: 100 }, props.canReadSubcontractors);
-  const ledger = useSubcontractLedger({
-    ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
-    ...(props.view === 'ledger' && (ledgerStatus === 'ACTIVE' || ledgerStatus === 'FINISHED') ? { status: ledgerStatus } : {}),
-    page: 1,
-    pageSize: 100
-  }, props.canReadSubcontractors);
-  const payments = useSubcontractPayments({
-    ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
-    page: 1,
-    pageSize: 100
-  }, props.canReadSubcontractors);
-  const cashBankAccounts = useCashBankAccounts({ page: 1, pageSize: 100, status: 'ACTIVE' }, props.canReadFinance && props.view === 'payment');
-  const createPayment = useCreateSubcontractPayment();
+  const [paymentSubcontractorSearch, setPaymentSubcontractorSearch] = useState('');
+  const [paymentSubcontractorPickerOpen, setPaymentSubcontractorPickerOpen] = useState(false);
+  const [paymentContractSearch, setPaymentContractSearch] = useState('');
+  const [paymentContractPickerOpen, setPaymentContractPickerOpen] = useState(false);
   const form = useForm<PaymentFormValues>({
     resolver: zodResolver(paymentFormSchema),
     defaultValues: {
@@ -83,15 +73,81 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
   });
   const selectedSubcontractorId = form.watch('subcontractorId');
   const selectedContractId = form.watch('subcontractContractId');
+  const subcontractors = useSubcontractors({
+    ...(props.view === 'payment' ? {
+      status: 'ACTIVE' as const,
+      ...(paymentSubcontractorSearch.trim() ? { search: paymentSubcontractorSearch.trim() } : {})
+    } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadSubcontractors);
+  const ledger = useSubcontractLedger({
+    ...(props.view === 'payment' && selectedSubcontractorId ? { subcontractorId: selectedSubcontractorId } : {}),
+    ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
+    ...(props.view === 'ledger' && (ledgerStatus === 'ACTIVE' || ledgerStatus === 'FINISHED') ? { status: ledgerStatus } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadSubcontractors && (props.view === 'ledger' || Boolean(selectedSubcontractorId)));
+  const payments = useSubcontractPayments({
+    ...(props.view === 'ledger' && ledgerSubcontractorId ? { subcontractorId: ledgerSubcontractorId } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadSubcontractors);
+  const cashBankAccounts = useCashBankAccounts({ page: 1, pageSize: 100, status: 'ACTIVE' }, props.canReadFinance && props.view === 'payment');
+  const createPayment = useCreateSubcontractPayment();
   const availableContracts = useMemo(() => (ledger.data?.items ?? []).filter((row) => (
     row.subcontractor.id === selectedSubcontractorId && Number(row.balanceAmount) > 0
   )), [ledger.data?.items, selectedSubcontractorId]);
+  const filteredAvailableContracts = useMemo(() => {
+    const search = paymentContractSearch.trim().toLocaleLowerCase();
+    if (!search) return availableContracts;
+    return availableContracts.filter((contract) => (
+      `${contract.project.projectCode} · ${contract.project.name}`.toLocaleLowerCase().includes(search)
+    ));
+  }, [availableContracts, paymentContractSearch]);
   const selectedContract = availableContracts.find((row) => row.subcontractContractId === selectedContractId);
   const paymentAccounts = (cashBankAccounts.data?.items ?? []).filter((account) => !selectedContract || account.projectId === selectedContract.project.id || account.projectId === null);
 
-  /** Clear the contract when the user switches to another subcontractor. */
-  function handleSubcontractorChange(): void {
-    form.setValue('subcontractContractId', '', { shouldValidate: false });
+  /** Clear picker-only state without changing any persisted payment data. */
+  function resetPaymentPickers(): void {
+    setPaymentSubcontractorSearch('');
+    setPaymentSubcontractorPickerOpen(false);
+    setPaymentContractSearch('');
+    setPaymentContractPickerOpen(false);
+  }
+
+  /** Search active subcontractors by name/specialty and clear any stale contract selection. */
+  function handlePaymentSubcontractorSearch(value: string): void {
+    setPaymentSubcontractorSearch(value);
+    setPaymentSubcontractorPickerOpen(true);
+    form.setValue('subcontractorId', '', { shouldDirty: true });
+    form.setValue('subcontractContractId', '', { shouldDirty: true });
+    setPaymentContractSearch('');
+    setPaymentContractPickerOpen(false);
+  }
+
+  /** Keep the selected subcontractor id and readable search label synchronized. */
+  function handlePaymentSubcontractorSelect(subcontractor: Readonly<{ id: string; name: string }>): void {
+    form.setValue('subcontractorId', subcontractor.id, { shouldDirty: true, shouldValidate: true });
+    form.setValue('subcontractContractId', '', { shouldDirty: true, shouldValidate: false });
+    setPaymentSubcontractorSearch(subcontractor.name);
+    setPaymentSubcontractorPickerOpen(false);
+    setPaymentContractSearch('');
+    setPaymentContractPickerOpen(false);
+  }
+
+  /** Search the selected subcontractor's open contracts by Project code or Project name. */
+  function handlePaymentContractSearch(value: string): void {
+    setPaymentContractSearch(value);
+    setPaymentContractPickerOpen(true);
+    form.setValue('subcontractContractId', '', { shouldDirty: true });
+  }
+
+  /** Keep the selected contract id and readable Project label synchronized. */
+  function handlePaymentContractSelect(contract: (typeof availableContracts)[number]): void {
+    form.setValue('subcontractContractId', contract.subcontractContractId, { shouldDirty: true, shouldValidate: true });
+    setPaymentContractSearch(`${contract.project.projectCode} · ${contract.project.name}`);
+    setPaymentContractPickerOpen(false);
   }
 
   /** Create and post one payment against the selected subcontract contract. */
@@ -132,6 +188,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
       cashBankAccountId: '',
       reference: ''
     });
+    resetPaymentPickers();
     setPaymentProof(null);
     setPaymentProofInputKey((value) => value + 1);
     setPaymentDialogOpen(false);
@@ -162,6 +219,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     cashBankAccountId: '',
                     reference: ''
                   });
+                  resetPaymentPickers();
                   setPaymentProof(null);
                   setPaymentProofInputKey((value) => value + 1);
                   setPaymentDialogOpen(true);
@@ -216,6 +274,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                 cashBankAccountId: '',
                 reference: ''
               });
+              resetPaymentPickers();
               setPaymentProof(null);
               setPaymentProofInputKey((value) => value + 1);
               setPaymentDialogOpen(false);
@@ -223,28 +282,103 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
           >
             <form className="admin-form client-modal-form" onSubmit={form.handleSubmit(handleCreatePayment)} noValidate>
               <div className="client-form-grid">
-                <label>
-                  Subcontractor
-                  <select {...form.register('subcontractorId', { onChange: handleSubcontractorChange })}>
-                    <option value="">Select subcontractor</option>
-                    {(subcontractors.data?.items ?? []).filter((item) => item.status === 'ACTIVE').map((item) => (
-                      <option key={item.id} value={item.id}>{item.name} · {item.specialty}</option>
-                    ))}
-                  </select>
+                <div>
+                  <label htmlFor="subcontract-payment-subcontractor-search">Subcontractor</label>
+                  <div
+                    className="project-client-combobox"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentSubcontractorPickerOpen(false);
+                    }}
+                  >
+                    <input
+                      id="subcontract-payment-subcontractor-search"
+                      type="search"
+                      autoComplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={paymentSubcontractorPickerOpen}
+                      aria-controls="subcontract-payment-subcontractor-options"
+                      value={paymentSubcontractorSearch}
+                      onChange={(event) => handlePaymentSubcontractorSearch(event.target.value)}
+                      onFocus={() => setPaymentSubcontractorPickerOpen(true)}
+                      onClick={() => setPaymentSubcontractorPickerOpen(true)}
+                      onKeyDown={(event) => { if (event.key === 'Escape') setPaymentSubcontractorPickerOpen(false); }}
+                      placeholder="Search subcontractors by name or specialty"
+                    />
+                    {paymentSubcontractorPickerOpen && (
+                      <div id="subcontract-payment-subcontractor-options" className="project-client-options" role="listbox" aria-label="Subcontractors">
+                        {subcontractors.isLoading && <div className="project-client-option-state">Searching subcontractors…</div>}
+                        {!subcontractors.isLoading && (subcontractors.data?.items ?? []).filter((item) => item.status === 'ACTIVE').map((item) => (
+                          <button
+                            type="button"
+                            className="project-client-option"
+                            role="option"
+                            aria-selected={selectedSubcontractorId === item.id}
+                            key={item.id}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handlePaymentSubcontractorSelect(item)}
+                          >
+                            {item.name} · {item.specialty}
+                          </button>
+                        ))}
+                        {!subcontractors.isLoading && (subcontractors.data?.items ?? []).filter((item) => item.status === 'ACTIVE').length === 0 && (
+                          <div className="project-client-option-state">No active subcontractors match this search.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <input type="hidden" {...form.register('subcontractorId')} />
                   <span className="field-error">{form.formState.errors.subcontractorId?.message}</span>
-                </label>
-                <label>
-                  Subcontract / Project
-                  <select {...form.register('subcontractContractId')} disabled={!selectedSubcontractorId}>
-                    <option value="">Select subcontract</option>
-                    {availableContracts.map((contract) => (
-                      <option key={contract.subcontractContractId} value={contract.subcontractContractId}>
-                        {contract.project.projectCode} · {contract.project.name} · Remaining {formatMoney(contract.balanceAmount, contract.project.currency)}
-                      </option>
-                    ))}
-                  </select>
+                </div>
+                <div>
+                  <label htmlFor="subcontract-payment-contract-search">Subcontract / Project</label>
+                  <div
+                    className="project-client-combobox"
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentContractPickerOpen(false);
+                    }}
+                  >
+                    <input
+                      id="subcontract-payment-contract-search"
+                      type="search"
+                      autoComplete="off"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={paymentContractPickerOpen}
+                      aria-controls="subcontract-payment-contract-options"
+                      value={paymentContractSearch}
+                      disabled={!selectedSubcontractorId}
+                      onChange={(event) => handlePaymentContractSearch(event.target.value)}
+                      onFocus={() => setPaymentContractPickerOpen(true)}
+                      onClick={() => setPaymentContractPickerOpen(true)}
+                      onKeyDown={(event) => { if (event.key === 'Escape') setPaymentContractPickerOpen(false); }}
+                      placeholder={selectedSubcontractorId ? 'Search subcontract Projects by name or code' : 'Select a subcontractor first'}
+                    />
+                    {paymentContractPickerOpen && selectedSubcontractorId && (
+                      <div id="subcontract-payment-contract-options" className="project-client-options" role="listbox" aria-label="Subcontract Projects">
+                        {ledger.isLoading && <div className="project-client-option-state">Loading subcontract Projects…</div>}
+                        {!ledger.isLoading && filteredAvailableContracts.map((contract) => (
+                          <button
+                            type="button"
+                            className="project-client-option"
+                            role="option"
+                            aria-selected={selectedContractId === contract.subcontractContractId}
+                            key={contract.subcontractContractId}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => handlePaymentContractSelect(contract)}
+                          >
+                            {contract.project.projectCode} · {contract.project.name} · Remaining {formatMoney(contract.balanceAmount, contract.project.currency)}
+                          </button>
+                        ))}
+                        {!ledger.isLoading && filteredAvailableContracts.length === 0 && (
+                          <div className="project-client-option-state">No open subcontract Projects match this search.</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <input type="hidden" {...form.register('subcontractContractId')} />
                   <span className="field-error">{form.formState.errors.subcontractContractId?.message}</span>
-                </label>
+                </div>
                 <label>
                   Payment date
                   <input type="date" {...form.register('paymentDate')} />
@@ -291,6 +425,7 @@ export function SubcontractPaymentsWorkspace(props: WorkspaceProps) {
                     cashBankAccountId: '',
                     reference: ''
                   });
+                  resetPaymentPickers();
                   setPaymentProof(null);
                   setPaymentProofInputKey((value) => value + 1);
                   setPaymentDialogOpen(false);

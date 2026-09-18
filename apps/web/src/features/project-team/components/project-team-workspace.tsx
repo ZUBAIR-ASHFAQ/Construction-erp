@@ -50,9 +50,15 @@ const endAssignmentSchema = z.object({
 
 const quickEmployeeSchema = z.object({
   name: z.string().trim().min(1, 'Name is required.').max(200),
-  phone: z.string().trim().min(7, 'Phone must contain at least 7 digits.').max(50)
-    .transform((value) => value.replace(/[\s().-]/g, ''))
-    .refine((value) => /^\+?\d{7,15}$/.test(value), 'Phone must contain 7 to 15 digits with an optional leading +.')
+  cnicOrId: z.string().trim().max(100),
+  phone: z.string().trim().max(50),
+  email: z.string().trim().max(320),
+  jobTitle: z.string().trim().min(1, 'Job title is required.').max(160),
+  joiningDate: dateSchema,
+  employmentEndDate: z.union([z.literal(''), dateSchema])
+}).refine((value) => !value.employmentEndDate || value.employmentEndDate >= value.joiningDate, {
+  path: ['employmentEndDate'],
+  message: 'Employment end date cannot precede joining date.'
 });
 
 type AssignmentFormValues = z.infer<typeof assignmentSchema>;
@@ -70,7 +76,7 @@ function errorMessage(error: unknown): string | null {
   return error instanceof Error ? error.message : null;
 }
 
-/** Return today's browser-local date for a minimal Employee record when no assignment start date is entered yet. */
+/** Return today's browser-local date for the Employee create form when no assignment start date is entered yet. */
 function localToday(): string {
   const now = new Date();
   const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
@@ -118,7 +124,9 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
   });
   const quickEmployeeForm = useForm<QuickEmployeeFormValues>({
     resolver: zodResolver(quickEmployeeSchema),
-    defaultValues: { name: '', phone: '' }
+    defaultValues: {
+      name: '', cnicOrId: '', phone: '', email: '', jobTitle: '', joiningDate: '', employmentEndDate: ''
+    }
   });
 
   /** Change the active Project and clear dependent create/edit/end state. */
@@ -170,29 +178,40 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
     setCreateDialogOpen(true);
   }
 
-  /** Open the quick Employee creator without closing the assignment being prepared. */
+  /** Open the full Employee creator without closing the assignment being prepared. */
   function startQuickEmployeeCreate(): void {
     quickEmployeeMutation.reset();
-    quickEmployeeForm.reset({ name: employeeSearch.trim(), phone: '' });
+    quickEmployeeForm.reset({
+      name: employeeSearch.trim(),
+      cnicOrId: '',
+      phone: '',
+      email: '',
+      jobTitle: createForm.getValues('projectRole').trim(),
+      joiningDate: createForm.getValues('fromDate') || localToday(),
+      employmentEndDate: ''
+    });
     setEmployeePickerOpen(false);
     setQuickEmployeeDialogOpen(true);
   }
 
-  /** Create a minimal Employee master and immediately select it in the pending Project assignment. */
+  /** Create a full Employee master and immediately select it in the pending Project assignment. */
   async function handleQuickEmployeeCreate(values: QuickEmployeeFormValues): Promise<void> {
-    const assignmentStart = createForm.getValues('fromDate');
-    const projectRole = createForm.getValues('projectRole').trim();
     const employee = await quickEmployeeMutation.mutateAsync({
       name: values.name,
-      phone: values.phone,
-      jobTitle: projectRole || 'Employee',
-      joiningDate: assignmentStart || localToday()
+      cnicOrId: values.cnicOrId || null,
+      phone: values.phone || null,
+      email: values.email || null,
+      jobTitle: values.jobTitle,
+      joiningDate: values.joiningDate,
+      employmentEndDate: values.employmentEndDate || null
     });
     setSelectedEmployeeOption(employee);
     setEmployeeSearch('');
     setEmployeePickerOpen(false);
     createForm.setValue('employeeId', employee.id, { shouldDirty: true, shouldValidate: true });
-    quickEmployeeForm.reset({ name: '', phone: '' });
+    quickEmployeeForm.reset({
+      name: '', cnicOrId: '', phone: '', email: '', jobTitle: '', joiningDate: '', employmentEndDate: ''
+    });
     setQuickEmployeeDialogOpen(false);
   }
 
@@ -442,22 +461,57 @@ export function ProjectTeamWorkspace(props: ProjectTeamWorkspaceProps) {
       )}
 
       {quickEmployeeDialogOpen && createDialogOpen && canCreateEmployees && (
-        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuickEmployeeDialogOpen(false); }}>
-          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="project-team-quick-employee-title">
-            <header className="client-modal-header">
-              <div><p className="eyebrow">Quick employee</p><h2 id="project-team-quick-employee-title">Add Employee</h2></div>
-              <button type="button" className="client-modal-close" aria-label="Close quick Employee form" onClick={() => setQuickEmployeeDialogOpen(false)}><span aria-hidden="true">×</span></button>
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setQuickEmployeeDialogOpen(false); }}>
+          <section className="finance-modal employee-create-modal" role="dialog" aria-modal="true" aria-labelledby="project-team-quick-employee-title">
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Employee master</p>
+                <h2 id="project-team-quick-employee-title">Add Employee</h2>
+                <p className="muted">Create the Employee record. Employee code is generated automatically by the server.</p>
+              </div>
+              <button type="button" className="finance-modal-close" aria-label="Close Add Employee" onClick={() => setQuickEmployeeDialogOpen(false)}>×</button>
             </header>
-            <div className="client-modal-body">
-              <form className="admin-form client-modal-form" onSubmit={quickEmployeeForm.handleSubmit((values) => void handleQuickEmployeeCreate(values))}>
-                <div className="client-form-grid">
-                  <label>Name<input autoFocus {...quickEmployeeForm.register('name')} /></label>
-                  <label>Phone<input inputMode="tel" autoComplete="tel" {...quickEmployeeForm.register('phone')} /></label>
+            <div className="finance-modal-body">
+              <form className="admin-form employee-create-form" onSubmit={quickEmployeeForm.handleSubmit((values) => void handleQuickEmployeeCreate(values))} noValidate>
+                <div className="employee-create-grid">
+                  <label>
+                    Name
+                    <input autoFocus {...quickEmployeeForm.register('name')} />
+                    {quickEmployeeForm.formState.errors.name && <span className="field-error">{quickEmployeeForm.formState.errors.name.message}</span>}
+                  </label>
+                  <label>
+                    CNIC / ID
+                    <input {...quickEmployeeForm.register('cnicOrId')} />
+                    {quickEmployeeForm.formState.errors.cnicOrId && <span className="field-error">{quickEmployeeForm.formState.errors.cnicOrId.message}</span>}
+                  </label>
+                  <label>
+                    Phone
+                    <input {...quickEmployeeForm.register('phone')} />
+                    {quickEmployeeForm.formState.errors.phone && <span className="field-error">{quickEmployeeForm.formState.errors.phone.message}</span>}
+                  </label>
+                  <label>
+                    Email
+                    <input type="email" {...quickEmployeeForm.register('email')} />
+                    {quickEmployeeForm.formState.errors.email && <span className="field-error">{quickEmployeeForm.formState.errors.email.message}</span>}
+                  </label>
+                  <label>
+                    Job title
+                    <input {...quickEmployeeForm.register('jobTitle')} />
+                    {quickEmployeeForm.formState.errors.jobTitle && <span className="field-error">{quickEmployeeForm.formState.errors.jobTitle.message}</span>}
+                  </label>
+                  <label>
+                    Joining date
+                    <input type="date" {...quickEmployeeForm.register('joiningDate')} />
+                    {quickEmployeeForm.formState.errors.joiningDate && <span className="field-error">{quickEmployeeForm.formState.errors.joiningDate.message}</span>}
+                  </label>
+                  <label>
+                    Employment end date (optional)
+                    <input type="date" min={quickEmployeeForm.watch('joiningDate') || undefined} {...quickEmployeeForm.register('employmentEndDate')} />
+                    {quickEmployeeForm.formState.errors.employmentEndDate && <span className="field-error">{quickEmployeeForm.formState.errors.employmentEndDate.message}</span>}
+                  </label>
                 </div>
-                <p className="muted">This creates an active Employee with a server-generated Employee number. You can complete job details and salary later from Employee List.</p>
-                {Object.values(quickEmployeeForm.formState.errors).map((error, index) => <p className="field-error" key={index}>{error?.message}</p>)}
                 {errorMessage(quickEmployeeMutation.error) && <div className="form-error" role="alert">{errorMessage(quickEmployeeMutation.error)}</div>}
-                <div className="client-modal-actions">
+                <div className="employee-create-actions">
                   <button type="button" className="secondary-button" onClick={() => setQuickEmployeeDialogOpen(false)}>Cancel</button>
                   <button type="submit" disabled={quickEmployeeMutation.isPending}>{quickEmployeeMutation.isPending ? 'Creating…' : 'Create & select Employee'}</button>
                 </div>

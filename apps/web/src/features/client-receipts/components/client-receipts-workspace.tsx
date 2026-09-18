@@ -3,13 +3,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useClientInvoices } from '../../client-billing/hooks/client-billing.js';
-import { useClients } from '../../clients/hooks/clients.js';
+import { useClients, useCreateClient } from '../../clients/hooks/clients.js';
 import { getDocumentDownload, listDocuments } from '../../documents-audit/api/documents-api.js';
 import { PaymentProofActions } from '../../documents-audit/components/payment-proof-actions.js';
 import { useCreateDocumentLink, useUploadDocument } from '../../documents-audit/hooks/documents.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProjectStages } from '../../project-stages/hooks/project-stages.js';
-import { useProjects } from '../../projects/hooks/projects.js';
+import { useCreateProject, useProjects } from '../../projects/hooks/projects.js';
+import type { Project } from '../../projects/api/projects-api.js';
 import type { ClientReceipt } from '../api/client-receipts-api.js';
 import {
   useAllocateClientReceipt,
@@ -44,8 +45,55 @@ const allocationFormSchema = z.object({
   amount: positiveMoneySchema
 });
 
+const quickClientSchema = z.object({
+  legalName: z.string().trim().min(1, 'Legal name is required.').max(240),
+  displayName: z.string().trim().min(1, 'Display name is required.').max(240),
+  taxNo: z.string().trim().max(100),
+  billingAddress: z.string().trim().min(1, 'Billing address is required.').max(1000),
+  creditTermsDays: z.number().int().min(0, 'Credit terms cannot be negative.').nullable(),
+  contactName: z.string().trim().max(200),
+  contactTitle: z.string().trim().max(160),
+  contactEmail: z.union([z.literal(''), z.string().trim().email('Enter a valid contact email address.')]),
+  contactPhone: z.union([z.literal(''), z.string().trim().min(7, 'Contact phone must contain at least 7 characters.').max(50)]),
+  contactIsPrimary: z.boolean()
+}).refine((value) => {
+  const hasContactDetails = Boolean(value.contactTitle || value.contactEmail || value.contactPhone || value.contactIsPrimary);
+  return !hasContactDetails || Boolean(value.contactName);
+}, {
+  path: ['contactName'],
+  message: 'Contact name is required when contact details are provided.'
+});
+
+const quickProjectSchema = z.object({
+  name: z.string().trim().min(1, 'Project name is required.').max(300),
+  clientId: z.string().uuid('Select a valid Client.'),
+  projectModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
+  projectValue: z.string().trim().regex(/^(?:0|[1-9]\d{0,15})(?:\.\d{1,2})?$/, 'Enter a valid non-negative Project value with at most 2 decimals.'),
+  costPlusPercent: z.string().trim(),
+  currency: z.string().trim().length(3, 'Currency must use three letters.').regex(/^[A-Za-z]{3}$/, 'Currency must use letters only.'),
+  startDate: dateSchema,
+  plannedEndDate: dateSchema,
+  location: z.string().trim().max(1000, 'Location is too long.')
+}).superRefine((value, context) => {
+  if (value.plannedEndDate < value.startDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['plannedEndDate'], message: 'Planned end date cannot be before the start date.' });
+  }
+  if (value.projectModel === 'COST_PLUS_PERCENTAGE') {
+    const validPercent = /^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/.test(value.costPlusPercent);
+    const percent = Number(value.costPlusPercent);
+    if (!validPercent || percent <= 0 || percent > 100) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['costPlusPercent'], message: 'Cost + Percentage requires a percent greater than 0 and at most 100.' });
+    }
+  } else if (value.costPlusPercent) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['costPlusPercent'], message: 'Leave Cost + Percentage empty for a Fixed Price Project.' });
+  }
+});
+
 type ReceiptForm = z.infer<typeof receiptFormSchema>;
 type AllocationForm = z.infer<typeof allocationFormSchema>;
+type QuickClientForm = z.infer<typeof quickClientSchema>;
+type QuickProjectForm = z.infer<typeof quickProjectSchema>;
+type QuickCreateDialog = 'client' | 'project' | null;
 
 type ClientReceiptsWorkspaceProps = Readonly<{
   view?: 'payment' | 'ledger';
@@ -56,7 +104,9 @@ type ClientReceiptsWorkspaceProps = Readonly<{
   canAllocate: boolean;
   canReverse: boolean;
   canReadClients: boolean;
+  canCreateClients: boolean;
   canReadProjects: boolean;
+  canCreateProjects: boolean;
   canReadStages: boolean;
   canReadFinance: boolean;
   canReadInvoices: boolean;
@@ -105,11 +155,34 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   const [downloadingReceiptId, setDownloadingReceiptId] = useState<string | null>(null);
   const [editEvidence, setEditEvidence] = useState<File | null>(null);
   const [editEvidenceInputKey, setEditEvidenceInputKey] = useState(0);
+  const [clientSearchText, setClientSearchText] = useState('');
+  const [projectSearchText, setProjectSearchText] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [projectPickerOpen, setProjectPickerOpen] = useState(false);
+  const [quickDialog, setQuickDialog] = useState<QuickCreateDialog>(null);
+  const [quickCreatedClient, setQuickCreatedClient] = useState<Readonly<{ id: string; code: string; displayName: string }> | null>(null);
+  const [quickCreatedProject, setQuickCreatedProject] = useState<Project | null>(null);
+  const [quickProjectClientSearchText, setQuickProjectClientSearchText] = useState('');
+  const [quickProjectClientPickerOpen, setQuickProjectClientPickerOpen] = useState(false);
 
   const clientsQuery = useClients({ status: 'ACTIVE', page: 1, pageSize: 100 }, props.canReadClients);
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
   const clients = clientsQuery.data?.items ?? [];
   const projects = projectsQuery.data?.items ?? [];
+  const clientOptionsQuery = useClients({
+    status: 'ACTIVE',
+    ...(clientSearchText.trim() ? { search: clientSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadClients && props.createModalOpen && quickDialog === null);
+  const clientOptions = clientOptionsQuery.data?.items ?? [];
+  const quickProjectClientOptionsQuery = useClients({
+    status: 'ACTIVE',
+    ...(quickProjectClientSearchText.trim() ? { search: quickProjectClientSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadClients && props.createModalOpen && quickDialog === 'project');
+  const quickProjectClientOptions = quickProjectClientOptionsQuery.data?.items ?? [];
   const filteredProjects = useMemo(
     () => projects.filter((project) => !clientFilter || project.clientId === clientFilter),
     [clientFilter, projects]
@@ -128,10 +201,27 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   const receiptProjectId = receiptForm.watch('projectId');
   const receiptPaymentMethod = receiptForm.watch('paymentMethod');
   const receiptClientId = receiptForm.watch('clientId');
+  const projectOptionsQuery = useProjects({
+    ...(props.canReadClients && receiptClientId ? { clientId: receiptClientId } : {}),
+    ...(projectSearchText.trim() ? { search: projectSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadProjects && props.createModalOpen && quickDialog === null && (!props.canReadClients || receiptClientId !== ''));
+  const projectOptions = projectOptionsQuery.data?.items ?? [];
   const selectedReceiptProject = useMemo(
-    () => projects.find((project) => project.id === receiptProjectId) ?? null,
-    [projects, receiptProjectId]
+    () => projects.find((project) => project.id === receiptProjectId) ?? (quickCreatedProject?.id === receiptProjectId ? quickCreatedProject : null),
+    [projects, quickCreatedProject, receiptProjectId]
   );
+  const quickClientMissing = quickCreatedClient !== null
+    && !clientOptions.some((client) => client.id === quickCreatedClient.id)
+    && (!clientSearchText.trim() || `${quickCreatedClient.code} ${quickCreatedClient.displayName}`.toLowerCase().includes(clientSearchText.trim().toLowerCase()));
+  const quickProjectMissing = quickCreatedProject !== null
+    && quickCreatedProject.clientId === receiptClientId
+    && !projectOptions.some((project) => project.id === quickCreatedProject.id)
+    && (!projectSearchText.trim() || `${quickCreatedProject.projectCode} ${quickCreatedProject.name}`.toLowerCase().includes(projectSearchText.trim().toLowerCase()));
+  const quickProjectCreatedClientMissing = quickCreatedClient !== null
+    && !quickProjectClientOptions.some((client) => client.id === quickCreatedClient.id)
+    && (!quickProjectClientSearchText.trim() || `${quickCreatedClient.code} ${quickCreatedClient.displayName}`.toLowerCase().includes(quickProjectClientSearchText.trim().toLowerCase()));
   const receiptStagesQuery = useProjectStages(receiptProjectId || null, props.canReadStages && receiptProjectId !== '');
   const receiptInvoicesQuery = useClientInvoices(
     { ...(receiptProjectId ? { projectId: receiptProjectId } : {}), status: 'ISSUED', page: 1, pageSize: 100 },
@@ -151,6 +241,24 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   );
   const cashBankNames = useMemo(() => new Map((cashBankQuery.data?.items ?? []).map((account) => [account.id, account.name])), [cashBankQuery.data?.items]);
   const createReceipt = useCreateClientReceipt();
+  const quickClientMutation = useCreateClient();
+  const quickProjectMutation = useCreateProject();
+  const quickClientForm = useForm<QuickClientForm>({
+    resolver: zodResolver(quickClientSchema),
+    defaultValues: {
+      legalName: '', displayName: '', taxNo: '', billingAddress: '', creditTermsDays: null,
+      contactName: '', contactTitle: '', contactEmail: '', contactPhone: '', contactIsPrimary: false
+    }
+  });
+  const quickProjectForm = useForm<QuickProjectForm>({
+    resolver: zodResolver(quickProjectSchema),
+    defaultValues: {
+      name: '', clientId: '', projectModel: 'FIXED_PRICE', projectValue: '0.00', costPlusPercent: '',
+      currency: 'PKR', startDate: '', plannedEndDate: '', location: ''
+    }
+  });
+  const quickProjectModel = quickProjectForm.watch('projectModel');
+  const quickProjectClientId = quickProjectForm.watch('clientId');
   const uploadReceiptDocument = useUploadDocument();
   const linkReceiptDocument = useCreateDocumentLink();
 
@@ -183,12 +291,192 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
   /** Close the New Payment dialog and clear draft-only browser state. */
   function closeCreateReceiptModal(): void {
     receiptForm.reset(EMPTY_RECEIPT_FORM);
+    quickClientForm.reset({
+      legalName: '', displayName: '', taxNo: '', billingAddress: '', creditTermsDays: null,
+      contactName: '', contactTitle: '', contactEmail: '', contactPhone: '', contactIsPrimary: false
+    });
+    quickProjectForm.reset({
+      name: '', clientId: '', projectModel: 'FIXED_PRICE', projectValue: '0.00', costPlusPercent: '',
+      currency: 'PKR', startDate: '', plannedEndDate: '', location: ''
+    });
+    setClientSearchText('');
+    setProjectSearchText('');
+    setClientPickerOpen(false);
+    setProjectPickerOpen(false);
+    setQuickProjectClientSearchText('');
+    setQuickProjectClientPickerOpen(false);
+    setQuickDialog(null);
     setReceiptEvidence(null);
     setReceiptEvidenceInputKey((value) => value + 1);
     setEvidenceMessage(null);
     setEvidenceError(null);
     createReceipt.reset();
+    quickClientMutation.reset();
+    quickProjectMutation.reset();
     props.onCloseCreateModal();
+  }
+
+  /** Search active Clients in the single New Payment Client picker and clear stale dependent selections while typing. */
+  function handleReceiptClientSearch(value: string): void {
+    setClientSearchText(value);
+    setClientPickerOpen(true);
+    if (receiptClientId) {
+      receiptForm.setValue('clientId', '', { shouldDirty: true, shouldValidate: true });
+      receiptForm.setValue('projectId', '');
+      receiptForm.setValue('stageId', '');
+      receiptForm.setValue('clientInvoiceId', '');
+      setProjectSearchText('');
+    }
+  }
+
+  /** Select one Client in the New Payment form and reset Project-owned dependent fields. */
+  function handleReceiptClientSelect(client: Readonly<{ id: string; code: string; displayName: string }>): void {
+    receiptForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('projectId', '');
+    receiptForm.setValue('stageId', '');
+    receiptForm.setValue('clientInvoiceId', '');
+    setClientSearchText(client.displayName);
+    setProjectSearchText('');
+    setClientPickerOpen(false);
+  }
+
+  /** Search Projects in the New Payment Project picker and clear a stale selected Project while typing. */
+  function handleReceiptProjectSearch(value: string): void {
+    setProjectSearchText(value);
+    setProjectPickerOpen(true);
+    if (receiptProjectId) {
+      receiptForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+      receiptForm.setValue('stageId', '');
+      receiptForm.setValue('clientInvoiceId', '');
+    }
+  }
+
+  /** Select one Project and keep the receipt Client synchronized with the server-owned Project relationship. */
+  function handleReceiptProjectSelect(project: Project): void {
+    receiptForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('clientId', project.clientId, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('stageId', '');
+    receiptForm.setValue('clientInvoiceId', '');
+    setProjectSearchText(project.name);
+    const client = clients.find((item) => item.id === project.clientId)
+      ?? (quickCreatedClient?.id === project.clientId ? quickCreatedClient : null);
+    if (client) setClientSearchText(client.displayName);
+    setProjectPickerOpen(false);
+  }
+
+  /** Open the complete Client Management create form without losing the unfinished Client Receipt. */
+  function openQuickClientDialog(): void {
+    quickClientForm.reset({
+      legalName: '', displayName: '', taxNo: '', billingAddress: '', creditTermsDays: null,
+      contactName: '', contactTitle: '', contactEmail: '', contactPhone: '', contactIsPrimary: false
+    });
+    quickClientMutation.reset();
+    setClientPickerOpen(false);
+    setQuickDialog('client');
+  }
+
+  /** Open the complete Project Management create form with the currently selected Client preselected. */
+  function openQuickProjectDialog(): void {
+    if (!receiptClientId) return;
+    const selectedClient = clients.find((client) => client.id === receiptClientId)
+      ?? (quickCreatedClient?.id === receiptClientId ? quickCreatedClient : null);
+    quickProjectForm.reset({
+      name: '',
+      clientId: receiptClientId,
+      projectModel: 'FIXED_PRICE',
+      projectValue: '0.00',
+      costPlusPercent: '',
+      currency: 'PKR',
+      startDate: '',
+      plannedEndDate: '',
+      location: ''
+    });
+    setQuickProjectClientSearchText(selectedClient?.displayName ?? clientSearchText);
+    setQuickProjectClientPickerOpen(false);
+    quickProjectMutation.reset();
+    setProjectPickerOpen(false);
+    setQuickDialog('project');
+  }
+
+  /** Search active Clients inside the inline Project form without changing the unfinished receipt. */
+  function handleQuickProjectClientSearch(value: string): void {
+    setQuickProjectClientSearchText(value);
+    setQuickProjectClientPickerOpen(true);
+    if (quickProjectForm.getValues('clientId')) {
+      quickProjectForm.setValue('clientId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one Client for the inline Project form. */
+  function handleQuickProjectClientSelect(client: Readonly<{ id: string; code: string; displayName: string }>): void {
+    quickProjectForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    setQuickProjectClientSearchText(client.displayName);
+    setQuickProjectClientPickerOpen(false);
+  }
+
+  /** Create the normal full Client record and select it on the unfinished Client Receipt. */
+  async function submitQuickClient(values: QuickClientForm): Promise<void> {
+    const client = await quickClientMutation.mutateAsync({
+      legalName: values.legalName,
+      displayName: values.displayName,
+      taxNo: values.taxNo || null,
+      billingAddress: values.billingAddress,
+      creditTermsDays: values.creditTermsDays,
+      ...(values.contactName ? {
+        contact: {
+          name: values.contactName,
+          title: values.contactTitle || null,
+          email: values.contactEmail || null,
+          phone: values.contactPhone || null,
+          isPrimary: values.contactIsPrimary
+        }
+      } : {})
+    });
+    setQuickCreatedClient({ id: client.id, code: client.code, displayName: client.displayName });
+    receiptForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('projectId', '');
+    receiptForm.setValue('stageId', '');
+    receiptForm.setValue('clientInvoiceId', '');
+    setClientSearchText(client.displayName);
+    setProjectSearchText('');
+    setQuickDialog(null);
+  }
+
+  /** Create the normal complete DRAFT Project and select it on the unfinished Client Receipt. */
+  async function submitQuickProject(values: QuickProjectForm): Promise<void> {
+    const project = await quickProjectMutation.mutateAsync({
+      name: values.name,
+      clientId: values.clientId,
+      projectModel: values.projectModel,
+      projectValue: values.projectValue,
+      costPlusPercent: values.projectModel === 'COST_PLUS_PERCENTAGE' ? values.costPlusPercent : null,
+      currency: values.currency.toUpperCase(),
+      startDate: values.startDate,
+      plannedEndDate: values.plannedEndDate,
+      location: values.location || null
+    });
+    setQuickCreatedProject(project);
+    receiptForm.setValue('clientId', project.clientId, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+    receiptForm.setValue('stageId', '');
+    receiptForm.setValue('clientInvoiceId', '');
+    setClientSearchText(quickProjectClientSearchText);
+    setProjectSearchText(project.name);
+    setQuickProjectClientPickerOpen(false);
+    setQuickDialog(null);
+  }
+
+  /** Return from inline Client creation to the unfinished New Client Receipt. */
+  function closeQuickClientDialog(): void {
+    quickClientMutation.reset();
+    setQuickDialog(null);
+  }
+
+  /** Return from inline Project creation to the unfinished New Client Receipt. */
+  function closeQuickProjectDialog(): void {
+    quickProjectMutation.reset();
+    setQuickProjectClientPickerOpen(false);
+    setQuickDialog(null);
   }
 
   useEffect(() => {
@@ -234,6 +522,8 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
       clientInvoiceId: values.clientInvoiceId || null
     });
     receiptForm.reset(EMPTY_RECEIPT_FORM);
+    setClientSearchText('');
+    setProjectSearchText('');
     if (!receiptEvidence) {
       closeCreateReceiptModal();
       return;
@@ -418,7 +708,7 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
 
   return (
     <div className="admin-stack">
-      {props.canCreate && props.view !== 'ledger' && props.createModalOpen && (
+      {props.canCreate && props.view !== 'ledger' && props.createModalOpen && quickDialog === null && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateReceiptModal(); }}>
           <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="client-payment-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateReceiptModal(); }}>
             <header className="finance-modal-header">
@@ -433,22 +723,91 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
               <p className="client-payment-create-note">Receipt cash is posted immediately to Cash/Bank and Client Advance. It is not profit: this does not treat cash received as profit, and AR changes only when the receipt is allocated to an issued Client Invoice.</p>
               <form className="admin-form client-payment-create-form" onSubmit={receiptForm.handleSubmit(submitReceipt)}>
                 <div className="client-payment-create-grid">
-                  <label>Client
+                  <div className="project-client-field">
+                    <label htmlFor="client-payment-client-search">Client</label>
                     {props.canReadClients ? (
-                      <select {...receiptForm.register('clientId')}>
-                        <option value="">Select client</option>
-                        {clients.map((client) => <option key={client.id} value={client.id}>{client.code} · {client.displayName}</option>)}
-                      </select>
-                    ) : <><input type="hidden" {...receiptForm.register('clientId')} /><span className="muted">Derived from selected Project</span></>}
+                      <div className="project-client-search-row">
+                        <div className="project-client-combobox" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setClientPickerOpen(false); }}>
+                          <input
+                            id="client-payment-client-search"
+                            type="search"
+                            role="combobox"
+                            aria-autocomplete="list"
+                            aria-controls="client-payment-client-options"
+                            aria-expanded={clientPickerOpen}
+                            value={clientSearchText}
+                            onChange={(event) => handleReceiptClientSearch(event.target.value)}
+                            onFocus={() => setClientPickerOpen(true)}
+                            onClick={() => setClientPickerOpen(true)}
+                            onKeyDown={(event) => { if (event.key === 'Escape') setClientPickerOpen(false); }}
+                            placeholder="Search active clients by name or code"
+                            autoComplete="off"
+                          />
+                          {clientPickerOpen ? (
+                            <div id="client-payment-client-options" className="project-client-options" role="listbox" aria-label="Active clients">
+                              {clientOptionsQuery.isFetching ? <div className="project-client-option-state">Searching active clients…</div> : null}
+                              {!clientOptionsQuery.isFetching && quickClientMissing && quickCreatedClient ? (
+                                <button type="button" role="option" aria-selected={receiptClientId === quickCreatedClient.id} className="project-client-option" onClick={() => handleReceiptClientSelect(quickCreatedClient)}>
+                                  <strong>{quickCreatedClient.code}</strong><span>{quickCreatedClient.displayName}</span>
+                                </button>
+                              ) : null}
+                              {!clientOptionsQuery.isFetching ? clientOptions.map((client) => (
+                                <button type="button" role="option" aria-selected={receiptClientId === client.id} className="project-client-option" key={client.id} onClick={() => handleReceiptClientSelect(client)}>
+                                  <strong>{client.code}</strong><span>{client.displayName}</span>
+                                </button>
+                              )) : null}
+                              {!clientOptionsQuery.isFetching && clientOptions.length === 0 && !quickClientMissing ? <div className="project-client-option-state">No active clients match this search.</div> : null}
+                            </div>
+                          ) : null}
+                        </div>
+                        {props.canCreateClients ? <button type="button" className="secondary-button project-client-create-button" onClick={openQuickClientDialog}>+ Create client</button> : null}
+                      </div>
+                    ) : <span className="muted">Derived from selected Project</span>}
+                    <input type="hidden" {...receiptForm.register('clientId')} />
                     <span className="field-error">{receiptForm.formState.errors.clientId?.message}</span>
-                  </label>
-                  <label>Project
-                    <select {...receiptForm.register('projectId')}>
-                      <option value="">Select project</option>
-                      {projects.filter((project) => !receiptClientId || project.clientId === receiptClientId).map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
-                    </select>
+                  </div>
+                  <div className="project-client-field">
+                    <label htmlFor="client-payment-project-search">Project</label>
+                    <div className="project-client-search-row">
+                      <div className="project-client-combobox" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setProjectPickerOpen(false); }}>
+                        <input
+                          id="client-payment-project-search"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="client-payment-project-options"
+                          aria-expanded={projectPickerOpen}
+                          value={projectSearchText}
+                          onChange={(event) => handleReceiptProjectSearch(event.target.value)}
+                          onFocus={() => setProjectPickerOpen(true)}
+                          onClick={() => setProjectPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setProjectPickerOpen(false); }}
+                          placeholder={props.canReadClients && !receiptClientId ? 'Select a Client first' : 'Search projects by code or name'}
+                          autoComplete="off"
+                          disabled={props.canReadClients && !receiptClientId}
+                        />
+                        {projectPickerOpen && (!props.canReadClients || receiptClientId) ? (
+                          <div id="client-payment-project-options" className="project-client-options" role="listbox" aria-label="Projects">
+                            {projectOptionsQuery.isFetching ? <div className="project-client-option-state">Searching projects…</div> : null}
+                            {!projectOptionsQuery.isFetching && quickProjectMissing && quickCreatedProject ? (
+                              <button type="button" role="option" aria-selected={receiptProjectId === quickCreatedProject.id} className="project-client-option" onClick={() => handleReceiptProjectSelect(quickCreatedProject)}>
+                                <strong>{quickCreatedProject.projectCode}</strong><span>{quickCreatedProject.name}</span>
+                              </button>
+                            ) : null}
+                            {!projectOptionsQuery.isFetching ? projectOptions.map((project) => (
+                              <button type="button" role="option" aria-selected={receiptProjectId === project.id} className="project-client-option" key={project.id} onClick={() => handleReceiptProjectSelect(project)}>
+                                <strong>{project.projectCode}</strong><span>{project.name}</span>
+                              </button>
+                            )) : null}
+                            {!projectOptionsQuery.isFetching && projectOptions.length === 0 && !quickProjectMissing ? <div className="project-client-option-state">No Projects match this search.</div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                      {props.canCreateProjects && props.canReadClients ? <button type="button" className="secondary-button project-client-create-button" disabled={!receiptClientId} title={!receiptClientId ? 'Select a Client first.' : 'Create a Project for this Client'} onClick={openQuickProjectDialog}>+ Create project</button> : null}
+                    </div>
+                    <input type="hidden" {...receiptForm.register('projectId')} />
                     <span className="field-error">{receiptForm.formState.errors.projectId?.message}</span>
-                  </label>
+                  </div>
                   <label>Stage (optional)
                     <select {...receiptForm.register('stageId')} disabled={!receiptProjectId || !props.canReadStages}>
                       <option value="">Project level</option>
@@ -495,6 +854,113 @@ export function ClientReceiptsWorkspace(props: ClientReceiptsWorkspaceProps) {
           </section>
         </div>
       )}
+
+      {props.canCreate && props.createModalOpen && quickDialog === 'client' ? (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={closeQuickClientDialog}>
+          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="client-payment-quick-client-title" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Escape') closeQuickClientDialog(); }}>
+            <header className="client-modal-header">
+              <div><p className="eyebrow">New client account</p><h2 id="client-payment-quick-client-title">Create client</h2></div>
+              <button type="button" className="client-modal-close" aria-label="Close Create client" onClick={closeQuickClientDialog}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={quickClientForm.handleSubmit(submitQuickClient)} noValidate>
+                <div className="client-form-grid">
+                  <label>Display name<input autoFocus {...quickClientForm.register('displayName')} /></label>
+                  <label>Legal name<input {...quickClientForm.register('legalName')} /></label>
+                  <label>Tax number<input {...quickClientForm.register('taxNo')} /></label>
+                  <label>Credit terms (days)<input type="number" min="0" {...quickClientForm.register('creditTermsDays', { setValueAs: (value) => value === '' ? null : Number(value) })} /></label>
+                  <label className="client-form-wide">Billing address<textarea rows={3} {...quickClientForm.register('billingAddress')} /></label>
+                  <div className="client-form-wide client-create-contact-heading"><strong>Primary contact (optional)</strong><span className="muted">The client code is generated automatically by the server.</span></div>
+                  <label>Contact name<input {...quickClientForm.register('contactName')} /></label>
+                  <label>Contact title<input {...quickClientForm.register('contactTitle')} /></label>
+                  <label>Contact email<input type="email" {...quickClientForm.register('contactEmail')} /></label>
+                  <label>Contact phone<input {...quickClientForm.register('contactPhone')} /></label>
+                  <label className="checkbox-row client-form-wide"><input type="checkbox" {...quickClientForm.register('contactIsPrimary')} /><span>Primary contact</span></label>
+                </div>
+                {Object.values(quickClientForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+                {mutationMessage(quickClientMutation.error) ? <div className="form-error" role="alert">{mutationMessage(quickClientMutation.error)}</div> : null}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" disabled={quickClientMutation.isPending} onClick={closeQuickClientDialog}>Cancel</button>
+                  <button type="submit" disabled={quickClientMutation.isPending}>{quickClientMutation.isPending ? 'Creating…' : 'Create client'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      {props.canCreate && props.createModalOpen && quickDialog === 'project' ? (
+        <div className="project-modal-backdrop" role="presentation" onMouseDown={closeQuickProjectDialog}>
+          <section className="project-modal" role="dialog" aria-modal="true" aria-labelledby="client-payment-quick-project-title" onMouseDown={(event) => event.stopPropagation()} onKeyDown={(event) => { if (event.key === 'Escape') closeQuickProjectDialog(); }}>
+            <header className="project-modal-header">
+              <div><p className="eyebrow">New project</p><h2 id="client-payment-quick-project-title">Create project</h2></div>
+              <button type="button" className="project-modal-close" aria-label="Close Create project" onClick={closeQuickProjectDialog}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="project-modal-body">
+              <form className="admin-form project-modal-form" onSubmit={quickProjectForm.handleSubmit(submitQuickProject)} noValidate>
+                <div className="project-form-grid project-modal-grid">
+                  <label>Project name<input autoFocus {...quickProjectForm.register('name')} /></label>
+                  <div className="project-client-field">
+                    <label htmlFor="client-payment-quick-project-client-search">Client</label>
+                    <div className="project-client-search-row">
+                      <div className="project-client-combobox" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setQuickProjectClientPickerOpen(false); }}>
+                        <input
+                          id="client-payment-quick-project-client-search"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="client-payment-quick-project-client-options"
+                          aria-expanded={quickProjectClientPickerOpen}
+                          value={quickProjectClientSearchText}
+                          onChange={(event) => handleQuickProjectClientSearch(event.target.value)}
+                          onFocus={() => setQuickProjectClientPickerOpen(true)}
+                          onClick={() => setQuickProjectClientPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setQuickProjectClientPickerOpen(false); }}
+                          placeholder="Search active clients by name or code"
+                          autoComplete="off"
+                        />
+                        {quickProjectClientPickerOpen ? (
+                          <div id="client-payment-quick-project-client-options" className="project-client-options" role="listbox" aria-label="Active clients">
+                            {quickProjectClientOptionsQuery.isFetching ? <div className="project-client-option-state">Searching active clients…</div> : null}
+                            {!quickProjectClientOptionsQuery.isFetching && quickProjectCreatedClientMissing && quickCreatedClient ? (
+                              <button type="button" role="option" aria-selected={quickProjectClientId === quickCreatedClient.id} className="project-client-option" onClick={() => handleQuickProjectClientSelect(quickCreatedClient)}>
+                                <strong>{quickCreatedClient.code}</strong><span>{quickCreatedClient.displayName}</span>
+                              </button>
+                            ) : null}
+                            {!quickProjectClientOptionsQuery.isFetching ? quickProjectClientOptions.map((client) => (
+                              <button type="button" role="option" aria-selected={quickProjectClientId === client.id} className="project-client-option" key={client.id} onClick={() => handleQuickProjectClientSelect(client)}>
+                                <strong>{client.code}</strong><span>{client.displayName}</span>
+                              </button>
+                            )) : null}
+                            {!quickProjectClientOptionsQuery.isFetching && quickProjectClientOptions.length === 0 && !quickProjectCreatedClientMissing ? <div className="project-client-option-state">No active clients match this search.</div> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                    <input type="hidden" {...quickProjectForm.register('clientId')} />
+                    {quickProjectForm.formState.errors.clientId?.message ? <span className="field-error">{quickProjectForm.formState.errors.clientId.message}</span> : null}
+                    {quickProjectClientOptionsQuery.error instanceof Error ? <span className="field-error">{quickProjectClientOptionsQuery.error.message}</span> : null}
+                  </div>
+                  <label>Commercial model<select {...quickProjectForm.register('projectModel')}><option value="FIXED_PRICE">Fixed Price</option><option value="COST_PLUS_PERCENTAGE">Cost + Percentage</option></select></label>
+                  <label>Project value<input inputMode="decimal" {...quickProjectForm.register('projectValue')} /></label>
+                  {quickProjectModel === 'COST_PLUS_PERCENTAGE' ? <label>Cost + percent<input inputMode="decimal" {...quickProjectForm.register('costPlusPercent')} /></label> : null}
+                  <label>Currency<input maxLength={3} {...quickProjectForm.register('currency')} /></label>
+                  <label>Start date<input type="date" {...quickProjectForm.register('startDate')} /></label>
+                  <label>Planned end date<input type="date" {...quickProjectForm.register('plannedEndDate')} /></label>
+                  <label className="project-form-wide">Location (optional)<input {...quickProjectForm.register('location')} /></label>
+                </div>
+                <p className="muted project-edit-note">Create the Project first. Assign its Site Manager afterward from Administration → Users.</p>
+                {Object.values(quickProjectForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+                {mutationMessage(quickProjectMutation.error) ? <div className="form-error" role="alert">{mutationMessage(quickProjectMutation.error)}</div> : null}
+                <div className="project-modal-actions">
+                  <button type="button" className="secondary-button" disabled={quickProjectMutation.isPending} onClick={closeQuickProjectDialog}>Cancel</button>
+                  <button type="submit" disabled={quickProjectMutation.isPending}>{quickProjectMutation.isPending ? 'Creating…' : 'Create Project'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       <section className="admin-card">
         <div className="section-heading compact-heading"><h2>Client Receipt register</h2><span className="muted">Total {receiptQuery.data?.total ?? 0} · Page {receiptQuery.data?.page ?? 1} · Page size {receiptQuery.data?.pageSize ?? 100}</span></div>

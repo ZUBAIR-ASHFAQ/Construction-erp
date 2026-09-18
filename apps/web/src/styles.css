@@ -5686,7 +5686,7 @@ body,
   background: #fafbfc;
 }
 
-.admin-content button:not(.nav-button):not(.link-button):not(.danger-button):not(.secondary-button),
+.admin-content button:not(.nav-button):not(.link-button):not(.danger-button):not(.secondary-button):not(.project-client-option),
 .client-primary-action,
 .project-primary-action {
   min-height: 38px;
@@ -5697,7 +5697,7 @@ body,
   box-shadow: 0 1px 2px rgb(37 99 235 / 18%);
 }
 
-.admin-content button:not(.nav-button):not(.link-button):not(.danger-button):not(.secondary-button):hover:not(:disabled),
+.admin-content button:not(.nav-button):not(.link-button):not(.danger-button):not(.secondary-button):not(.project-client-option):hover:not(:disabled),
 .client-primary-action:hover,
 .project-primary-action:hover {
   background: var(--elite-primary-2);
@@ -6095,6 +6095,60 @@ body,
   min-width: 0;
 }
 
+.supplier-invoice-vendor-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+
+.supplier-invoice-vendor-field > label {
+  font-weight: 600;
+}
+
+.supplier-invoice-vendor-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.supplier-invoice-vendor-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.supplier-invoice-create-vendor-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
+.supplier-invoice-project-field {
+  display: grid;
+  min-width: 0;
+  gap: 0.4rem;
+}
+
+.supplier-invoice-project-field > label {
+  font-weight: 600;
+}
+
+.supplier-invoice-project-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.supplier-invoice-project-row select {
+  width: 100%;
+  min-width: 0;
+}
+
+.supplier-invoice-create-project-button {
+  min-height: 42px;
+  white-space: nowrap;
+}
+
 .client-payment-create-help {
   margin: 1rem 0 0;
 }
@@ -6119,6 +6173,22 @@ body,
 
   .client-payment-create-grid {
     grid-template-columns: 1fr;
+  }
+
+  .supplier-invoice-vendor-row {
+    grid-template-columns: 1fr;
+  }
+
+  .supplier-invoice-create-vendor-button {
+    width: 100%;
+  }
+
+  .supplier-invoice-project-row {
+    grid-template-columns: 1fr;
+  }
+
+  .supplier-invoice-create-project-button {
+    width: 100%;
   }
 }
 

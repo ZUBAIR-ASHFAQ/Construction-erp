@@ -38,18 +38,29 @@ test('Employee picker keeps Add employee beside the single searchable field', ()
   assert.match(styles, /\.project-team-employee-options \{[\s\S]*position: absolute;/);
 });
 
-test('Project Team quick add creates a minimal Employee and auto-selects it for assignment', () => {
+test('Project Team Add employee reuses the full Employee master form and auto-selects the created Employee', () => {
   const workspace = read('apps/web/src/features/project-team/components/project-team-workspace.tsx');
+  const employeePage = read('apps/web/src/features/employees/pages/employees-page.tsx');
   const employeeHooks = read('apps/web/src/features/employees/hooks/employees.ts');
+  const employeeSchema = read('apps/api/src/modules/employees/employees.schema.ts');
   const employeeService = read('apps/api/src/modules/employees/employees.service.ts');
 
   assert.match(workspace, /useCreateEmployee\(\)/);
-  assert.match(workspace, /<label>Name<input autoFocus/);
-  assert.match(workspace, /<label>Phone<input inputMode="tel"/);
-  assert.match(workspace, /jobTitle: projectRole \|\| 'Employee'/);
-  assert.match(workspace, /joiningDate: assignmentStart \|\| localToday\(\)/);
+  assert.match(workspace, /finance-modal employee-create-modal/);
+  assert.match(workspace, /className="employee-create-grid"/);
+  for (const field of ['name', 'cnicOrId', 'phone', 'email', 'jobTitle', 'joiningDate', 'employmentEndDate']) {
+    assert.ok(workspace.includes(`quickEmployeeForm.register('${field}')`));
+    assert.ok(employeePage.includes(`createForm.register('${field}')`));
+  }
+  assert.match(workspace, /cnicOrId: values\.cnicOrId \|\| null/);
+  assert.match(workspace, /phone: values\.phone \|\| null/);
+  assert.match(workspace, /email: values\.email \|\| null/);
+  assert.match(workspace, /jobTitle: values\.jobTitle/);
+  assert.match(workspace, /joiningDate: values\.joiningDate/);
+  assert.match(workspace, /employmentEndDate: values\.employmentEndDate \|\| null/);
   assert.match(workspace, /createForm\.setValue\('employeeId', employee\.id/);
   assert.match(workspace, /Create & select Employee/);
+  assert.match(employeeSchema, /createEmployeeBodySchema[\s\S]*cnicOrId:[\s\S]*phone:[\s\S]*email:[\s\S]*jobTitle:[\s\S]*joiningDate:[\s\S]*employmentEndDate:/);
   assert.match(employeeHooks, /invalidateQueries\(\{ queryKey: EMPLOYEES_QUERY_KEY \}\)/);
   assert.match(employeeService, /allocateCompanyNumber\(tx, \{ sequenceKey: EMPLOYEE_SEQUENCE_KEY \}\)/);
 });

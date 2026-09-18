@@ -5,10 +5,11 @@ import { z } from 'zod';
 import { getDocumentDownload, listDocuments } from '../../documents-audit/api/documents-api.js';
 import { PaymentProofActions, savePaymentProof } from '../../documents-audit/components/payment-proof-actions.js';
 import { useCreateDocumentLink, useUploadDocument } from '../../documents-audit/hooks/documents.js';
+import { useClients, useCreateClient } from '../../clients/hooks/clients.js';
 import { useCashBankAccounts } from '../../finance/hooks/finance.js';
 import { useProcurementPurchaseOrders } from '../../procurement/hooks/procurement.js';
-import { useProjects } from '../../projects/hooks/projects.js';
-import { useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
+import { useCreateProject, useProjects } from '../../projects/hooks/projects.js';
+import { useCreateVendor, useVendors } from '../../vendors-subcontractors/hooks/vendors-subcontractors.js';
 import type { SupplierInvoice, SupplierPayment } from '../api/supplier-payables-api.js';
 import {
   useAllocateSupplierPayment,
@@ -70,10 +71,69 @@ const allocationFormSchema = z.object({
   amount: positiveMoneySchema
 });
 
+const supplierCreateSchema = z.object({
+  projectId: uuidSchema,
+  code: z.string().trim().min(1, 'Supplier code is required.').max(100),
+  legalName: z.string().trim().min(1, 'Legal name is required.').max(300),
+  displayName: z.string().trim().min(1, 'Display name is required.').max(300),
+  taxNo: z.string().trim().max(100),
+  paymentTermsDays: z.number().int().min(0).nullable(),
+  currency: z.string().trim().max(3),
+  qualificationStatus: z.enum(['QUALIFIED', 'PENDING']).nullable()
+});
+
+const projectCreateSchema = z.object({
+  name: z.string().trim().min(1, 'Project name is required.').max(300),
+  clientId: z.string().uuid('Select or enter a valid Client ID.'),
+  projectModel: z.enum(['FIXED_PRICE', 'COST_PLUS_PERCENTAGE']),
+  projectValue: nonNegativeMoneySchema,
+  costPlusPercent: z.string().trim(),
+  currency: z.string().trim().length(3, 'Currency must use three letters.').regex(/^[A-Za-z]{3}$/, 'Currency must use letters only.'),
+  startDate: dateSchema,
+  plannedEndDate: dateSchema,
+  location: z.string().trim().max(1000, 'Location is too long.')
+}).superRefine((value, context) => {
+  if (value.plannedEndDate < value.startDate) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['plannedEndDate'], message: 'Planned end date cannot be before the start date.' });
+  }
+  if (value.projectModel === 'COST_PLUS_PERCENTAGE') {
+    const validPercent = /^(?:0|[1-9]\d{0,2}|100)(?:\.\d{1,4})?$/.test(value.costPlusPercent);
+    const percent = Number(value.costPlusPercent);
+    if (!validPercent || percent <= 0 || percent > 100) {
+      context.addIssue({ code: z.ZodIssueCode.custom, path: ['costPlusPercent'], message: 'Cost + Percentage requires a percent greater than 0 and at most 100.' });
+    }
+  } else if (value.costPlusPercent) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ['costPlusPercent'], message: 'Leave Cost + Percentage empty for a Fixed Price Project.' });
+  }
+});
+
+const quickClientSchema = z.object({
+  legalName: z.string().trim().min(1, 'Legal name is required.').max(240),
+  displayName: z.string().trim().min(1, 'Display name is required.').max(240),
+  taxNo: z.string().trim().max(100),
+  billingAddress: z.string().trim().min(1, 'Billing address is required.').max(1000),
+  creditTermsDays: z.number().int().min(0, 'Credit terms cannot be negative.').nullable(),
+  contactName: z.string().trim().max(200),
+  contactTitle: z.string().trim().max(160),
+  contactEmail: z.union([z.literal(''), z.string().trim().email('Enter a valid contact email address.')]),
+  contactPhone: z.union([z.literal(''), z.string().trim().min(7, 'Contact phone must contain at least 7 characters.').max(50)]),
+  contactIsPrimary: z.boolean()
+}).refine((value) => {
+  const hasContactDetails = Boolean(value.contactTitle || value.contactEmail || value.contactPhone || value.contactIsPrimary);
+  return !hasContactDetails || Boolean(value.contactName);
+}, {
+  path: ['contactName'],
+  message: 'Contact name is required when contact details are provided.'
+});
+
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 type AllocationFormValues = z.infer<typeof allocationFormSchema>;
+type SupplierCreateValues = z.infer<typeof supplierCreateSchema>;
+type ProjectCreateValues = z.infer<typeof projectCreateSchema>;
+type QuickClientValues = z.infer<typeof quickClientSchema>;
 type WorkspaceTab = 'invoices' | 'payments' | 'aging';
+type QuickCreateTarget = 'invoice' | 'payment';
 
 type SupplierPayablesWorkspaceProps = Readonly<{
   initialTab?: WorkspaceTab;
@@ -89,8 +149,12 @@ type SupplierPayablesWorkspaceProps = Readonly<{
   onCloseCreatePaymentModal: () => void;
   canAllocatePayment: boolean;
   canReadProjects: boolean;
+  canCreateProjects: boolean;
+  canReadClients: boolean;
+  canCreateClients: boolean;
   canReadStages: boolean;
   canReadVendors: boolean;
+  canCreateVendors: boolean;
   canReadProcurement: boolean;
   canReadFinance: boolean;
   canUploadDocuments: boolean;
@@ -109,6 +173,42 @@ const EMPTY_INVOICE_FORM: InvoiceFormValues = {
   goodsReceiptId: '',
   taxAmount: '0.00',
   lines: [{ stageId: '', description: '', amount: '', expenseOrInventoryAccountId: '' }]
+};
+
+const EMPTY_SUPPLIER_FORM: SupplierCreateValues = {
+  projectId: '',
+  code: '',
+  legalName: '',
+  displayName: '',
+  taxNo: '',
+  paymentTermsDays: null,
+  currency: '',
+  qualificationStatus: null
+};
+
+const EMPTY_PROJECT_FORM: ProjectCreateValues = {
+  name: '',
+  clientId: '',
+  projectModel: 'FIXED_PRICE',
+  projectValue: '0.00',
+  costPlusPercent: '',
+  currency: 'PKR',
+  startDate: '',
+  plannedEndDate: '',
+  location: ''
+};
+
+const EMPTY_QUICK_CLIENT_FORM: QuickClientValues = {
+  legalName: '',
+  displayName: '',
+  taxNo: '',
+  billingAddress: '',
+  creditTermsDays: null,
+  contactName: '',
+  contactTitle: '',
+  contactEmail: '',
+  contactPhone: '',
+  contactIsPrimary: false
 };
 
 const EMPTY_PAYMENT_FORM: PaymentFormValues = {
@@ -155,6 +255,23 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const [paymentProof, setPaymentProof] = useState<File | null>(null);
   const [paymentProofInputKey, setPaymentProofInputKey] = useState(0);
   const [paymentProofMessage, setPaymentProofMessage] = useState<string | null>(null);
+  const [createSupplierOpen, setCreateSupplierOpen] = useState(false);
+  const [createProjectOpen, setCreateProjectOpen] = useState(false);
+  const [createClientOpen, setCreateClientOpen] = useState(false);
+  const [quickCreateTarget, setQuickCreateTarget] = useState<QuickCreateTarget>('invoice');
+  const [invoiceVendorSearchText, setInvoiceVendorSearchText] = useState('');
+  const [invoiceVendorPickerOpen, setInvoiceVendorPickerOpen] = useState(false);
+  const [invoiceProjectSearchText, setInvoiceProjectSearchText] = useState('');
+  const [invoiceProjectPickerOpen, setInvoiceProjectPickerOpen] = useState(false);
+  const [paymentVendorSearchText, setPaymentVendorSearchText] = useState('');
+  const [paymentVendorPickerOpen, setPaymentVendorPickerOpen] = useState(false);
+  const [paymentProjectSearchText, setPaymentProjectSearchText] = useState('');
+  const [paymentProjectPickerOpen, setPaymentProjectPickerOpen] = useState(false);
+  const [quickCreatedVendor, setQuickCreatedVendor] = useState<Readonly<{ id: string; code: string; displayName: string }> | null>(null);
+  const [quickCreatedProject, setQuickCreatedProject] = useState<Readonly<{ id: string; projectCode: string; name: string }> | null>(null);
+  const [clientSearchText, setClientSearchText] = useState('');
+  const [clientPickerOpen, setClientPickerOpen] = useState(false);
+  const [quickCreatedClient, setQuickCreatedClient] = useState<Readonly<{ id: string; code: string; displayName: string }> | null>(null);
 
   const projectsQuery = useProjects({ page: 1, pageSize: 100 }, props.canReadProjects);
   const vendorsQuery = useVendors({ ...(tab === 'aging' ? {} : { status: 'ACTIVE' as const }), page: 1, pageSize: 100 }, props.canReadVendors);
@@ -162,8 +279,62 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
   const vendors = vendorsQuery.data?.items ?? [];
   const vendorNames = useMemo(() => new Map(vendors.map((vendor) => [vendor.id, vendor.displayName])), [vendors]);
   const projectNames = useMemo(() => new Map(projects.map((project) => [project.id, project.name])), [projects]);
+  const invoiceVendorOptionsQuery = useVendors({
+    status: 'ACTIVE',
+    ...(invoiceVendorSearchText.trim() ? { search: invoiceVendorSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadVendors && tab === 'invoices');
+  const invoiceProjectOptionsQuery = useProjects({
+    ...(invoiceProjectSearchText.trim() ? { search: invoiceProjectSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadProjects && tab === 'invoices');
+  const invoiceVendorOptions = invoiceVendorOptionsQuery.data?.items ?? [];
+  const invoiceProjectOptions = invoiceProjectOptionsQuery.data?.items ?? [];
+  const paymentVendorOptionsQuery = useVendors({
+    status: 'ACTIVE',
+    ...(paymentVendorSearchText.trim() ? { search: paymentVendorSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadVendors && tab === 'payments');
+  const paymentProjectOptionsQuery = useProjects({
+    ...(paymentProjectSearchText.trim() ? { search: paymentProjectSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadProjects && tab === 'payments');
+  const paymentVendorOptions = paymentVendorOptionsQuery.data?.items ?? [];
+  const paymentProjectOptions = paymentProjectOptionsQuery.data?.items ?? [];
+  const quickCreatedVendorMissing = quickCreatedVendor !== null
+    && !invoiceVendorOptions.some((vendor) => vendor.id === quickCreatedVendor.id)
+    && (!invoiceVendorSearchText.trim() || `${quickCreatedVendor.code} ${quickCreatedVendor.displayName}`.toLowerCase().includes(invoiceVendorSearchText.trim().toLowerCase()));
+  const quickCreatedProjectMissing = quickCreatedProject !== null
+    && !invoiceProjectOptions.some((project) => project.id === quickCreatedProject.id)
+    && (!invoiceProjectSearchText.trim() || `${quickCreatedProject.projectCode} ${quickCreatedProject.name}`.toLowerCase().includes(invoiceProjectSearchText.trim().toLowerCase()));
+  const quickCreatedPaymentVendorMissing = quickCreatedVendor !== null
+    && !paymentVendorOptions.some((vendor) => vendor.id === quickCreatedVendor.id)
+    && (!paymentVendorSearchText.trim() || `${quickCreatedVendor.code} ${quickCreatedVendor.displayName}`.toLowerCase().includes(paymentVendorSearchText.trim().toLowerCase()));
+  const quickCreatedPaymentProjectMissing = quickCreatedProject !== null
+    && !paymentProjectOptions.some((project) => project.id === quickCreatedProject.id)
+    && (!paymentProjectSearchText.trim() || `${quickCreatedProject.projectCode} ${quickCreatedProject.name}`.toLowerCase().includes(paymentProjectSearchText.trim().toLowerCase()));
 
   const invoiceForm = useForm<InvoiceFormValues>({ resolver: zodResolver(invoiceFormSchema), defaultValues: EMPTY_INVOICE_FORM });
+  const supplierForm = useForm<SupplierCreateValues>({ resolver: zodResolver(supplierCreateSchema), defaultValues: EMPTY_SUPPLIER_FORM });
+  const projectForm = useForm<ProjectCreateValues>({ resolver: zodResolver(projectCreateSchema), defaultValues: EMPTY_PROJECT_FORM });
+  const quickClientForm = useForm<QuickClientValues>({ resolver: zodResolver(quickClientSchema), defaultValues: EMPTY_QUICK_CLIENT_FORM });
+  const createVendor = useCreateVendor();
+  const createProject = useCreateProject();
+  const createClient = useCreateClient();
+  const selectedProjectModel = projectForm.watch('projectModel');
+  const selectedClientId = projectForm.watch('clientId');
+  const clientOptionsQuery = useClients({
+    status: 'ACTIVE',
+    ...(clientSearchText.trim() ? { search: clientSearchText.trim() } : {}),
+    page: 1,
+    pageSize: 100
+  }, props.canReadClients && createProjectOpen);
+  const clientOptions = clientOptionsQuery.data?.items ?? [];
+  const quickCreatedClientMissing = quickCreatedClient !== null && !clientOptions.some((client) => client.id === quickCreatedClient.id);
   const invoiceLines = useFieldArray({ control: invoiceForm.control, name: 'lines' });
   const watchedInvoiceProjectId = invoiceForm.watch('projectId');
   const watchedInvoiceVendorId = invoiceForm.watch('vendorId');
@@ -263,8 +434,108 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     allocationInvoiceOptions.find((invoice) => invoice.id === watchedAllocationInvoiceId) ?? null
   ), [allocationInvoiceOptions, watchedAllocationInvoiceId]);
 
+  /** Search active Suppliers in the single invoice Supplier picker and clear a stale selection while typing. */
+  function handleInvoiceVendorSearch(value: string): void {
+    setInvoiceVendorSearchText(value);
+    setInvoiceVendorPickerOpen(true);
+    if (invoiceForm.getValues('vendorId')) {
+      invoiceForm.setValue('vendorId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one active Supplier from the searchable invoice picker. */
+  function handleInvoiceVendorSelect(vendor: Readonly<{ id: string; displayName: string }>): void {
+    invoiceForm.setValue('vendorId', vendor.id, { shouldDirty: true, shouldValidate: true });
+    setInvoiceVendorSearchText(vendor.displayName);
+    setInvoiceVendorPickerOpen(false);
+  }
+
+  /** Search Projects in the single invoice Project picker and clear a stale selection while typing. */
+  function handleInvoiceProjectSearch(value: string): void {
+    setInvoiceProjectSearchText(value);
+    setInvoiceProjectPickerOpen(true);
+    if (invoiceForm.getValues('projectId')) {
+      invoiceForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one allowed Project from the searchable invoice picker. */
+  function handleInvoiceProjectSelect(project: Readonly<{ id: string; name: string }>): void {
+    invoiceForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+    setInvoiceProjectSearchText(project.name);
+    setInvoiceProjectPickerOpen(false);
+  }
+
+  /** Search active Suppliers in the single payment Supplier picker and clear dependent payment selections while typing. */
+  function handlePaymentVendorSearch(value: string): void {
+    setPaymentVendorSearchText(value);
+    setPaymentVendorPickerOpen(true);
+    if (paymentForm.getValues('vendorId')) {
+      paymentForm.setValue('vendorId', '', { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+      setPaymentProjectSearchText('');
+      setPaymentProjectPickerOpen(false);
+    }
+  }
+
+  /** Select one active Supplier for a new payment while preserving the existing dependent-field reset behavior. */
+  function handlePaymentVendorSelect(vendor: Readonly<{ id: string; displayName: string }>): void {
+    paymentForm.setValue('vendorId', vendor.id, { shouldDirty: true, shouldValidate: true });
+    paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+    paymentForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+    setPaymentVendorSearchText(vendor.displayName);
+    setPaymentVendorPickerOpen(false);
+    setPaymentProjectSearchText('');
+    setPaymentProjectPickerOpen(false);
+  }
+
+  /** Search Projects in the optional payment Project picker and clear a stale invoice allocation while typing. */
+  function handlePaymentProjectSearch(value: string): void {
+    setPaymentProjectSearchText(value);
+    setPaymentProjectPickerOpen(true);
+    if (paymentForm.getValues('projectId')) {
+      paymentForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one allowed Project for a new Supplier payment. */
+  function handlePaymentProjectSelect(project: Readonly<{ id: string; name: string }>): void {
+    paymentForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+    paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+    setPaymentProjectSearchText(project.name);
+    setPaymentProjectPickerOpen(false);
+  }
+
+  /** Restore the existing company-level direct-payment option in the searchable Project picker. */
+  function clearPaymentProject(): void {
+    paymentForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+    paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+    setPaymentProjectSearchText('');
+    setPaymentProjectPickerOpen(false);
+  }
+
   /** Close the Supplier Invoice dialog and discard only its browser-side draft state. */
   function closeCreateInvoiceModal(): void {
+    setCreateSupplierOpen(false);
+    setCreateProjectOpen(false);
+    setCreateClientOpen(false);
+    setInvoiceVendorPickerOpen(false);
+    setInvoiceProjectPickerOpen(false);
+    setInvoiceVendorSearchText('');
+    setInvoiceProjectSearchText('');
+    setQuickCreatedVendor(null);
+    setQuickCreatedProject(null);
+    setClientPickerOpen(false);
+    setClientSearchText('');
+    setQuickCreatedClient(null);
+    supplierForm.reset(EMPTY_SUPPLIER_FORM);
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    createVendor.reset();
+    createProject.reset();
+    createClient.reset();
     invoiceForm.reset(EMPTY_INVOICE_FORM);
     setInvoiceImage(null);
     setInvoiceImageInputKey((value) => value + 1);
@@ -276,8 +547,216 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
     props.onCloseCreateInvoiceModal();
   }
 
+  /** Open Supplier master creation without discarding the in-progress invoice. */
+  function openCreateSupplierModal(): void {
+    setQuickCreateTarget('invoice');
+    createVendor.reset();
+    supplierForm.reset({ ...EMPTY_SUPPLIER_FORM, projectId: invoiceForm.getValues('projectId') });
+    setInvoiceVendorPickerOpen(false);
+    setCreateSupplierOpen(true);
+  }
+
+  /** Open Supplier master creation from Supplier Payment without discarding the payment draft. */
+  function openCreatePaymentSupplierModal(): void {
+    setQuickCreateTarget('payment');
+    createVendor.reset();
+    supplierForm.reset({ ...EMPTY_SUPPLIER_FORM, projectId: paymentForm.getValues('projectId') });
+    setPaymentVendorPickerOpen(false);
+    setCreateSupplierOpen(true);
+  }
+
+  /** Return from quick Supplier creation to the unchanged invoice draft. */
+  function closeCreateSupplierModal(): void {
+    createVendor.reset();
+    supplierForm.reset(EMPTY_SUPPLIER_FORM);
+    setCreateSupplierOpen(false);
+  }
+
+  /** Create a normal Supplier master and immediately select it on this invoice. */
+  async function submitSupplier(values: SupplierCreateValues): Promise<void> {
+    const supplier = await createVendor.mutateAsync({
+      projectId: values.projectId,
+      code: values.code,
+      legalName: values.legalName,
+      displayName: values.displayName,
+      taxNo: values.taxNo || null,
+      paymentTermsDays: values.paymentTermsDays,
+      currency: values.currency ? values.currency.toUpperCase() : null,
+      qualificationStatus: values.qualificationStatus
+    });
+    setQuickCreatedVendor({ id: supplier.id, code: supplier.code, displayName: supplier.displayName });
+    if (quickCreateTarget === 'payment') {
+      paymentForm.setValue('vendorId', supplier.id, { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('projectId', '', { shouldDirty: true, shouldValidate: true });
+      setPaymentVendorSearchText(supplier.displayName);
+      setPaymentVendorPickerOpen(false);
+      setPaymentProjectSearchText('');
+      setPaymentProjectPickerOpen(false);
+    } else {
+      invoiceForm.setValue('vendorId', supplier.id, { shouldDirty: true, shouldValidate: true });
+      setInvoiceVendorSearchText(supplier.displayName);
+      setInvoiceVendorPickerOpen(false);
+    }
+    supplierForm.reset(EMPTY_SUPPLIER_FORM);
+    setCreateSupplierOpen(false);
+  }
+
+  /** Open Project creation without discarding the in-progress Supplier Invoice. */
+  function openCreateProjectModal(): void {
+    setQuickCreateTarget('invoice');
+    createProject.reset();
+    createClient.reset();
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setInvoiceProjectPickerOpen(false);
+    setClientSearchText('');
+    setClientPickerOpen(false);
+    setQuickCreatedClient(null);
+    setCreateClientOpen(false);
+    setCreateProjectOpen(true);
+  }
+
+  /** Open Project creation from Supplier Payment without discarding the payment draft. */
+  function openCreatePaymentProjectModal(): void {
+    setQuickCreateTarget('payment');
+    createProject.reset();
+    createClient.reset();
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setPaymentProjectPickerOpen(false);
+    setClientSearchText('');
+    setClientPickerOpen(false);
+    setQuickCreatedClient(null);
+    setCreateClientOpen(false);
+    setCreateProjectOpen(true);
+  }
+
+  /** Return from Project creation to the unchanged Supplier Invoice or Payment draft. */
+  function closeCreateProjectModal(): void {
+    createProject.reset();
+    createClient.reset();
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setClientSearchText('');
+    setClientPickerOpen(false);
+    setQuickCreatedClient(null);
+    setCreateClientOpen(false);
+    setCreateProjectOpen(false);
+  }
+
+  /** Filter active Clients in the same single-field picker used by Project Management. */
+  function handleClientSearch(value: string): void {
+    setClientSearchText(value);
+    setClientPickerOpen(true);
+    if (projectForm.getValues('clientId')) {
+      projectForm.setValue('clientId', '', { shouldDirty: true, shouldValidate: true });
+    }
+  }
+
+  /** Select one active Client for the quick Project form. */
+  function handleClientSelect(client: Readonly<{ id: string; displayName: string }>): void {
+    projectForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    setClientSearchText(client.displayName);
+    setClientPickerOpen(false);
+  }
+
+  /** Open Client creation while preserving every in-progress Project field. */
+  function openCreateClientModal(): void {
+    createClient.reset();
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setClientPickerOpen(false);
+    setCreateProjectOpen(false);
+    setCreateClientOpen(true);
+  }
+
+  /** Return from Client creation to the unchanged quick Project form. */
+  function closeCreateClientModal(): void {
+    createClient.reset();
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setCreateClientOpen(false);
+    setCreateProjectOpen(true);
+  }
+
+  /** Create a normal Client master and immediately select it for the quick Project. */
+  async function submitClient(values: QuickClientValues): Promise<void> {
+    const client = await createClient.mutateAsync({
+      legalName: values.legalName,
+      displayName: values.displayName,
+      taxNo: values.taxNo ? values.taxNo : null,
+      billingAddress: values.billingAddress,
+      creditTermsDays: values.creditTermsDays,
+      ...(values.contactName ? {
+        contact: {
+          name: values.contactName,
+          title: values.contactTitle ? values.contactTitle : null,
+          email: values.contactEmail ? values.contactEmail : null,
+          phone: values.contactPhone ? values.contactPhone : null,
+          isPrimary: values.contactIsPrimary
+        }
+      } : {})
+    });
+    setQuickCreatedClient({ id: client.id, code: client.code, displayName: client.displayName });
+    projectForm.setValue('clientId', client.id, { shouldDirty: true, shouldValidate: true });
+    setClientSearchText(client.displayName);
+    setClientPickerOpen(false);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setCreateClientOpen(false);
+    setCreateProjectOpen(true);
+  }
+
+  /** Create a normal DRAFT Project and immediately select it on the Supplier Invoice. */
+  async function submitProject(values: ProjectCreateValues): Promise<void> {
+    const project = await createProject.mutateAsync({
+      name: values.name,
+      clientId: values.clientId,
+      projectModel: values.projectModel,
+      projectValue: values.projectValue,
+      costPlusPercent: values.projectModel === 'COST_PLUS_PERCENTAGE' ? values.costPlusPercent : null,
+      currency: values.currency.toUpperCase(),
+      startDate: values.startDate,
+      plannedEndDate: values.plannedEndDate,
+      location: values.location || null
+    });
+    setQuickCreatedProject({ id: project.id, projectCode: project.projectCode, name: project.name });
+    if (quickCreateTarget === 'payment') {
+      paymentForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+      paymentForm.setValue('supplierInvoiceId', '', { shouldDirty: true, shouldValidate: true });
+      setPaymentProjectSearchText(project.name);
+      setPaymentProjectPickerOpen(false);
+    } else {
+      invoiceForm.setValue('projectId', project.id, { shouldDirty: true, shouldValidate: true });
+      setInvoiceProjectSearchText(project.name);
+      setInvoiceProjectPickerOpen(false);
+    }
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    setClientSearchText('');
+    setClientPickerOpen(false);
+    setQuickCreatedClient(null);
+    setCreateProjectOpen(false);
+  }
+
   /** Close the Supplier New Payment dialog and discard only its browser-side draft state. */
   function closeCreatePaymentModal(): void {
+    setCreateSupplierOpen(false);
+    setCreateProjectOpen(false);
+    setCreateClientOpen(false);
+    setPaymentVendorPickerOpen(false);
+    setPaymentProjectPickerOpen(false);
+    setPaymentVendorSearchText('');
+    setPaymentProjectSearchText('');
+    setQuickCreatedVendor(null);
+    setQuickCreatedProject(null);
+    setClientPickerOpen(false);
+    setClientSearchText('');
+    setQuickCreatedClient(null);
+    supplierForm.reset(EMPTY_SUPPLIER_FORM);
+    projectForm.reset(EMPTY_PROJECT_FORM);
+    quickClientForm.reset(EMPTY_QUICK_CLIENT_FORM);
+    createVendor.reset();
+    createProject.reset();
+    createClient.reset();
     paymentForm.reset(EMPTY_PAYMENT_FORM);
     setPaymentProof(null);
     setPaymentProofInputKey((value) => value + 1);
@@ -493,20 +972,96 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
               <p className="client-payment-create-note">Select the Supplier and Project, optionally link an issued Purchase Order and received delivery, then attach the original invoice image or PDF. Accounting and posting rules remain server-controlled.</p>
               <form className="admin-form client-payment-create-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
                 <div className="client-payment-create-grid">
-                  <label>Vendor
-                    <select {...invoiceForm.register('vendorId')}>
-                      <option value="">Select vendor</option>
-                      {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}
-                    </select>
+                  <div className="supplier-invoice-vendor-field">
+                    <label htmlFor="supplier-invoice-vendor">Vendor</label>
+                    <div className="supplier-invoice-vendor-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInvoiceVendorPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-invoice-vendor"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-invoice-vendor-options"
+                          aria-expanded={invoiceVendorPickerOpen}
+                          value={invoiceVendorSearchText}
+                          onChange={(event) => handleInvoiceVendorSearch(event.target.value)}
+                          onFocus={() => setInvoiceVendorPickerOpen(true)}
+                          onClick={() => setInvoiceVendorPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setInvoiceVendorPickerOpen(false); }}
+                          placeholder={props.canReadVendors ? 'Search active suppliers by name or code' : 'Supplier read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadVendors}
+                        />
+                        {invoiceVendorPickerOpen && props.canReadVendors && (
+                          <div id="supplier-invoice-vendor-options" className="project-client-options" role="listbox" aria-label="Active suppliers">
+                            {invoiceVendorOptionsQuery.isFetching && <div className="project-client-option-state">Searching active suppliers…</div>}
+                            {!invoiceVendorOptionsQuery.isFetching && quickCreatedVendorMissing && quickCreatedVendor && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceVendorId === quickCreatedVendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceVendorSelect(quickCreatedVendor)}>
+                                <strong>{quickCreatedVendor.code}</strong><span>{quickCreatedVendor.displayName}</span>
+                              </button>
+                            )}
+                            {!invoiceVendorOptionsQuery.isFetching && invoiceVendorOptions.map((vendor) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceVendorId === vendor.id} key={vendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceVendorSelect(vendor)}>
+                                <strong>{vendor.code}</strong><span>{vendor.displayName}</span>
+                              </button>
+                            ))}
+                            {!invoiceVendorOptionsQuery.isFetching && invoiceVendorOptions.length === 0 && !quickCreatedVendorMissing && <div className="project-client-option-state">No active suppliers match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateVendors && <button type="button" className="secondary-button supplier-invoice-create-vendor-button" onClick={openCreateSupplierModal}>+ Create supplier</button>}
+                    </div>
+                    <input type="hidden" {...invoiceForm.register('vendorId')} />
                     <span className="field-error">{invoiceForm.formState.errors.vendorId?.message}</span>
-                  </label>
-                  <label>Project
-                    <select {...invoiceForm.register('projectId')}>
-                      <option value="">Select project</option>
-                      {projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
-                    </select>
+                  </div>
+                  <div className="supplier-invoice-project-field">
+                    <label htmlFor="supplier-invoice-project">Project</label>
+                    <div className="supplier-invoice-project-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInvoiceProjectPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-invoice-project"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-invoice-project-options"
+                          aria-expanded={invoiceProjectPickerOpen}
+                          value={invoiceProjectSearchText}
+                          onChange={(event) => handleInvoiceProjectSearch(event.target.value)}
+                          onFocus={() => setInvoiceProjectPickerOpen(true)}
+                          onClick={() => setInvoiceProjectPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setInvoiceProjectPickerOpen(false); }}
+                          placeholder={props.canReadProjects ? 'Search projects by name or code' : 'Project read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadProjects}
+                        />
+                        {invoiceProjectPickerOpen && props.canReadProjects && (
+                          <div id="supplier-invoice-project-options" className="project-client-options" role="listbox" aria-label="Projects">
+                            {invoiceProjectOptionsQuery.isFetching && <div className="project-client-option-state">Searching projects…</div>}
+                            {!invoiceProjectOptionsQuery.isFetching && quickCreatedProjectMissing && quickCreatedProject && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceProjectId === quickCreatedProject.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceProjectSelect(quickCreatedProject)}>
+                                <strong>{quickCreatedProject.projectCode}</strong><span>{quickCreatedProject.name}</span>
+                              </button>
+                            )}
+                            {!invoiceProjectOptionsQuery.isFetching && invoiceProjectOptions.map((project) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceProjectId === project.id} key={project.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceProjectSelect(project)}>
+                                <strong>{project.projectCode}</strong><span>{project.name}</span>
+                              </button>
+                            ))}
+                            {!invoiceProjectOptionsQuery.isFetching && invoiceProjectOptions.length === 0 && !quickCreatedProjectMissing && <div className="project-client-option-state">No Projects match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateProjects && <button type="button" className="secondary-button supplier-invoice-create-project-button" onClick={openCreateProjectModal}>+ Create project</button>}
+                    </div>
+                    <input type="hidden" {...invoiceForm.register('projectId')} />
                     <span className="field-error">{invoiceForm.formState.errors.projectId?.message}</span>
-                  </label>
+                  </div>
                   <label>Supplier invoice no.<input {...invoiceForm.register('invoiceNo')} /><span className="field-error">{invoiceForm.formState.errors.invoiceNo?.message}</span></label>
                   <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
                   <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
@@ -559,7 +1114,189 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
         </div>
       )}
 
-      {props.initialTab === 'payments' && props.canCreatePayment && props.createPaymentModalOpen && (
+      {createSupplierOpen && props.canCreateVendors && (
+        <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateSupplierModal(); }}>
+          <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-invoice-create-vendor-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateSupplierModal(); }}>
+            <header className="finance-modal-header">
+              <div>
+                <p className="eyebrow">Supplier master</p>
+                <h2 id="supplier-invoice-create-vendor-title">Create supplier</h2>
+                <p>Create the normal Supplier Management record and select it for this {quickCreateTarget === 'payment' ? 'payment' : 'invoice'}.</p>
+              </div>
+              <button type="button" className="finance-modal-close" autoFocus aria-label="Close create supplier" onClick={closeCreateSupplierModal}>×</button>
+            </header>
+            <div className="finance-modal-body">
+              <form className="admin-form client-payment-create-form" onSubmit={supplierForm.handleSubmit(submitSupplier)} noValidate>
+                <div className="client-payment-create-grid">
+                  <label>Project
+                    <select {...supplierForm.register('projectId')}>
+                      <option value="">Select Project</option>
+                      {projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
+                    </select>
+                    <span className="field-error">{supplierForm.formState.errors.projectId?.message}</span>
+                  </label>
+                  <label>Code<input {...supplierForm.register('code')} /><span className="field-error">{supplierForm.formState.errors.code?.message}</span></label>
+                  <label>Display name<input {...supplierForm.register('displayName')} /><span className="field-error">{supplierForm.formState.errors.displayName?.message}</span></label>
+                  <label>Legal name<input {...supplierForm.register('legalName')} /><span className="field-error">{supplierForm.formState.errors.legalName?.message}</span></label>
+                  <label>Tax number<input {...supplierForm.register('taxNo')} /><span className="field-error">{supplierForm.formState.errors.taxNo?.message}</span></label>
+                  <label>Payment terms days<input type="number" min="0" {...supplierForm.register('paymentTermsDays', { setValueAs: (value) => value === '' ? null : Number(value) })} /><span className="field-error">{supplierForm.formState.errors.paymentTermsDays?.message}</span></label>
+                  <label>Currency<input maxLength={3} {...supplierForm.register('currency')} /><span className="field-error">{supplierForm.formState.errors.currency?.message}</span></label>
+                  <label>Qualification
+                    <select {...supplierForm.register('qualificationStatus', { setValueAs: (value) => value || null })}>
+                      <option value="">Not set</option>
+                      <option value="QUALIFIED">Qualified</option>
+                      <option value="PENDING">Pending</option>
+                    </select>
+                  </label>
+                </div>
+                {createVendor.error instanceof Error && <div className="form-error" role="alert">{createVendor.error.message}</div>}
+                <div className="form-actions client-payment-create-actions">
+                  <button type="button" className="secondary-button" disabled={createVendor.isPending} onClick={closeCreateSupplierModal}>Back to {quickCreateTarget === 'payment' ? 'payment' : 'invoice'}</button>
+                  <button type="submit" disabled={createVendor.isPending}>{createVendor.isPending ? 'Creating…' : 'Create & select supplier'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {createProjectOpen && props.canCreateProjects && (
+        <div className="project-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateProjectModal(); }}>
+          <section className="project-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-invoice-create-project-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateProjectModal(); }}>
+            <header className="project-modal-header">
+              <div>
+                <p className="eyebrow">New project</p>
+                <h2 id="supplier-invoice-create-project-title">Create project</h2>
+              </div>
+              <button type="button" className="project-modal-close" aria-label="Close Create project" onClick={closeCreateProjectModal}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="project-modal-body">
+              <form className="admin-form project-modal-form" onSubmit={projectForm.handleSubmit(submitProject)} noValidate>
+                <div className="project-form-grid project-modal-grid">
+                  <label>Project name<input autoFocus {...projectForm.register('name')} /></label>
+                  <div className="project-client-field">
+                    <label htmlFor="supplier-invoice-project-client-search">Client</label>
+                    <div className="project-client-search-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => {
+                          if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setClientPickerOpen(false);
+                        }}
+                      >
+                        <input
+                          id="supplier-invoice-project-client-search"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-invoice-project-client-options"
+                          aria-expanded={clientPickerOpen}
+                          value={clientSearchText}
+                          onChange={(event) => handleClientSearch(event.target.value)}
+                          onFocus={() => setClientPickerOpen(true)}
+                          onClick={() => setClientPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setClientPickerOpen(false); }}
+                          placeholder={props.canReadClients ? 'Search active clients by name or code' : 'Client read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadClients}
+                        />
+                        {clientPickerOpen && props.canReadClients && (
+                          <div id="supplier-invoice-project-client-options" className="project-client-options" role="listbox" aria-label="Active clients">
+                            {clientOptionsQuery.isFetching && <div className="project-client-option-state">Searching active clients…</div>}
+                            {!clientOptionsQuery.isFetching && quickCreatedClientMissing && quickCreatedClient && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={selectedClientId === quickCreatedClient.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleClientSelect(quickCreatedClient)}>
+                                <strong>{quickCreatedClient.code}</strong><span>{quickCreatedClient.displayName}</span>
+                              </button>
+                            )}
+                            {!clientOptionsQuery.isFetching && clientOptions.map((client) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={selectedClientId === client.id} key={client.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleClientSelect(client)}>
+                                <strong>{client.code}</strong><span>{client.displayName}</span>
+                              </button>
+                            ))}
+                            {!clientOptionsQuery.isFetching && clientOptions.length === 0 && !quickCreatedClientMissing && <div className="project-client-option-state">No active clients match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateClients ? <button type="button" className="secondary-button project-client-create-button" onClick={openCreateClientModal}>+ Create client</button> : null}
+                    </div>
+                    <span className="field-error">{projectForm.formState.errors.clientId?.message}</span>
+                  </div>
+                  <label>
+                    Commercial model
+                    <select {...projectForm.register('projectModel')}>
+                      <option value="FIXED_PRICE">Fixed Price</option>
+                      <option value="COST_PLUS_PERCENTAGE">Cost + Percentage</option>
+                    </select>
+                  </label>
+                  <label>Project value<input inputMode="decimal" {...projectForm.register('projectValue')} /></label>
+                  {selectedProjectModel === 'COST_PLUS_PERCENTAGE' && <label>Cost + percent<input inputMode="decimal" {...projectForm.register('costPlusPercent')} /></label>}
+                  <label>Currency<input maxLength={3} {...projectForm.register('currency')} /></label>
+                  <label>Start date<input type="date" {...projectForm.register('startDate')} /></label>
+                  <label>Planned end date<input type="date" {...projectForm.register('plannedEndDate')} /></label>
+                  <label className="project-form-wide">Location (optional)<input {...projectForm.register('location')} /></label>
+                </div>
+                <p className="muted project-edit-note">Create the Project first. Assign its Site Manager afterward from Administration → Users.</p>
+                {Object.values(projectForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+                {createProject.error instanceof Error && <div className="form-error" role="alert">{createProject.error.message}</div>}
+                <div className="project-modal-actions">
+                  <button type="button" className="secondary-button" disabled={createProject.isPending} onClick={closeCreateProjectModal}>Back to {quickCreateTarget === 'payment' ? 'payment' : 'invoice'}</button>
+                  <button type="submit" disabled={createProject.isPending}>{createProject.isPending ? 'Creating…' : 'Create Project'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {createClientOpen && props.canCreateClients && (
+        <div className="client-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreateClientModal(); }}>
+          <section className="client-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-invoice-create-client-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreateClientModal(); }}>
+            <header className="client-modal-header">
+              <div>
+                <p className="eyebrow">New client account</p>
+                <h2 id="supplier-invoice-create-client-title">Create client</h2>
+              </div>
+              <button type="button" className="client-modal-close" aria-label="Close Create client" onClick={closeCreateClientModal}><span aria-hidden="true">×</span></button>
+            </header>
+            <div className="client-modal-body">
+              <form className="admin-form client-modal-form" onSubmit={quickClientForm.handleSubmit(submitClient)} noValidate>
+                <div className="client-form-grid">
+                  <label>Display name<input autoFocus {...quickClientForm.register('displayName')} /></label>
+                  <label>Legal name<input {...quickClientForm.register('legalName')} /></label>
+                  <label>Tax number<input {...quickClientForm.register('taxNo')} /></label>
+                  <label>
+                    Credit terms (days)
+                    <input
+                      type="number"
+                      min="0"
+                      {...quickClientForm.register('creditTermsDays', {
+                        setValueAs: (value) => value === '' ? null : Number(value)
+                      })}
+                    />
+                  </label>
+                  <label className="client-form-wide">Billing address<textarea rows={3} {...quickClientForm.register('billingAddress')} /></label>
+                  <div className="client-form-wide client-create-contact-heading">
+                    <strong>Primary contact (optional)</strong>
+                    <span className="muted">The client code is generated automatically by the server.</span>
+                  </div>
+                  <label>Contact name<input {...quickClientForm.register('contactName')} /></label>
+                  <label>Contact title<input {...quickClientForm.register('contactTitle')} /></label>
+                  <label>Contact email<input type="email" {...quickClientForm.register('contactEmail')} /></label>
+                  <label>Contact phone<input {...quickClientForm.register('contactPhone')} /></label>
+                  <label className="checkbox-row client-form-wide"><input type="checkbox" {...quickClientForm.register('contactIsPrimary')} /><span>Primary contact</span></label>
+                </div>
+                {Object.values(quickClientForm.formState.errors).map((error, index) => <span className="field-error" key={index}>{error?.message}</span>)}
+                {createClient.error instanceof Error && <div className="form-error" role="alert">{createClient.error.message}</div>}
+                <div className="client-modal-actions">
+                  <button type="button" className="secondary-button" disabled={createClient.isPending} onClick={closeCreateClientModal}>Back to Project</button>
+                  <button type="submit" disabled={createClient.isPending}>{createClient.isPending ? 'Creating…' : 'Create client'}</button>
+                </div>
+              </form>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {props.initialTab === 'payments' && props.canCreatePayment && props.createPaymentModalOpen && !createSupplierOpen && !createProjectOpen && !createClientOpen && (
         <div className="finance-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeCreatePaymentModal(); }}>
           <section className="finance-modal finance-modal-wide client-payment-create-modal" role="dialog" aria-modal="true" aria-labelledby="supplier-payment-create-title" onKeyDown={(event) => { if (event.key === 'Escape') closeCreatePaymentModal(); }}>
             <header className="finance-modal-header">
@@ -574,8 +1311,101 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
               <p className="client-payment-create-note">Select a Supplier and optionally a Project and posted Supplier Invoice. Direct payments remain supported; invoice allocation is optional and all posting rules stay server-controlled.</p>
               <form className="admin-form client-payment-create-form" onSubmit={paymentForm.handleSubmit(submitPayment)}>
                 <div className="client-payment-create-grid">
-                  <label>Vendor<select {...paymentForm.register('vendorId')} onChange={(event) => { paymentForm.setValue('vendorId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); paymentForm.setValue('projectId', ''); }}><option value="">Select vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select><span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span></label>
-                  <label>Project (optional)<select {...paymentForm.register('projectId')} onChange={(event) => { paymentForm.setValue('projectId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); }}><option value="">Company-level direct payment</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select><small className="muted">Select a project to load that project&apos;s supplier invoices.</small></label>
+                  <div className="supplier-invoice-vendor-field">
+                    <label htmlFor="supplier-payment-vendor">Vendor</label>
+                    <div className="supplier-invoice-vendor-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentVendorPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-payment-vendor"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-payment-vendor-options"
+                          aria-expanded={paymentVendorPickerOpen}
+                          value={paymentVendorSearchText}
+                          onChange={(event) => handlePaymentVendorSearch(event.target.value)}
+                          onFocus={() => setPaymentVendorPickerOpen(true)}
+                          onClick={() => setPaymentVendorPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setPaymentVendorPickerOpen(false); }}
+                          placeholder={props.canReadVendors ? 'Search active suppliers by name or code' : 'Supplier read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadVendors}
+                        />
+                        {paymentVendorPickerOpen && props.canReadVendors && (
+                          <div id="supplier-payment-vendor-options" className="project-client-options" role="listbox" aria-label="Active suppliers">
+                            {paymentVendorOptionsQuery.isFetching && <div className="project-client-option-state">Searching active suppliers…</div>}
+                            {!paymentVendorOptionsQuery.isFetching && quickCreatedPaymentVendorMissing && quickCreatedVendor && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentVendorId === quickCreatedVendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentVendorSelect(quickCreatedVendor)}>
+                                <strong>{quickCreatedVendor.code}</strong><span>{quickCreatedVendor.displayName}</span>
+                              </button>
+                            )}
+                            {!paymentVendorOptionsQuery.isFetching && paymentVendorOptions.map((vendor) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentVendorId === vendor.id} key={vendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentVendorSelect(vendor)}>
+                                <strong>{vendor.code}</strong><span>{vendor.displayName}</span>
+                              </button>
+                            ))}
+                            {!paymentVendorOptionsQuery.isFetching && paymentVendorOptions.length === 0 && !quickCreatedPaymentVendorMissing && <div className="project-client-option-state">No active suppliers match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateVendors && <button type="button" className="secondary-button supplier-invoice-create-vendor-button" onClick={openCreatePaymentSupplierModal}>+ Create supplier</button>}
+                    </div>
+                    <input type="hidden" {...paymentForm.register('vendorId')} />
+                    <span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span>
+                  </div>
+                  <div className="supplier-invoice-project-field">
+                    <label htmlFor="supplier-payment-project">Project (optional)</label>
+                    <div className="supplier-invoice-project-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentProjectPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-payment-project"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-payment-project-options"
+                          aria-expanded={paymentProjectPickerOpen}
+                          value={paymentProjectSearchText}
+                          onChange={(event) => handlePaymentProjectSearch(event.target.value)}
+                          onFocus={() => setPaymentProjectPickerOpen(true)}
+                          onClick={() => setPaymentProjectPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setPaymentProjectPickerOpen(false); }}
+                          placeholder={props.canReadProjects ? 'Search projects by name or code' : 'Project read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadProjects}
+                        />
+                        {paymentProjectPickerOpen && props.canReadProjects && (
+                          <div id="supplier-payment-project-options" className="project-client-options" role="listbox" aria-label="Projects">
+                            {!paymentProjectOptionsQuery.isFetching && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === ''} onMouseDown={(event) => event.preventDefault()} onClick={clearPaymentProject}>
+                                <strong>Company-level</strong><span>Direct payment</span>
+                              </button>
+                            )}
+                            {paymentProjectOptionsQuery.isFetching && <div className="project-client-option-state">Searching Projects…</div>}
+                            {!paymentProjectOptionsQuery.isFetching && quickCreatedPaymentProjectMissing && quickCreatedProject && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === quickCreatedProject.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentProjectSelect(quickCreatedProject)}>
+                                <strong>{quickCreatedProject.projectCode}</strong><span>{quickCreatedProject.name}</span>
+                              </button>
+                            )}
+                            {!paymentProjectOptionsQuery.isFetching && paymentProjectOptions.map((project) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === project.id} key={project.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentProjectSelect(project)}>
+                                <strong>{project.projectCode}</strong><span>{project.name}</span>
+                              </button>
+                            ))}
+                            {!paymentProjectOptionsQuery.isFetching && paymentProjectOptions.length === 0 && !quickCreatedPaymentProjectMissing && <div className="project-client-option-state">No Projects match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateProjects && <button type="button" className="secondary-button supplier-invoice-create-project-button" onClick={openCreatePaymentProjectModal}>+ Create project</button>}
+                    </div>
+                    <input type="hidden" {...paymentForm.register('projectId')} />
+                    <small className="muted">Select a project to load that project&apos;s supplier invoices. Leave it blank for a company-level direct payment.</small>
+                  </div>
                   <label>Invoice (optional)
                     <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
                       <option value="">Direct payment (no invoice)</option>
@@ -633,20 +1463,96 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
               <p className="muted">For a Procurement invoice, select its PO and Goods Receipt. For a direct purchase or service, choose Direct invoice (no PO); no receipt is required.</p>
               <form className="admin-form" onSubmit={invoiceForm.handleSubmit(submitInvoice)}>
                 <div className="two-column-form">
-                  <label>Vendor
-                    <select {...invoiceForm.register('vendorId')}>
-                      <option value="">Select vendor</option>
-                      {vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}
-                    </select>
+                  <div className="supplier-invoice-vendor-field">
+                    <label htmlFor="supplier-invoice-vendor-inline">Vendor</label>
+                    <div className="supplier-invoice-vendor-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInvoiceVendorPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-invoice-vendor-inline"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-invoice-vendor-inline-options"
+                          aria-expanded={invoiceVendorPickerOpen}
+                          value={invoiceVendorSearchText}
+                          onChange={(event) => handleInvoiceVendorSearch(event.target.value)}
+                          onFocus={() => setInvoiceVendorPickerOpen(true)}
+                          onClick={() => setInvoiceVendorPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setInvoiceVendorPickerOpen(false); }}
+                          placeholder={props.canReadVendors ? 'Search active suppliers by name or code' : 'Supplier read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadVendors}
+                        />
+                        {invoiceVendorPickerOpen && props.canReadVendors && (
+                          <div id="supplier-invoice-vendor-inline-options" className="project-client-options" role="listbox" aria-label="Active suppliers">
+                            {invoiceVendorOptionsQuery.isFetching && <div className="project-client-option-state">Searching active suppliers…</div>}
+                            {!invoiceVendorOptionsQuery.isFetching && quickCreatedVendorMissing && quickCreatedVendor && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceVendorId === quickCreatedVendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceVendorSelect(quickCreatedVendor)}>
+                                <strong>{quickCreatedVendor.code}</strong><span>{quickCreatedVendor.displayName}</span>
+                              </button>
+                            )}
+                            {!invoiceVendorOptionsQuery.isFetching && invoiceVendorOptions.map((vendor) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceVendorId === vendor.id} key={vendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceVendorSelect(vendor)}>
+                                <strong>{vendor.code}</strong><span>{vendor.displayName}</span>
+                              </button>
+                            ))}
+                            {!invoiceVendorOptionsQuery.isFetching && invoiceVendorOptions.length === 0 && !quickCreatedVendorMissing && <div className="project-client-option-state">No active suppliers match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateVendors && <button type="button" className="secondary-button supplier-invoice-create-vendor-button" onClick={openCreateSupplierModal}>+ Create supplier</button>}
+                    </div>
+                    <input type="hidden" {...invoiceForm.register('vendorId')} />
                     <span className="field-error">{invoiceForm.formState.errors.vendorId?.message}</span>
-                  </label>
-                  <label>Project
-                    <select {...invoiceForm.register('projectId')}>
-                      <option value="">Select project</option>
-                      {projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}
-                    </select>
+                  </div>
+                  <div className="supplier-invoice-project-field">
+                    <label htmlFor="supplier-invoice-project-inline">Project</label>
+                    <div className="supplier-invoice-project-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setInvoiceProjectPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-invoice-project-inline"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-invoice-project-inline-options"
+                          aria-expanded={invoiceProjectPickerOpen}
+                          value={invoiceProjectSearchText}
+                          onChange={(event) => handleInvoiceProjectSearch(event.target.value)}
+                          onFocus={() => setInvoiceProjectPickerOpen(true)}
+                          onClick={() => setInvoiceProjectPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setInvoiceProjectPickerOpen(false); }}
+                          placeholder={props.canReadProjects ? 'Search projects by name or code' : 'Project read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadProjects}
+                        />
+                        {invoiceProjectPickerOpen && props.canReadProjects && (
+                          <div id="supplier-invoice-project-inline-options" className="project-client-options" role="listbox" aria-label="Projects">
+                            {invoiceProjectOptionsQuery.isFetching && <div className="project-client-option-state">Searching projects…</div>}
+                            {!invoiceProjectOptionsQuery.isFetching && quickCreatedProjectMissing && quickCreatedProject && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceProjectId === quickCreatedProject.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceProjectSelect(quickCreatedProject)}>
+                                <strong>{quickCreatedProject.projectCode}</strong><span>{quickCreatedProject.name}</span>
+                              </button>
+                            )}
+                            {!invoiceProjectOptionsQuery.isFetching && invoiceProjectOptions.map((project) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedInvoiceProjectId === project.id} key={project.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handleInvoiceProjectSelect(project)}>
+                                <strong>{project.projectCode}</strong><span>{project.name}</span>
+                              </button>
+                            ))}
+                            {!invoiceProjectOptionsQuery.isFetching && invoiceProjectOptions.length === 0 && !quickCreatedProjectMissing && <div className="project-client-option-state">No Projects match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateProjects && <button type="button" className="secondary-button supplier-invoice-create-project-button" onClick={openCreateProjectModal}>+ Create project</button>}
+                    </div>
+                    <input type="hidden" {...invoiceForm.register('projectId')} />
                     <span className="field-error">{invoiceForm.formState.errors.projectId?.message}</span>
-                  </label>
+                  </div>
                   <label>Supplier invoice no.<input {...invoiceForm.register('invoiceNo')} /><span className="field-error">{invoiceForm.formState.errors.invoiceNo?.message}</span></label>
                   <label>Invoice date<input type="date" {...invoiceForm.register('invoiceDate')} /><span className="field-error">{invoiceForm.formState.errors.invoiceDate?.message}</span></label>
                   <label>Due date (optional)<input type="date" {...invoiceForm.register('dueDate')} /><span className="field-error">{invoiceForm.formState.errors.dueDate?.message}</span></label>
@@ -768,8 +1674,101 @@ export function SupplierPayablesWorkspace(props: SupplierPayablesWorkspaceProps)
               <p className="muted">Enter any partial amount and select the cash/bank account paying it. Invoice allocation is optional, so this also supports direct payments without an invoice. To pay from two accounts, create one partial payment from each account, then optionally allocate both to the same invoice.</p>
               <form className="admin-form" onSubmit={paymentForm.handleSubmit(submitPayment)}>
                 <div className="two-column-form">
-                  <label>Vendor<select {...paymentForm.register('vendorId')} onChange={(event) => { paymentForm.setValue('vendorId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); paymentForm.setValue('projectId', ''); }}><option value="">Select vendor</option>{vendors.map((vendor) => <option key={vendor.id} value={vendor.id}>{vendor.code} · {vendor.displayName}</option>)}</select><span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span></label>
-                  <label>Project (optional)<select {...paymentForm.register('projectId')} onChange={(event) => { paymentForm.setValue('projectId', event.target.value, { shouldValidate: true }); paymentForm.setValue('supplierInvoiceId', ''); }}><option value="">Company-level direct payment</option>{projects.map((project) => <option key={project.id} value={project.id}>{project.projectCode} · {project.name}</option>)}</select><small className="muted">Select a project to load that project&apos;s supplier invoices.</small></label>
+                  <div className="supplier-invoice-vendor-field">
+                    <label htmlFor="supplier-payment-vendor">Vendor</label>
+                    <div className="supplier-invoice-vendor-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentVendorPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-payment-vendor"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-payment-vendor-options"
+                          aria-expanded={paymentVendorPickerOpen}
+                          value={paymentVendorSearchText}
+                          onChange={(event) => handlePaymentVendorSearch(event.target.value)}
+                          onFocus={() => setPaymentVendorPickerOpen(true)}
+                          onClick={() => setPaymentVendorPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setPaymentVendorPickerOpen(false); }}
+                          placeholder={props.canReadVendors ? 'Search active suppliers by name or code' : 'Supplier read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadVendors}
+                        />
+                        {paymentVendorPickerOpen && props.canReadVendors && (
+                          <div id="supplier-payment-vendor-options" className="project-client-options" role="listbox" aria-label="Active suppliers">
+                            {paymentVendorOptionsQuery.isFetching && <div className="project-client-option-state">Searching active suppliers…</div>}
+                            {!paymentVendorOptionsQuery.isFetching && quickCreatedPaymentVendorMissing && quickCreatedVendor && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentVendorId === quickCreatedVendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentVendorSelect(quickCreatedVendor)}>
+                                <strong>{quickCreatedVendor.code}</strong><span>{quickCreatedVendor.displayName}</span>
+                              </button>
+                            )}
+                            {!paymentVendorOptionsQuery.isFetching && paymentVendorOptions.map((vendor) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentVendorId === vendor.id} key={vendor.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentVendorSelect(vendor)}>
+                                <strong>{vendor.code}</strong><span>{vendor.displayName}</span>
+                              </button>
+                            ))}
+                            {!paymentVendorOptionsQuery.isFetching && paymentVendorOptions.length === 0 && !quickCreatedPaymentVendorMissing && <div className="project-client-option-state">No active suppliers match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateVendors && <button type="button" className="secondary-button supplier-invoice-create-vendor-button" onClick={openCreatePaymentSupplierModal}>+ Create supplier</button>}
+                    </div>
+                    <input type="hidden" {...paymentForm.register('vendorId')} />
+                    <span className="field-error">{paymentForm.formState.errors.vendorId?.message}</span>
+                  </div>
+                  <div className="supplier-invoice-project-field">
+                    <label htmlFor="supplier-payment-project">Project (optional)</label>
+                    <div className="supplier-invoice-project-row">
+                      <div
+                        className="project-client-combobox"
+                        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaymentProjectPickerOpen(false); }}
+                      >
+                        <input
+                          id="supplier-payment-project"
+                          type="search"
+                          role="combobox"
+                          aria-autocomplete="list"
+                          aria-controls="supplier-payment-project-options"
+                          aria-expanded={paymentProjectPickerOpen}
+                          value={paymentProjectSearchText}
+                          onChange={(event) => handlePaymentProjectSearch(event.target.value)}
+                          onFocus={() => setPaymentProjectPickerOpen(true)}
+                          onClick={() => setPaymentProjectPickerOpen(true)}
+                          onKeyDown={(event) => { if (event.key === 'Escape') setPaymentProjectPickerOpen(false); }}
+                          placeholder={props.canReadProjects ? 'Search projects by name or code' : 'Project read permission required'}
+                          autoComplete="off"
+                          disabled={!props.canReadProjects}
+                        />
+                        {paymentProjectPickerOpen && props.canReadProjects && (
+                          <div id="supplier-payment-project-options" className="project-client-options" role="listbox" aria-label="Projects">
+                            {!paymentProjectOptionsQuery.isFetching && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === ''} onMouseDown={(event) => event.preventDefault()} onClick={clearPaymentProject}>
+                                <strong>Company-level</strong><span>Direct payment</span>
+                              </button>
+                            )}
+                            {paymentProjectOptionsQuery.isFetching && <div className="project-client-option-state">Searching Projects…</div>}
+                            {!paymentProjectOptionsQuery.isFetching && quickCreatedPaymentProjectMissing && quickCreatedProject && (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === quickCreatedProject.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentProjectSelect(quickCreatedProject)}>
+                                <strong>{quickCreatedProject.projectCode}</strong><span>{quickCreatedProject.name}</span>
+                              </button>
+                            )}
+                            {!paymentProjectOptionsQuery.isFetching && paymentProjectOptions.map((project) => (
+                              <button type="button" className="project-client-option" role="option" aria-selected={watchedPaymentProjectId === project.id} key={project.id} onMouseDown={(event) => event.preventDefault()} onClick={() => handlePaymentProjectSelect(project)}>
+                                <strong>{project.projectCode}</strong><span>{project.name}</span>
+                              </button>
+                            ))}
+                            {!paymentProjectOptionsQuery.isFetching && paymentProjectOptions.length === 0 && !quickCreatedPaymentProjectMissing && <div className="project-client-option-state">No Projects match this search.</div>}
+                          </div>
+                        )}
+                      </div>
+                      {props.canCreateProjects && <button type="button" className="secondary-button supplier-invoice-create-project-button" onClick={openCreatePaymentProjectModal}>+ Create project</button>}
+                    </div>
+                    <input type="hidden" {...paymentForm.register('projectId')} />
+                    <small className="muted">Select a project to load that project&apos;s supplier invoices. Leave it blank for a company-level direct payment.</small>
+                  </div>
                   <label>Invoice (optional)
                     <select {...paymentForm.register('supplierInvoiceId')} disabled={!watchedPaymentVendorId || payableInvoicesQuery.isPending}>
                       <option value="">Direct payment (no invoice)</option>
